@@ -1,0 +1,188 @@
+// calyx_GBC.hoc
+//
+// define the globular bushy cell 
+// Pulled from calyx5.hoc 11/5/2007
+// Paul B. Manis, Ph.D.
+// UNC Chapel Hill
+
+
+//**********************Globular Bushy Cell Parameters******************
+// GBC parameters in this section
+// axon and dendrite for bushy cells
+// ONLY RUN AFTER CELLDEF()... 
+//proc makeGBC() {
+	glt = 200
+	sarea = 2500
+	speccm = 0.9  // 0.9 uf/cm^2 membrane cap.
+	totcapa = 12 // total cap in pF for cell 
+	somaarea2 = sarea *1e-8// use new definition in which area is specified outside, convert from um2 to cm2
+	
+	somaareaa = totcapa *1E-6 / 1 // pf -> uF,assumes 1 uF/cm2; result is in cm2 
+	totcap = somaarea2/1E-6 // revert here
+	lstd = 1E4*sqrt(somaarea2/PI) // convert from cm to um 
+		
+	arearatio = somaarea2/somaareaa // get ratio of area (for sodium channel density mechanism)
+	somaarea = somaarea2 // use assigned soma area
+		
+	nnode=5
+	create soma
+	create initsegment // initial segment is first 
+	create axnode[nnode]
+
+	create internode[nnode] // followed by internode - node sequence 
+	create bdend // just a cap load dendrite off soma (bushy cell only)
+	strdef species
+	sprint(species, "cat")
+//}
+//-------------END OF GBC parameters and build----------------------
+
+
+// convert from nanosiemens to mho/cm2, JUST FOR THE CELL BODY
+// do not use this anywhere else!
+func nstomho() {
+	return ((somaarea/somaareaa)*1E-9*$1/somaarea)
+}
+
+objref gbcsoma, gbcdend, gbcinternode, gbcnode, gbciseg
+
+proc defineGBC() {
+	printf("Defining the GBC for %s\n", species)
+
+	
+	axonsf = 1
+	if(strcmp(species, "cat") == 0) {
+		axonsf = 1
+		isdist = 0
+	}
+	if(strcmp(species, "mouse") == 0) { // regular old mouse (nothing special, just small size)
+		axonsf = 0.57 // ratio of surface area for 20 um cell vs. 35 um cell.
+		isdist = 0
+	}
+	if(strcmp(species, "DBA") == 0) { // experimental redistribution of synapses
+		axonsf = 0.57
+		isdist = 0.5
+	}
+	
+	
+	soma { 
+		nseg=1 diam=lstd L=lstd 
+	// for all models except vc passive...
+	
+		insert klt ek_klt = Ek
+		insert kht ek_kht = Ek
+		insert na ena_na = 50
+		insert ih eh_ih=-43
+		insert leak g_leak=1/10000
+
+		Ra=150 cm = 1
+		gnabar_na = 0.35*axonsf // nstomho(5800)
+		gkhtbar_kht = nstomho(150)
+		gkltbar_klt = nstomho(glt)
+		ghbar_ih = nstomho(20)*axonsf
+		g_leak = nstomho(2)*axonsf
+	}
+
+// and now include the axon
+	
+  	initsegment {
+        nseg = 21
+// diam 4 L 36 is from Spirou (4/15/05 conversation), based on cells in EM
+		diam = axonsf*4	// arbitrary, based on EM from Smith & Rhode, 1987 would be 1
+        Ra=150
+        L = axonsf*36	// init segment length from Smith and Rhode, 1987  would be 20
+		insert klt ek_klt = Ek
+		insert kht ek_kht = Ek
+		insert na ena_na = 50
+		insert leak g_leak=1/100000
+		Ra=150 cm=1
+		gnamin = 0.35*axonsf
+		gnamax = 2.5*axonsf
+//		gnabar_na(0:1) = gnamin:gnamax // nstomho(2400)
+		gnabar_na = 0.5
+		gkhtbar_kht = 0.05
+		gkltbar_klt = 0.05
+
+    }
+   	
+  	for i = 0, nnode-1 {    // define nodes 
+ //       printf(" + node%d", i)
+        axnode[i] {
+	        nseg = 5
+	        diam = axonsf*10 // set the same as internodes 
+	        L = 2.5
+	        Ra=150
+			insert klt ek_klt = Ek
+			insert kht ek_kht = Ek
+			insert na ena_na = 50
+			insert leak g_leak=1/100000
+			Ra=150 cm=1
+			gnabar_na = 0.7 
+			gkhtbar_kht = 0.02 
+			gkltbar_klt = 0.02 
+			g_leak = 0.000001 
+		}
+	}
+
+    gbcinternode = new SectionList()
+    for i = 0, nnode-1 {    // define internodes 
+   	    internode[i] {
+       	    Ra=150  // assume low axonal RA 
+            nseg = 20
+   	        diam = axonsf*10  //gbc axons: 10um sbc axon; Brownell 1976 3-5 um 
+       	    L = 1000   // estimate from Spriou (4/15/05) ... long 1000 um internodal length as in frog myelinated axons...
+			insert na ena_na = 50 gnabar_na = 0
+			insert klt ek_klt = Ek gkltbar_klt = 0
+           	insert leak g_leak g_leak=0.000001 e_leak = -80
+           	cm=0.002 // assume small Capacitance (stacked Oligo membranes is same as series capicators...) 
+		}	
+	}
+
+   	bdend {
+        nseg = 20
+   	    diam = axonsf*2
+       	L = 200
+        Ra=150
+ 		insert na ena_na = 50 gnabar_na = 0
+ 		insert klt ek_klt = Ek gkltbar_klt = 0
+  	    insert leak
+       	g_leak = 0.000001
+   	}
+	
+
+// Connect the segments together to make the cell 
+    connect bdend(1), soma(0)
+   	{soma connect initsegment(0), 1}
+    {initsegment connect internode[0](0), 1}  // this assumes IS goes to internode; no special "heminode" at end of IS 
+   	for i = 0, nnode-1 {
+       	{internode[i] connect axnode[i](0), 1}
+       	if(i < nnode-1) {
+            {axnode[i] connect internode[i+1](0), 1}
+   	    }
+   	}
+	{axnode[nnode-1] connect axon[0](0), 1} // and finally connect to the calyx
+
+// now define the additional section lists and add them to "all"
+	gbcsoma = new SectionList()
+	soma gbcsoma.append()
+	soma all.append()
+  	gbciseg = new SectionList()
+ 	initsegment gbciseg.append()
+  	initsegment all.append()
+  	gbcnode = new SectionList()
+	for i = 0, nnode-1 {
+		axnode[i] gbcnode.append()
+		axnode[i] all.append()
+	}
+    gbcinternode = new SectionList()
+	for i = 0, nnode-1 {
+		internode[i] gbcinternode.append()
+		internode[i] all.append()
+
+	}
+   	gbcdend = new SectionList()
+	bdend gbcdend.append()
+	 bdend all.append()
+
+	printf("\nBuilt: Bushy Cell with Axon\n")
+
+}

@@ -1,0 +1,215 @@
+// calyx_morpho.hoc
+// Routines to measure/mark/identify the calyx model morphology
+//
+// Pulled from calyx5.hoc 11/5/2007
+// Paul B. Manis, Ph.D.
+// UNC Chapel Hill
+
+// *********************Measure distances from swellings to cut axon end *****
+//
+// Introduced in version 3 :  caylx3.hoc
+//
+// variables for morphology analysis
+objref shbox, shmorph, slmorph
+objref shvbox, shv, slv
+objref shcabox, shcai, slcai
+objref swelldist
+strdef thissecname
+objref secid
+
+proc measure() { local l, n
+	n = 0
+	nswell = 0
+	forsec swelling {nswell += 1}
+	swelldist = new Vector(nswell, 0)
+	forsec swelling {
+		l = 0 // initialize length
+		secid = new SectionRef() // starting for each swelling
+		thissecname = secname()
+		axon[0] {distance()}
+		while (secid.has_parent) {
+			l = l + distance(1)
+			if(secid.has_parent) {
+				secid.parent {
+					secid = new SectionRef()
+				}
+			} else {
+				break
+			}
+		}
+		l = distance(0.5)
+		swelldist.x[n] = l
+		n = n + 1 // always count by the swelling number
+	}
+}
+
+proc markchange() { local i 
+	for i = 0, 175 {
+		axonselect = i
+		markpath(1)
+	}
+}
+
+// Mark the path from a selected element of the calyx to the main axon
+// Does not consider the GBC Components.
+
+proc markpath() { local i, nchange 
+	shmorph.show(0) // show diameters when doing this
+	nchange = 0
+	forsec all { shmorph.color(1) }
+		if(section_exists("axon", axonselect)) {
+			axon[axonselect] {
+			shmorph.color(3)
+			secid = new SectionRef() // starting for each sone
+			secname()
+			while (secid.has_parent) {
+				secname()
+				if(secid.has_parent) {
+					secid.parent {
+						secid = new SectionRef()
+						secid { shmorph.color(2) }
+						nd = n3d()
+						for i = 0, nd-1 {
+							if(diam3d(i) < dia_thresh) {
+								printf("Possible bottleneck at %s, pt[%d], diam=%7.2f ", secname(), i, diam3d(i))
+								if($1 == 1) {
+									pt3dchange(i, dia_thresh) // caution: this changes the geometry... 
+									printf(" ! changed to %7.2f", dia_thresh)
+									nchange += 1
+								}
+								printf("\n")
+							}
+
+						}
+					}
+				} else {
+					break
+				}
+			}
+		}
+	}
+	if(nchange > 0) {
+		printf("%d diameters changed\n", nchange)
+	}
+}
+
+	
+// mark all the swellings in gray, and the selected one in red			
+proc markswellings() { local j
+	shmorph.show(0) // show diameters when doing this
+	j = 0
+	forsec all {shmorph.color(1)}
+	forsec swelling { shmorph.color(9) }
+	forsec swelling {
+		if(j == mark_sw) { 
+			shmorph.color(2)
+			printf("Swelling[%d] is %s, d=%8.3f um\n", j, secname(), swelldist.x[j])		
+		}
+		j = j + 1
+	}
+}
+
+// mark all the stalks in gray, and the selected on in red
+proc markstalks() { local j
+	shmorph.show(0) // show diameters when doing this
+	j = 0
+	forsec all {shmorph.color(1)}
+	forsec stalk { shmorph.color(9) }
+	forsec stalk {
+		if(j == mark_st) { 
+			shmorph.color(2)
+			printf("Stalk[%d] is %s\n", j, secname())	
+		}
+		j = j + 1
+	}
+}
+
+proc markbranches() { local j
+	shmorph.show(0) // show diameters when doing this
+	j = 0
+	forsec all {shmorph.color(1)}
+	forsec branch { shmorph.color(9) }
+	forsec branch {
+		if(j == mark_br) { 
+			shmorph.color(2)
+			printf("Branch[%d] is %s\n", j, secname())
+		}
+		j = j + 1
+	}
+}
+
+proc marknecks() { local j
+	shmorph.show(0) // show diameters when doing this
+	j = 0
+	forsec all {shmorph.color(1)}
+	forsec neck { shmorph.color(9) }
+	forsec neck {
+		if(j == mark_nk) { 
+			shmorph.color(2)
+			printf("neck[%d] is %s\n", j, secname())
+		}
+		j = j + 1
+	}
+}
+
+proc marktips() { local j
+	shmorph.show(0) // show diameters when doing this
+	j = 0
+	forsec all {shmorph.color(1)}
+	forsec tip { shmorph.color(9) }
+	forsec tip {
+		if(j == mark_tp) { 
+			shmorph.color(2)
+			printf("tip[%d] is %s\n", j, secname())
+		}
+		j = j + 1
+	}
+}
+
+proc print3d() { local i
+	nd = n3d()
+	for i = 0, nd-1 {
+		printf("---> %s pt[%d], diam=%7.2f\n", secname(), i, diam3d(i))
+	}
+}
+						
+// show the mapping for all section types, then dump the topology
+proc showsections() { local j 
+	j = 0
+	forsec parentaxon {
+		printf("Parentaxon[%d] is %s\n", j, secname())
+		print3d()
+		j = j + 1
+	}
+	j = 0
+	forsec stalk {
+		printf("Stalk[%d] is %s\n", j, secname())
+		print3d()
+		j = j + 1
+	}
+	j = 0
+	forsec branch {
+		printf("Branch[%d] is %s\n", j, secname())
+		print3d()
+		j = j + 1
+	}
+	j = 0
+	forsec swelling {
+		printf("swelling[%d] is %s at %8.3f um\n", j, secname(), swelldist.x[j])
+		print3d()
+		j = j + 1
+	}
+	j = 0
+	forsec neck {
+		printf("necks[%d] is %s\n", j, secname())
+		print3d()
+		j = j + 1
+	}
+	j = 0
+	forsec tip {
+		printf("tips[%d] is %s\n", j, secname())
+		print3d()
+		j = j + 1
+	}
+//	topology()	
+}

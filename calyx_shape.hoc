@@ -1,0 +1,102 @@
+// calyx_shape.hoc 
+// build and maintain the shape graphs
+// Pulled from calyx5, 11/12/2007 P. Manis
+//
+proc setshapecolors() { local i, r, g, b
+
+	ncolors = $1
+	
+	$o2.colormap(ncolors,1)
+	// simulate "jet" colormap with 64 levels
+	// this should be a subroutine that returns a matrix, but right now
+	// it is just inline
+	cstep = ncolors/4
+	rt1 = 3*cstep/2
+	rt2 = rt1 + cstep
+	rt3 = rt2 + cstep
+	rt4 = rt3 + cstep
+	gt1 = cstep/2
+	gt2 = gt1 + cstep
+	gt3 = gt2 + cstep
+	gt4 = gt3 + cstep
+	bt1 = -cstep/2
+	bt2 = bt1 + cstep
+	bt3 = bt2 + cstep
+	bt4 = bt3 + cstep
+	
+	for i = 0, ncolors-1 {
+	// red
+	if (i < rt1 || i >= rt4) { r = 0 }
+	if (i >= rt1 && i < rt2) {r = 255*((i-rt1)/cstep)}
+	if (i >= rt2 && i < rt3) {r = 255 }
+	if (i > rt3 && i < rt4) { r = 255*(1-(i-rt3)/cstep) }
+	if (r < 0) { r = 0 }
+	if (r > 255) { r = 255 }
+	//green
+	if (i < gt1 || i >= gt4) { g = 0 }
+	if (i >= gt1 && i < gt2) {g = 255*((i-gt1)/cstep)}
+	if (i >= gt2 && i < gt3) {g = 255 }
+	if (i > gt3 && i < gt4) { g = 255*(1-(i-gt3)/cstep) }
+	if (g < 0) { g = 0 }
+	if (g > 255) { g = 255 }
+	//blue
+	if (i < bt1 || i >= bt4) { b = 0 }
+	if (i >= bt1 && i < bt2) {b = 255*((i-bt1)/cstep)}
+	if (i >= bt2 && i < bt3) {b = 255 }
+	if (i >= bt3 && i < bt4) { b = 255*(1-(i-bt3)/cstep) }
+	if (b < 0) { b = 0 }
+	if (b > 255) { b = 255 }
+	//printf("i: %d   [%d, %d, %d]\n", i, r, g, b)
+	$o2.colormap(i, r,g,b)
+	}
+}
+// plot color coded shape of calyx on graph
+proc shape_graphs() {
+	
+// first one is morphology graph
+	shbox = new VBox()
+	shbox.intercept(1)
+	access axon[0]
+	slmorph = new SectionList()
+	slmorph.wholetree()
+	shmorph = new PlotShape(slmorph)
+	fast_flush_list.append(shmorph)
+	shbox.intercept(0)
+	shbox.map("ShapePlot", 250, 430, 300, 300)
+	forsec parentaxon {shmorph.color(1)}
+	forsec heminode {shmorph.color(7)}
+	forsec branch {shmorph.color(3)}
+	forsec swelling {shmorph.color(2)}
+	forsec neck {shmorph.color(4)}
+	forsec stalk {shmorph.color(5)}
+	forsec tip {shmorph.color(6)}
+	
+// Second is Voltage graph 
+	ncolors = 32
+
+	shvbox = new VBox()
+	shvbox.intercept(1)	
+	slv = new SectionList()
+	axon[0] {
+		slv.append()
+		slv.wholetree()
+	}
+	shv = new PlotShape(slv)
+	setshapecolors(ncolors, shv)	shv.variable("v")	shv.exec_menu("Shape Plot")	shv.scale(-88+(1/ncolors)*128,40)	fast_flush_list.append(shv)
+	shvbox.intercept(0)
+	shvbox.map("ShapePlotV", 550, 430, 300, 300)
+	
+	shcabox = new VBox()
+	shcabox.intercept(1)
+	slcai = new SectionList()
+	axon[0] {
+		slcai.append()
+		slcai.wholetree()
+	}
+	shcai = new PlotShape(slcai)	
+	setshapecolors(ncolors, shcai)
+	shcai.variable("cai")	shcai.exec_menu("Shape Plot")	maxcai = 16e-3
+	shcai.scale(0, maxcai)	fast_flush_list.append(shcai)
+	shcabox.intercept(0)
+	shcabox.map("ShapePlotCa", 850, 430, 300, 300)
+}

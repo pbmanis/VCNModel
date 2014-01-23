@@ -1,0 +1,18 @@
+//compartmentalization function.
+//To have compartments with a lambda length < $2 
+//at $1 (Hz) - the value for $2 should be less than 0.1-0.3.
+//To speedup the demo simulation a value of 0.4@100Hz is used.
+//Slightly different values for the conductances would be needed
+//to obtain the same results when using a different compartmentalization.
+//Contact the author for more information.
+
+proc mesh_init() {
+	
+	nra = fast_mesh(500,Mesh_th)
+	axon nseg = 1
+	printf("Number of Compartments: %d\n",nra)
+
+	// Set up origin in soma
+	axon distance()
+	access axon
+}

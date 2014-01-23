@@ -1,0 +1,156 @@
+celsius = 37 // set the temperature.
+ca_init = 70e-6
+create a
+a	{nseg=1 diam=20 L=20 
+	insert CaP
+		insert pas g_pas=1/10000 Ra=150 cm=1}
+			cao0_ca_ion = 1.0	//insert capump
+			cai0_ca_ion = 70e-6
+access a
+
+tstop=100
+vlow=-80
+vhigh=40
+dt=0.1
+usetable_CaP = 0
+
+frac=0
+color=1
+
+objref gk, b,gt,vc, gs,c, gf,ic, gab
+b = new VBox()
+c = new VBox()
+b.intercept(1)
+gk = new Graph(0)
+gk.view(vlow,0,vhigh-vlow,1,0,50,100,200)
+gk.exec_menu("New Axis")
+gk.exec_menu("10% Zoom out")
+gk.label(0.1,0.9,"CaP: steady-state activation (m)")
+gk.addexpr("minf_CaP^2",1,2, 2*tstop,0,2)
+//gk.addexpr("zinf_CaP",2,2, 2*tstop,0,2)
+
+gt = new Graph(0)
+gt.view(vlow,0,vhigh-vlow,30,0,50,100,200)
+gt.exec_menu("New Axis")
+gt.exec_menu("10% Zoom out")
+gt.label(0.1,0.9,"CaP: taum  time constants")
+gt.addexpr("taum_CaP",1,2, 2*tstop,0,2)
+//gt.addexpr("ztau_CaP*0.05",2,2, 2*tstop,0,2)
+gab = new Graph(0)
+gab.view(vlow, 0,vhigh=vlow,1,0,50,100,200)
+gab.exec_menu("New Axis")
+gab.exec_menu("10% Zoom out")
+gab.label(0.1,0.9,"alpha, beta")
+gab.addexpr("alpha_CaP", 1, 2, 2*tstop, 0, 2)
+gab.addexpr("beta_CaP", 1, 2, 2*tstop, 0, 2)
+
+gs = new Graph(0)
+gs.view(0,-70,150,50,0,50,100,200)
+gs.exec_menu("New Axis")
+gs.exec_menu("10% Zoom out")
+gs.label(0.1,0.9,"+0.1 nA current injection")
+gs.exec_menu("Keep Lines")
+
+xpanel("")
+xbutton("run ", "run()")
+xvalue("color","color",1)
+xpanel()
+b.intercept(0)
+b.map("CaP Kinetics ",100,50,200,600)
+
+c.intercept(1)
+gf = new Graph(0)
+gf.view(0,-2,150,17,0,50,100,100)
+gf.exec_menu("New Axis")
+gf.exec_menu("10% Zoom out")
+gf.label(0.4,0.95,"CaP current (nA)")
+gf.label(0.3,0.08,"-120mV ")
+gf.label(0.3,0.85,"+30mV ")
+gf.exec_menu("Keep Lines")
+c.intercept(0)
+c.map("CaP Voltage Clamp Currents",390,50,500,370)
+
+vc = new SEClamp(0.5)
+ic = new IClamp(0.5)
+
+proc run() {
+	init()
+	gk.begin()
+	for (v=vlow; v<vhigh; v=v+1) {
+    	rates_CaP(v)
+    	gk.plot(v)
+	}
+
+	gk.flush()
+	doNotify()
+
+
+gt.begin()
+gt.color(2)
+for (v=vlow; v<vhigh; v=v+1) {
+    rates_CaP(v)
+    gt.plot(v)
+}
+
+gt.flush()
+doNotify()
+
+gab.begin()
+gab.color(3)
+for(v = vlow; v<vhigh; v = v + 1) {
+	rates_CaP(v)
+	gab.plot(v)
+}
+gab.flush()
+
+doNotify()
+
+gcabar_CaP= 0.001
+
+gs.addexpr("a.v(0.1)",color,1, 2*tstop,0,2)
+gf.addexpr("ica_CaP*area(0.5)*1e-2",color,1, 2*tstop,0,2) // *10=pA, *1e-2=nA
+
+gs.begin()
+ic.del=5
+ic.dur=100
+ic.amp=0.10
+v=-62
+finitialize(v)
+fcurrent()
+e_pas=v+(ica_CaP)/g_pas
+t=0
+while (t<tstop*1.5) {
+    fadvance()
+    gs.plot(t)
+    }
+gs.flush()
+doNotify()
+ic.amp=0
+
+gcabar_CaP=0.001
+k=30
+while (k>=-100) {
+	t=0
+	vc.amp1=-62
+	vc.dur1=1
+	vc.amp2=k
+	vc.dur2=2
+	vc.amp3=-62
+	vc.dur3=5
+	tstop = vc.dur1 + vc.dur2+vc.dur3
+	forall {finitialize(-62)}
+	fcurrent()
+	while (t<tstop*1.5) {
+    	fadvance()
+    	gf.plot(t)
+	}
+	gf.flush()
+	doNotify()
+	k=k-10
+	gf.begin()
+}
+vc.dur1=0
+vc.dur2=0
+vc.dur3=0
+}
+

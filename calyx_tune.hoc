@@ -1,0 +1,242 @@
+// calyx_tune.hoc
+// Routine to adjust the default values of the calyx model
+// to match published values for currents under voltage clamp
+//
+// 11/5/2007 Paul B. Manis. Ph.D. UNC Chapel Hill
+//
+// Basic concept:
+// distribute conductances per desired (canonical, uniform, etc)
+// Set Ra to desired value (note: conductances may vary depending on Ra and
+// spatial distribution)
+// Put the calyx into voltage clamp (low Rs, very low cm as if compensated)
+// In turn, isolate each voltage-gated conductance
+// Run voltage-clamp series with g_bar set to 0.01 uS/cm2
+// Meausre the relevant current as follows:
+// gNa: maximum inward current
+// gCa: maximum inward current
+// gLVA: outward current at 0 mV
+// gHVA: outward current at 0 mV
+// gH: maximum outward current at -100 mV
+//
+// Then measure input resistance at -80 mV with -1 mV step. Compute necessary
+// leak to set input R to target level (1 Gohm, 500 Mohm)
+// 
+// Target values:
+// INa Max: 10 nA (Leao et al., 2005)
+// iCa Max: 4.5 nA ( at 22 deg C and -20 mV; Borst and Sakmann, 1998; Cuttle et al, Kajiawa et al)
+// gLVA: 2-3 nA; but maybe larger (Isikawa et al); set to 8 nA in model at 0 mV
+// and check with AP half width
+// gHVA: 8 nA (note this is only in calyx proper, not axon) at 0 mV
+// gH: 2.1-10 nS (~0.8 nA?) (Cuttle et al. ,J.Physiol., 2001) at -120 mV
+//
+
+// call with argument:
+// 0 do all channels
+// 1 do calcium channels only
+// 2 do sodium channels
+// 3 do low voltage activated K channels
+// 4 do high voltage activated k channels
+// 5 do IH channels
+// 6 do "leak" channels - (match input resistance at DC)
+
+targetLVK= 8
+targetHVK = 8
+targetNa = -20
+targetCa = -4.5
+targetH = -0.8
+targetRin = 500
+objref Zimp
+
+testcm = 1e-6
+proc calyx_tune() { local i, j, k
+old_tstop = tstop // because we change this here... 
+tstop = 10
+if(numarg() == 0) {
+	doall = 0
+} else {
+	doall = $1 // which one?
+}
+	
+choose_vclamp() // force vclamp mode
+
+setdefvclamp()
+if(doall == 0 || doall == 1) {
+	// Calcium 
+printf ("Calcium Channels\n")
+newRa = 100
+setpassiveconductances() // always start from same place
+gcat = 0.001 // use small value to minimize errors
+gca_st = gcat
+gca_br = gcat
+gca_sw = gcat
+gca_nk = gcat
+gca_tp = gcat
+forsec all { cm = testcm } // make small to insure it doesn't affect result
+globalMinICa = 10000
+for (vc.amp2 = -45; vc.amp2 <= 0; vc.amp2 += 5) {
+	calyxrun() // run the model	
+	t0 = tdat.indwhere(">=", 2.0)
+	t1 = tdat.indwhere(">=", 6)
+	minI = vclampi.min(t0, t1)
+	if(minI < globalMinICa) {
+		globalMinICa = minI
+		globalMinVCa = v
+	}		
+	printf("V: %f  i: %f\n", vc.amp2, minI)
+}
+
+newgca = gcat*(targetCa/globalMinICa)
+}
+
+
+// Sodium 
+if(doall == 0 || doall == 2) {
+printf("Sodium Channels\n")
+newRa = 100
+setpassiveconductances() // always start from same place
+gna_ax = 0.02 // use small value to minimize errors
+gna_hn = 0.1
+forsec parentaxon { gnabar_na = gna_ax } // update biophysics
+forsec heminode { gnabar_na = gna_hn }
+forsec all {cm = testcm} // make small to insure it doesn't affect result
+
+globalMinINa = 10000
+for (vc.amp2 = -55; vc.amp2 <= 0; vc.amp2 += 2) {
+	calyxrun() // run the model	
+	t0 = tdat.indwhere(">=", 2.0)
+	t1 = tdat.indwhere(">=", 6)
+	minI = vclampi.min(t0, t1)
+	if(minI < globalMinINa) {
+		globalMinINa = minI
+		globalMinVNa = v
+	}		
+	printf("V: %f  i: %f\n", vc.amp2, minI)
+}
+newgna = gna_hn*(targetNa/globalMinINa)
+}
+
+
+if(doall == 0 || doall == 3) {
+printf("LVA Potassium Channels\n")
+// LVA K channels
+newRa = 100
+setpassiveconductances() // always start from same place
+ // update biophysics
+glvk_ax = 0.01
+
+forsec all {cm = testcm } // make small to insure it doesn't affect result
+globalMeanILVK = 0
+vc.amp2 = 0
+calyxrun() // run the model	
+t0 = tdat.indwhere(">=", 4)
+t1 = tdat.indwhere(">=", 8)
+meanILVK = vclampi.mean(t0, t1)
+meanVLVK = vax[1].mean(t0, t1)
+newgLVK = glvk_ax * (targetLVK/meanILVK)
+}
+
+if(doall == 0 || doall == 4) {
+// hva K channels  
+printf("HVA K Channels\n")
+newRa = 100
+setpassiveconductances() // always start from same place
+ghvkt = 0.01
+ghvk_st = ghvkt
+ghvk_br = ghvkt
+ghvk_sw = ghvkt
+ghvk_nk = ghvkt
+ghvk_tp = ghvkt
+forsec all {cm = testcm}
+globalMeanIHVK = 0
+vc.amp2 = 0
+calyxrun() // run the model	
+t0 = tdat.indwhere(">=", 4)
+t1 = tdat.indwhere(">=", 8)
+meanIHVK = vclampi.mean(t0, t1)
+meanVHVK = vax[1].mean(t0, t1)
+newgHVK = ghvkt * (targetHVK/meanIHVK)
+}
+
+// IH channels  
+if(doall == 0 || doall == 5) {
+printf("IH K Channels\n")
+newRa = 100
+setpassiveconductances() // always start from same place
+giht = 0.01
+gh_st = giht
+gh_br = giht
+gh_sw = giht
+gh_nk = giht
+gh_tp = giht
+forsec all {cm = testcm}
+globalMeanIH = 0
+vc.amp2 = -120
+vc.dur2 = 200
+tstop = 200 // must do a LONG run to get the data
+calyxrun() // run the model	
+t0 = tdat.indwhere(">=", 150)
+t1 = tdat.indwhere(">=", 200)
+meanIH = vclampi.mean(t0, t1)
+meanVH = vax[1].mean(t0, t1)
+newgH = ghvkt * (targetH/meanIH)
+}
+
+if(doall == 6) {
+	printf("Leak conductance\n")
+	newRa = 100
+	RestoreDefaultConductances() 
+	choose_iclamp()
+	Zimp = new Impedance()
+//	finitialize(v_init)
+	axon[0] {
+		Zimp.loc(1)
+		Zimp.compute(0)
+		thisRin = Zimp.input(1)
+//		print thisRin
+		oldg_leak = newg_leak
+		newg_leak = newg_leak*thisRin/targetRin
+	}
+	update_gleak()
+	finitialize(v_init)
+	Zimp.compute(0) // confirm that this will work
+	trueRin = Zimp.input(1)
+}
+
+if(doall == 0 || doall == 1) {
+	printf("Ca: global min I: %f at %f mV: newgCa: %f\n", globalMinICa, globalMinVCa, newgca)
+}
+if(doall == 0 || doall == 2) {
+	printf("Na: global min I: %f at %f mV: newgNa: %f\n", globalMinINa, globalMinVNa, newgna)
+}
+if(doall == 0 || doall == 3) {	
+	printf("KLT: V: %f  i: %f  newgLVK: %f\n", meanVLVK, meanILVK, newgLVK)
+}
+if(doall == 0 || doall == 4) {
+	printf("KHT: V: %f  i: %f, newGHVK: %f\n", meanVHVK, meanIHVK, newgHVK)
+}
+if(doall == 0 || doall == 5) {
+	printf("IH: V: %f  i: %f, newGH: %f\n", meanVH, meanIH, newgH)
+}
+
+if(doall == 0 || doall == 6) {
+		printf("Leak: old: Rin %f, target: %f true: %f\n original g_leak: %g new: %g\n", thisRin, targetRin, trueRin, oldg_leak, newg_leak)
+}
+
+
+RestoreDefaultConductances()
+
+	gna_def = newgna
+	glvk_def = newgLVK
+	ghvkax_def = 0
+	ghvk_def = newgHVK
+	gca_def = newgca
+	gh_def = newgH
+//	g_leak = newg_leak
+	capump_def = 3e-14 // mol/sec
+biophys(0)
+tstop = old_tstop
+choose_iclamp()
+
+}
+
+

@@ -1,0 +1,475 @@
+// calyx_g_control.hoc
+// This file contains the code to set the basic conductances
+// for different configurations and "experiments"
+// Pulled from calyx5.m 11/5/07
+// Paul B. Manis, Ph.D.
+// UNC Chapel Hill
+// 
+// graphic windows and objects for elecrodes
+objref ic, icgbc, icsave, vc, vcsave, gp, w, wg, gc, gi, gvc
+color=1
+
+// Menu to control conductances in individual parts of model
+// Mostly for hand-tuned experimentation
+strdef folder
+sprint(folder, "Canonical")
+objref wmods
+
+proc modconductances() {
+	wmods = new HBox()
+	wmods.intercept(1)
+	xpanel("Modify conductances")
+	xbutton("Close", "wmods.unmap()")
+	xmenu("Axon")
+	xvalue("gLVK(axon)", "glvk_ax", 1)
+	xvalue("gHVK(axon)", "ghvk_ax", 1)
+	xvalue("gNa(axon)", "gna_ax", 1)
+	xvalue("gca(axon)", "gca_ax", 1)
+	xvalue("gH(axon)", "gh_ax", 1)
+	xmenu()
+	xmenu("Heminode")
+	xvalue("gLVK(axon)", "glvk_hn", 1)
+	xvalue("gHVK(axon)", "ghvk_hn", 1)
+	xvalue("gNa(axon)", "gna_hn", 1)
+	xvalue("gca(axon)", "gca_hn", 1)
+	xvalue("gH(axon)", "gh_hn", 1)
+	xmenu()
+	xmenu("Stalk")
+	xvalue("gLVK(stalk)", "glvk_st", 1)
+	xvalue("gHVK(stalk)", "ghvk_st", 1)
+	xvalue("gNa(stalk)", "gna_st", 1)
+	xvalue("gca(stalk)", "gca_st", 1)
+	xvalue("gH(stalk)", "gh_st", 1)
+	xmenu()
+	xmenu("Swelling")
+	xvalue("gLVK(swelling)", "glvk_sw", 1)
+	xvalue("gHVK(swelling)", "ghvk_sw", 1)
+	xvalue("gNa(swelling)", "gna_sw", 1)
+	xvalue("gca(swelling)", "gca_sw", 1)
+	xvalue("gH(swelling)", "gh_sw", 1)
+	xmenu()
+	xmenu("Branch")
+	xvalue("gLVK(branch)", "glvk_br", 1)
+	xvalue("gHVK(branch)", "ghvk_br", 1)
+	xvalue("gNa(branch)", "gna_br", 1)
+	xvalue("gca(branch)", "gca_br", 1)
+	xvalue("gH(branch)", "gh_br", 1)
+	xmenu()
+	xmenu("Neck")
+	xvalue("gLVK(neck)", "glvk_nk", 1)
+	xvalue("gHVK(neck)", "ghvk_nk", 1)
+	xvalue("gNa(neck)", "gna_nk", 1)
+	xvalue("gca(neck)", "gca_nk", 1)
+	xvalue("gH(neck)", "gh_nk", 1)
+	xmenu()
+	xmenu("Tip")
+	xvalue("gLVK(tip)", "glvk_tp", 1)
+	xvalue("gHVK(tip)", "ghvk_tp", 1)
+	xvalue("gNa(tip)", "gna_tp", 1)
+	xvalue("gca(tip)", "gca_tp", 1)
+	xvalue("gH(tip)", "gh_tp", 1)
+		xmenu()
+	xpanel()
+	xpanel("Calcium")
+	xmenu("Calcium")
+	xvalue("ca_init", "ca_init", 1)
+	// xvalue("k1_capmp", "k1_capmp", 1)
+	xvalue("pump0", "pump0_capmp", 1)
+	xmenu()
+	xmenu("Passive Parameters")
+	xvalue("Ra", "newRa", 1, "update_Ra()")
+	xvalue("g_leak", "newg_leak", 1, "update_gleak()")
+	xmenu()
+	xlabel("Conductance Patterns")
+	xbutton("G<-defaults", "RestoreDefaultConductances()")
+	xbutton("SetnewDefaults", "setdefaultconductances()")
+	xbutton("Passive G", "setpassiveconductances()")
+	xbutton("Uniform G", "setuniformconductances()")
+	xbutton("Tune All G", "calyx_tune(0)")
+	xbutton("Tune Calcium", "calyx_tune(1)")
+	xbutton("Tune Na", "calyx_tune(2)")
+	xbutton("Tune LVK", "calyx_tune(3)")
+	xbutton("Tune HVK", "calyx_tune(4)")
+	xbutton("Tune Ih", "calyx_tune(5)")
+	xbutton("Tune leak", "calyx_tune(6)")
+	xlabel("Conductance Defaults (us/cm2)")
+	xvalue("gNa", "gna_def", 1, "setdefaultconductances()")
+	xvalue("gLVK", "glvk_def", 1, "setdefaultconductances()")
+	xvalue("ghvk Axon", "ghvkax_def", 1, "setdefaultconductances()")
+	xvalue("ghvk Calyx", "ghvk_def", 1, "setdefaultconductances()")
+	xvalue("gCa", "gca_def", 1, "setdefaultconductances()")
+	xvalue("gH", "gh_def", 1, "setdefaultconductances()")
+
+	xpanel()
+	
+	wmods.intercept(0)
+	wmods.map("MNTB Calyx -Modify conductances",30, 500,500,450)
+}
+
+
+// set the model Ra to a new set of values
+proc update_Ra() {
+		  forsec all {
+		    Ra =  newRa
+		  }
+		  forsec parentaxon {
+		  	Ra = 50 // it is different in the axon
+		  }
+		  
+}
+
+// set gleak to a new uniform value everywhere in the membrane
+proc update_gleak() {
+	forsec all{
+		g_leak = newg_leak
+	}
+}
+
+// simulation-specific code follows
+
+// default conductance values determined by voltage clamp test on model calyx
+// canonical settings. This restores those values
+
+proc RestoreDefaultConductances() {
+	gna_def = 0.45
+	glvk_def = 0.04
+	ghvkax_def = 0.02
+	ghvk_def = 0.005
+	gca_def = 0.003
+	gh_def = 0.000950
+	capump_def = 3e-14 // mol/sec
+	setdefaultconductances()
+	
+}
+
+
+// apply the current default conductances throughout the model
+proc setdefaultconductances() {
+	
+	forsec all {
+		cm = 1
+		pump0_capmp = capump_def
+	} // make sure cm is restored as well
+	
+	glvk_ax = glvk_def
+	ghvk_ax = ghvkax_def
+	gna_ax = gna_def/5
+	gca_ax = 0.0
+	gh_ax = 0
+	
+	glvk_hn = glvk_def
+	ghvk_hn = ghvkax_def
+	gna_hn = gna_def
+	gca_hn = 0.0
+	gh_hn = 0
+
+	glvk_br = 0.0
+	ghvk_br = ghvk_def
+	gna_br = 0.0
+	gca_br = gca_def
+	gh_br = gh_def
+	
+	glvk_st = 0.0
+	ghvk_st = ghvk_def
+	gna_st = 0
+	gca_st = gca_def
+	gh_st = gh_def
+	
+	glvk_nk = 0.0
+	ghvk_nk =ghvk_def
+	gna_nk = 0
+	gca_nk = gca_def
+	gh_nk = gh_def
+	
+	glvk_sw = 0
+	ghvk_sw = ghvk_def
+	gna_sw = 0
+	gca_sw = gca_def
+	gh_sw = gh_def
+	
+	glvk_tp = 0
+	ghvk_tp = ghvk_def
+	gna_tp = 0
+	gca_tp = gca_def
+	gh_tp = gh_def
+	biophys(0)
+	
+	sprint(folder, "Standard")
+}
+ 
+// experimental manipulation: increase calcium channel density
+proc sethighCaConductances() {
+
+	forsec all {
+		cm = 1
+		pump0_capmp = capump_def
+	} // make sure cm is restored as well
+	Cafactor = 2 // how many times higher?
+	glvk_ax = glvk_def
+	ghvk_ax = ghvkax_def
+	gna_ax = gna_def
+	gca_ax = 0.0
+	gh_ax = 0
+
+	glvk_hn = glvk_def
+	ghvk_hn = ghvkax_def
+	gna_hn = gna_def
+	gca_hn = 0.0
+	gh_hn = 0
+		
+	glvk_br = 0.0
+	ghvk_br = ghvk_def
+	gna_br = 0.0
+	gca_br = gca_def*Cafactor
+	gh_br = gh_def
+	
+	glvk_st = 0.0
+	ghvk_st = ghvk_def
+	gna_st = 0
+	gca_st = gca_def*Cafactor
+	gh_st = gh_def
+	
+	glvk_nk = 0.0
+	ghvk_nk =ghvk_def
+	gna_nk = 0
+	gca_nk = gca_def*Cafactor
+	gh_nk = gh_def
+	
+	glvk_sw = 0
+	ghvk_sw = ghvk_def
+	gna_sw = 0
+	gca_sw = gca_def*Cafactor
+	gh_sw = gh_def
+	
+	glvk_tp = 0
+	ghvk_tp = ghvk_def
+	gna_tp = 0
+	gca_tp = gca_def*Cafactor
+	gh_tp = gh_def
+
+	biophys(0)
+	
+	sprint(folder, "HighCa")
+}
+	
+// setuniform uses the current axonal settings to fill in the rest of the cell
+// This is "special". 
+// Uniform conductances are set from axon only. 
+proc setuniformconductances() {
+
+	forsec all {
+		cm = 1
+		pump0_capmp = capump_def
+	} // make sure cm is restored as well
+	glvk_ax = glvk_def
+	ghvk_ax = ghvkax_def
+	gna_ax = gna_def
+	gca_ax = gca_def
+	gh_ax = gh_def
+	
+	glvk_hn = glvk_def
+	ghvk_hn = ghvkax_def
+	gna_hn = gna_def
+	gca_hn = gca_def
+	gh_hn = gh_def
+	
+	glvk_br = glvk_ax
+	ghvk_br = ghvk_ax
+	gna_br = gna_ax
+	gca_br = gca_ax
+	gh_br = gh_ax
+	
+	glvk_st = glvk_ax
+	ghvk_st = ghvk_ax
+	gna_st = gna_ax
+	gca_st = gca_ax
+	gh_st = gh_ax
+	
+	glvk_nk = glvk_ax
+	ghvk_nk = ghvk_ax
+	gna_nk = gna_ax
+	gh_nk = gh_ax
+	gca_nk = gca_ax
+	
+	glvk_sw = glvk_ax
+	ghvk_sw = ghvk_ax
+	gna_sw = gna_ax
+	gca_sw = gca_ax
+	gh_sw = gh_ax
+	
+	glvk_tp = glvk_ax
+	ghvk_tp = ghvk_ax
+	gna_tp = gna_ax
+	gca_tp = gca_ax
+	gh_tp = gh_ax
+
+	biophys(0)
+	sprint(folder, "Uniform")
+}
+
+// set the conductances so that the model calyx is entirely passive 
+
+proc setpassiveconductances() {
+	forsec all {
+		cm = 1
+		pump0_capmp = 0
+	} // make sure cm is restored as well
+	glvk_ax = 0.00
+	ghvk_ax = 0.00
+	gna_ax = 0.0
+	gca_ax = 0.0
+	gh_ax = 0
+	
+	glvk_hn = 0.00
+	ghvk_hn = 0.0
+	gna_hn = 0.0
+	gca_hn = 0.0
+	gh_hn = 0
+	
+	glvk_br = 0.0
+	ghvk_br = 0.00
+	gna_br = 0
+	gh_br = 0
+	gca_br = 0
+	
+	glvk_st = 0.0
+	ghvk_st = 0.00
+	gna_st = 0
+	gca_st = 0.000
+	gh_st = 0
+	
+	glvk_nk = 0.0
+	ghvk_nk = 0.00
+	gna_nk = 0
+	gca_nk = 0
+	gh_nk = 0
+	
+	glvk_sw = 0
+	ghvk_sw = 0.00
+	gna_sw = 0
+	gca_sw = 0.000
+	gh_sw = 0
+	
+	glvk_tp = 0
+	ghvk_tp = 0
+	gna_tp = 0
+	gca_tp = 0
+	gh_tp = 0
+
+	biophys(0)
+	sprint(folder, "Passive")
+}
+
+// simulate addint Tetrodotoxin by shutting down all Na channels
+proc addttx() {
+	gna_ax = 0
+	gna_br = 0
+	gna_hn = 0
+	gna_sw = 0
+	gna_st = 0
+	gna_nk = 0
+	gna_tp = 0
+	biophys(0)
+}
+
+ // reinstate ttx to the axon.
+proc removettx() {
+	gna_ax = gna_def/5
+	gna_hn = gna_def
+	gna_br = 0
+	gna_br = 0
+	gna_sw = 0
+	gna_st = 0
+	gna_nk = 0
+	gna_tp = 0
+	biophys(0)
+}
+
+// simulate addition of dendrotoxin by shuttind down the low-voltage activate K channels
+// e.g., Kv1.1/Kv1.2/Kv1.6
+
+proc adddtx() {
+	glvk_ax = 0
+	glvk_hn = 0
+	glvk_br = 0
+	glvk_sw = 0
+	glvk_st = 0
+	glvk_nk = 0
+	glvk_tp = 0
+	biophys(0)
+}
+
+proc removedtx() {
+	glvk_ax = glvk_def/5
+	glvk_hn = glvk_def
+	biophys(0)
+}
+// simulate addition of tetraethylammonium by shutting down the high-
+// voltage activated K channels, e.g., Kv3.1
+proc addtea() {
+	ghvk_ax = 0
+	ghvk_hn = 0
+	ghvk_br = 0
+	ghvk_sw = 0
+	ghvk_st = 0
+	ghvk_nk = 0
+	ghvk_tp = 0
+	biophys(0)
+}
+
+proc removetea() {
+	ghvk_br = ghvk_def
+	ghvk_sw = ghvk_def
+	ghvk_st = ghvk_def
+	ghvk_nk = ghvk_def
+	ghvk_tp = ghvk_def
+	biophys(0)
+}
+
+
+// simulate addition of cadmium by shutting down all the calcium
+// channels (CaV2.1?)
+proc addcd() {
+	gca_ax = 0
+	gca_hn = 0
+	gca_br = 0
+	gca_sw = 0
+	gca_st = 0
+	gca_nk = 0
+	gca_tp = 0
+	biophys(0)
+}
+
+proc removecd() {
+	gca_ax = 0
+	gca_hn = 0
+	gca_br = gca_def
+	gca_sw = gca_def
+	gca_st = gca_def
+	gca_nk = gca_def
+	gca_tp = gca_def
+	biophys(0)
+}
+
+	
+proc addzd() {
+	gh_ax = 0
+	gh_hn = 0
+	gh_br = 0
+	gh_sw = 0
+	gh_st = 0
+	gh_nk = 0
+	gh_tp = 0
+	biophys(0)
+}
+
+proc removezd() {
+	gh_ax = 0
+	gh_hn = 0
+	gh_br = gh_def
+	gh_sw = gh_def
+	gh_st = gh_def
+	gh_nk = gh_def
+	gh_tp = gh_def
+	biophys(0)
+}
