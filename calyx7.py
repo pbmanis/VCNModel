@@ -88,9 +88,10 @@ class calyx7():
         self.icDelayDef = 0.5
         self.icAmpDef = 3
         self.icDurDef = 0.5
+        self.stimFreq = 100. # hz
 
         self.Mesh_th = 0.1 # minimum dlambda        
-        self.tstop = 3
+        self.tstop = 200.
 
         self.topofile = topofileList[0]
         # define which sections (and where in the section) to monitor
@@ -130,7 +131,7 @@ class calyx7():
         self.AN_gEPSC =   {'stellate' : 5, 'bushy': 40, 'test':   2, 'DStellate':   0, 'MNTB': 40}
         self.spike_thr =  {'stellate': -30, 'bushy': -30, 'test': -30, 'DStellate': -20, 'MNTB': -30}
         self.AN_conv =    {'stellate' :  5, 'bushy':   2, 'test':   1, 'DStellate':  25, 'MNTB': 1} # bushy was 2
-        self.AN_zones =   {'stellate' :  5, 'bushy':  90, 'test':   1, 'DStellate':   5, 'MNTB': 1} # bushy ANZones was 90...
+        self.AN_zones =   {'stellate' :  5, 'bushy':  90, 'test':   1, 'DStellate':   5, 'MNTB': 4} # bushy ANZones was 90...
         self.AN_erev =    {'stellate':   7, 'bushy':   7, 'test':   7, 'DStellate':   7, 'MNTB': 7}
         self.AN_gvar =    {'stellate': 0.3, 'bushy': 0.3, 'test': 0.3, 'DStellate':  0.3, 'MNTB': 0.3} # std of conductance
         self.AN_delay =   {'stellate': 0.0, 'bushy': 0.0, 'test': 0.0, 'DStellate':  0.3, 'MNTB': 0.3} # netcon delay (fixed)
@@ -156,9 +157,6 @@ class calyx7():
         self.INH_relstd_Flag = {'stellate':   1, 'bushy': 2,    'test': 0,   'DStellate':  0} # flag controlling std shift during train (1 to enable)
         self.INH_relstd = {'stellate': 0.2, 'bushy': 0.2, 'test': 0.3, 'DStellate':  0.2} # release sigma
 
-
-
-
         # set up arrays for measurement of voltage, calcium, etc.
         self.nswel = 200
         self.nactual_swel = 0
@@ -175,7 +173,7 @@ class calyx7():
         # h.load_file(1, "calyx_shape.hoc")
         self.biophys(pars = self.gPars, createFlag = True)
 
-        self.TargetCellName='MNTB'
+        self.TargetCellName='MNTB' # This defines the patterns of convergence, kinetics, etc.
         # now for the postsynaptic cell - just a basic bushy cell
         (self.TargetCell, [self.initseg, self.axn, self.internnode]) = nrnlibrary.Cells.bushy(debug=False, ttx=False,
                                         message=None,
@@ -196,18 +194,36 @@ class calyx7():
             delay=self.AN_delay[self.TargetCellName])
 
         self.NMDARatio = 0.0
-    # make the AN synapse to the target cell (whether it is a stellate or bushy)
-        print "GBC excitation to target"
-        (self.calyx, self.coh, self.psd, self.cleft, self.nc2, par) = nrnlibrary.Synapses.stochastic_synapses(h, axon = self.CalyxStruct['heminode'][0],
-                targetcell=self.TargetCell, cellname = self.TargetCellName,
-                nFibers = self.AN_conv[self.TargetCellName], nRZones = self.AN_zones[self.TargetCellName],
-                message='creating stochastic multisite synapse',
-                thresh = self.Exc_Thresh, psdtype = 'ampa', gmax=self.AN_gEPSC[self.TargetCellName]*1000.,
-                gvar = self.AN_gvar[self.TargetCellName],
-                eRev = self.AN_erev[self.TargetCellName], NMDARatio = self.NMDARatio,
-                debug = False, Identifier = 1, stochasticPars = sPars)
-        nrnlibrary.Synapses.printParams(sPars)
+        # make the incoming synapse to the target cell
+        # to mimic MNTB cells, we source each presynaptic V from the swellings
+        # (implicit assumption is that swellings are synapses).
+        # nFibers is set to 1
+        # nRZones is set to whatever (let's say, 2 per swelling?)
 
+        print "GBC excitation to target"
+
+        self.calyx = []
+        self.coh=[]
+        self.psd = []
+        self.cleft = []
+        self.nc2 = []
+        for swellno, swell in enumerate(self.CalyxStruct['swelling']):
+#        if len(self.CalyxStruct['swelling']) > 1:
+            swelling = self.getAxonSec('swelling', swellno)
+            print swelling
+            (calyx, coh, psd, cleft, nc2, par) = nrnlibrary.Synapses.stochastic_synapses(h, parentSection = self.CalyxStruct['axon'][swelling],                    targetcell=self.TargetCell, cellname = self.TargetCellName,
+                    nFibers = self.AN_conv[self.TargetCellName], nRZones = self.AN_zones[self.TargetCellName],
+                    message='creating stochastic multisite synapse',
+                    thresh = self.Exc_Thresh, psdtype = 'ampa', gmax=self.AN_gEPSC[self.TargetCellName]*1000.,
+                    gvar = self.AN_gvar[self.TargetCellName],
+                    eRev = self.AN_erev[self.TargetCellName], NMDARatio = self.NMDARatio,
+                    debug = False, Identifier = 1, stochasticPars = sPars, calciumPars=None)
+            self.calyx.append(calyx)
+            self.coh.append(coh)
+            self.psd.append(psd)
+            self.cleft.append(cleft)
+            self.nc2.append(nc2)
+        nrnlibrary.Synapses.printParams(sPars)
 
         self.runModel()
 
@@ -386,7 +402,7 @@ class calyx7():
     def getMonSec(self, monsec):
         """
         Find the section in the lists that corresponds to the selected monitor section
-        Because there can be 2 pointers to the same section (based on the liste elements
+        Because there can be 2 pointers to the same section (based on the listed elements
         and the original "axon" elements), we have to traverse all of the non-axon elements first
         before assigning any axon elements
         """
@@ -403,6 +419,20 @@ class calyx7():
                     self.clist[monsec] = self.calyxColors[s]
                     print 'match found for %d in %s' % (monsec, s)
 
+    def getAxonSec(self, structure, number):
+        src = re.compile('axon\[(\d*)\]')
+        assert structure in self.CalyxStruct.keys()
+        try:
+            element  = self.CalyxStruct[structure][number]
+        except:
+            raise Exception(('Failed to find %d in structure %s' % (number, structure())))
+
+        name = element.name()
+#                print 's: %s  name: %s' % (s, name)
+        g = src.match(name)
+        axno = g.groups()[0]
+        return int(axno)
+
     # ***************CALYXRUN*******************
     # Control a single run the calyx model with updated display
     #  of the voltages, etc. 
@@ -413,7 +443,7 @@ class calyx7():
         print 'calyxrun'
         rundone = 0
         self.vec={}
-        for var in ['axon', 'stalk', 'branch', 'neck', 'tip', 'swelling', 'inj', 'time', 'postsynaptic']:
+        for var in ['axon', 'stalk', 'branch', 'neck', 'tip', 'swelling', 'inj', 'time', 'postsynaptic', 'istim']:
             self.vec[var] = h.Vector()
 
         h.tstop = self.tstop
@@ -435,27 +465,42 @@ class calyx7():
             self.vec2[monsec].record(esection(self.monpos[m])._ref_v, sec=esection)
             self.ica[monsec].record(esection(self.monpos[m])._ref_ica, sec=esection)
             self.cai[monsec].record(esection(self.monpos[m])._ref_cai, sec=esection)
-            a = self.CalyxStruct['axon'][monsec]
-            segarea[monsec] = a.L*np.pi*a.diam * 1e-8 # L and diam in microns, area in cm^2
-            segvol[monsec] = a.L*np.pi*(a.diam/2.)**2 # leave in microns
+            segarea[monsec] = esection.L*np.pi*esection.diam * 1e-8 # L and diam in microns, area in cm^2
+            segvol[monsec] = esection.L*np.pi*(esection.diam/2.)**2 # leave in microns
 
             # set color list for plots - each vector is colored by the type of segment it points to
             self.getMonSec(monsec)
 
         clampV=-60.0
-        vccontrol = h.VClamp(0.5, sec=self.TargetCell)
-        vccontrol.dur[0] = 10.0
-        vccontrol.amp[0] = clampV
-        vccontrol.dur[1] = 100.0
-        vccontrol.amp[1] = clampV
-        vccontrol.dur[2] = 20.0
-        vccontrol.amp[2] = clampV
+        vccontrol = h.SEClamp(0.5, sec=self.TargetCell)
+        vccontrol.dur1 = self.tstop-3.0
+        vccontrol.amp1 = clampV
+        vccontrol.dur2 = 2.0
+        vccontrol.amp2 = clampV-0.5 # just a tiny step to keep the system honest
+        vccontrol.dur3 = 1.0
+        vccontrol.amp3 = clampV
+        vccontrol.rs = 1e-6
         self.vec['postsynaptic'].record(vccontrol._ref_i, sec=self.TargetCell)
         nactual_swel = 0 # count the number of swellings
 
         electrodesite = self.CalyxStruct['axon'][self.axonnode]
+        istim = h.iStim(0.5, sec=electrodesite)
+        stim={}
+        stim['NP'] = 20
+        stim['Sfreq'] = self.stimFreq # stimulus frequency
+        stim['delay'] = 1.0
+        stim['dur'] = 0.5
+        stim['amp'] = 3.0
+        stim['PT'] = 0.0
+        (secmd, maxt, tstims) = self.make_pulse(stim, pulsetype='square')
+        istim.delay = 0
+        istim.dur = 1e9 # these actually do not matter...
+        istim.iMax = 0.0
+        self.vec['i_stim'] = h.Vector(secmd)
+
+        self.vec['i_stim'].play(istim._ref_i, h.dt , 0, sec=electrodesite)
         self.vec['axon'].record(electrodesite()._ref_v, sec=electrodesite) # record axon voltage
-        self.vec['inj'].record(self.ic._ref_i,  sec=electrodesite)
+        self.vec['inj'].record(istim._ref_i,  sec=electrodesite)
         self.vec['time'].record(h._ref_t)
         h.run()
         fig = MP.figure(100)
@@ -474,12 +519,10 @@ class calyx7():
             p3.plot(self.vec['time'], self.cai[c], color=self.clist[c])
         p2.set_ylabel('I_{Ca}')
         p3.set_ylabel('[Ca]_i')
-        print len(self.vec['time'])
-        print len(self.vec['postsynaptic'])
         p4.plot(self.vec['time'], self.vec['postsynaptic'], color = 'k')
         #p2.set_ylim(-5e-12, 1e-12)
-            
-        
+
+
     #     vax[1].record(&axon[axonnode].v(0)) # record axon voltage too
     #     vax[2].record(&axon[axonnode].v(1)) # record axon voltage too
     #     vclampi.record(&vc.i) # record the voltage clamp current
@@ -543,6 +586,46 @@ class calyx7():
         print("CalyxRun done\n")
         MP.show()
 
+    def make_pulse(self, stim, pulsetype = 'square'):
+        """Create the stimulus pulse waveform.
+
+            stim is a dictionary with a delay, duration, SFreq,
+            and post duration, and number of pulses
+            Pulses can be 'square' or 'exponential' in shape.
+
+        """
+        delay = int(np.floor(stim['delay']/h.dt))
+        ipi = int(np.floor((1000.0/stim['Sfreq'])/h.dt))
+        pdur = int(np.floor(stim['dur']/h.dt))
+        posttest = int(np.floor(stim['PT']/h.dt))
+        NP = int(stim['NP'])
+        maxt = h.dt*(stim['delay'] + (ipi*(NP+2)) + posttest + pdur*2)
+        w = np.zeros(np.floor(maxt/h.dt))
+
+        #   make pulse
+        tstims = [0]*NP
+        if pulsetype == 'square':
+            for j in range(0, NP):
+                t = (delay + j *ipi)*h.dt
+                w[delay+ipi*j:delay+(ipi*j)+pdur] = stim['amp']
+                tstims[j] = delay+ipi*j
+            if stim['PT'] > 0.0:
+                send = delay+ipi*j
+                for i in range(send+posttest, send+posttest+pdur):
+                    w[i] = stim['amp']
+
+        if pulsetype == 'exp':
+            for j in range(0, NP):
+                for i in range(0, len(w)):
+                    if delay+ipi*j+i < len(w):
+                        w[delay+ipi*j+i] += stim['amp']*(1.0-np.exp(-i/(pdur/3.0)))*np.exp(-(i-(pdur/3.0))/pdur)
+                tstims[j] = delay+ipi*j
+            if stim['PT'] > 0.0:
+                send = delay+ipi*j
+                for i in range(send+posttest, len(w)):
+                    w[i] += stim['amp']*(1.0-np.exp(-i/(pdur/3.0)))*np.exp(-(i-(pdur/3.0))/pdur)
+
+        return(w, maxt, tstims)
     # 
     # 
     # 
@@ -707,11 +790,12 @@ class calyx7():
         print("Iclamp in Cut Calyx Axon[1]\n")
         #print self.CalyxStruct.keys()
         #print self.axonnode
-        self.ic = h.IClamp(0.5, sec=self.CalyxStruct['axon'][self.axonnode])
-        self.ic.delay = self.icDelayDef
-        self.ic.dur = self.icDurDef
-        self.ic.amp = self.icAmpDef
-    
+        # self.ic = h.IClamp(0.5, sec=self.CalyxStruct['axon'][self.axonnode])
+        # self.ic.delay = self.icDelayDef
+        # self.ic.dur = self.icDurDef
+        # self.ic.amp = self.icAmpDef
+
+
         # load anciallary functions that may need all the definitions above
 #        h.load_file(1, "calyx_tune.hoc") # requires clamps to be inserted..
         self.calyx_init() # this also sets nseg in the axon - so do it before setting up shapes
