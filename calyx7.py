@@ -78,6 +78,8 @@ class calyx7():
         self.thisrep = 1
         self.manipulation = "Canonical"
         self.folder = "Canonical"
+        self.TargetCellName = 'MNTB'
+        self.postMode = 'cc' # current clamp
 
         self.newCm = 1.0 #// uf/cm2 cap.
         self.newRa = 100.0 # // changed 10/20/2007 to center in range')
@@ -85,13 +87,15 @@ class calyx7():
         self.celsius = 37 #' // set the temperature.')
         self.ca_init = 70e-6
         self.v_init = -80
-        self.icDelayDef = 0.5
-        self.icAmpDef = 3
-        self.icDurDef = 0.5
-        self.stimFreq = 100. # hz
+
+        self.nStim = 20
+        self.stimFreq = 400. # hz
+        self.stimInj = 2.0 # nA
+        self.stimDur = 1.0 # msec
+        self.stimDelay = 2.0 # msecc
 
         self.Mesh_th = 0.1 # minimum dlambda        
-        self.tstop = 200.
+        self.tstop = 1000.0*self.nStim/self.stimFreq + 10. + self.stimDelay
 
         self.topofile = topofileList[0]
         # define which sections (and where in the section) to monitor
@@ -153,7 +157,7 @@ class calyx7():
         self.INH_gvar =   {'stellate': 0.3, 'bushy': 0.3, 'test': 0.3, 'DStellate':  0.3}
         self.INH_delay =  {'stellate': 0.0, 'bushy': 0.0, 'test': 0.0, 'DStellate':  0.0} # netcon delay (fixed)
         self.INH_lat_Flag = {'stellate': 0,    'bushy': 0,    'test': 0,    'DStellate':  0} # 1 to allow latency shift during train
-        self.INH_latency ={'stellate': 0.2, 'bushy': 0.2, 'test': 0.2, 'DStellate':  0.2} # latency for stochastic synapses
+        self.INH_latency = {'stellate': 0.2, 'bushy': 0.2, 'test': 0.2, 'DStellate':  0.2} # latency for stochastic synapses
         self.INH_relstd_Flag = {'stellate':   1, 'bushy': 2,    'test': 0,   'DStellate':  0} # flag controlling std shift during train (1 to enable)
         self.INH_relstd = {'stellate': 0.2, 'bushy': 0.2, 'test': 0.3, 'DStellate':  0.2} # release sigma
 
@@ -168,12 +172,12 @@ class calyx7():
         self.clist = {}
         for name in self.calyxNames: # for each part
             x=eval("h.%s" % (name)) # find the associated variable
+            print 'names: ', name, x
             self.CalyxStruct[name] = list(x) # and populate it with the pointers to the parts
         # h.load_file(1, "calyx_morpho.hoc")
         # h.load_file(1, "calyx_shape.hoc")
         self.biophys(pars = self.gPars, createFlag = True)
 
-        self.TargetCellName='MNTB' # This defines the patterns of convergence, kinetics, etc.
         # now for the postsynaptic cell - just a basic bushy cell
         (self.TargetCell, [self.initseg, self.axn, self.internnode]) = nrnlibrary.Cells.bushy(debug=False, ttx=False,
                                         message=None,
@@ -211,7 +215,9 @@ class calyx7():
 #        if len(self.CalyxStruct['swelling']) > 1:
             swelling = self.getAxonSec('swelling', swellno)
             print swelling
-            (calyx, coh, psd, cleft, nc2, par) = nrnlibrary.Synapses.stochastic_synapses(h, parentSection = self.CalyxStruct['axon'][swelling],                    targetcell=self.TargetCell, cellname = self.TargetCellName,
+            (calyx, coh, psd, cleft, nc2, par) = nrnlibrary.Synapses.stochastic_synapses(h, parentSection = self.CalyxStruct['axon'][swelling],
+                                                                                         targetcell=self.TargetCell,
+                                                                                         cellname = self.TargetCellName,
                     nFibers = self.AN_conv[self.TargetCellName], nRZones = self.AN_zones[self.TargetCellName],
                     message='creating stochastic multisite synapse',
                     thresh = self.Exc_Thresh, psdtype = 'ampa', gmax=self.AN_gEPSC[self.TargetCellName]*1000.,
@@ -471,26 +477,35 @@ class calyx7():
             # set color list for plots - each vector is colored by the type of segment it points to
             self.getMonSec(monsec)
 
-        clampV=-60.0
-        vccontrol = h.SEClamp(0.5, sec=self.TargetCell)
-        vccontrol.dur1 = self.tstop-3.0
-        vccontrol.amp1 = clampV
-        vccontrol.dur2 = 2.0
-        vccontrol.amp2 = clampV-0.5 # just a tiny step to keep the system honest
-        vccontrol.dur3 = 1.0
-        vccontrol.amp3 = clampV
-        vccontrol.rs = 1e-6
-        self.vec['postsynaptic'].record(vccontrol._ref_i, sec=self.TargetCell)
+        if self.postMode in ['vc', 'vclamp']:
+            clampV=-60.0
+            vcPost = h.SEClamp(0.5, sec=self.TargetCell)
+            vcPost.dur1 = self.tstop-3.0
+            vcPost.amp1 = clampV
+            vcPostl.dur2 = 2.0
+            vcPost.amp2 = clampV-0.5 # just a tiny step to keep the system honest
+            vcPost.dur3 = 1.0
+            vcPost.amp3 = clampV
+            vcPost.rs = 1e-6
+            self.vec['postsynaptic'].record(vcPost._ref_i, sec=self.TargetCell)
+        else:
+            icPost = h.iStim(0.5, sec=self.TargetCell)
+            icPost.delay = 0
+            icPost.dur = 1e9 # these actually do not matter...
+            icPost.iMax = 0.0
+            self.vec['postsynaptic'].record(self.TargetCell()._ref_v, sec=self.TargetCell)
+
+
         nactual_swel = 0 # count the number of swellings
 
         electrodesite = self.CalyxStruct['axon'][self.axonnode]
         istim = h.iStim(0.5, sec=electrodesite)
         stim={}
-        stim['NP'] = 20
+        stim['NP'] = self.nStim
         stim['Sfreq'] = self.stimFreq # stimulus frequency
-        stim['delay'] = 1.0
-        stim['dur'] = 0.5
-        stim['amp'] = 3.0
+        stim['delay'] = self.stimDelay
+        stim['dur'] = self.stimDur
+        stim['amp'] = self.stimInj
         stim['PT'] = 0.0
         (secmd, maxt, tstims) = self.make_pulse(stim, pulsetype='square')
         istim.delay = 0
