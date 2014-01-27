@@ -32,7 +32,9 @@ __author__ = "Paul B. Manis"
 # as adapted from Xie and Manis (2013).
 #
 
-import os, sys
+import os, sys, time
+import os.path
+import pickle
 import neuron as h
 from neuron import *
 import numpy as np
@@ -76,9 +78,10 @@ class calyx7():
         #h.load_file(os.getcwd()+"/mesh.hoc")
         # use the Params class to hold program run information and states
         # runInfo holds information that is specific the the run - stimuli, conditions, etc
-        self.runInfo = Params(preMode = "cc", postMode = 'cc',
+        # DO NOT add .p to filename...
+        self.runInfo = Params(fileName='Normal', runName='CalyxTest', manipulation="Canonical", folder="Canonical",
+                         preMode = "cc", postMode = 'cc',
                          pharmManip = {'TTX': False, 'ZD': False, 'Cd': False, 'DTX': False, 'TEA': False, 'XE': False},
-                         manipulation="Canonical", folder="Canonical",
                          TargetCellName='MNTB',
                          TargetCell = None,
                          gPars={}, newCm = 1.0,
@@ -89,13 +92,13 @@ class calyx7():
                          ca_init = 70e-6, # free calcium in molar
                          v_init = -80, # mV
                          nStim = 1,
-                         stimFreq = 10., # hz
+                         stimFreq = 400., # hz
                          stimInj = 2.0, # nA
                          stimDur = 1.0, # msec
                          stimDelay = 2.0,# msecc
-
+                         runTime = time.asctime(), # store date and time of run
                     )
-        self.runInfo.tstop = 1000.0*self.runInfo.nStim/self.runInfo.stimFreq + 10. + self.runInfo.stimDelay
+        self.runInfo.tstop = 1000.0*(self.runInfo.nStim-1)/self.runInfo.stimFreq + 10. + self.runInfo.stimDelay
         # modelParameters holds information regarding the cell structure itself for this run
 
         self.modelPars = Params(calyxNames=['parentaxon', 'axon', 'heminode', 'synapse', 'stalk', 'branch', 'neck', 'swelling', 'tip'], # names of calyx morphological parts
@@ -121,7 +124,7 @@ class calyx7():
                                         AN_gEPSC =   {'stellate' : 5, 'bushy': 40, 'test':   2, 'DStellate':   0, 'MNTB': 40},
                                         spike_thr =  {'stellate': -30, 'bushy': -30, 'test': -30, 'DStellate': -20, 'MNTB': -30},
                                         AN_conv =    {'stellate' :  5, 'bushy':   2, 'test':   1, 'DStellate':  25, 'MNTB': 1}, # bushy was 2
-                                        AN_zones =   {'stellate' :  5, 'bushy':  90, 'test':   1, 'DStellate':   5, 'MNTB': 4}, # bushy ANZones was 90...
+                                        AN_zones =   {'stellate' :  5, 'bushy':  90, 'test':   1, 'DStellate':   5, 'MNTB': 1}, # bushy ANZones was 90...
                                         AN_erev =    {'stellate':   7, 'bushy':   7, 'test':   7, 'DStellate':   7, 'MNTB': 7},
                                         AN_gvar =    {'stellate': 0.3, 'bushy': 0.3, 'test': 0.3, 'DStellate':  0.3, 'MNTB': 0.3}, # std of conductance
                                         AN_delay =   {'stellate': 0.0, 'bushy': 0.0, 'test': 0.0, 'DStellate':  0.3, 'MNTB': 0.3}, # netcon delay (fixed)
@@ -148,8 +151,6 @@ class calyx7():
                                         INH_relstd = {'stellate': 0.2, 'bushy': 0.2, 'test': 0.3, 'DStellate':  0.2}, # release sigma
 
 )
-
-
 
         # define which sections (and where in the section) to monitor
         # currents, voltages, and ion concentrations
@@ -194,7 +195,7 @@ class calyx7():
         self.biophys(runInfo = self.runInfo, modelPars = self.modelPars, createFlag = True)
 
         # now for the postsynaptic cell - just a basic bushy cell, even if it is an "MNTB" model.
-        (self.runInfo.TargetCell, [self.initseg, self.axn, self.internnode]) = nrnlibrary.Cells.bushy(debug=False, ttx=False,
+        (self.TargetCell, [self.initseg, self.axn, self.internnode]) = nrnlibrary.Cells.bushy(debug=False, ttx=False,
                                         message=None,
                                         nach='jsrnaf',
                                         species='cat', axon=False, dendrite=False,
@@ -233,7 +234,7 @@ class calyx7():
             swelling = self.getAxonSec('swelling', swellno)
             print swelling
             (calyx, coh, psd, cleft, nc2, par) = nrnlibrary.Synapses.stochastic_synapses(h, parentSection = self.CalyxStruct['axon'][swelling],
-                                                                                         targetcell=self.runInfo.TargetCell,
+                                                                                         targetcell=self.TargetCell,
                                                                                          cellname = self.runInfo.TargetCellName,
                     nFibers = self.modelPars.AN_conv[self.runInfo.TargetCellName], nRZones = self.modelPars.AN_zones[self.runInfo.TargetCellName],
                     message='creating stochastic multisite synapse',
@@ -252,7 +253,10 @@ class calyx7():
 
     def restoreDefaultConductances(self, defPars=None):
         """ default conductance values determined by voltage clamp test on model calyx
-            canonical settings. This restores those values.
+            canonical settings. This routine restores those values.
+            Arguments:
+                defPars: if None, we create the result and set tho defaults
+                if defPars is not none or empty, se just pass it on.
         """
 
         if defPars is None or defPars is {}:
@@ -288,20 +292,21 @@ class calyx7():
                 gPars[name].gKLbar = 0.0
         return gPars
 
-# calyx_biophysics.hoc
-# The Calyx Biophysics (Channel insertion)
-# Every different kind of section has its own conductance levels
-# and can have different channels
-#
-# Paul B. Manis, Ph.D.
-# 25 Sept. 2007
-# Modified to use gca for HH formulation of calcium current
-# 14 Oct 2007
-# converted for Python, 17 Oct 2012.
-#
-# build the biophysics... 
 
     def biophys(self, runInfo=None, modelPars=None, createFlag = True):
+        """
+        Inputs: run parameter structure, model parameter structure
+        Outputs: None
+        Action: Channel insertion into model
+        Every different kind of section has its own conductance levels
+        and can have different channels
+
+         original: Paul B. Manis, Ph.D.
+         25 Sept. 2007
+         Modified to use gca for HH formulation of calcium current
+         14 Oct 2007
+         converted for Python, 17 Oct 2012.
+        """
         if modelPars is None or runInfo is None:
             raise Exception('calyx::biophys - no parameters or info passed!')
         if createFlag : # first time through insert basics only
@@ -364,13 +369,18 @@ class calyx7():
                     sec().eca=43.9
 
 
-    #*********************CALYX_INIT************************
-    # Calyx model initialization procedure:
-    # Set RMP to the resting RMP of the model cell.
-    # Make sure nseg is large enough in the proximal axon.
-    # Initialize the leak, and stabilize the pumps, etc.
-
     def calyx_init(self, runInfo=None, modelPars=None):
+        """
+        Calyx model initialization procedure:
+        Set RMP to the resting RMP of the model cell.
+        Make sure nseg is large enough in the proximal axon.
+        Initialize the leak, and stabilize the pumps, etc.
+        Inputs: runInfo and model Param structure.
+        Outputs: None.
+        Action: Initializes the NEURON state to begin a run.
+
+        """
+
         if modelPars is None or runInfo is None:
             raise Exception('calyx::calyx_init - no parameters or info passed!')
     # First we set e_leak so that the rmp in each segment is the same
@@ -440,6 +450,9 @@ class calyx7():
         Because there can be 2 pointers to the same section (based on the listed elements
         and the original "axon" elements), we have to traverse all of the non-axon elements first
         before assigning any axon elements
+        Input: requestd monitor section
+        Output: None
+        Actions/side effects: sets self.clist[monsec] to the appropriate calyx color
         """
         src = re.compile('axon\[(\d*)\]')
         for s in self.modelPars.calyxNames:
@@ -455,6 +468,14 @@ class calyx7():
                     print 'match found for %d in %s' % (monsec, s)
 
     def getAxonSec(self, structure, number):
+        """
+        Get the axon section in the calyx structure at position
+        Inputs:
+            structure: valid name of ditionary element of calyx tags
+            number: the index into the structure
+        Returns: the axno (if found).
+        Side effects: None.
+        """
         src = re.compile('axon\[(\d*)\]')
         assert structure in self.CalyxStruct.keys()
         try:
@@ -473,14 +494,18 @@ class calyx7():
     #
 
     def calyxrun(self, runInfo = None, modelPars=None):
-        if modelPars is None or runInfo is None:
-            raise Exception('calyx::calyxrun - no parameters or info passed!')
-
         """
         Control a single run the calyx model with updated display
         of the voltages, etc.
-        No arguments are passed; all parameters used are members of the class
+        Inputs: runInfo and modelPars paramater dictionaries
+        Outputs: None
+        Actions: displays the results
+        Side Effects: A number of class variables are created and modified
+            (runInfo and modelPars are not modified).
         """
+        if modelPars is None or runInfo is None:
+            raise Exception('calyx::calyxrun - no parameters or info passed!')
+
         # { local i, j, k, b
         print 'calyxrun'
         rundone = 0
@@ -495,6 +520,7 @@ class calyx7():
         self.vec2 = {} # voltage in each monitored segment
         self.ica = {} # calcium current in each monitored segment
         self.cai = {} # intracellular calcium (bulk) in each monitored segment
+
         self.clist = {} # color list
         segarea = {} # np.zeros(len(self.monsecs))
         segvol = {} # np.zeros(len(self.monsecs))
@@ -515,7 +541,7 @@ class calyx7():
 
         if self.runInfo.postMode in ['vc', 'vclamp']:
             clampV=-60.0
-            vcPost = h.SEClamp(0.5, sec=runInfo.TargetCell)
+            vcPost = h.SEClamp(0.5, sec=self.TargetCell)
             vcPost.dur1 = runInfo.tstop-3.0
             vcPost.amp1 = clampV
             vcPost.dur2 = 2.0
@@ -523,14 +549,13 @@ class calyx7():
             vcPost.dur3 = 1.0
             vcPost.amp3 = clampV
             vcPost.rs = 1e-6
-            self.vec['postsynaptic'].record(vcPost._ref_i, sec=runInfo.TargetCell)
+            self.vec['postsynaptic'].record(vcPost._ref_i, sec=self.TargetCell)
         else:
-            icPost = h.iStim(0.5, sec=runInfo.TargetCell)
+            icPost = h.iStim(0.5, sec=self.TargetCell)
             icPost.delay = 0
             icPost.dur = 1e9 # these actually do not matter...
             icPost.iMax = 0.0
-            self.vec['postsynaptic'].record(runInfo.TargetCell()._ref_v, sec=runInfo.TargetCell)
-
+            self.vec['postsynaptic'].record(self.TargetCell()._ref_v, sec=self.TargetCell)
 
         nactual_swel = 0 # count the number of swellings
 
@@ -572,78 +597,48 @@ class calyx7():
         p3.set_ylabel('[Ca]_i')
         p4.plot(self.vec['time'], self.vec['postsynaptic'], color = 'k')
         #p2.set_ylim(-5e-12, 1e-12)
+        npvecs={}
+        for k in self.vec.keys():
+            npvecs[k] = np.array(self.vec[k])
 
+        npcai={}
+        for k in self.cai.keys():
+            npcai[k] = np.array(self.cai[k])
+        npvec2={}
+        for k in self.vec2.keys():
+            npvec2[k] = np.array(self.vec2[k])
+        npica={}
+        for k in self.ica.keys():
+            npica[k] = np.array(self.ica[k])
 
-    #     vax[1].record(&axon[axonnode].v(0)) # record axon voltage too
-    #     vax[2].record(&axon[axonnode].v(1)) # record axon voltage too
-    #     vclampi.record(&vc.i) # record the voltage clamp current
-    #     forsec swelling { # save voltage, calcium current and concentration
-    #         thissec = secname()
-    #         th = j + 1 ncolor = color+j
-    #         if(j == mark_sw) { th = 1 ncolor = 2 }
-    #         sscanf(thissec, "axon[%d]", &b) # get the axon identification... 
-    # #       printf("j = %d,, thissec: %s   b = %d\n", j, thissec, b)
-    #         if(monsecs.contains(b)) {
-    #             k = monsecs.indwhere("==", b) # is this a selected sectin?
-    #             printf("k = %d\n", k)
-    #             sprint(scmd, "%s.ica(%.1f)", thissec, monpos.x[k])
-    #             sprint(lcmd, "ax %d", monsecs.x[k])
-    #             gc.addvar(lcmd, scmd, k+1, th)
-    #             sprint(scmd, "%s.cai(%.1f)", thissec, monpos.x[k])
-    #             gi.addvar(lcmd, scmd, k+1, th)
-    #             k = k + 1 # k counts the monitored sections
-    #         }
-    #         vswel[j] = new Vector(npts, 0)
-    #         caswel[j] = new Vector(npts, 0)
-    #         icaswel[j] = new Vector(npts, 0)
-    #         sprint(svsw, "vswel[%d].record(&%s.v(0.5))", j, thissec)
-    #         sprint(slca, "caswel[%d].record(&%s.cai(0.5))", j, secname())
-    #         sprint(sica, "icaswel[%d].record(&%s.ica(0.5))", j, secname())
-    #         execute(svsw) # one way to allow us to do this on the fly
-    #         execute(slca)
-    #         execute(sica)
-    #         j = j + 1
-    #     }
-    # 
-    # # note: we do our own run here with fadvance, rather than run()
-    #     tdat = new Vector(npts) # tdat keeps the sample times
-    #     t=0
-    #     calyx_init() # initialize and stabilize up the model
-    #     jt = 0
-    #     while (t<tstop) { # for the selected time window
-    #         fadvance() # step
-    #         tdat.x[jt] = t
-    #         jt  = jt + 1
-    #         gp.plot(t) # plot 
-    #         gvc.plot(t)
-    #         gc.plot(t)
-    #         gi.plot(t)
-    #         shv.flush()
-    #         shcai.flush()
-    #     }
-    #     gp.flush()
-    #     gvc.flush()
-    #     gc.flush()
-    #     gi.flush()
-    #     shv.flush()
-    #     shcai.flush()
-    #   doNotify()
-        rundone = 1
-    #    thisrep = thisrep + 1
-    #   vref = axon[0].v(0.5)
-    #   for j = 0, nactual_swel-1 { # calculate difference here - 
-    #       vmin.x[j] = vswel[j].min - vref
-    #   }
+        print self.modelPars.monsecs
+        results = Params(Sections=self.modelPars.monsecs, vec= npvecs,
+                        Voltages= npvec2, ICa= npica,
+                        Cai= npcai,
+                        )
         print("CalyxRun done\n")
+        if os.path.exists(runInfo.folder) is False:
+            os.mkdir(runInfo.folder)
+        fn = os.path.join(runInfo.folder, runInfo.fileName+'.p')
+        pfout = open(fn, 'wb')
+        pickle.dump({'runInfo': runInfo}, pfout)
+        pickle.dump({'modelPars': modelPars}, pfout)
+        pickle.dump({'Results': results}, pfout)
+        pfout.close()
         MP.show()
 
     def make_pulse(self, stim, pulsetype = 'square'):
-        """Create the stimulus pulse waveform.
-
-            stim is a dictionary with a delay, duration, SFreq,
-            and post duration, and number of pulses
-            Pulses can be 'square' or 'exponential' in shape.
-
+        """
+            Create the stimulus pulse waveform.
+            Inputs:
+                stim: a dictionary with a delay, duration, SFreq,
+                and post duration, and number of pulses
+                pulsetype: Pulses can be 'square' or 'exponential' in shape.
+            Outputs:
+            list containing [waveform (numpy array),
+                            maxtime(float),
+                            timebase (numpy array)]
+            Side Effects: None
         """
         delay = int(np.floor(stim['delay']/h.dt))
         ipi = int(np.floor((1000.0/stim['Sfreq'])/h.dt))
