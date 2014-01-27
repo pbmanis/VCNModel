@@ -54,23 +54,54 @@ monitorSections = {
     "Calyx-68cvt2.hoc": [[0, 85, 85, 5, 26, 40, 67], [0,  0,  1.0, 0.5, 0.5, 0.5, 0.5]]
 }
 
-# utility class to create parameter lists... 
-# create like: p = Params(abc=2.0, defg = 3.0, lunch='sandwich')
-# reference like p.abc, p.defg, etc.
 class Params(object):
+    """
+    utility class to create parameter lists...
+    create like: p = Params(abc=2.0, defg = 3.0, lunch='sandwich')
+    reference like p.abc, p.defg, etc.
+    """
     def __init__(self, **kwds):
         self.__dict__.update(kwds)
 
     def getkeys(self):
+        """
+        Get the keys in the current dictionary
+        """
         return(self.__dict__.keys())
 
     def haskey(self, key):
+        """
+        Find out if the param list has a specific key in it
+        """
         if key in self.__dict__.keys():
             return True
         else:
             return False
+    def todict(self):
+        """
+        convert param list to standard dictionary
+        Useful when writing the data
+        """
+        r = {}
+        for dictelement in self.__dict__:
+            if isinstance(self.__dict__[dictelement], Params):
+                print 'nested: ', dictelement
+                r[dictelement] = self.__dict__[dictelement].todict()
+            else:
+                r[dictelement] = self.__dict__[dictelement]
+        return r
 
-class calyx7():
+    def show(self):
+        """
+        print the parameter block created in Parameter Init
+        """
+        print "--------    Parameter Block    ----------"
+        for key in self.__dict__.keys():
+            print "%15s = " % (key), eval('self.%s' % key)
+        print "-------- ---------------------- ----------"
+
+
+class calyx8():
     def __init__(self, argsin = None):
         print 'calyx7: init'
         h.load_file("stdrun.hoc")
@@ -84,7 +115,7 @@ class calyx7():
                          pharmManip = {'TTX': False, 'ZD': False, 'Cd': False, 'DTX': False, 'TEA': False, 'XE': False},
                          TargetCellName='MNTB',
                          TargetCell = None,
-                         gPars={}, newCm = 1.0,
+                         newCm = 1.0,
                          newRa = 100.0, # // changed 10/20/2007 to center in range')
                          newg_leak = 0.000004935,
                          celsius = 37, #' // set the temperature.
@@ -201,7 +232,7 @@ class calyx7():
                                         species='cat', axon=False, dendrite=False,
                                         newModFiles=False, pump=False)
 
-        self.modelPars.sPars = nrnlibrary.Synapses.Params(LN_Flag = self.modelPars.AN_relstd_Flag[self.runInfo.TargetCellName],
+        self.modelPars.stochasticPars = Params(LN_Flag = self.modelPars.AN_relstd_Flag[self.runInfo.TargetCellName],
             LN_t0 = 0.,
             LN_A0 = self.modelPars.AN_relstd_A0[self.runInfo.TargetCellName],
             LN_tau = self.modelPars.AN_relstd_tau[self.runInfo.TargetCellName],
@@ -241,13 +272,13 @@ class calyx7():
                     thresh = self.modelPars.Exc_Thresh, psdtype = 'ampa', gmax=self.modelPars.AN_gEPSC[self.runInfo.TargetCellName]*1000.,
                     gvar = self.modelPars.AN_gvar[self.runInfo.TargetCellName],
                     eRev = self.modelPars.AN_erev[self.runInfo.TargetCellName], NMDARatio = self.modelPars.NMDARatio,
-                    debug = False, Identifier = 1, stochasticPars = self.modelPars.sPars, calciumPars=None)
+                    debug = False, Identifier = 1, stochasticPars = self.modelPars.stochasticPars, calciumPars=None)
             self.calyx.append(calyx)
             self.coh.append(coh)
             self.psd.append(psd)
             self.cleft.append(cleft)
             self.nc2.append(nc2)
-        nrnlibrary.Synapses.printParams(self.modelPars.sPars)
+        self.modelPars.stochasticPars.show()
 
         self.runModel(runInfo = self.runInfo, modelPars = self.modelPars)
 
@@ -271,25 +302,25 @@ class calyx7():
                              gleak_def = 0.000004935,
                              capump_def = 3e-14, # mol/sec
                              )
-            defPars.gPars = self.setDefaultConductances(defPars=defPars),
+            defPars.gPars = self.setDefaultConductances(defPars=defPars)
         return defPars
     
     def setDefaultConductances(self, defPars = None, gPars = {}):
         """ For each type of segment, initialize setting by the default conductances """
         if defPars is None or defPars == {}:
-            raise Exception (' setDefaultCondutances requires defPars!')
+            raise Exception (' setDefaultConductances requires defPars!')
         print defPars
         for name in self.modelPars.calyxNames:
             gPars[name] = Params(gNabar=defPars.gna_def, ENa=defPars.eNa_def,    gKLbar =defPars.glvk_def, EK = defPars.eK_def,
-                gKHbar = defPars.ghvkax_def, gCabar = defPars.gca_def, gHbar = defPars.gh_def, gCaPump = defPars.capump_def)
+                gKHbar = defPars.ghvkax_def, gCabar = defPars.gca_def, gHbar = defPars.gh_def, gCaPump = defPars.capump_def).todict()
             # exceptions:
             if name in ['axon', 'heminode']:
-                gPars[name].gCabar = 0.0
+                gPars[name]['gCabar'] = 0.0
             if name in ['axon']:
-                gPars[name].gNabar = defPars.gna_def/5.0
+                gPars[name]['gNabar'] = defPars.gna_def/5.0
             if name in ['neck', 'branch', 'tip', 'swelling']:
-                gPars[name].gNabar = 0.0
-                gPars[name].gKLbar = 0.0
+                gPars[name]['gNabar'] = 0.0
+                gPars[name]['gKLbar'] = 0.0
         return gPars
 
 
@@ -336,24 +367,24 @@ class calyx7():
                 if runInfo.pharmManip['TTX']:
                     sec().gnabar_na = 0.0
                 else:
-                    sec().gnabar_na = gp.gNabar
-                sec().ena = gp.ENa
+                    sec().gnabar_na = gp['gNabar']
+                sec().ena = gp['ENa']
                 sec.insert('klt')
                 if runInfo.pharmManip['DTX']:
                     sec().gkltbar_klt = 0.0
                 else:
-                    sec().gkltbar_klt = gp.gKLbar
-                sec().ek = gp.EK
+                    sec().gkltbar_klt = gp['gKLbar']
+                sec().ek = gp['EK']
                 sec.insert('kht')
                 if runInfo.pharmManip['TEA']:
                     sec().gkhtbar_kht = 0.0
                 else:
-                    sec().gkhtbar_kht = gp.gKHbar
+                    sec().gkhtbar_kht = gp['gKHbar']
                 sec.insert('ih')
                 if runInfo.pharmManip['ZD']:
                     sec().ghbar_ih = 0.0
                 else:
-                    sec().ghbar_ih = gp.gHbar
+                    sec().ghbar_ih = gp['gHbar']
                 sec().eh_ih = -43
                 if name is 'axon':
                     sec().cm = 0.0001 # mimic myelination
@@ -365,7 +396,7 @@ class calyx7():
                     if runInfo.pharmManip['Cd']:
                         sec().gcapbar_CaPCalyx = 0.0
                     else:
-                        sec().gcapbar_CaPCalyx = gp.gCaPump 
+                        sec().gcapbar_CaPCalyx = gp['gCaPump']
                     sec().eca=43.9
 
 
@@ -611,19 +642,23 @@ class calyx7():
         for k in self.ica.keys():
             npica[k] = np.array(self.ica[k])
 
+        print "\nrunInfo\n", runInfo.todict()
+        print "\nmodelPars\n", modelPars.todict()
         print self.modelPars.monsecs
+
         results = Params(Sections=self.modelPars.monsecs, vec= npvecs,
                         Voltages= npvec2, ICa= npica,
                         Cai= npcai,
                         )
+        print "Results:\n", results.todict()
         print("CalyxRun done\n")
         if os.path.exists(runInfo.folder) is False:
             os.mkdir(runInfo.folder)
         fn = os.path.join(runInfo.folder, runInfo.fileName+'.p')
         pfout = open(fn, 'wb')
-        pickle.dump({'runInfo': runInfo}, pfout)
-        pickle.dump({'modelPars': modelPars}, pfout)
-        pickle.dump({'Results': results}, pfout)
+        pickle.dump({'runInfo': runInfo.todict(),
+                     'modelPars': modelPars.todict(),
+                     'Results': results.todict()}, pfout)
         pfout.close()
         MP.show()
 
@@ -854,4 +889,4 @@ class calyx7():
 if __name__ == "__main__":
 
     print sys.argv[1:]
-    calyx7(sys.argv[1:])
+    calyx8(sys.argv[1:])
