@@ -43,6 +43,7 @@ import nrnlibrary
 import matplotlib.pylab as MP
 import pprint
 import re
+import calyxPlots
 
 # GBCFLAG controls whether we use  is used or not:
 GBCFLAG = 0 # if 0, IC is in cut axon near calyx; otherwise it is in the GBC soma.
@@ -111,7 +112,7 @@ class calyx8():
         # runInfo holds information that is specific the the run - stimuli, conditions, etc
         # DO NOT add .p to filename...
         self.runInfo = Params(fileName='Normal', runName='CalyxTest', manipulation="Canonical", folder="Canonical",
-                         preMode = "cc", postMode = 'cc',
+                         preMode = "cc", postMode = 'vc',
                          pharmManip = {'TTX': False, 'ZD': False, 'Cd': False, 'DTX': False, 'TEA': False, 'XE': False},
                          TargetCellName='MNTB',
                          TargetCell = None,
@@ -123,11 +124,12 @@ class calyx8():
                          ca_init = 70e-6, # free calcium in molar
                          v_init = -80, # mV
                          nStim = 1,
-                         stimFreq = 400., # hz
+                         stimFreq = 200., # hz
                          stimInj = 2.0, # nA
                          stimDur = 1.0, # msec
                          stimDelay = 2.0,# msecc
                          runTime = time.asctime(), # store date and time of run
+
                     )
         self.runInfo.tstop = 1000.0*(self.runInfo.nStim-1)/self.runInfo.stimFreq + 10. + self.runInfo.stimDelay
         # modelParameters holds information regarding the cell structure itself for this run
@@ -155,15 +157,15 @@ class calyx8():
                                         AN_gEPSC =   {'stellate' : 5, 'bushy': 40, 'test':   2, 'DStellate':   0, 'MNTB': 40},
                                         spike_thr =  {'stellate': -30, 'bushy': -30, 'test': -30, 'DStellate': -20, 'MNTB': -30},
                                         AN_conv =    {'stellate' :  5, 'bushy':   2, 'test':   1, 'DStellate':  25, 'MNTB': 1}, # bushy was 2
-                                        AN_zones =   {'stellate' :  5, 'bushy':  90, 'test':   1, 'DStellate':   5, 'MNTB': 1}, # bushy ANZones was 90...
+                                        AN_zones =   {'stellate' :  5, 'bushy':  90, 'test':   1, 'DStellate':   5, 'MNTB': 5}, # bushy ANZones was 90...
                                         AN_erev =    {'stellate':   7, 'bushy':   7, 'test':   7, 'DStellate':   7, 'MNTB': 7},
                                         AN_gvar =    {'stellate': 0.3, 'bushy': 0.3, 'test': 0.3, 'DStellate':  0.3, 'MNTB': 0.3}, # std of conductance
                                         AN_delay =   {'stellate': 0.0, 'bushy': 0.0, 'test': 0.0, 'DStellate':  0.3, 'MNTB': 0.3}, # netcon delay (fixed)
                                         AN_lat_Flag = {'stellate': 0,    'bushy': 1,    'test': 0,    'DStellate':  0, 'MNTB': 1}, # 1 to allow latency shift during train
                                         AN_lat_A0 =   {'stellate': 0.14, 'bushy': 0.140, 'test': 0.25, 'DStellate':  0.15, 'MNTB': 0.14}, # magnitude of latency change, if allowed
                                         AN_lat_tau =  {'stellate': 21.0, 'bushy': 21.5, 'test': 21.0, 'DStellate':  21.0, 'MNTB': 21.5}, # rate at which latency changes, if allowed
-                                        AN_latency =  {'stellate': 0.5,  'bushy': 0.5,  'test': 0.5,  'DStellate':  0.5, 'MNTB': 0.}, # starting latency
-                                        AN_relstd_Flag = {'stellate':   1, 'bushy': 2,    'test': 0,   'DStellate':  0, 'MNTB': 2}, # flag controlling std shift during train (1 to enable)
+                                        AN_latency =  {'stellate': 0.5,  'bushy': 0.5,  'test': 0.5,  'DStellate':  0.5, 'MNTB': 0.5}, # starting latency
+                                        AN_relstd_Flag = {'stellate':   1, 'bushy': 2,    'test': 0,   'DStellate':  0, 'MNTB': 0}, # flag controlling std shift during train (1 to enable)
                                         AN_relstd =      {'stellate': 0.05, 'bushy': 0.05, 'test': 0.05, 'DStellate':  0.05, 'MNTB': 0.05}, # baseline release std
                                         AN_relstd_A0 =   {'stellate': 0.0, 'bushy': 0.05, 'test': 0.0, 'DStellate':  0.0, 'MNTB': 0.05}, # magnitude of std change during train, if allowed
                                         AN_relstd_tau =  {'stellate': 35.0, 'bushy': 35.0, 'test': 35.0, 'DStellate':  35.0, 'MNTB': 35.0}, # time constant of std change during train, if allowed
@@ -232,7 +234,8 @@ class calyx8():
                                         species='cat', axon=False, dendrite=False,
                                         newModFiles=False, pump=False)
 
-        self.modelPars.stochasticPars = Params(LN_Flag = self.modelPars.AN_relstd_Flag[self.runInfo.TargetCellName],
+        self.modelPars.stochasticPars = Params(
+            LN_Flag = self.modelPars.AN_relstd_Flag[self.runInfo.TargetCellName],
             LN_t0 = 0.,
             LN_A0 = self.modelPars.AN_relstd_A0[self.runInfo.TargetCellName],
             LN_tau = self.modelPars.AN_relstd_tau[self.runInfo.TargetCellName],
@@ -610,24 +613,6 @@ class calyx8():
         self.vec['inj'].record(istim._ref_i,  sec=electrodesite)
         self.vec['time'].record(h._ref_t)
         h.run()
-        fig = MP.figure(100)
-        p1 = fig.add_subplot(4,1,1)
-        p2 = fig.add_subplot(4,1,2)
-        p3 = fig.add_subplot(4,1,3)
-        p4 = fig.add_subplot(4,1,4)
-        p1.plot(self.vec['time'], self.vec['axon'], color=self.clist[0])
-       # p2.plot(self.vec['time'], self.ica['axon'])
-        for v in self.vec2:
-            #print v
-            p1.plot(self.vec['time'], self.vec2[v], color=self.clist[v])
-        p1.set_ylabel('V')
-        for c in self.ica:
-            p2.plot(self.vec['time'], self.ica[c], color=self.clist[c])
-            p3.plot(self.vec['time'], self.cai[c], color=self.clist[c])
-        p2.set_ylabel('I_{Ca}')
-        p3.set_ylabel('[Ca]_i')
-        p4.plot(self.vec['time'], self.vec['postsynaptic'], color = 'k')
-        #p2.set_ylim(-5e-12, 1e-12)
         npvecs={}
         for k in self.vec.keys():
             npvecs[k] = np.array(self.vec[k])
@@ -641,7 +626,7 @@ class calyx8():
         npica={}
         for k in self.ica.keys():
             npica[k] = np.array(self.ica[k])
-
+        runInfo.clist = self.clist
         print "\nrunInfo\n", runInfo.todict()
         print "\nmodelPars\n", modelPars.todict()
         print self.modelPars.monsecs
@@ -660,7 +645,9 @@ class calyx8():
                      'modelPars': modelPars.todict(),
                      'Results': results.todict()}, pfout)
         pfout.close()
-        MP.show()
+        calyxPlots.plotResults(results.todict(), runInfo.todict())
+
+
 
     def make_pulse(self, stim, pulsetype = 'square'):
         """
@@ -707,135 +694,7 @@ class calyx8():
                     w[i] += stim['amp']*(1.0-np.exp(-i/(pdur/3.0)))*np.exp(-(i-(pdur/3.0))/pdur)
 
         return(w, maxt, tstims)
-    # 
-    # 
-    # 
-    # # *************************************************************
-    # # Procedure to write data files to disk.
-    # # Note:
-    # # The "data file" really consists of 3 files. 
-    # # 1. A "header" file, in text format, giving information about the
-    # # most recent runn
-    # # 2. A "data" file, in text format, but just as a matrix of data points
-    # # with the first column being time. Only the voltage at the swellings
-    # # is in this file at the moment.
-    # # 3. A second data file, with the voltage in the axon itself at 3 points
-    # # (far end, middle, and junction with the calyx). 
-    # # One consideration is whether it might make more sense to write the data
-    # # file as one binary file containing the voltages at all the axonal segements.
-    # # 
-    # # *************************************************************
-    # 
-    # objref outfile
-    # strdef filename, basefilename, expt, today, datafilename, axonfilename
-    # 
-    # proc write_data() { local i, j
-    #     if(rundone == 0) {
-    #         return
-    #     }
-    #     expt = "Calyx5.hoc: voltage, calcium and Ica at swellings"
-    #     system("date", today)
-    #     basefilename = "C"
-    #     maxout = tdat.size
-    #     sprint(filename, "%s/%s-%s.txt", folder, basefilename, manipulation)
-    #     printf("\nRaw Voltage Data goes into file: %s\n", filename)
-    #     sprint(datafilename, "%s/%s-%s.dat", folder, basefilename, manipulation)
-    #     sprint(axonfilename, "%s/%s-%s-ax.dat", folder, basefilename, manipulation)
-    # # 
-    # # the first file is the "header" file 
-    # #
-    #     outfile = new File()
-    #     u = outfile.wopen(filename)
-    #     if(u == 0) {
-    #         printf("\n UNABLE TO OPEN OUTPUT FILE: %s\n\n", filename)
-    #         return # that is an error - all runs are stored to data files
-    #     }       
-    #     outfile.printf("%s %d %d\n", datafilename, nactual_swel, maxout)
-    #     outfile.printf(" Calyx5.hoc (11/2/2007)  Experiment: %s\n", expt)
-    #     outfile.printf("Topology File: %s\n", topofile) # indicate topology source
-    #     outfile.printf("Data Run: %d Points: %d  Run Executed on: %s\n", thisrep, maxout, today)
-    # # write parameters
-    #     outfile.printf("Axon:     gNa  %8.3f   gHVK %8.3f  gLVK %8.3f  gCa %8.3f\n", gna_ax, ghvk_ax, glvk_ax, gca_ax)
-    #     outfile.printf("Stalk:    gNa  %8.3f   gHVK %8.3f  gLVK %8.3f  gCa %8.3f\n", gna_st, ghvk_st, glvk_st, gca_st)
-    #     outfile.printf("Swelling: gNa  %8.3f   gHVK %8.3f  gLVK %8.3f  gCa %8.3f\n", gna_sw, ghvk_sw, glvk_sw, gca_sw)
-    #     outfile.printf("Branch:   gNa  %8.3f   gHVK %8.3f  gLVK %8.3f  gCa %8.3f\n", gna_br, ghvk_br, glvk_br, gca_br)
-    #     outfile.printf("Neck:     gNa  %8.3f   gHVK %8.3f  gLVK %8.3f  gCa %8.3f\n", gna_nk, ghvk_nk, glvk_nk, gca_nk)
-    #     outfile.printf("Tip:      gNa  %8.3f   gHVK %8.3f  gLVK %8.3f  gCa %8.3f\n", gna_tp, ghvk_tp, glvk_tp, gca_tp)
-    #     outfile.printf("Calcium: ca_init: %f  k1_capmp: %f  pump0: %f\n", ca_init, k1_capmp, pump0_capmp)
-    #     outfile.printf("Passive: Ra: %f  g_leak: %f\n", newRa, newg_leak)
-    # 
-    #     # header line with identification of columns for immediate IGOR import
-    # 
-    #     outfile.printf("\"tdat\"  ")
-    #     for j = 0,(nactual_swel-1){
-    #         outfile.printf("\"Vsw%d\" " ,j)
-    #     }
-    #     for j = 0,(nactual_swel-1){
-    #         outfile.printf("\"ICa_sw%d\" " ,j)
-    #     }   
-    #     for j = 0,(nactual_swel-1){
-    #         outfile.printf("\"[Ca]i_sw%d\" " ,j)
-    #     }   
-    #     outfile.printf("\n")
-    #     outfile.printf("Nswel = %d\n", nactual_swel)
-    #     measure() # get the swelling map.
-    #     for j = 0, (nactual_swel-1) {
-    #         outfile.printf("%d %9.3f\n", j, swelldist.x[j]) 
-    #     }
-    #     outfile.printf("\n")
-    #     outfile.close
-    #     
-    #     # the actual data file (currently voltage at swellings, along with
-    #     # calcium channel current and intracellular calcium
-    #     #
-    #     u = outfile.wopen(datafilename)
-    #     if(u == 0) {
-    #         printf("\n UNABLE TO OPEN OUTPUT FILE: %s\n\n", filename)
-    #         return # that is an error - all runs are stored to data files
-    #     }   
-    # 
-    #     for i = 0, maxout-1 {
-    #         ii = i
-    #         outfile.printf("%8.3f ", tdat.x[ii])
-    #         for j = 0, (nactual_swel-1) {
-    #             outfile.printf("%8.6e ", vswel[j].x[ii])
-    #         }
-    # 
-    #         for j = 0, (nactual_swel-1) {
-    #             outfile.printf("%8.6e ", icaswel[j].x[ii])
-    #         }
-    #     
-    #         for j = 0, (nactual_swel-1) {
-    #             outfile.printf("%8.6e ", caswel[j].x[ii])
-    #         }   
-    #         outfile.printf("\n")
-    #     }
-    #     outfile.printf("\n")
-    #     outfile.close
-    # 
-    #     # A second data file with the axon voltage
-    #     u = outfile.wopen(axonfilename)
-    #     if(u == 0) {
-    #         printf("\n UNABLE TO OPEN OUTPUT FILE: %s\n\n", filename)
-    #         return # that is an error - all runs are stored to data files
-    #     }   
-    # 
-    #     for i = 0, maxout-1 {
-    #         ii = i
-    #         outfile.printf("%8.3f ", tdat.x[ii])
-    #         for j = 0, 2 {
-    #             outfile.printf("%8.6e ", vax[j].x[ii])
-    #         }
-    #         outfile.printf("\n")
-    #     }
-    #     outfile.printf("\n")
-    #     outfile.close
-    # 
-    #     printf("Output file write complete\n")
-    # }
-    # 
-    # 
-    
+
     
     # #compartmentalization function.
     # #To have compartments with a lambda length < $2 
@@ -863,27 +722,15 @@ class calyx8():
     def runModel(self, runInfo=None, modelPars=None):
         if modelPars is None or runInfo is None:
             raise Exception('calyx::biophys - no parameters or info passed!')
-
-#        h('celldef()') # includes biophysics
-    
-        # if(GBCFLAG == 1) { defineGBC() } # include the GBC?
-#        h('biophys(1)') # make sure we are all set.
 #        h('measure()') # get distances
         defPars = self.restoreDefaultConductances() # canonical conductances...
         self.setDefaultConductances(defPars = defPars) # initialize the conductances
         print("Iclamp in Cut Calyx Axon[1]\n")
         #print self.CalyxStruct.keys()
-        #print self.axonnode
-        # self.ic = h.IClamp(0.5, sec=self.CalyxStruct['axon'][self.axonnode])
-        # self.ic.delay = self.icDelayDef
-        # self.ic.dur = self.icDurDef
-        # self.ic.amp = self.icAmpDef
-
-
         # load anciallary functions that may need all the definitions above
 #        h.load_file(1, "calyx_tune.hoc") # requires clamps to be inserted..
         self.calyx_init(runInfo = runInfo, modelPars = modelPars) # this also sets nseg in the axon - so do it before setting up shapes
-#        h.shape_graphs() # must happen AFTER calyx_init
+ #       h.shape_graphs() # must happen AFTER calyx_init
         self.calyxrun(runInfo = runInfo, modelPars = modelPars)
 
 if __name__ == "__main__":
