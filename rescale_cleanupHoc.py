@@ -20,8 +20,8 @@ scaleFactor = [1.0, 1.0, 1.0, 1.]
 
 
 def main():
-    infile = 'Calyx-S53A_neurovisio.hoc'
-    outfile = 'Calyx-S53A_neurovisio_scaled.hoc'
+    infile = 'Calyx-68cvt2.hoc'
+    outfile = 'Calyx-68cvt2_neurovisio_scaled.hoc'
     axonfind = re.compile('\{(?P<source>axon\[\d+\]) connect (?P<target>axon\[\d+\])\(0\), 1\}')
     accessfind = re.compile('\{access (?P<source>axon\[\d+\])\}(?P<comment>.*)')
     pt3dclearfind = re.compile('\{pt3dclear\(\)\}(?P<comment>.*)')

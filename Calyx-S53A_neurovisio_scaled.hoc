@@ -1,11 +1,13 @@
+create axon[150]
+
 proc celldef() {
   geometry()
   basic_shape()
-  subsets()
+//  subsets()
 //  biophys(1)
 //  geom_nseg()
 }
-create axon[150]
+
 
 proc geometry() {
 	axon[0] connect axon[149](1), 0
@@ -160,17 +162,6 @@ proc geometry() {
 //basic_shape()
 }  //end of topol
 
-geometry()
-proc basic_shape() {
-   shape1()
-   shape2()
-   shape3()
-   shape4()
-   shape5()
-   shape6()
-} // end of basic_shape
-
-access axon[0]
 
 proc shape1() {
 
@@ -1517,3 +1508,15 @@ axon[55] {
 }
 } // end of shape6
 
+//geometry()
+proc basic_shape() {
+   shape1()
+   shape2()
+   shape3()
+   shape4()
+   shape5()
+   shape6()
+} // end of basic_shape
+
+access axon[0]
+celldef()

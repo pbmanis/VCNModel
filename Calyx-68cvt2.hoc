@@ -1,16 +1,11 @@
+create axon[86]
+
 proc celldef() {
   topol()
+	basic_shape()
   subsets()
-  geom()
- // biophys(1)
-  geom_nseg()
-}
-proc geom() {
-}
-proc geom_nseg() {
 }
 
-create axon[86]
 
 proc topol() {
 {axon[0] connect axon[85](0), 1}
@@ -98,7 +93,7 @@ proc topol() {
 {axon[27] connect axon[82](0), 1}
 {axon[82] connect axon[83](0), 1}
 {axon[83] connect axon[84](0), 1}
-basic_shape()
+
 }  //end of topol
 
 
@@ -810,17 +805,17 @@ proc shape3() {
 
 } // end of shape3
 
-proc basic_shape() {
-   shape1()
-   shape2()
-   shape3()
-} // end of basic_shape
 
-objref all, parentaxon, stalk, swelling, branch, tip, neck, heminode
+
+objref all, parentaxon, stalk, swelling, branch, tip, neck, heminode, synapse
 proc subsets() {local i
 
+naxonparts = 85
 all = new SectionList()
-for i = 0, 85 axon[i] all.append()
+for i = 0, naxonparts axon[i] all.append()
+
+synapse = new SectionList() // everything but the axon
+for i = 1, naxonparts axon[i] all.append()
 
 parentaxon = new SectionList()
 axon[0] parentaxon.append()
@@ -922,3 +917,12 @@ axon[73] tip.append()
 axon[80] tip.append()
 axon[81] tip.append()
 }
+
+proc basic_shape() {
+   shape1()
+   shape2()
+   shape3()
+} // end of basic_shape
+
+access axon[0]
+celldef()
