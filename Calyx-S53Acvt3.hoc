@@ -8,7 +8,6 @@ proc celldef() {
 }
 
 
-
 proc topol() {
 {axon[0] connect axon[149](0), 1}
 {axon[149] connect axon[1](0), 1}

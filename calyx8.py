@@ -40,6 +40,7 @@ from neuron import *
 import numpy as np
 import scipy as sp
 import nrnlibrary
+from pylibrary.Params import Params
 import matplotlib.pylab as MP
 import pprint
 import re
@@ -47,10 +48,9 @@ import calyxPlots
 import time
 import csv
 
-# GBCFLAG controls whether we use  is used or not:
+# GBCFLAG controls whether we use a cut axon or a GBC soma with axon (not actually implemented in this version)
 GBCFLAG = 0 # if 0, IC is in cut axon near calyx; otherwise it is in the GBC soma.
 
-#topofile = "calyx-S53Acvt2.hoc" # this is the membrane topology filename.
 topofileList = ["Calyx-S53Acvt3.hoc", "Calyx-68cvt2.hoc"]
 monitorSections = {
     "Calyx-S53Acvt3.hoc":  [[0, 149, 149, 5,   88,  130, 117], [0,  0,  1.0, 0.5, 0.5, 0.5, 0.5]],
@@ -58,52 +58,7 @@ monitorSections = {
 }
 selectedFile = 0 # in reference to topofileList
 
-class Params(object):
-    """
-    utility class to create parameter lists...
-    create like: p = Params(abc=2.0, defg = 3.0, lunch='sandwich')
-    reference like p.abc, p.defg, etc.
-    """
-    def __init__(self, **kwds):
-        self.__dict__.update(kwds)
 
-    def getkeys(self):
-        """
-        Get the keys in the current dictionary
-        """
-        return(self.__dict__.keys())
-
-    def haskey(self, key):
-        """
-        Find out if the param list has a specific key in it
-        """
-        if key in self.__dict__.keys():
-            return True
-        else:
-            return False
-
-    def todict(self):
-        """
-        convert param list to standard dictionary
-        Useful when writing the data
-        """
-        r = {}
-        for dictelement in self.__dict__:
-            if isinstance(self.__dict__[dictelement], Params):
-                print 'nested: ', dictelement
-                r[dictelement] = self.__dict__[dictelement].todict()
-            else:
-                r[dictelement] = self.__dict__[dictelement]
-        return r
-
-    def show(self, printFlag = True):
-        """
-        print the parameter block created in Parameter Init
-        """
-        print "--------    Parameter Block    ----------"
-        for key in self.__dict__.keys():
-            print "%15s = " % (key), eval('self.%s' % key)
-        print "-------- ---------------------- ----------"
 
 
 class calyx8():
@@ -168,23 +123,20 @@ class calyx8():
                                         axonselect = 1,
                                         iclocation = 0.5,
                                         vclocation = 1.0,
-
                                         topofile = topofileList[selectedFile],
                                     # define model parameters. These are straight from EIModel4.py, even though our only target is bushy
                                     # ALL parameters should be defined here that do not depend on calculation or
                                     # which are not modified by input flags
 
                                     # Auditory nerve synapse information:
-                                    # We use cell parameter dictionaries, inputs to primary target cell types:
-                                    # sets default values, but these can be overridden by command line parameters, as done below
-                                    # self.AN_gE = 40 # bushy; default for stellate is 5
-                                    # N.B.: self.AN_gEPSC Dstel AN input is 0 for testing TV stim simulation. Normal Value should be 15.
+                                    # We use cell parameter dictionaries, to define the inputs to primary target cell types:
+                                    # sets default values, but these can be overridden
 
                                         Exc_Thresh = -20,
                                         AN_gEPSC =   {'stellate' : 5, 'bushy': 40, 'test':   2, 'DStellate':   0, 'MNTB': 20},
                                         spike_thr =  {'stellate': -30, 'bushy': -30, 'test': -30, 'DStellate': -20, 'MNTB': -30},
                                         AN_conv =    {'stellate' :  5, 'bushy':   3, 'test':   1, 'DStellate':  25, 'MNTB': 1}, # bushy was 2
-                                        AN_zones =   {'stellate' :  5, 'bushy':  90, 'test':   1, 'DStellate':   5, 'MNTB': 5}, # bushy ANZones was 90...
+                                        AN_zones =   {'stellate' :  5, 'bushy':  90, 'test':   1, 'DStellate':   5, 'MNTB': 1}, # bushy ANZones was 90...
                                         AN_erev =    {'stellate':   7, 'bushy':   7, 'test':   7, 'DStellate':   7, 'MNTB': 7},
                                         AN_gvar =    {'stellate': 0.3, 'bushy': 0.3, 'test': 0.3, 'DStellate':  0.3, 'MNTB': 0.3}, # std of conductance
                                         AN_delay =   {'stellate': 0.0, 'bushy': 0.0, 'test': 0.0, 'DStellate':  0.3, 'MNTB': 0.3}, # netcon delay (fixed)
@@ -209,19 +161,17 @@ class calyx8():
                                         INH_latency = {'stellate': 0.2, 'bushy': 0.2, 'test': 0.2, 'DStellate':  0.2}, # latency for stochastic synapses
                                         INH_relstd_Flag = {'stellate':   1, 'bushy': 2,    'test': 0,   'DStellate':  0}, # flag controlling std shift during train (1 to enable)
                                         INH_relstd = {'stellate': 0.2, 'bushy': 0.2, 'test': 0.3, 'DStellate':  0.2}, # release sigma
-
-        )
+                                    )
 
         # define which sections (and where in the section) to monitor
-        # currents, voltages, and ion concentrations
-        # this should be changed on a per-calyx configuration, but right now
+        # currents, voltages, and ion concentrations can be monitored
+        # this should be changed on a per-calyx configuration, but right now we use the tables above.
         #
-        # sections to monitor. These are selected manually and held in the dictionary above
         self.modelPars.monsecs = monitorSections[self.modelPars.topofile][0]
         self.modelPars.monpos =  monitorSections[self.modelPars.topofile][1]
         self.modelPars.axonnode = self.modelPars.monsecs[1]  #the heminode section (this must be specified in this way in the topofile dict)
 
-        defPars = self.restoreDefaultConductances() # set the default conductances from scratch
+        defPars = self.restoreDefaultConductances() # set the default conductance for each section from scratch
         self.modelPars.gPars = self.setDefaultConductances(defPars=defPars) # assign the current "defaults" to the relevant variables...
 
         self.rundone = 0
@@ -240,10 +190,8 @@ class calyx8():
         # set up arrays for measurement of voltage, calcium, etc.
         self.nswel = 200
         self.nactual_swel = 0
-        #load_file(1, "calyx_GBC.hoc")
         h.load_file(1, self.modelPars.topofile) # load the morphology file
-        h.celldef()
-
+        # morphology file should include it's own definition call ("celldef")
         self.CalyxStruct={key: None for key in range(self.modelPars.AN_conv[self.runInfo.TargetCellName])} # create a dictionary to access the calyx parts
         self.clist = {}
         for input in range(self.modelPars.AN_conv[self.runInfo.TargetCellName]):
@@ -255,7 +203,6 @@ class calyx8():
             # h.load_file(1, "calyx_shape.hoc")
             self.biophys(runInfo = self.runInfo, modelPars = self.modelPars,
                      CalyxStruct = self.CalyxStruct[input], createFlag = True)
-
         # now for the postsynaptic cell - just a basic bushy cell, even if it is an "MNTB" model.
         (self.TargetCell, [self.initseg, self.axn, self.internnode]) = nrnlibrary.Cells.bushy(debug=False, ttx=False,
                                         message=None,
@@ -285,7 +232,7 @@ class calyx8():
 
         results = Params() # put the results in a Param structure as well.
 
-        print "GBC excitation to target"
+        #print "GBC excitation to target"
 
         self.synapse = []
         self.coh=[]
@@ -300,12 +247,11 @@ class calyx8():
         print 'Swellings: %d  zones per swelling: %d' % (nSwellings, nZonesPerSwelling)
         #if self.runInfo.TargetCellName == 'MNTB': # only in case of the MMTB
         #    self.modelPars.AN_zones[self.runInfo.TargetCellName] = nZonesPerSwelling
-        # just put synapses in the swellings
+        # Insert synapses in the swellings (but no where else in the calyx)
         for input in range(self.modelPars.AN_conv[self.runInfo.TargetCellName]):
             for swellno, swell in enumerate(self.CalyxStruct[input]['swelling']):
     #        if len(self.CalyxStruct['swelling']) > 1:
                 swelling = self.getAxonSec('swelling', swellno, input)
-                #print swelling
                 (calyx, coh, psd, cleft, nc2, par) = nrnlibrary.Synapses.stochastic_synapses(h, parentSection = self.CalyxStruct[input]['axon'][swelling],
                                                                                              targetcell=self.TargetCell,
                                                                                              cellname = self.runInfo.TargetCellName,
@@ -331,6 +277,9 @@ class calyx8():
             Arguments:
                 defPars: if None, we create the result and set tho defaults
                 if defPars is not none or empty, se just pass it on.
+            Returns:
+                defpars, set to their default values
+            Side effects: None
         """
 
         if defPars is None or defPars is {}:
@@ -349,7 +298,15 @@ class calyx8():
         return defPars
     
     def setDefaultConductances(self, defPars = None, gPars = {}):
-        """ For each type of segment, initialize setting by the default conductances """
+        """ For each type of segment, initialize setting by the default conductances.
+            Inputs: defPars or None to use standards
+                gPars, a dictionary with keys = parts of calyx, that is filled with the conductances at
+                at each location
+            Outputs:
+                gPars, the conductance parametere list
+            Side Effects:
+                None
+        """
         if defPars is None or defPars == {}:
             raise Exception (' setDefaultConductances requires defPars!')
         for name in self.modelPars.calyxNames:
@@ -371,8 +328,9 @@ class calyx8():
         Inputs: run parameter structure, model parameter structure
         Outputs: None
         Action: Channel insertion into model
-        Every different kind of section has its own conductance levels
-        and can have different channels
+        Side Effects:
+            Sets conductances in every different kind of section
+            Does not update any class variables (via self).
 
         original hoc code: Paul B. Manis, Ph.D.
         25 Sept. 2007
@@ -412,29 +370,35 @@ class calyx8():
                     sec().gnabar_na = gp['gNabar']
                 sec().ena = gp['ENa']
                 sec.insert('klt')
+
                 if runInfo.pharmManip['DTX']:
                     sec().gkltbar_klt = 0.0
                 else:
                     sec().gkltbar_klt = gp['gKLbar']
                 sec().ek = gp['EK']
                 sec.insert('kht')
+
                 if runInfo.pharmManip['TEA']:
                     sec().gkhtbar_kht = 0.0
                 else:
                     sec().gkhtbar_kht = gp['gKHbar']
                 sec.insert('ih')
+
                 if runInfo.pharmManip['ZD']:
                     sec().ghbar_ih = 0.0
                 else:
                     sec().ghbar_ih = gp['gHbar']
                 sec().eh_ih = -43
+
                 if name is 'axon':
                     sec().cm = 0.0001 # mimic myelination
                     sec().pump0_capmp = 0
                 else:
                     sec().cm = runInfo.newCm
+
                 if name not in ['axon', 'heminode']:
                     sec.insert('CaPCalyx')
+
                     if runInfo.pharmManip['Cd']:
                         sec().gcapbar_CaPCalyx = 0.0
                     else:
@@ -521,7 +485,7 @@ class calyx8():
         Because there can be 2 pointers to the same section (based on the listed elements
         and the original "axon" elements), we have to traverse all of the non-axon elements first
         before assigning any axon elements
-        Input: requestd monitor section
+        Input: requested monitor section
         Output: None
         Actions/side effects: sets self.clist[monsec] to the appropriate calyx color
         """
@@ -542,9 +506,9 @@ class calyx8():
         """
         Get the axon section in the calyx structure at position
         Inputs:
-            structure: valid name of ditionary element of calyx tags
+            structure: valid name of dictionary element of calyx tags
             number: the index into the structure
-        Returns: the axno (if found).
+        Returns: the axon number (if found).
         Side effects: None.
         """
         src = re.compile('axon\[(\d*)\]')
@@ -644,7 +608,7 @@ class calyx8():
                 stim['dur'] = runInfo.stimDur
                 stim['amp'] = runInfo.stimInj
                 stim['PT'] = 0.0
-                (secmd, maxt, tstims) = self.make_pulse(stim, pulsetype='square')
+                (secmd, maxt, tstims) = nrnlibrary.makestim.makestim(stim, pulsetype='square', dt = h.dt)
                 istim[0].delay = 0
                 istim[0].dur = 1e9 # these actually do not matter...
                 istim[0].iMax = 0.0
@@ -658,7 +622,7 @@ class calyx8():
                 stim['PT'] = 0.0
                 #print runInfo.spikeTimeList
                 stim['spikeTimes'] = runInfo.spikeTimeList[i+1]
-                (secmd, maxt, tstims) = self.make_pulse(stim, pulsetype='timedSpikes')
+                (secmd, maxt, tstims) = nrnlibrary.makestim.makestim(stim, pulsetype='timedSpikes', dt=h.dt)
                 # MP.figure()
                 # MP.plot(secmd)
                 # MP.show()
@@ -666,7 +630,6 @@ class calyx8():
                 istim[i].delay = 0
                 istim[i].dur = 1e9 # these actually do not matter...
                 istim[i].iMax = 0.0
-
 
            # print 'i: %d  secmd: %d' % (i, len(secmd))
             self.vec['i_stim%d' % i] = h.Vector(secmd)
@@ -678,6 +641,7 @@ class calyx8():
        # MP.plot(np.arange(0, maxt-h.dt, h.dt), secmd)
        # MP.show()
 
+        #exit()
         print 'Running for: ', h.tstop
         h.run()
         npvecs={}
@@ -694,15 +658,10 @@ class calyx8():
         for k in self.ica.keys():
             npica[k] = np.array(self.ica[k])
         runInfo.clist = self.clist
-#        print "\nrunInfo\n", runInfo.todict()
-#        print "\nmodelPars\n", modelPars.todict()
-#        print self.modelPars.monsecs
-
         results = Params(Sections=self.modelPars.monsecs, vec= npvecs,
                         Voltages= npvec2, ICa= npica,
                         Cai= npcai,
                         )
-#        print "Results:\n", results.todict()
         dtime = time.strftime("%y.%m.%d-%H.%M.%S")
         print("CalyxRun done\n")
         if os.path.exists(runInfo.folder) is False:
@@ -716,68 +675,6 @@ class calyx8():
         calyxPlots.plotResults(results.todict(), runInfo.todict())
 
 
-    def make_pulse(self, stim, pulsetype = 'square'):
-        """
-            Create the stimulus pulse waveform.
-            Inputs:
-                stim: a dictionary with a delay, duration, SFreq,
-                and post duration, and number of pulses
-                pulsetype: Pulses can be 'square' or 'exponential' in shape.
-                timedSpikes: Pulses appear at specified times.
-            Outputs:
-            list containing [waveform (numpy array),
-                            maxtime(float),
-                            timebase (numpy array)]
-            Side Effects: None
-        """
-        delay = int(np.floor(stim['delay']/h.dt))
-        ipi = int(np.floor((1000.0/stim['Sfreq'])/h.dt))
-        pdur = int(np.floor(stim['dur']/h.dt))
-        posttest = int(np.floor(stim['PT']/h.dt))
-        NP = int(stim['NP'])
-
-        #   make pulse
-        tstims = [0]*NP
-        if pulsetype == 'square':
-            maxt = h.dt*(stim['delay'] + (ipi*(NP+2)) + posttest + pdur*2)
-            w = np.zeros(np.floor(maxt/h.dt))
-            for j in range(0, NP):
-                t = (delay + j *ipi)*h.dt
-                w[delay+ipi*j:delay+(ipi*j)+pdur] = stim['amp']
-                tstims[j] = delay+ipi*j
-            if stim['PT'] > 0.0:
-                send = delay+ipi*j
-                for i in range(send+posttest, send+posttest+pdur):
-                    w[i] = stim['amp']
-
-        if pulsetype == 'timedSpikes':
-            maxt = np.max(stim['spikeTimes'])+stim['PT']+stim['dur']*2
-            w = np.zeros(np.floor(maxt/h.dt))
-            print 'makestim: spike times max: ', maxt
-            for j in range(len(stim['spikeTimes'])):
-                st = delay + int(np.floor(stim['spikeTimes'][j]/h.dt))
-                t = st*h.dt
-                w[st:st+pdur] = stim['amp']
-                tstims[j] = st
-
-            if stim['PT'] > 0.0:
-                for i in range(st+posttest, st+posttest+pdur):
-                    w[i] = stim['amp']
-
-        if pulsetype == 'exp':
-            maxt = h.dt*(stim['delay'] + (ipi*(NP+2)) + posttest + pdur*2)
-
-            for j in range(0, NP):
-                for i in range(0, len(w)):
-                    if delay+ipi*j+i < len(w):
-                        w[delay+ipi*j+i] += stim['amp']*(1.0-np.exp(-i/(pdur/3.0)))*np.exp(-(i-(pdur/3.0))/pdur)
-                tstims[j] = delay+ipi*j
-            if stim['PT'] > 0.0:
-                send = delay+ipi*j
-                for i in range(send+posttest, len(w)):
-                    w[i] += stim['amp']*(1.0-np.exp(-i/(pdur/3.0)))*np.exp(-(i-(pdur/3.0))/pdur)
-
-        return(w, maxt, tstims)
 
     
     # #compartmentalization function.
@@ -799,25 +696,22 @@ class calyx8():
 #     # 
     # 
     # 
-    #*************************************************************************
-    # Main code to be executed when calyxN.hoc is called
-    # 
-    #*************************************************************************
     def runModel(self, runInfo=None, modelPars=None):
+        """
+        Main code to be executed when calyxN.hoc is called
+        """
         if modelPars is None or runInfo is None:
             raise Exception('calyx::biophys - no parameters or info passed!')
 #        h('measure()') # get distances
         defPars = self.restoreDefaultConductances() # canonical conductances...
         self.setDefaultConductances(defPars = defPars) # initialize the conductances
-        print("Iclamp in Cut Calyx Axon[1]\n")
-        #print self.CalyxStruct.keys()
+        # print self.CalyxStruct.keys()
         # load anciallary functions that may need all the definitions above
-#        h.load_file(1, "calyx_tune.hoc") # requires clamps to be inserted..
+        # h.load_file(1, "calyx_tune.hoc") # requires clamps to be inserted..
         self.calyx_init(runInfo = runInfo, modelPars = modelPars) # this also sets nseg in the axon - so do it before setting up shapes
- #       h.shape_graphs() # must happen AFTER calyx_init
+        # h.shape_graphs() # must happen AFTER calyx_init
         self.calyxrun(runInfo = runInfo, modelPars = modelPars)
 
 if __name__ == "__main__":
-
     print sys.argv[1:]
     calyx8(sys.argv[1:])
