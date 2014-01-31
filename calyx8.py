@@ -30,7 +30,7 @@ __author__ = "Paul B. Manis"
 # reads morphology, decorates membrane segments, runs a current or voltage clamp and monitors calcium
 # added connections to a postsynaptic neuron, using stochastic synapses, state models of receptors, etc
 # as adapted from Xie and Manis (2013).
-#
+# Makes use of neuron/hoc, so be careful!
 
 import os, sys, time
 import os.path
@@ -81,6 +81,7 @@ class Params(object):
             return True
         else:
             return False
+
     def todict(self):
         """
         convert param list to standard dictionary
@@ -95,7 +96,7 @@ class Params(object):
                 r[dictelement] = self.__dict__[dictelement]
         return r
 
-    def show(self):
+    def show(self, printFlag = True):
         """
         print the parameter block created in Parameter Init
         """
@@ -107,7 +108,7 @@ class Params(object):
 
 class calyx8():
     def __init__(self, argsin = None):
-        print 'calyx7: init'
+        print '%s: init' % (self.__class__.__name__)
         h.load_file("stdrun.hoc")
         h.load_file(os.getcwd()+"/custom_init.hoc") # replace init with one that gets closer to steady state
         #h.load_file(os.getcwd()+"/mesh.hoc")
@@ -373,11 +374,11 @@ class calyx8():
         Every different kind of section has its own conductance levels
         and can have different channels
 
-         original: Paul B. Manis, Ph.D.
-         25 Sept. 2007
-         Modified to use gca for HH formulation of calcium current
-         14 Oct 2007
-         converted for Python, 17 Oct 2012.
+        original hoc code: Paul B. Manis, Ph.D.
+        25 Sept. 2007
+        Modified to use gca for HH formulation of calcium current
+        14 Oct 2007
+        converted for Python, 17 Oct 2012 (PB Manis)
         """
         if modelPars is None or runInfo is None:
             raise Exception('calyx::biophys - no parameters or info passed!')
@@ -450,7 +451,6 @@ class calyx8():
         Inputs: runInfo and model Param structure.
         Outputs: None.
         Action: Initializes the NEURON state to begin a run.
-
         """
 
         if modelPars is None or runInfo is None:
@@ -553,22 +553,17 @@ class calyx8():
             element  = self.CalyxStruct[input][structure][number]
         except:
             raise Exception(('Failed to find %d in structure %s' % (number, structure())))
-
         name = element.name()
-#                print 's: %s  name: %s' % (s, name)
         g = src.match(name)
         axno = g.groups()[0]
         return int(axno)
 
-    # ***************CALYXRUN*******************
-    #
-    #
 
     def calyxrun(self, runInfo = None, modelPars=None):
         """
         Control a single run the calyx model with updated display
         of the voltages, etc.
-        Inputs: runInfo and modelPars paramater dictionaries
+        Inputs: runInfo and modelPars parameter dictionaries
         Outputs: None
         Actions: displays the results
         Side Effects: A number of class variables are created and modified
