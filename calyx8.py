@@ -44,9 +44,12 @@ from pylibrary.Params import Params
 import matplotlib.pylab as MP
 import pprint
 import re
-import calyxPlots
+import calyxPlots_pg
 import time
 import csv
+import hocRender as hr
+import pyqtgraph as pg
+
 
 # GBCFLAG controls whether we use a cut axon or a GBC soma with axon (not actually implemented in this version)
 GBCFLAG = 0 # if 0, IC is in cut axon near calyx; otherwise it is in the GBC soma.
@@ -57,8 +60,9 @@ monitorSections = {
     "Calyx-68cvt2.hoc": [[0, 85, 85, 5, 26, 40, 67], [0,  0,  1.0, 0.5, 0.5, 0.5, 0.5]]
 }
 selectedFile = 0 # in reference to topofileList
-
-
+renderFlag = False
+runFlag = True
+recordSwellings = True
 
 
 class calyx8():
@@ -82,25 +86,26 @@ class calyx8():
                          eK_def = -85, eNa_def = 50,
                          ca_init = 70e-6, # free calcium in molar
                          v_init = -80, # mV
-                         nStim = 20,
+                         nStim = 1,
                          stimFreq = 200., # hz
                          stimInj = 2.0, # nA
                          stimDur = 0.5, # msec
-                         stimDelay = 2.0,# msecc
+                         stimDelay = 2.0,# msec
+                         stimPost = 3.0, # msec
                          runTime = time.asctime(), # store date and time of run
-                         inFile = 'ANFiles/AN10000Hz.txt', # if this is not None, then we will use these spike times...
+                         inFile = None, # 'ANFiles/AN10000Hz.txt', # if this is not None, then we will use these spike times...
                          inFileRep = 1, # which rep to use (or array of reps)
                          spikeTimeList = {}, # Dictionary of spike times
                     )
 
         if self.runInfo.inFile is None:
-            self.runInfo.tstop = 1000.0*(self.runInfo.nStim-1)/self.runInfo.stimFreq + 10. + self.runInfo.stimDelay
+            self.runInfo.tstop = 1000.0*(self.runInfo.nStim-1)/self.runInfo.stimFreq + self.runInfo.stimPost + self.runInfo.stimDelay
         else:
             maxt = 0.
             with open(self.runInfo.inFile, 'r') as csvfile:
                 spks = csv.reader(csvfile, delimiter=',')
                 for i, row in enumerate(spks):
-                    if i == 0: # capture first line
+                    if i == 0: # ture first line
                         print row
                         maxt = float(row[1])*1000
                         reps = int(row[0])
@@ -117,8 +122,9 @@ class calyx8():
         # modelParameters holds information regarding the cell structure itself for this run
 
         self.modelPars = Params(calyxNames=['parentaxon', 'axon', 'heminode', 'synapse', 'stalk', 'branch', 'neck', 'swelling', 'tip'], # names of calyx morphological parts
-                                      calyxColors={'axon': 'red', 'heminode': 'orange', 'stalk':'yellow', 'branch': 'green', 'neck': 'blue',
-            'swelling': 'magenta', 'tip': 'black', 'parentaxon': 'red', 'synapse': 'cyan'},
+                                      calyxColors={'axon': 'red', 'heminode': 'green', 'stalk':'yellow', 'branch': 'green', 'neck': 'blue',
+            'swelling': 'magenta', 'tip': 'k', 'parentaxon': 'red', 'synapse': 'cyan'},
+                                      mechNames = {},
                                         # variables to control electrode positions
                                         axonselect = 1,
                                         iclocation = 0.5,
@@ -203,7 +209,16 @@ class calyx8():
             # h.load_file(1, "calyx_shape.hoc")
             self.biophys(runInfo = self.runInfo, modelPars = self.modelPars,
                      CalyxStruct = self.CalyxStruct[input], createFlag = True)
+        # get the map of inputs from the swellings to the axon id's for later.
+        self.swellAxonMap = []
+        nSwellings = len(self.CalyxStruct[0]['swelling'])
+        input = 0
+        for swellno in range(nSwellings):
+            swelling = self.getAxonSec('swelling', swellno, input)
+            self.swellAxonMap.append(swelling) # implicit order
+
         # now for the postsynaptic cell - just a basic bushy cell, even if it is an "MNTB" model.
+
         (self.TargetCell, [self.initseg, self.axn, self.internnode]) = nrnlibrary.Cells.bushy(debug=False, ttx=False,
                                         message=None,
                                         nach='jsrnaf',
@@ -267,15 +282,27 @@ class calyx8():
                 self.cleft.append(cleft)
                 self.nc2.append(nc2)
 
-            self.modelPars.stochasticPars.show()
+            #self.modelPars.stochasticPars.show()
+        if renderFlag:
+            pg.mkQApp()
+            pg.dbg()
+            render = hr.hocRender(h)
+            render.draw_model(modes=['blob'])
+            render.getSectionLists(self.modelPars.calyxColors.keys())
+            render.paintSectionsByDensity(self.modelPars.calyxColors, self.modelPars.mechNames['CaPCalyx'])
+            render.show()
 
-        self.runModel(runInfo = self.runInfo, modelPars = self.modelPars)
+            exit()
+
+        if runFlag:
+            self.runModel(runInfo = self.runInfo, modelPars = self.modelPars)
 
     def restoreDefaultConductances(self, defPars=None):
         """ default conductance values determined by voltage clamp test on model calyx
             canonical settings. This routine restores those values.
             Arguments:
-                defPars: if None, we create the result and set tho defaults
+                defPars: if None, we create the result
+                 and set tho defaults
                 if defPars is not none or empty, se just pass it on.
             Returns:
                 defpars, set to their default values
@@ -316,7 +343,10 @@ class calyx8():
             if name in ['axon', 'heminode']:
                 gPars[name]['gCabar'] = 0.0 # no calcium channels in the axon or heminode
             if name in ['axon']:
-                gPars[name]['gNabar'] = defPars.gna_def/5.0 # reduce sodium channel conductance
+                gPars[name]['gNabar'] = defPars.gna_def/5.0 # reduce sodium channel conductance in axon
+                gPars[name]['gCabar'] = 0.0 # no calcium channels in the axon or heminode
+            if name in ['neck', 'branch', 'tip', 'stalk'] :
+                gPars[name]['gCabar'] = 0.0
             if name in ['neck', 'branch', 'tip', 'swelling']:
                 gPars[name]['gNabar'] = 0.0 # no sodium or lva K channels in the elements of the terminal
                 gPars[name]['gKLbar'] = 0.0
@@ -348,6 +378,8 @@ class calyx8():
                 sec.cm = runInfo.newCm
                 e_leak = -50
                 sec.insert('capmp')
+                if 'capmp' not in modelPars.mechNames.keys():
+                    modelPars.mechNames['capmp'] = ['capmp', 'pump0']
                 pcabar_cachan = 2.5e-5
                 sec().cao = 1.0 #insert capump
                 sec.cai = 70e-6
@@ -364,12 +396,16 @@ class calyx8():
             for sec in CalyxStruct[name]:
                # print 'for %s  sec = ' % (name), sec
                 sec.insert('na')
+                if 'na' not in modelPars.mechNames.keys():
+                    modelPars.mechNames['na'] = ['na', 'gnabar']
                 if runInfo.pharmManip['TTX']:
                     sec().gnabar_na = 0.0
                 else:
                     sec().gnabar_na = gp['gNabar']
                 sec().ena = gp['ENa']
                 sec.insert('klt')
+                if 'klt' not in modelPars.mechNames.keys():
+                    modelPars.mechNames['klt'] = ['klt', 'gkltbar']
 
                 if runInfo.pharmManip['DTX']:
                     sec().gkltbar_klt = 0.0
@@ -377,12 +413,16 @@ class calyx8():
                     sec().gkltbar_klt = gp['gKLbar']
                 sec().ek = gp['EK']
                 sec.insert('kht')
+                if 'kht' not in modelPars.mechNames.keys():
+                    modelPars.mechNames['kht'] = ['kht', 'gkhtbar']
 
                 if runInfo.pharmManip['TEA']:
                     sec().gkhtbar_kht = 0.0
                 else:
                     sec().gkhtbar_kht = gp['gKHbar']
                 sec.insert('ih')
+                if 'ih' not in modelPars.mechNames.keys():
+                    modelPars.mechNames['ih'] = ['ih', 'ghbar']
 
                 if runInfo.pharmManip['ZD']:
                     sec().ghbar_ih = 0.0
@@ -398,11 +438,13 @@ class calyx8():
 
                 if name not in ['axon', 'heminode']:
                     sec.insert('CaPCalyx')
+                    if 'CaPCalyx' not in modelPars.mechNames.keys():
+                        modelPars.mechNames['CaPCalyx'] = ['CaPCalyx', 'gcapbar']
 
                     if runInfo.pharmManip['Cd']:
                         sec().gcapbar_CaPCalyx = 0.0
                     else:
-                        sec().gcapbar_CaPCalyx = gp['gCaPump']
+                        sec().gcapbar_CaPCalyx = gp['gCabar']
                     sec().eca=43.9
 
 
@@ -640,6 +682,20 @@ class calyx8():
             self.vec['time'].record(h._ref_t)
        # MP.plot(np.arange(0, maxt-h.dt, h.dt), secmd)
        # MP.show()
+        #self.swellAxonMap
+        if recordSwellings:
+            cinput = 0
+            self.vswel = []
+            nSwellings = len(self.CalyxStruct[cinput]['swelling']) # record from all swellings...
+#            for i, swellno in enumerate(self.swellAxonMap):
+            secarray = []
+            for swellno in range(len(self.CalyxStruct[0]['axon'])):
+                self.vswel.append(h.Vector())
+                print swellno
+                print self.CalyxStruct[0]['axon'][swellno]
+                self.vswel[-1].record(self.CalyxStruct[0]['axon'][swellno]()._ref_v,
+                                     sec=self.CalyxStruct[0]['axon'][swellno])
+                secarray.append(swellno)
 
         #exit()
         print 'Running for: ', h.tstop
@@ -672,7 +728,21 @@ class calyx8():
                      'modelPars': modelPars.todict(),
                      'Results': results.todict()}, pfout)
         pfout.close()
-        calyxPlots.plotResults(results.todict(), runInfo.todict())
+
+        if recordSwellings:
+            fns = os.path.join(runInfo.folder, runInfo.fileName+'_swellings_'+dtime+'.p')
+            pfout = open(fns, 'wb')
+            pickle.dump({'swellings': secarray,
+                         'time': np.array(self.vec['time']),
+                         'data': np.array(self.vswel)}, pfout)
+            pfout.close()
+            plot = pg.plot()
+            vs = np.array(self.vswel)
+            ts = np.array(self.vec['time'])
+            for i in range(len(self.swellAxonMap)):
+                plot.plot(ts, vs[i])
+
+        calyxPlots_pg.plotResults(results.todict(), runInfo.todict())
 
 
 
@@ -712,6 +782,3 @@ class calyx8():
         # h.shape_graphs() # must happen AFTER calyx_init
         self.calyxrun(runInfo = runInfo, modelPars = modelPars)
 
-if __name__ == "__main__":
-    print sys.argv[1:]
-    calyx8(sys.argv[1:])

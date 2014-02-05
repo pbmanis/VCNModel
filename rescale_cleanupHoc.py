@@ -20,8 +20,10 @@ scaleFactor = [1.0, 1.0, 1.0, 1.]
 
 
 def main():
-    infile = 'Calyx-68cvt2.hoc'
-    outfile = 'Calyx-68cvt2_neurovisio_scaled.hoc'
+    # infile = 'Calyx-68cvt2.hoc'
+    # outfile = 'Calyx-68cvt2_neurovisio_scaled.hoc'
+    infile = 'LC_neuromantic_scaled.hoc'
+    outfile = 'LC_nmscaled_cleaned.hoc'
     axonfind = re.compile('\{(?P<source>axon\[\d+\]) connect (?P<target>axon\[\d+\])\(0\), 1\}')
     accessfind = re.compile('\{access (?P<source>axon\[\d+\])\}(?P<comment>.*)')
     pt3dclearfind = re.compile('\{pt3dclear\(\)\}(?P<comment>.*)')
@@ -60,19 +62,12 @@ def main():
         #    print 'line failed to match pt3addfind: ', line
         
         # now scale if it's a pt3dadd. 
-        # print 'cleaned line: ', line
         mo  = points.match(line)
         if mo is not None:
-        #    print 'mo: ', mo
-        #    print mo.group()
-        #    print 'mo group: ', mo.group('point')
-        #    print 'new array: ', np.array(eval(mo.group('point')))
             #mo = re.search(r"pt3dadd", line)
             nl = np.array(eval(mo.group('point')))
-          #  print 'original: ', line[8:]
           #  nl = np.array(eval(line[8:]))
             nls = (nl * scaleFactor)
-          #  print 'scaled:    ', nls
             nls = (nls)
             line = '\tpt3dadd('
             for i, f in enumerate(nls):

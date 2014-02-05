@@ -2,7 +2,7 @@ celsius = 37 // set the temperature.
 ca_init = 70e-6
 create a
 a	{nseg=1 diam=20 L=20 
-	insert CaP
+	insert CaPCalyx
 		insert pas g_pas=1/10000 Ra=150 cm=1}
 			cao0_ca_ion = 1.0	//insert capump
 			cai0_ca_ion = 70e-6
