@@ -3,6 +3,8 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/i386" />
+      <excludeFolder url="file://$MODULE_DIR$/neuron-vis" />
+      <excludeFolder url="file://$MODULE_DIR$/neuronvis" />
       <excludeFolder url="file://$MODULE_DIR$/old_files" />
       <excludeFolder url="file://$MODULE_DIR$/powerpc" />
     </content>
