@@ -6,7 +6,8 @@ rescaleHoc.py
 Created by Paul Manis on 2013-01-04.
 Copyright (c) 2013 Paul B. Manis, Ph.D.. All rights reserved.
 
-This function rescales a hoc file. 
+This function rescales a hoc file.
+It turns sections only found in the "section list" and replaces axon[k] with an appropriate 'swelling[n]'
 All is hardcoded... 
 """
 
@@ -16,14 +17,15 @@ import re
 import numpy as np
 
 #scaleFactor = 0.0384025 # convert pixels to microns for one file.
-scaleFactor = [1.0, 1.0, 1.0, 1.]
+scaleFactor = [1.0, 1.0, 1.0, 1.0]
 
-
+structures = ['tip', 'neck', 'swelling', 'branch',
+              ]
 def main():
-    # infile = 'Calyx-68cvt2.hoc'
-    # outfile = 'Calyx-68cvt2_neurovisio_scaled.hoc'
-    infile = 'LC_neuromantic_scaled.hoc'
-    outfile = 'LC_nmscaled_cleaned.hoc'
+    infile = 'Calyx-68cvt2.hoc'
+    outfile = 'Calyx-68cvt4.hoc'
+   # infile = 'LC_neuromantic_scaled.hoc'
+   # outfile = 'LC_nmscaled_cleaned.hoc'
     axonfind = re.compile('\{(?P<source>axon\[\d+\]) connect (?P<target>axon\[\d+\])\(0\), 1\}')
     accessfind = re.compile('\{access (?P<source>axon\[\d+\])\}(?P<comment>.*)')
     pt3dclearfind = re.compile('\{pt3dclear\(\)\}(?P<comment>.*)')
