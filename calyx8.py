@@ -57,16 +57,17 @@ from pyqtgraph.Qt import QtCore, QtGui
 # GBCFLAG controls whether we use a cut axon or a GBC soma with axon (not actually implemented in this version)
 GBCFLAG = 0  # if 0, IC is in cut axon near calyx; otherwise it is in the GBC soma.
 
-topofileList = ["Calyx-S53Acvt3.hoc", "Calyx-68cvt2.hoc", 'LC_neuromantic_scaled.hoc']
+topofileList = ["Calyx-S53Acvt3.hoc", "Calyx-68cvt2.hoc", 'LC_neuromantic_scaled.hoc', 'mainDenHOC_cleaned.hoc']
 monitorSections = {
     "Calyx-S53Acvt3.hoc": [[0, 149, 149, 5, 88, 130, 117], [0, 0, 1.0, 0.5, 0.5, 0.5, 0.5]],
     "Calyx-68cvt2.hoc": [[0, 85, 85, 5, 26, 40, 67], [0, 0, 1.0, 0.5, 0.5, 0.5, 0.5]],
     "LC_neuromantic_scaled.hoc": [[0, 1], [0.5, 0.5]],
+    "manDenHOC_cleaned.hoc": [[], []]
 }
 selectedFile = 2  # in reference to topofileList
 renderFlag = False
 runFlag = True
-recordSwellings = True
+record = True
 verbose = True
 
 
@@ -746,7 +747,7 @@ class Calyx8():
             self.vec['inj'].record(istim[i]._ref_i, sec=electrodesite[i])
             self.vec['time'].record(h._ref_t)
 
-        if recordSwellings:
+        if record:
             cinput = 0
             self.vswel = []
             nSwellings = len(self.CalyxStruct[cinput]['swelling'])  # record from all swellings...

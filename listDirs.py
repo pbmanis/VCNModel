@@ -1,14 +1,12 @@
 __author__ = 'pbmanis'
 
-import matplotlib.pylab as MP
 import pickle
-import pylibrary.PlotHelpers as PH
 import pprint
 import os
 import sys
 
 def listDirs():
-    rootDir = 'Canonical/'
+    rootDir = 'Simulations/'
     for dirName, subdirList, fileList in os.walk(rootDir):
         print('Found directory: %s' % dirName)
         for fname in fileList:

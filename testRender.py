@@ -9,10 +9,12 @@ from pyqtgraph.Qt import QtGui
 import os
 
 #infile = 'LC_neuromantic_scaled.hoc'
-infile = 'Calyx-S53Acvt3.hoc'
-#infile = 'Calyx-68cvt2.hoc'
-#print os.path.isfile('MorphologyFiles/Calyx_68cvt4.hoc')
+#infile = 'Calyx-S53Acvt3.hoc'
+# infile = 'Calyx-68cvt4.hoc'
+infile = 'mainDenHOC_cleaned.hoc'
 hf = HocReader('MorphologyFiles/' + infile)
+if hf.file_loaded is False:
+    exit()
 section_list = hf.get_sections()
 if len(section_list) > 1: # multiple names, so assign colors to structure type
     section_colors = {}
