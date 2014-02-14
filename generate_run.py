@@ -14,7 +14,7 @@ from pyqtgraph.Qt import QtCore, QtGui
 verbose = False
 
 class GenerateRun():
-    def __init__(self, hf):
+    def __init__(self, hf, celltype=None):
         self.run_initialized = False
         self.hf = hf # get the reader structure and the hoc pointer object locally
         #  use the Params class to hold program run information and states
@@ -23,13 +23,12 @@ class GenerateRun():
         self.runInfo = Params(fileName='Normal', runName='Run', manipulation="Canonical", folder="Simulations",
                               preMode="cc",
                               postMode='cc',
-                              TargetCellName='Bushy',
-                              TargetCell=None,
-                              celsius=22,  # set the temperature.
+                              TargetCellType=celltype, # valid are "Bushy", "Stellate", "MNTB"
+                              celsius=37,  # set the temperature.
                               nStim=1,
                               stimFreq=200.,  # hz
-                              stimInj=2.0,  # nA
-                              stimDur=2.0,  # msec
+                              stimInj=0.9,  # nA
+                              stimDur=10.0,  # msec
                               stimDelay=2.0,  # msec
                               stimPost=3.0,  # msec
                               vnStim=1,
@@ -67,19 +66,24 @@ class GenerateRun():
                         self.runInfo.spikeTimeList[int(row[0])] = [float(row[1]) * 1000.]
                 self.runInfo.tstop = maxt
 
+        self.monitor = {} # standard monitoring
+        self.allsecVec = {} # all section monitoring
+        self.mons = {}
+        self.filename=None
+
         if verbose:
             print 'runinfo initialization done'
 
 
-    def doRun(self):
+    def doRun(self, filename=None):
+        self.filename = filename
         self.hf.update() # make sure channels are all up to date
-        self.prepareRun()
+        self.prepareRun() # build the recording arrays
         print 'run preparae'
         self.initRun()  # this also sets nseg in the axon - so do it before setting up shapes
         print 'run initialized'
-        self.executeRun()
-        print self.hf.h.tstop
-        #self.hf.h.run()
+        print 'test run done'
+        self.executeRun() # now you can do the run
 
     def prepareRun(self):
         """
@@ -90,8 +94,6 @@ class GenerateRun():
         Side Effects: A number of class variables are created and modified, mostly related to the
         generation of stimuli and monitoring of voltages and currents
         """
-        self.monitor = {} # standard monitoring
-        self.allsecVec = {} # all section monitoring
         for var in self.hf.sections: # get morphological components
             self.allsecVec[var] = self.hf.h.Vector()
             self.allsecVec[var].record(self.hf.sections[var](0.5)._ref_v, sec=self.hf.sections[var])
@@ -100,33 +102,32 @@ class GenerateRun():
             self.monitor[var] = self.hf.h.Vector()
 
         self.hf.h.tstop = 50 # self.runInfo.tstop
-#        self.hf.h.dt = 0.02  # force small time step. cvode is probably off.
         self.hf.h.celsius = self.runInfo.celsius
-        npts = 1 + int(self.hf.h.tstop / self.hf.h.dt)  # number of points in a run
 
         self.clist = {}  #  color list
 
-       # make fake cell right here...
-       # electrodeSite = 'soma[0]'
-        soma = self.hf.h.Section()
-        soma.L = 20.
-        soma.diam = 20.
-        soma.insert('hh')
-
-        electrodeSite = soma
-       # print self.hf.sections
-       # print 'esite: ', self.hf.sections[electrodeSite]
+        electrodeSite = 'soma[0]'
+        # make fake cell right here for testing...
+        # soma = self.hf.h.Section()
+        # soma.L = 20.
+        # soma.diam = 20.
+        # soma.insert('hh')
+        #
+        #electrodeSite = soma
+        self.electrodeSite = self.hf.sections[electrodeSite]
         if self.runInfo.postMode in ['vc', 'vclamp']:
             print 'vclamp'
             clampV = -60.0
-            vcPost = self.hf.h.SEClamp(0.5, sec=electrodeSite) #self.hf.sections[electrodeSite])
-            vcPost.dur1 = 2
-            vcPost.amp1 = clampV
-            vcPost.dur2 = 10.0
-            vcPost.amp2 = clampV + 50.0  # just a tiny step to keep the system honest
-            vcPost.dur3 = 10.0
-            vcPost.amp3 = clampV
-            vcPost.rs = 1e-6
+            # Note to self (so to speak): the hoc object returned by this call must have a life after
+            # # the routine exits. Thus, it must be "self." Same for the IC stimulus...
+            self.vcPost = self.hf.h.SEClamp(0.5, sec=self.electrodeSite) #self.hf.sections[electrodeSite])
+            self.vcPost.dur1 = 2
+            self.vcPost.amp1 = clampV
+            self.vcPost.dur2 = 10.0
+            self.vcPost.amp2 = clampV + 50.0  # just a tiny step to keep the system honest
+            self.vcPost.dur3 = 10.0
+            self.vcPost.amp3 = clampV
+            self.vcPost.rs = 1e-6
             stim = {}
             stim['NP'] = self.runInfo.vnStim
             stim['Sfreq'] = self.runInfo.vstimFreq  # stimulus frequency
@@ -137,9 +138,9 @@ class GenerateRun():
            # print self.hf.h.soma[0]
             (secmd, maxt, tstims) = makestim(stim, pulsetype='square', dt=self.hf.h.dt)
             self.monitor['v_stim0'] = self.hf.h.Vector(secmd)
-            self.monitor['v_stim0'].play(vcPost._ref_amp2, self.hf.h.dt, 0, sec=self.hf.h.axon[0]) # self.hf.sections[electrodeSite])
-            self.monitor['postsynapticV'].record(electrodeSite(0.5)._ref_v, sec=electrodeSite)
-            self.monitor['postsynapticI'].record(vcPost._ref_i, sec=electrodeSite)
+            self.monitor['v_stim0'].play(self.vcPost._ref_amp2, self.hf.h.dt, 0, sec=self.hf.h.axon[0]) # self.hf.sections[electrodeSite])
+            self.monitor['postsynapticV'].record(self.electrodeSite(0.5)._ref_v, sec=self.electrodeSite)
+            self.monitor['postsynapticI'].record(self.vcPost._ref_i, sec=self.electrodeSite)
             self.mons = ['postsynapticI', 'v_stim0']
         elif self.runInfo.postMode in ['cc', 'iclamp']:
             print 'iclamp'
@@ -151,30 +152,29 @@ class GenerateRun():
             stim['amp'] = self.runInfo.stimInj
             stim['PT'] = 0.0
             (secmd, maxt, tstims) = makestim(stim, pulsetype='square', dt=self.hf.h.dt)
-            icPost = self.hf.h.iStim(0.5, sec=electrodeSite)
-            icPost.delay = 2
-            icPost.dur = 4  # these actually do not matter...
-            icPost.iMax = 1.0
+            self.icPost = self.hf.h.iStim(0.5, sec=self.electrodeSite)
+            self.icPost.delay = 2
+            self.icPost.dur = 4  # these actually do not matter...
+            self.icPost.iMax = 1.0
             self.monitor['i_stim0'] = self.hf.h.Vector(secmd)
-            self.monitor['i_stim0'].play(icPost._ref_i, self.hf.h.dt, 0, sec=electrodeSite)
-            self.monitor['postsynapticI'].record(icPost._ref_i, sec=electrodeSite)
-            self.monitor['postsynapticV'].record(electrodeSite(0.5)._ref_v, sec=electrodeSite)
+            self.monitor['i_stim0'].play(self.icPost._ref_i, self.hf.h.dt, 0, sec=self.electrodeSite)
+            self.monitor['postsynapticI'].record(self.icPost._ref_i, sec=self.electrodeSite)
+            self.monitor['postsynapticV'].record(self.electrodeSite(0.5)._ref_v, sec=self.electrodeSite)
             self.mons = ['postsynapticV', 'postsynapticI' ]
         else:
             print 'mode unknown'
             return
-        # ns = self.hf.h.Section()
-        # ix = self.hf.h.iStim(0.1, sec=ns)
-        # ix.delay = 2.0
-        # ix.dur = 2.0
-        # ix.iMax = 5.0
-        # vec = self.hf.h.Vector()
-        # vec.recor(ns._ref_v, sec=ns)
-        self.electrodeSite = electrodeSite
+
+
         self.monitor['time'].record(self.hf.h._ref_t)
-        # self.hf.h.tstop = 10
-        # self.hf.h.finitialize()
-        # self.hf.h.run()
+
+    def testRun(self, title='testing...'):
+        self.hf.h.tstop = 10
+        self.hf.h.finitialize()
+        self.hf.h.run()
+        pg.mkQApp()
+        pl = pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))
+        pl.setTitle(title)
 
 
     def initRun(self):
@@ -192,41 +192,7 @@ class GenerateRun():
             raise Exception('GenerateRun: initRun has no runInfo')
         # First we set e_leak so that the rmp in each segment is the same
         self.hf.h.finitialize(self.runInfo.v_init)
-        i = 0
-        for si in self.hf.sections: # self.section_list[s]:
-            self.hf.h('access %s' % si)
-            sec = self.hf.h.cas()
-            if i == 0:
-                i += 1
-            mechs = self.hf.get_mechanisms(si)
-#            print mechs
-            #e_newleak = sec.v + (sec.ina + sec.ik + sec.i_ihvcn) / (
-            #    sec.g_leak * 1e3)  # hmmm. This is probably NOT right.
-            #sec().e_leak = e_newleak
-
-        # based on those conditions, make sure spatial grid is fine enough for our needs
-        #h.Mesh_th = self.Mesh_th
-        #h('mesh_init')
-        #self.mesh_init()
-        self.hf.h.finitialize(self.runInfo.v_init)
-        #       h('axon[axonnode] ic.loc(iclocation)')
-
-        # for name in modelPars.structureNames:
-        #     if name in ['axon', 'heminode']:
-        #         for sec in self.h.parentaxon:
-        #             sec.nseg = 11
-
-                    # get ready to run the system to a stable point for the calcium pump
-        j = 0
-        # # save the calcium pump information
-        # for input in range(self.modelPars.AN_conv[runInfo.TargetCellName]):
-        #     for sec in self.CalyxStruct[input]['axon']:
-        #         savcore = sec().cabulk_capmp
-        #         sec().cabulk_capmp = runInfo.ca_init
-        #         savtau = sec().tau_capmp
-        #         sec().tau_capmp = 1e-6  # make the pump go really fast
-
-                # starting way back in time
+        # starting way back in time
         self.hf.h.t = -1e10
         dtsav = self.hf.h.dt
         self.hf.h.dt = 1e9  # big time steps for slow process
@@ -237,44 +203,31 @@ class GenerateRun():
         while (self.hf.h.t < -1e9):
             self.hf.h.fadvance()
 
-            # now restore the pump values and get the system ready for runs
         if (temp != 0):
             self.hf.h.cvode.active(1)
         self.hf.h.dt = dtsav
         self.hf.h.t = 0
-        # for input in range(self.modelPars.AN_conv[runInfo.TargetCellName]):
-        #     for sec in self.CalyxStruct[input]['axon']:
-        #         sec().cabulk_capmp = savcore
-        #         sec().tau_capmp = savtau
-
         if (self.hf.h.cvode.active()):
             self.hf.h.cvode.re_init()
         else:
            self.hf.h.fcurrent()
-        self.hf.h.frecord_init()
+        #self.hf.h.frecord_init()
         self.hf.h.finitialize(self.hf.h.v_init)
         self.run_initialized = True
 
 
-
-
-
-    def executeRun(self):
-        print 'Running for: ', self.hf.h.tstop
+    def executeRun(self, testPlot=False):
+        assert self.run_initialized == True
+        print 'executeRun: Running for: ', self.hf.h.tstop
         print 'V = : ', self.electrodeSite.v
-        self.hf.h.frecord_init()
-#        self.hf.h.finitialize() # self.hf.h.v_init)
         self.hf.h.run()
-        pg.mkQApp()
-        pl = pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))
-        pl.setTitle('testing...')
-
-#        pg.mkQApp()
-#        pg.plot(self.monitor['time'], self.monitor['postsynapticV'])# if self.run_initialized:
-        #     self.hf.h.run()
-        # else:
-        #     print 'run not initialized!'
-        #     return
+        if testPlot:
+            pg.mkQApp()
+            pl = pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))
+            if self.filename is not None:
+                pl.setTitle('%s' % self.filename)
+            else:
+                pl.setTitle('executeRun, no filename')
         print 'run done'
         np_monitor = {}
         for k in self.monitor.keys():
@@ -317,6 +270,6 @@ class GenerateRun():
         #     # for i in range(len(self.swellAxonMap)):
         #     #     plot.plot(ts, vs[i])
 
-        cplts = cp.CalyxPlots()
+        cplts = cp.CalyxPlots(title=self.filename)
         cplts.plotResults(results.todict(), self.runInfo.todict(), somasite=self.mons)
         cplts.show()

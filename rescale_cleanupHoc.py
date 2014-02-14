@@ -17,15 +17,21 @@ import re
 import numpy as np
 
 #scaleFactor = 0.0384025 # convert pixels to microns for one file.
-scaleFactor = [1.0, 1.0, 1.0, 1.0]
+scaleFactor = 0.01*np.array([1.0, 1.0, 1.0, 1.0])
 
 structures = ['tip', 'neck', 'swelling', 'branch',
               ]
 def main():
-    infile = 'Calyx-68cvt2.hoc'
-    outfile = 'Calyx-68cvt4.hoc'
+#    infile = 'Calyx-68cvt2.hoc'
+#    outfile = 'Calyx-68cvt4.hoc'
+    path = 'MorphologyFiles/'
    # infile = 'LC_neuromantic_scaled.hoc'
    # outfile = 'LC_nmscaled_cleaned.hoc'
+    infile='wholeThing.hoc'
+    outfile='wholeThing_cleaned.hoc'
+    infile = os.path.join(path, infile)
+    outfile = os.path.join(path, outfile)
+
     axonfind = re.compile('\{(?P<source>axon\[\d+\]) connect (?P<target>axon\[\d+\])\(0\), 1\}')
     accessfind = re.compile('\{access (?P<source>axon\[\d+\])\}(?P<comment>.*)')
     pt3dclearfind = re.compile('\{pt3dclear\(\)\}(?P<comment>.*)')
@@ -34,6 +40,8 @@ def main():
 
     pt3dFlag = False
     inf = open(infile, 'r')
+    print infile
+    print inf
     outf = open(outfile, 'w')
     for line in iter(inf):
         #print line[0:9]

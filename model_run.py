@@ -12,18 +12,19 @@ import pyqtgraph as pg
 
 class ModelRun():
     def __init__(self, args):
-        infile = 'LC_neuromantic_scaled.hoc'
-        infile = 'Calyx-S53Acvt3.hoc'
-        #infile = 'mainDenHOC_cleaned.hoc'
+        #infile = 'LC_neuromantic_scaled.hoc'
+        #infile = 'Calyx-S53Acvt3.hoc'
+        self.infile = 'wholeThing_cleaned.hoc'
         #infile = 'somaOnly.hoc'
-        self.hf = HocReader('MorphologyFiles/' + infile)
+        self.hf = HocReader('MorphologyFiles/' + self.infile)
+        cellType = 'Bushy' # probably this should come from the morphology file itself...
         self.hg = HocGraphic(self.hf)
-        self.get_hoc_file(infile)
-        cd.ChannelDecorate('Bushy', self.hf, self.section_list)
+        self.get_hoc_file(self.infile)
+        cd.ChannelDecorate(self.hf, celltype=cellType)
 
         #self.render(['ih', 'ghbar'])
-        self.R = GenerateRun(self.hf)
-        self.R.doRun()
+        self.R = GenerateRun(self.hf, celltype=cellType)
+        self.R.doRun(self.infile)
 
 
     def get_hoc_file(self, infile):
@@ -68,4 +69,4 @@ class ModelRun():
 
 if __name__ == "__main__":
     ModelRun(sys.argv[1:])
-    #QtGui.QApplication.instance().exec_()
+#    QtGui.QApplication.instance().exec_()

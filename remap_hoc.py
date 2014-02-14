@@ -20,19 +20,23 @@ import numpy as np
 
 #scaleFactor = 0.0384025 # convert pixels to microns for one file.
 scaleFactor = [1.0, 1.0, 1.0, 1.0]
-scaleFactor = [0.1*s for s in scaleFactor]
+scaleFactor = [0.05*s for s in scaleFactor]
 translateFlag = True
 
 structures = ['soma', 'dend'] # ['tip', 'neck', 'swelling', 'branch', 'heminode', 'stalk', 'parentaxon']
 
 def main():
     global xref
-    # infile = 'MorphologyFiles/Calyx-S53Acvt3.hoc'
-    # outfile = 'MorphologyFiles/Calyx-S53Acvt4.hoc'
-    infile = 'MorphologyFiles/mainDenHOC.hoc'
-    outfile = 'MorphologyFiles/mainDenHOC_cleaned.hoc'
+#    infile = 'Calyx-68cvt2.hoc'
+#    outfile = 'Calyx-68cvt4.hoc'
+    path = 'MorphologyFiles/'
    # infile = 'LC_neuromantic_scaled.hoc'
    # outfile = 'LC_nmscaled_cleaned.hoc'
+    infile='wholeThing.hoc'
+    outfile='wholeThing_cleaned.hoc'
+    infile = os.path.join(path, infile)
+    outfile = os.path.join(path, outfile)
+
     axonfind = re.compile('\{(?P<source>axon\[\d+\]) connect (?P<target>axon\[\d+\])\(0\), 1\}')
     connectfind = re.compile('\{axon\[(?P<source>\d+)\] connect axon\[(?P<target>\d+)\]\(0\), 1\}')
     accessfind = re.compile('\{access (?P<source>axon\[\d+\])\}(?P<comment>.*)')
@@ -51,6 +55,7 @@ def main():
 
     firstPoint = True
     # pt3dFlag = False
+    print 'Processing: ', infile
     inf = open(infile, 'r')
     zeropos = [0., 0., 0.]
     for lct, line in enumerate(iter(inf)):
@@ -87,8 +92,8 @@ def main():
     # second pass: replace using the information in xref...
     inf = open(infile, 'r')
     outf = open(outfile, 'w')
-    for cs in xref.keys(): # rewrite creation
-        outf.write('create %s[%d]\n' % (cs, len(xref[cs])))
+#    for cs in xref.keys(): # rewrite creation
+#        outf.write('create %s[%d]\n' % (cs, len(xref[cs])))
     for line in iter(inf):
         #print line[0:9]
         newline = line
