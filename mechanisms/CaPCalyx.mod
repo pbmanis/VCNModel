@@ -23,7 +23,7 @@ NEURON {
 THREADSAFE
     SUFFIX CaPCalyx
     USEION ca READ eca WRITE ica
-    RANGE gcapbar, gcap, ica
+    RANGE gbar, gcap, ica
     GLOBAL minf, taum, alpha, beta
 }
 
@@ -31,10 +31,12 @@ INDEPENDENT {t FROM 0 TO 1 WITH 1 (ms)}
 
 PARAMETER {
         v (mV)
-        celsius = 22 (degC)  : model is defined on measurements made at 23-24 deg in Germany
+:        celsius = 22 (degC)  : model is defined on measurements made at 23-24 deg in Germany
+        celsius (degC)
         dt (ms)
-        eca = 43.9 (mV)
-        gcapbar = 0.01 (mho/cm2) <0,1e9> : target is 48.9 nS total
+:        eca = 43.9 (mV)
+        eca (mV)
+        gbar = 0.01 (mho/cm2) <0,1e9> : target is 48.9 nS total
         alpha (1/ms)
         beta (1/ms)
 }
@@ -48,6 +50,7 @@ ASSIGNED {
     gcap (mho/cm2)
     minf (1)
     taum (ms)
+
 }
 
 LOCAL mexp
@@ -55,7 +58,7 @@ LOCAL mexp
 BREAKPOINT {
     SOLVE states METHOD cnexp
 
-    gcap = gcapbar*m*m
+    gcap = gbar*m*m
     ica = gcap*(v - eca)
 }
 

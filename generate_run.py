@@ -38,8 +38,8 @@ class GenerateRun():
                               celsius=37,  # set the temperature.
                               nStim=1,
                               stimFreq=200.,  # hz
-                              stimInj=2.0,  # nA
-                              stimDur=10.0,  # msec
+                              stimInj=0.3,  # nA
+                              stimDur=100.0,  # msec
                               stimDelay=2.0,  # msec
                               stimPost=3.0,  # msec
                               vnStim=1,

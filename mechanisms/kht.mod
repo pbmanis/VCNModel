@@ -55,8 +55,8 @@ PARAMETER {
 :        ek = -77 (mV)
         gbar = 0.01592 (mho/cm2) <0,1e9>
 		nf = 0.85 <0,1> :proportion of n vs p kinetics
-           celsius (degC)
-    ek (mV)
+        celsius (degC)
+        ek (mV)
 }
 
 STATE {

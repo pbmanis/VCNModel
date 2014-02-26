@@ -27,13 +27,13 @@ class ModelRun():
         #infile = 'L23pyr.hoc'
         #infile = 'LC_nmscaled_cleaned.hoc'
         #infile = 'Calyx-68cvt2.hoc'
-        infile = 'Calyx-S53Acvt3.hoc'
+        #infile = 'Calyx-S53Acvt3.hoc'
         #infile = 'wholeThing_cleaned.hoc'
-        #infile = 'somaOnly.hoc'
+        infile = 'somaOnly.hoc'
         self.infile = infile
         self.hf = HocReader('MorphologyFiles/' + self.infile)
-        cellType = 'Bushy_RM03' # probably this should come from the morphology file itself...
-        electrodeSection = 'axon[0]'# 'soma[0]'
+        cellType = 'Stellate' # 'Bushy_RM03' # probably this should come from the morphology file itself...
+        electrodeSection = 'soma[0]'
         self.hg = HocGraphic(self.hf)
         self.get_hoc_file(self.infile)
         cd = ChannelDecorate(self.hf, celltype=cellType)

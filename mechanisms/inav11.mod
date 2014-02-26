@@ -46,8 +46,8 @@ UNITS {
 NEURON {
     THREADSAFE
     SUFFIX nav11
-    USEION nat READ enat WRITE inat VALENCE 1
-    RANGE gnat
+    USEION na READ ena WRITE ina VALENCE 1
+    RANGE gna
     RANGE gbar
     RANGE minf, mtau, hinf, htau, sinf, stau, inat, m, h, s
 	RANGE vsna : voltage shift parameter
@@ -58,10 +58,11 @@ INDEPENDENT {t FROM 0 TO 100 WITH 100 (ms)}
 
  
 PARAMETER {
-    
-    celsius = 6.3 (degC)
+    vsna = 0 (mV)
+    celsius (degC) : 6.3 (degC)
     dt (ms) 
-    enat  (mV)
+    ena (mV)
+    :enat = 50  (mV)
     gbar = 0.1 (mho/cm2)
 }
 
@@ -69,12 +70,12 @@ PARAMETER {
 ASSIGNED {
       
     v (mV) 
-    gnat (mho/cm2) 
-    inat (mA/cm2)
+    gna (mho/cm2)
+    ina (mA/cm2)
     minf hinf sinf
     mtau (ms) htau (ms) stau (ms)
     mexp hexp sexp
-	vsna (mV)
+:	vsna (mV)
 } 
 
 
@@ -85,8 +86,8 @@ STATE {
 
 BREAKPOINT {
     SOLVE states METHOD cnexp
-    gnat = gbar*m*m*m*h*s
-    inat = gnat*(v - enat)
+    gna = gbar*m*m*m*h*s
+    ina = gna*(v - ena)
 }
 
  
@@ -109,7 +110,7 @@ INITIAL {
 
 DERIVATIVE states {        : Computes state variables m, h, s and n
                             : at the current v and dt.        
-    trates(v)           
+    rates(v)
     m' = (minf - m)/mtau
     h' = (hinf - h)/htau
     s' = (sinf - s)/stau
@@ -130,22 +131,20 @@ PROCEDURE rates(v (mV)) {   :Computes rate and other constants at current v.
                             :Call once from HOC to initialize inf at resting v.
 
     LOCAL  alpha, beta, sum
-    q10 = 3^((celsius - 6.3)/10)
-:    q10 = 3^((celsius - 22)/10)
+    q10 = 3^((celsius - 22)/10) : original recordings in Barela et al made at "room temperature"
     
     
-    :"m" sodium activation system
-    minf = 1/(1+exp(-(v+27.4+vsna)*4.7*0.03937))		
-    mtau = 0.15
+    : "m" sodium activation system
+    minf = f_minf(v)
+    mtau = f_mtau(v)
 
-    :"h" sodium fast inactivation system
-    hinf = 1/(1+exp((v+41.9+vsna)/6.7))				
-    htau = 23.12*exp(-0.5*((v+77.58+vsna)/43.92)^2) 	
-       
-    :"s" sodium slow inactivation system
-    sinf = 1/(1+exp((v+46.0+vsna)/6.6))						
-    stau = 1000*(140.4*exp(-0.5*((v+71.3+vsna)/30.9)^2))   	
+    : "h" sodium fast inactivation system
+    hinf = f_hinf(v)
+    htau = f_htau(v)
 
+    : "s" sodium slow inactivation system
+    sinf = f_sinf(v)
+    stau = f_stau(v)
 
 }
  
@@ -167,6 +166,30 @@ PROCEDURE trates(v (mV)) {  :Build table with rate and other constants at curren
     sexp = 1 - exp(tinc/stau)
 }
 
+FUNCTION f_minf(v (mV)) {
+        f_minf = 1/(1+exp(-(v+27.4+vsna)*4.7*0.03937))
+
+        }
+FUNCTION f_mtau(v (mV)) {
+        f_mtau = 0.15
+        }
+
+FUNCTION f_hinf(v (mV)) {
+        f_hinf = 1/(1+exp((v+41.9+vsna)/6.7))
+    }
+
+FUNCTION f_htau(v (mV)) {
+        f_htau = 23.12*exp(-0.5*((v+77.58+vsna)/43.92)^2)
+        }
+
+
+FUNCTION f_sinf(v (mV)) {
+    f_sinf = 1/(1+exp((v+46.0+vsna)/6.6))
+        }
+
+FUNCTION f_stau(v (mV)) {
+        f_stau = 1000*140.4*exp(-0.5*((v+71.3+vsna)/30.9)^2)
+    }
 
 
 UNITSON

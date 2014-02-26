@@ -30,10 +30,7 @@ PARAMETER {
 	v (mV)
 :	celsius = 22 (degC)
 	dt (ms)
-:	ena = 55 (mV)
-	ek = -70 (mV)
-	er = -43 (mV)
-	el = -70 (mV)
+    ena = 55 (mV)
 	gbar = 0.25 (mho/cm2)    <0,1e9>
 	vsna = 0 (mV)
 }
@@ -48,7 +45,7 @@ ASSIGNED {
     minf hinf 
     mtau (ms) htau (ms)
     celsius (degC)
-    ena (mV)
+:    ena (mV)
 }
 
 LOCAL mexp, hexp 
@@ -87,8 +84,8 @@ PROCEDURE rates(v) {  :Computes rate and other constants at current v.
                       :Call once from HOC to initialize inf at resting v.
 LOCAL  alpha, beta, sum
 
-	q10 = 2^((celsius - 22)/10) : was 3^
-	qten = 6^((celsius - 22)/10) : was 10^
+	q10 = 3^((celsius - 22)/10) : R&M'03 used 3
+:	qten = 6^((celsius - 22)/10) : was 10^
 	
 :"m" sodium activation system - JSR
         alpha = -0.36*q10*vtrap((v+49),-3)

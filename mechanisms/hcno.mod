@@ -29,7 +29,7 @@ PARAMETER {
 
 	q10=4.5				: from Magee (1998)
 
-	eh		(mV)            : must be explicitly def. in hoc
+	eh = - 43		(mV)            : (used to be: ) must be explicitly def. in hoc
 	celsius (degC)
 	v 		(mV)
 }
