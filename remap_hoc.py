@@ -19,8 +19,9 @@ import re
 import numpy as np
 
 #scaleFactor = 0.0384025 # convert pixels to microns for one file.
-scaleFactor = [1.0, 1.0, 1.0, 1.0]
-scaleFactor = [0.05*s for s in scaleFactor]
+#scaleFactor = np.array([1.0, 1.0, 1.0, 1.0]) # multiply incoming by this. isotropic.
+scaleFactor =  np.array([48., 48., 48., 2.0*48.])/1000. # for data from Morehead/Spirou
+
 translateFlag = True
 
 structures = ['soma', 'dend'] # ['tip', 'neck', 'swelling', 'branch', 'heminode', 'stalk', 'parentaxon']

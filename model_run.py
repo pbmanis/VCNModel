@@ -1,30 +1,48 @@
 __author__ = 'pbmanis'
 
+
+"""
+celltype options:
+Bushy_RM03
+Bushy_XM13
+Calyx
+Stellate
+MNTB
+L23pyr (sort of... not a very good rendition)
+
+"""
+
 import sys
 import neuronvis.sim_result as sr
 from neuronvis.hoc_viewer import HocViewer
 from neuronvis.hoc_reader import HocReader
 from neuronvis.hoc_graphics import HocGraphic
-import channel_decorate as cd
+from channel_decorate import ChannelDecorate
 from generate_run import GenerateRun
 from pyqtgraph.Qt import QtGui
 import pyqtgraph as pg
 
 class ModelRun():
     def __init__(self, args):
-        #infile = 'LC_neuromantic_scaled.hoc'
-        #infile = 'Calyx-S53Acvt3.hoc'
-        self.infile = 'wholeThing_cleaned.hoc'
+        #infile = 'L23pyr.hoc'
+        #infile = 'LC_nmscaled_cleaned.hoc'
+        #infile = 'Calyx-68cvt2.hoc'
+        infile = 'Calyx-S53Acvt3.hoc'
+        #infile = 'wholeThing_cleaned.hoc'
         #infile = 'somaOnly.hoc'
+        self.infile = infile
         self.hf = HocReader('MorphologyFiles/' + self.infile)
-        cellType = 'Bushy' # probably this should come from the morphology file itself...
+        cellType = 'Bushy_RM03' # probably this should come from the morphology file itself...
+        electrodeSection = 'axon[0]'# 'soma[0]'
         self.hg = HocGraphic(self.hf)
         self.get_hoc_file(self.infile)
-        cd.ChannelDecorate(self.hf, celltype=cellType)
+        cd = ChannelDecorate(self.hf, celltype=cellType)
+        self.distances(electrodeSection) # make distance map from electrode site
 
         #self.render(['ih', 'ghbar'])
-        self.R = GenerateRun(self.hf, celltype=cellType)
+        self.R = GenerateRun(self.hf, celltype=cellType, electrodeSection=electrodeSection)
         self.R.doRun(self.infile)
+        #cd.channelValidate(self.hf)
 
 
     def get_hoc_file(self, infile):
@@ -54,6 +72,14 @@ class ModelRun():
             else:
                 self.clist.append([n1, None])
 
+
+    def distances(self, section):
+        self.hf.distanceMap = {}
+        self.hf.h('access %s' % section) # reference point
+        d = self.hf.h.distance()
+        for si in self.hf.sections.keys():
+            self.hf.h('access %s' % si)
+            self.hf.distanceMap[si] = self.hf.h.distance(0.5) # should be distance from first point
 
     def render(self, mech):
         pg.mkQApp()

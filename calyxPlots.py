@@ -2,6 +2,7 @@ __author__ = 'pbmanis'
 
 from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
+import numpy as np
 import pickle
 import pylibrary.pyqtgraphPlotHelpers as PH
 import pprint
@@ -11,9 +12,14 @@ pg.setConfigOption('background', 'w')  # set background to white
 pg.setConfigOption('foreground', 'k')
 
 class CalyxPlots():
-    def __init__(self):
+    def __init__(self, title=None):
         self.app = pg.mkQApp()
-        self.win = pg.GraphicsWindow(title="calyx_Plots")
+        if title is None:
+            wintitle = 'NEURON run plots'
+        else:
+            wintitle = title
+
+        self.win = pg.GraphicsWindow(title=wintitle)
         self.win.show()
         self.win.resize(800,600)
 
@@ -29,18 +35,19 @@ class CalyxPlots():
     def show(self):
         QtGui.QApplication.instance().exec_()
 
+
     
     def plotResults(self, res, runInfo, somasite=['postsynapticV', 'postsynapticI']):
         clist={'axon': 'r', 'heminode': 'g', 'stalk':'y', 'branch': 'g', 'neck': 'b',
                 'swelling': 'm', 'tip': 'k', 'parentaxon': '', r'synapse': 'c', 'soma': 'k'}
-
+        dx = np.array([x for k,x in res['distanceMap'].items()])
         self.p1.plot(res['monitor']['time'], res['monitor'][somasite[0]], pen=pg.mkPen(clist['soma'], width=1.5), )
-#        print 'res: ', res.keys()
+        dxmax = np.max(dx)
         if 'vec' in res.keys():
             for v in res['vec']:
-#                print v
-                pass
-        #        self.p3.plot(res['monitor']['time'], res['vec'][v],  pen=pg.mkPen('k', width=1.5))
+                self.p3.plot(res['monitor']['time'], res['vec'][v],
+                             pen=pg.mkPen(pg.intColor(int(255.*res['distanceMap'][v]/dxmax))),
+                             width=2.0)
         self.p1.setLabel('left', 'V')
         vlen = len(res['monitor'][somasite[1]])
         self.p2.plot(res['monitor']['time'][0:vlen], res['monitor'][somasite[1]], pen = pg.mkPen('b', width=1.5))
@@ -49,33 +56,12 @@ class CalyxPlots():
         #for c in res['ICa']:
         #     self.p2.plot(res['monitor']['time'], res['ICa'][c]*1e12, pen=pg.mkPen('b', width=1.5))
         #     self.p3.plot(res['vec']['time'], res['Cai'][c]*1e6, pen=pg.mkPen('g', width=1.5))
-        # self.p2.setLabel('left', 'I_{Ca}')
-        # self.p3.setLabel('left', '[Ca]_i')
+        self.p2.setLabel('left', 'I (inj, nA)')
+        self.p3.setLabel('left', 'V (mV)')
 
                 #p2.set_ylim(-5e-12, 1e-12)
-     #   PH.cleanAxes([p1, p2, p3, p4])
+        PH.cleanAxes([self.p1, self.p2, self.p3, self.p4])
 
-        # print '='*80
-        # print 'runInfo:'
-        # pprint.pprint(runInfo)
-        # print '='*80
-        # fig=MP.figure(101)
-        #p21=fig.add_subplot(3,1,1)
-        # p22=fig.add_subplot(3,1,2)
-        # p23=fig.add_subplot(3,1,3)
-        # t = res['vec']['time']
-        # tx = len(t)
-        # tl = len(res['vec']['i_stim0'])
-        # print tl, len(res['vec']['i_stim0'])
-        # if tx < tl:
-        #     tl = tx
-        #
-        #p21.plot(t[0:tl], res['vec']['i_stim0'][0:tl])
-        # if 'i_stim1' in res['vec'].keys() and len(res['vec']['i_stim1']) == tl:
-        #     p22.plot(t[0:tl], res['vec']['i_stim1'])
-        # if 'i_stim2' in res['vec'].keys() and len(res['vec']['i_stim2']) == tl:
-        #     p23.plot(t[0:tl], res['vec']['i_stim2'])
-        # MP.show()
 
     def show(self):
         QtGui.QApplication.instance().exec_()
