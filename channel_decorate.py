@@ -14,11 +14,12 @@ from pylibrary.Params import Params
 import pylibrary.PyNrnUtilities as pn
 import pprint
 import string
+import numpy as np
 import nrnlibrary.nrnutils as nu
 from channel_manager import channelManager
 
 class ChannelDecorate():
-    def __init__(self, hf, celltype=None, ):
+    def __init__(self, hf, celltype=None, modeltype=None):
 
         self.channelInfo = Params(newCm=1.0,
                               newRa=100.0,  # // changed 10/20/2007 to center in range')
@@ -28,22 +29,24 @@ class ChannelDecorate():
                               v_init=-80,  # mV
                               pharmManip={'TTX': False, 'ZD': False, 'Cd': False, 'DTX': False, 'TEA': False,
                                           'XE': False},
-
                               celltype=celltype,
+                              modeltype = modeltype,
         )
 
-        cm = channelManager(celltype)
+        cm = channelManager(celltype+'_'+modeltype)
         self.channelMap = cm.channelMap
-
+        self.irange = cm.irange
+        #cm.printMap()
         # gmapper allows us to map the names of mechanisms and thier conductance names, which may
         # vary in the hoc files.
         # The versions in the mechanisms directory here have been systematized, but this
         # dictionary may help when adding other conductances.
-        self.gmapper = {'nacn': 'gbar', 'kht': 'gbar', 'klt': 'gbar', 'leak': 'gbar', 'ihvcn': 'gbar'}
+
+        self.gmapper = cm.gmapper
         self.biophys(hf)
         hf.update() # make sure we update the information about mechanisms in each section.
 
-    def biophys(self, hf, verify=True):
+    def biophys(self, hf, verify=False):
         """
         Inputs: run parameter structure, model parameter structure
         verify = True to run through the inserted mechanisms and see that they are really there.
@@ -65,11 +68,12 @@ class ChannelDecorate():
         if self.channelInfo is None:
             raise Exception('biophys - no parameters or info passed!')
         if verify:
-            print 'Inserting channels as if cell type is %s' % (celltype)
+            print 'Inserting channels as if cell type is %s with modeltype %s ' % (celltype, self.channelInfo.modeltype)
         for s in hf.sections.keys():
             sectype = string.rsplit(s, '[')[0]
             for mech in self.channelMap[sectype].keys():
                 if mech not in self.gmapper.keys():
+                    print 'mech %s not found? ' % mech
                     continue
                 if verify:
                     print 'section: %s  insert mechanism: %s at ' % (s, mech), self.channelMap[sectype][mech]

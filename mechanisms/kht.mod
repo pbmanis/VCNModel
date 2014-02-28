@@ -54,8 +54,9 @@ PARAMETER {
         dt (ms)
 :        ek = -77 (mV)
         gbar = 0.01592 (mho/cm2) <0,1e9>
-		nf = 0.85 <0,1> :proportion of n vs p kinetics
+		nf = 0.85 <0,1> : proportion of n vs p kinetics
         celsius (degC)
+        q10 = 3.0 (1)
         ek (mV)
 }
 
@@ -103,18 +104,20 @@ DERIVATIVE states {  :Computes state variables m, h, and n
 :ENDVERBATIM
 }
 
-LOCAL q10
+LOCAL qt
 
 PROCEDURE rates(v) {  :Computes rate and other constants at current v.
                       :Call once from HOC to initialize inf at resting v.
 
-	q10 = 3^((celsius - 22)/10) : if you don't like room temp, it can be changed!
+	qt = q10^((celsius - 22)/10) : if you don't like room temp, it can be changed!
 
     ninf =   (1 + exp(-(v + 15) / 5))^-0.5
     pinf =  1 / (1 + exp(-(v + 23) / 6))
 
 	ntau =  (100 / (11*exp((v+60) / 24) + 21*exp(-(v+60) / 23))) + 0.7
+	ntau = ntau/qt
     ptau = (100 / (4*exp((v+60) / 32) + 5*exp(-(v+60) / 22))) + 5
+    ptau = ptau/qt
 }
 
 PROCEDURE trates(v) {  :Computes rate and other constants at current v.
@@ -127,10 +130,10 @@ PROCEDURE trates(v) {  :Computes rate and other constants at current v.
         : so don't expect the tau values to be tracking along with
         : the inf values in hoc
 
-	tinc = -dt * q10
+	tinc = -dt : note that ntau and ptau have q10 included above
 	nexp = 1 - exp(tinc/ntau)
 	pexp = 1 - exp(tinc/ptau)
-	}
+}
 
 FUNCTION vtrap(x,y) {  :Traps for 0 in denominator of rate eqns.
         if (fabs(x/y) < 1e-6) {

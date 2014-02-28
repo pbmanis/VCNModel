@@ -58,12 +58,13 @@ INDEPENDENT {t FROM 0 TO 100 WITH 100 (ms)}
 
  
 PARAMETER {
-    vsna = 0 (mV)
-    celsius (degC) : 6.3 (degC)
+    vsna = 4.3 (mV)
+    celsius (degC)
     dt (ms) 
     ena (mV)
     :enat = 50  (mV)
     gbar = 0.1 (mho/cm2)
+    q10 = 3.0 (1)
 }
 
 
@@ -124,27 +125,27 @@ DERIVATIVE states {        : Computes state variables m, h, s and n
 }
  
 
-LOCAL q10
+LOCAL qt
 
 
 PROCEDURE rates(v (mV)) {   :Computes rate and other constants at current v.
                             :Call once from HOC to initialize inf at resting v.
 
     LOCAL  alpha, beta, sum
-    q10 = 3^((celsius - 22)/10) : original recordings in Barela et al made at "room temperature"
+    qt = q10^((celsius - 22)/10) : original recordings in Barela et al made at "room temperature"
     
     
     : "m" sodium activation system
     minf = f_minf(v)
-    mtau = f_mtau(v)
+    mtau = f_mtau(v)/qt
 
     : "h" sodium fast inactivation system
     hinf = f_hinf(v)
-    htau = f_htau(v)
+    htau = f_htau(v)/qt
 
     : "s" sodium slow inactivation system
     sinf = f_sinf(v)
-    stau = f_stau(v)
+    stau = f_stau(v)/qt
 
 }
  
@@ -160,7 +161,7 @@ PROCEDURE trates(v (mV)) {  :Build table with rate and other constants at curren
                 : so don't expect the tau values to be tracking along with
                 : the inf values in hoc
 
-    tinc = -dt * q10
+    tinc = -dt  :  * q10 q10 is handled in rates, above
     mexp = 1 - exp(tinc/mtau)
     hexp = 1 - exp(tinc/htau)
     sexp = 1 - exp(tinc/stau)

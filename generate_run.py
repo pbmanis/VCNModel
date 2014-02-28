@@ -2,7 +2,8 @@ __author__ = 'pbmanis'
 """
 GenerateRun is a class that sets up for a run after the cell has been decorated with channels.
 It requires the celltype, and a section where the electrode will be inserted.
-The stimulus in current clamp can consist of single pulses or pulse trains
+The stimulus in current clamp can consist of single pulses or pulse trains. cd is the
+channelDecorator, which is also used to set the current range level for IV's.
 Code for reading externally generated spike trains from a file is also included.
 Methods:
     doRun(filename) will execute the run. The resulting plot will have the filename text at the top.
@@ -16,6 +17,7 @@ import numpy as np
 import nrnlibrary.makestim as makestim
 from pylibrary.Params import Params
 import CalyxPlots as cp
+import analyze_run as ar
 import time
 import csv
 import pickle
@@ -23,9 +25,11 @@ import pyqtgraph as pg
 
 verbose = False # use this for testing.
 
+
 class GenerateRun():
-    def __init__(self, hf, celltype=None, electrodeSection = 'soma[0]'):
+    def __init__(self, hf, celltype=None, electrodeSection = 'soma[0]', cd=None):
         self.run_initialized = False
+        self.plotting = True
         self.hf = hf # get the reader structure and the hoc pointer object locally
         # use the Params class to hold program run information and states
         # runInfo holds information that is specific the the run - stimuli, conditions, etc
@@ -38,7 +42,7 @@ class GenerateRun():
                               celsius=37,  # set the temperature.
                               nStim=1,
                               stimFreq=200.,  # hz
-                              stimInj=0.3,  # nA
+                              stimInj=cd.irange,  # nA
                               stimDur=100.0,  # msec
                               stimDelay=2.0,  # msec
                               stimPost=3.0,  # msec
@@ -54,7 +58,7 @@ class GenerateRun():
                               # 'ANFiles/AN10000Hz.txt', # if this is not None, then we will use these spike times...
                               inFileRep=1,  # which rep to use (or array of reps)
                               spikeTimeList={},  # Dictionary of spike times
-                              v_init = -63.9,
+                              v_init = -63.9,  # from Rothman type II model - not appropriate in all cases
         )
 
         if self.runInfo.inFile is None:
@@ -90,17 +94,29 @@ class GenerateRun():
     def doRun(self, filename=None):
         self.filename = filename
         self.hf.update() # make sure channels are all up to date
-        self._prepareRun() # build the recording arrays
-        print 'run preparae'
-        self._initRun()  # this also sets nseg in the axon - so do it before setting up shapes
-        print 'run initialized'
-        self._executeRun() # now you can do the run
+        results={}
+        for k, i in enumerate(self.runInfo.stimInj):
+            self._prepareRun(inj=i) # build the recording arrays
+            self._initRun()  # this also sets nseg in the axon - so do it before setting up shapes
+            results[i] = self._executeRun() # now you can do the run
+            if self.plotting:
+                if k == 0:
+                    self.plotRun(results[i])
+                else:
+                    self.plotRun(results[i], init=False)
+        arun = ar.AnalyzeRun(results) # create an instance of the class with the data
+        IV = arun.IV()  # compute the IV on the data
+#        print IVsummary
+        self.plotFits(1, IV['taufit'], c='r')
+        self.plotFits(1, IV['ihfit'], c='b')
+        if self.plotting:
+            self.cplts.show()
 
-    def _prepareRun(self):
+    def _prepareRun(self, inj=None):
         """
         (private method)
         Control a single run of the model with updated display of the voltages, etc.
-        Inputs: None
+        Inputs: inj: override for current injection
         Outputs: None
         Actions: optionally displays the results
         Side Effects: A number of class variables are created and modified, mostly related to the
@@ -124,12 +140,12 @@ class GenerateRun():
         # soma.insert('hh')
         #
         #electrodeSite = soma
-        print self.runInfo.electrodeSection
+#        print self.runInfo.electrodeSection
         self.electrodeSite = self.hf.sections[self.runInfo.electrodeSection]
         if self.runInfo.postMode in ['vc', 'vclamp']:
             print 'vclamp'
             # Note to self (so to speak): the hoc object returned by this call must have a life after
-            # # the routine exits. Thus, it must be "self." Same for the IC stimulus...
+            # the routine exits. Thus, it must be "self." Same for the IC stimulus...
             self.vcPost = self.hf.h.SEClamp(0.5, sec=self.electrodeSite) #self.hf.sections[electrodeSite])
             self.vcPost.dur1 = 2
             self.vcPost.amp1 = self.runInfo.vstimHolding
@@ -147,6 +163,7 @@ class GenerateRun():
             stim['PT'] = 0.0
            # print self.hf.h.soma[0]
             (secmd, maxt, tstims) = makestim(stim, pulsetype='square', dt=self.hf.h.dt)
+            self.stim = stim
             secmd = secmd + self.runInfo.vstimHolding # add holding
             self.monitor['v_stim0'] = self.hf.h.Vector(secmd)
             self.monitor['v_stim0'].play(self.vcPost._ref_amp2, self.hf.h.dt, 0, sec=self.electrodeSite)
@@ -160,9 +177,13 @@ class GenerateRun():
             stim['Sfreq'] = self.runInfo.stimFreq  # stimulus frequency
             stim['delay'] = self.runInfo.stimDelay
             stim['dur'] = self.runInfo.stimDur
-            stim['amp'] = self.runInfo.stimInj
+            if inj is not None:
+                stim['amp'] = inj
+            else:
+                stim['amp'] = self.runInfo.stimInj[0]
             stim['PT'] = 0.0
             (secmd, maxt, tstims) = makestim(stim, pulsetype='square', dt=self.hf.h.dt)
+            self.stim = stim
             self.icPost = self.hf.h.iStim(0.5, sec=self.electrodeSite)
             self.icPost.delay = 2
             self.icPost.dur = 1e9  # these actually do not matter...
@@ -207,28 +228,37 @@ class GenerateRun():
             self.run_initialized = True
             return
 
-        # First we set e_leak so that the rmp in each segment is the same
-        self.hf.h.finitialize(self.runInfo.v_init)
+        # otherwise in current clamp
+        # Options:
+        # 1. adjust e_leak so that the rmp in each segment is the same
+        # 2. use ic_constant to inject current in each segment to set rmp
+        # 3. allow vm to vary in segments, using existing conductances (may be unstable)
+
+        cvode = self.hf.h.CVode()
+        if cvode.active():
+            cvode.active(0)  # turn cvode off (note, in this model it will be off because one of the mechanisms is not compatible with cvode at this time
+
+        self.hf.h.finitialize()  #(self.runInfo.v_init)
         # starting way back in time
         self.hf.h.t = -1e10
         dtsav = self.hf.h.dt
-        self.hf.h.dt = 1e9  # big time steps for slow process
-        temp = self.hf.h.cvode.active()
-        if (temp != 0):
-            self.hf.h.cvode.active(0)  # turn cvode off (note, in this model it will be off because one of the mechanisms is not compatible with cvode at this time
-        while (self.hf.h.t < -1e9):
+        self.hf.h.dt = 1e8  # big time steps for slow process
+        n = 0
+        while self.hf.h.t < 0:
+#            print 'fadvance'
+            n += 1
             self.hf.h.fadvance()
-
-        if (temp != 0):
-            self.hf.h.cvode.active(1)
+        print 'init steps: ', n
+#        if cvode.active():
+#            cvode.active(1)
         self.hf.h.dt = dtsav
         self.hf.h.t = 0
-        if (self.hf.h.cvode.active()):
-            self.hf.h.cvode.re_init()
-        else:
-           self.hf.h.fcurrent()
+        if cvode.active():
+            cvode.re_init()
+        #else:
+        self.hf.h.fcurrent()
+       # self.hf.h.finitialize()
         self.hf.h.frecord_init()
-        self.hf.h.finitialize(self.hf.h.v_init)
         self.run_initialized = True
 
 
@@ -260,11 +290,10 @@ class GenerateRun():
             np_allsecVec[k] = np.array(self.allsecVec[k])
         self.runInfo.clist = self.clist
         results = Params(Sections=self.hf.sections.keys(), vec=np_allsecVec,
-                         monitor=np_monitor,
+                         monitor=np_monitor, stim=self.stim, runInfo=self.runInfo,
                          distanceMap = self.hf.distanceMap,
         )
-        print("Run done\n")
-        self.plotRun(results)
+        return results
 
 
     def saveRun(self, results):
@@ -302,7 +331,12 @@ class GenerateRun():
             #     plot.plot(ts, vs[i])
 
 
-    def plotRun(self, results):
-        cplts = cp.CalyxPlots(title=self.filename)
-        cplts.plotResults(results.todict(), self.runInfo.todict(), somasite=self.mons)
-        cplts.show()
+    def plotRun(self, results, init=True, show=False):
+        if init:
+            self.cplts = cp.CalyxPlots(title=self.filename)
+        self.cplts.plotResults(results.todict(), self.runInfo.todict(), somasite=self.mons)
+        if show:
+            self.cplts.show()
+
+    def plotFits(self, panel, x, c='g'):
+        self.cplts.plotFit(panel, x[0], x[1], c)

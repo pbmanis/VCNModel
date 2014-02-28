@@ -55,6 +55,7 @@ PARAMETER {
         gbar = 0.01592 (mho/cm2) <0,1e9>
         zss = 0.5   <0,1>   : steady state inactivation of glt
         celsius (degC)
+        q10 = 3.0 (1)
         ek (mV)
 }
 
@@ -99,18 +100,20 @@ DERIVATIVE states {  :Computes state variables m, h, and n
 :ENDVERBATIM
 }
 
-LOCAL q10
+LOCAL qt
 
 PROCEDURE rates(v) {  :Computes rate and other constants at current v.
                       :Call once from HOC to initialize inf at resting v.
 
-	q10 = 3^((celsius - 22)/10) : if you don't like room temp, it can be changed!
+	qt = q10^((celsius - 22)/10) : if you don't like room temp, it can be changed!
 
     winf = (1 / (1 + exp(-(v + 48) / 6)))^0.25
     zinf = zss + ((1-zss) / (1 + exp((v + 71) / 10)))
 
     wtau =  (100 / (6*exp((v+60) / 6) + 16*exp(-(v+60) / 45))) + 1.5
+    wtau = wtau/q10
     ztau =  (1000 / (exp((v+60) / 20) + exp(-(v+60) / 8))) + 50
+    ztau = ztau/q10
 }
 
 PROCEDURE trates(v) {  :Computes rate and other constants at current v.
@@ -123,7 +126,7 @@ PROCEDURE trates(v) {  :Computes rate and other constants at current v.
         : so don't expect the tau values to be tracking along with
         : the inf values in hoc
 
-:	tinc = -dt * q10
+:	tinc = -dt  :  * qt (note qt is handled in rates)
 :	wexp = 1 - exp(tinc/wtau)
 :	zexp = 1 - exp(tinc/ztau)
 	}

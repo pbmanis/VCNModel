@@ -44,7 +44,7 @@ class ChannelKinetics():
         self.win.nextCol()
         self.p4 = self.win.addPlot(title="I_min")
         self.tdur = {'CaPCalyx': [20., 10.], 'hcno': [1000., 200.], 'ih': [1000., 200.], 'ihvcn': [1000., 200.],
-                     'nav11': [10., 5.], 'jsrna': [10., 5.], 'kht':[200., 20.], 'klt': [200., 20.], 'nacn': [10., 5.]}
+                     'nav11': [20., 5.], 'jsrna': [10., 5.], 'kht':[200., 20.], 'klt': [200., 20.], 'nacn': [10., 5.]}
 
         self.run(modfile=modfile)
         self.win.setWindowTitle('VC Plots: ' + modfile)
@@ -80,7 +80,7 @@ class ChannelKinetics():
 #        Channel.insert_into(soma)
 #        leak.insert_into(soma)
         print dir(self.soma)
-        h.celsius = 22 # set the temperature.
+        h.celsius = 37 # set the temperature.
         ca_init = 70e-6
 
         self.vec={}
@@ -89,7 +89,6 @@ class ChannelKinetics():
 
         h.dt = 0.025
         v_init = -65.
-        h.celsius=22.
 
         clampV = v_init
         self.vcPost = h.SEClamp(0.5, sec=self.soma)
@@ -132,7 +131,7 @@ class ChannelKinetics():
             (self.ivmin[1,i], r2) = pylibrary.Utility.measure('minormax', self.t, self.ichan, tdelay+0.1, tdelay+tstep[0]/5.0)
             self.ivss[0,i] = V
             self.ivmin[0,i] = V
-
+            print 'T = ', h.celsius
         self.p2.plot(self.ivss[0,:], self.ivss[1,:], symbol='o', symbolsize=2.0, pen= pg.mkPen('r'))
         self.p4.plot(self.ivmin[0,:], self.ivmin[1,:], symbol='s', symbolsize=2.0, pen=pg.mkPen('b'))
 

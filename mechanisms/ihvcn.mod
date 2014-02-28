@@ -44,6 +44,7 @@ PARAMETER {
         tausc1 = 237 (ms)
         tausc2 = 17 (ms)
         vshift = 0 (mV)
+        q10 = 3.0 (1)
 }
 
 STATE {
@@ -83,14 +84,15 @@ DERIVATIVE states {  :Computes state variables m, h, and n
 :ENDVERBATIM
 }
 
-LOCAL q10
+LOCAL qt
 PROCEDURE rates(v) {  :Computes rate and other constants at current v.
                       :Call once from HOC to initialize inf at resting v.
 
-	q10 = 3.0^((celsius - 22.0)/10.0)
+	qt = q10^((celsius - 22.0)/10.0)
     rinf = 1.0 / (1+exp((v + vh + vshift) / k))
     rtau = (taufac / (tausc1*exp((v + vtau + vshift) / 12.0) + tausc2*exp(-(v + vtau + vshift) / 14.0)))
     rtau = rtau + taumin
+    rtau = rtau/qt
 }
 
 PROCEDURE trates(v) {  :Computes rate and other constants at current v.
@@ -103,7 +105,7 @@ PROCEDURE trates(v) {  :Computes rate and other constants at current v.
         : so don't expect the tau values to be tracking along with
         : the inf values in hoc
 
-	tinc = -dt * q10
+	tinc = -dt : * q10 is handled in rates
 	rexp = 1.0 - exp(tinc/rtau)
 }
 

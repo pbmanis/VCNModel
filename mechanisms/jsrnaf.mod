@@ -33,6 +33,7 @@ PARAMETER {
     ena = 55 (mV)
 	gbar = 0.25 (mho/cm2)    <0,1e9>
 	vsna = 0 (mV)
+    q10 = 3.0 (1)
 }
 
 STATE {
@@ -77,26 +78,26 @@ DERIVATIVE states {  :Computes state variables m, h, and n
 :ENDVERBATIM
 }
 
-LOCAL q10
-LOCAL qten
+LOCAL qt
+
 ? rates
 PROCEDURE rates(v) {  :Computes rate and other constants at current v.
                       :Call once from HOC to initialize inf at resting v.
 LOCAL  alpha, beta, sum
 
-	q10 = 3^((celsius - 22)/10) : R&M'03 used 3
-:	qten = 6^((celsius - 22)/10) : was 10^
-	
+	qt = q10^((celsius - 22)/10) : R&M'03 used 3
+
+: Note qt temperature here cancels in minf (a/(a+b))
 :"m" sodium activation system - JSR
-        alpha = -0.36*q10*vtrap((v+49),-3)
-        beta =  0.4*q10*vtrap((v+58),20)
+        alpha = -0.36*qt*vtrap((v+49),-3)
+        beta =  0.4*qt*vtrap((v+58),20)
         sum = alpha + beta
 		mtau = 1/sum
         minf = alpha/sum
 
 :"h" sodium inactivation system - JSR
-        alpha = 2.4*q10/(1+exp((v+68-vsna)/3)) + 0.8*qten/(1+exp(v+61.3-vsna))
-        beta = 3.6*q10/(1+exp(-(v+21-vsna)/10))
+        alpha = 2.4*qt/(1+exp((v+68-vsna)/3)) + 0.8*qt/(1+exp(v+61.3-vsna))
+        beta = 3.6*qt/(1+exp(-(v+21-vsna)/10))
         sum = alpha + beta
 		htau = 1/sum
         hinf = alpha/sum
@@ -129,7 +130,7 @@ PROCEDURE trates(v) {  :Computes rate and other constants at current v.
         : so don't expect the tau values to be tracking along with
         : the inf values in hoc
 
-	tinc = -dt * q10
+	tinc = -dt : * q10 # handled in rates now
 	mexp = 1 - exp(tinc/mtau)
 	hexp = 1 - exp(tinc/htau)
 }

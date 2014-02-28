@@ -29,10 +29,11 @@ INDEPENDENT {t FROM 0 TO 1 WITH 1 (ms)}
 
 PARAMETER {
         v (mV)
-        celsius = 22 (degC)
+        celsius (degC) : data collected at 22
         dt (ms)
         gbar = 0.00318 (mho/cm2) <0,1e9>
         eh = -43 (mV)
+        q10 = 3.0 (1)
 }
 
 STATE {
@@ -71,14 +72,14 @@ DERIVATIVE states {  :Computes state variables m, h, and n
 :ENDVERBATIM
 }
 
-LOCAL q10
+LOCAL qt
 PROCEDURE rates(v) {  :Computes rate and other constants at current v.
                       :Call once from HOC to initialize inf at resting v.
 
-	q10 = 3.0^((celsius - 22.0)/10.0)
+	qt = q10^((celsius - 22.0)/10.0)
     rinf = 1.0 / (1+exp((v + 76.0) / 7.0))
     rtau = (100000.0 / (237.0*exp((v+60.0) / 12.0) + 17.0*exp(-(v+60.0) / 14.0))) + 25.0
-    :rtau = rtau*q10
+    rtau = rtau/qt
 
 }
 
@@ -92,8 +93,8 @@ PROCEDURE trates(v) {  :Computes rate and other constants at current v.
         : so don't expect the tau values to be tracking along with
         : the inf values in hoc
 
-:	tinc = -dt * q10
-:	rexp = 1 - exp(tinc/rtau)
+	tinc = -dt  :  * q10
+	rexp = 1 - exp(tinc/rtau)
 }
 
 

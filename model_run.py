@@ -21,9 +21,24 @@ from channel_decorate import ChannelDecorate
 from generate_run import GenerateRun
 from pyqtgraph.Qt import QtGui
 import pyqtgraph as pg
+import numpy as np
 
 class ModelRun():
     def __init__(self, args):
+        if isinstance(args, list):
+            celltype = args[0] # must be string, not list...
+        else:
+            celltype = args
+        if celltype not in ['Bushy', 'Stellate', 'L23pyr']:
+            print 'Celltype must be one of Bushy, Stellate or L23pyr'
+            exit()
+        modelType = 'RM03'
+        if len(args) > 1:
+            modelType = args[1]
+        if modelType not in ['RM03', 'XM13', 'MS']:
+            print 'Model type mist be one of RM03, XM13, or MS'
+            exit()
+
         #infile = 'L23pyr.hoc'
         #infile = 'LC_nmscaled_cleaned.hoc'
         #infile = 'Calyx-68cvt2.hoc'
@@ -32,15 +47,15 @@ class ModelRun():
         infile = 'somaOnly.hoc'
         self.infile = infile
         self.hf = HocReader('MorphologyFiles/' + self.infile)
-        cellType = 'Stellate' # 'Bushy_RM03' # probably this should come from the morphology file itself...
+        cellType = celltype # 'Bushy_RM03' # possibly this should come from the morphology file itself...
         electrodeSection = 'soma[0]'
         self.hg = HocGraphic(self.hf)
         self.get_hoc_file(self.infile)
-        cd = ChannelDecorate(self.hf, celltype=cellType)
+        cd = ChannelDecorate(self.hf, celltype=cellType, modeltype = modelType)
         self.distances(electrodeSection) # make distance map from electrode site
 
-        #self.render(['ih', 'ghbar'])
-        self.R = GenerateRun(self.hf, celltype=cellType, electrodeSection=electrodeSection)
+       # self.render(['klt', 'gbar'])
+        self.R = GenerateRun(self.hf, celltype=cellType, electrodeSection=electrodeSection, cd=cd)
         self.R.doRun(self.infile)
         #cd.channelValidate(self.hf)
 
@@ -95,4 +110,4 @@ class ModelRun():
 
 if __name__ == "__main__":
     ModelRun(sys.argv[1:])
-#    QtGui.QApplication.instance().exec_()
+    #QtGui.QApplication.instance().exec_()

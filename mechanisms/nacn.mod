@@ -35,10 +35,11 @@ INDEPENDENT {t FROM 0 TO 1 WITH 1 (ms)}
 
 PARAMETER {
         v (mV)
-        celsius = 22 (degC)  : model is defined on measurements made at room temp in Baltimore
+        celsius (degC) : 22 (degC) model is defined on measurements made at room temp in Baltimore
         dt (ms)
         ena (mV)
         gbar =  0.07958 (mho/cm2) <0,1e9>
+        q10 = 3.0 : q10 for rates
 }
 
 STATE {
@@ -79,19 +80,21 @@ VERBATIM
 ENDVERBATIM
 }
 
-LOCAL q10
+LOCAL qt
 
 PROCEDURE rates(v) {  :Computes rate and other constants at current v.
                       :Call once from HOC to initialize inf at resting v.
 
-	q10 = 3^((celsius - 22)/10) : if you don't like room temp, it can be changed!
+	qt = q10^((celsius - 22)/10) : if you don't like room temp, it can be changed!
 
 : average sodium channel
     minf = 1 / (1+exp(-(v + 38) / 7))
     hinf = 1 / (1+exp((v + 65) / 6))
 
     mtau =  (10 / (5*exp((v+60) / 18) + 36*exp(-(v+60) / 25))) + 0.04
+    mtau = mtau/qt
     htau =  (100 / (7*exp((v+60) / 11) + 10*exp(-(v+60) / 25))) + 0.6
+    htau = htau/qt
 }
 
 PROCEDURE trates(v) {  :Computes rate and other constants at current v.
@@ -104,7 +107,7 @@ PROCEDURE trates(v) {  :Computes rate and other constants at current v.
         : so don't expect the tau values to be tracking along with
         : the inf values in hoc
 
-	tinc = -dt * q10
+	tinc = -dt :  * qt (note q10 is handled in mtau/htau calculation above
 	mexp = 1 - exp(tinc/mtau)
 	hexp = 1 - exp(tinc/htau)
 	}

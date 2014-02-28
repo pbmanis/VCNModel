@@ -22,13 +22,9 @@ PARAMETER {
 	a01 = 0.008 
 	a02 = 0.0029
 	frac=0.0
-
-
-	thinf  = -66 	(mV)		: inact inf slope	
+	thinf  = -66 	(mV)		: inact inf slope
 	qinf  = 7 	(mV)		: inact inf slope 
-
-	q10=4.5				: from Magee (1998)
-
+	q10=4.5 (1)				: from Magee (1998)
 	eh = - 43		(mV)            : (used to be: ) must be explicitly def. in hoc
 	celsius (degC)
 	v 		(mV)
@@ -76,7 +72,7 @@ PROCEDURE trates(v) {
         tau1 = bet1(v)/(qt*a01*(1+alp1(v)))
         tau2 = bet2(v)/(qt*a02*(1+alp2(v)))
 
-	hinf = 1/(1+exp((v-thinf)/qinf))
+	    hinf = 1/(1+exp((v-thinf)/qinf)) : note does not change with temperature
 }
 
 FUNCTION alp1(v(mV)) {
