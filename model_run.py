@@ -43,20 +43,25 @@ class ModelRun():
         #infile = 'LC_nmscaled_cleaned.hoc'
         #infile = 'Calyx-68cvt2.hoc'
         #infile = 'Calyx-S53Acvt3.hoc'
-        #infile = 'wholeThing_cleaned.hoc'
-        infile = 'somaOnly.hoc'
+        infile = 'wholeThing_cleaned.hoc'
+        #infile = 'somaOnly.hoc'
         self.infile = infile
         self.hf = HocReader('MorphologyFiles/' + self.infile)
         cellType = celltype # 'Bushy_RM03' # possibly this should come from the morphology file itself...
         electrodeSection = 'soma[0]'
         self.hg = HocGraphic(self.hf)
         self.get_hoc_file(self.infile)
-        cd = ChannelDecorate(self.hf, celltype=cellType, modeltype = modelType)
         self.distances(electrodeSection) # make distance map from electrode site
+        cd = ChannelDecorate(self.hf, celltype=cellType, modeltype = modelType)
 
-       # self.render(['klt', 'gbar'])
+       # self.render(['nav11', 'gbar'])
+       # QtGui.QApplication.instance().exec_()
         self.R = GenerateRun(self.hf, celltype=cellType, electrodeSection=electrodeSection, cd=cd)
         self.R.doRun(self.infile)
+        basename = self.R.saveRuns(self.R.results)
+        print self.R.IVResult
+        self.R.arun.saveIVResult(basename)
+
         #cd.channelValidate(self.hf)
 
 
@@ -96,16 +101,32 @@ class ModelRun():
             self.hf.h('access %s' % si)
             self.hf.distanceMap[si] = self.hf.h.distance(0.5) # should be distance from first point
 
+
     def render(self, mech):
         pg.mkQApp()
         render = HocViewer(self.hf)
-#        render.hr.read_hoc_section_lists(self.section_colors.keys())
-        #print 'sec groups: ', render.hr.sec_groups
 
-        surface = render.draw_surface()
-       # line = render.draw_graph()
-        surface.set_group_colors(self.section_colors, alpha=0.35)
-        surface.set_group_colors(self.section_colors, alpha=0.35, mechanism=mech)
+        type = 'line'
+        if type == 'line':
+            line = render.draw_graph()
+            line.set_group_colors(self.section_colors, alpha=0.35)
+        if type == 'surface':
+            surface = render.draw_surface(resolution = 1.0)
+            surface.set_group_colors(self.section_colors, alpha=0.35)
+        elif type == 'cylinder':
+            cylinder=render.draw_cylinders()
+            cylinder.set_group_colors(self.section_colors, alpha=0.35)
+        elif type == 'volume':
+            volume = render.draw_volume(resolution = 1.0, max_size=1e9)
+            #volume.set_group_colors(section_colors, alpha=0.35)
+
+#        render.hr.read_hoc_section_lists(self.section_colors.keys())
+        #surface = render.draw_surface()
+        # cylinder = render.draw_cylinders()
+        # cylinder.set_group_colors(self.section_colors, alpha=0.35, mechanism=mech)
+        # line = render.draw_graph()
+       # surface.set_group_colors(self.section_colors, alpha=0.35)
+       # surface.set_group_colors(self.section_colors, alpha=0.35, mechanism=mech)
 
 
 if __name__ == "__main__":

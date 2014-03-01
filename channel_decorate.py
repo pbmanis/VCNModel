@@ -31,18 +31,20 @@ class ChannelDecorate():
                                           'XE': False},
                               celltype=celltype,
                               modeltype = modeltype,
+                              distanceMap = hf.distanceMap
         )
 
-        cm = channelManager(celltype+'_'+modeltype)
-        self.channelMap = cm.channelMap
-        self.irange = cm.irange
+        self.cMan = channelManager(celltype+'_'+modeltype)
+        self.channelMap = self.cMan.channelMap
+        self.distMap = self.cMan.distMap
+        self.irange = self.cMan.irange
         #cm.printMap()
         # gmapper allows us to map the names of mechanisms and thier conductance names, which may
         # vary in the hoc files.
         # The versions in the mechanisms directory here have been systematized, but this
         # dictionary may help when adding other conductances.
 
-        self.gmapper = cm.gmapper
+        self.gmapper = self.cMan.gmapper
         self.biophys(hf)
         hf.update() # make sure we update the information about mechanisms in each section.
 
@@ -65,54 +67,70 @@ class ChannelDecorate():
         """
        # createFlag = False
         celltype = self.channelInfo.celltype
+        dmap = self.channelInfo.distanceMap
         if self.channelInfo is None:
             raise Exception('biophys - no parameters or info passed!')
         if verify:
             print 'Inserting channels as if cell type is %s with modeltype %s ' % (celltype, self.channelInfo.modeltype)
         for s in hf.sections.keys():
             sectype = string.rsplit(s, '[')[0]
-            for mech in self.channelMap[sectype].keys():
+            for mech in self.cMan.channelMap[sectype].keys():
                 if mech not in self.gmapper.keys():
                     print 'mech %s not found? ' % mech
                     continue
                 if verify:
-                    print 'section: %s  insert mechanism: %s at ' % (s, mech), self.channelMap[sectype][mech]
-
-                x = nu.Mechanism(mech) # , {gmapper[mech]: self.channelMap[cellType][sectype][mech]})
+                    print 'section: %s  insert mechanism: %s at ' % (s, mech), self.cMan.channelMap[sectype][mech]
+                x = nu.Mechanism(mech)
                 x.insert_into(hf.sections[s])
                 setup = ('%s_%s' % (self.gmapper[mech], mech))
-                setattr(hf.sections[s](),setup, self.channelMap[sectype][mech])
-
-                #x.set_parameters({gmapper[mech]: self.channelMap[celltype][sectype][mech]})
-
-        # # old method : the new method is cleaner.
-        # for part in hf.sec_groups.keys():
-        #     if part not in self.channelMap[celltype].keys():
-        #         continue
-        #     for sectionID in hf.sec_groups[part]:
-        #         sec = eval('hf.h.%s' % (sectionID))
-        #         for mech in self.channelMap[celltype][part].keys():
-        #             if mech not in gmapper.keys():
-        #                 continue
-        #             try:
-        #                 sec.insert(mech)
-        #                 print 'inserted %s into sec= ' % (mech), part, sectionID
-        #             except:
-        #                 print 'missing mech: ', mech
-        #             setup = ('%s_%s' % (gmapper[mech], mech))
-        #             setattr(sec(),setup, self.channelMap[celltype][part][mech])
+                gbar = self.gbarAdjust(sectype, mech, s)  # map density by location/distance
+                setattr(hf.sections[s](), setup, gbar)
         if verify:
             self.channelValidate(hf)
 
-    def channelValidate(self, hf):     # verify insertions - go through all the groups, and find inserted conductances and thier values
-        for part in hf.sec_groups.keys():
-            if part not in self.channelMap[self.channelInfo.celltype].keys():
-                continue
-            for sectionID in hf.sec_groups[part]:
-                sec = eval('hf.h.%s' % (sectionID))
-                for mech in self.channelMap[self.channelInfo.celltype][part].keys():
-                    if mech not in self.gmapper.keys():
-                        continue
-                    setup = ('%s_%s' % (self.gmapper[mech], mech))
-                    g = getattr(sec(),setup, self.channelMap[self.channelInfo.celltype][part][mech])
-                    print '%s %s %s = %g' % (part, sectionID, mech, g)
+
+    def gbarAdjust(self, sectype, mech, sec):
+        gbar = self.cMan.channelMap[sectype][mech]
+        if sectype not in self.cMan.distMap.keys():  # no map for this section type
+            return gbar
+        elif mech not in self.cMan.distMap[sectype].keys():
+            return gbar
+        # mecanism exists in the distMap, so we will map gbar to distance from soma
+        method = self.cMan.distMap[sectype][mech]['gradient'] # grab the type
+        gminf = self.cMan.distMap[sectype][mech]['gminf']
+        rate = self.cMan.distMap[sectype][mech]['lambda']
+        if method == 'flat':
+            return gbar
+        if sec in self.channelInfo.distanceMap.keys():
+            dist = self.channelInfo.distanceMap[sec]
+        else:  # the sec should be in the map, but there could be a coding error that would break that relationship
+            raise NameError('gbarAdjust:channel_decorate.py: section %s not in distance map' % sec)
+        if method == 'linear':  # rate is "half" point drop
+            gbar = gbar - dist*(gbar-gminf)/(2*rate)
+            if gbar < 0.:
+                gbar = 0. # clip
+        elif method in ['exp', 'expdown']:
+            gbar = (gbar - gminf) * np.exp(-dist/rate) + gminf
+        if gbar < 0.:
+            gbar = 0.
+        return gbar
+
+
+    def channelValidate(self, hf, verify=False):
+        """
+         verify mechanisms insertions -
+         go through all the groups, and find inserted conductances and their values
+         print the results to the terminal
+        """
+        for s in hf.sections.keys():
+            sectype = string.rsplit(s, '[')[0]
+            print 'Section: %s' % s
+            for mech in self.cMan.channelMap[sectype].keys():
+                if mech not in self.gmapper.keys():
+                    continue
+                if verify:
+                    print 'Section: %s  find mechanism: %s at ' % (s, mech), self.cMan.channelMap[sectype][mech]
+                x = nu.Mechanism(mech) # , {gmapper[mech]: self.channelMap[cellType][sectype][mech]})
+                setup = ('%s_%s' % (self.gmapper[mech], mech))
+                bar = getattr(hf.sections[s](), setup)
+                print '\tmech: %8s  gbar: %f' % (mech, bar)

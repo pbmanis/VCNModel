@@ -1,9 +1,13 @@
 __author__ = 'pbmanis'
 
+import os
+import pickle
 import numpy as np
 import pylibrary.Utility as pu
 import lmfit
 import matplotlib.pylab as PL
+from pylibrary.Params import Params
+
 
 class AnalyzeRun():
     def __init__(self, results):
@@ -11,19 +15,19 @@ class AnalyzeRun():
         self.nRun = len(results.keys())
         self.parseResults(results)
         self.parseStim(results)
-
+        self.IVResult={}
 
     def IV(self):
         """
         Compute the IV of the loaded dataset
         """
-        self.IVresult = self.analyzeIV(self.t, self.V, self.I, self.tw, self.thr)
+        self.analyzeIV(self.t, self.V, self.I, self.tw, self.thr)
 
         # now get input resistance
 
-        print 'Current: ', self.IVresult['I']
-        print '# spikes: ', self.IVresult['Nspike']
-        return self.IVresult
+        print 'Current: ', self.IVResult['I']
+        print '# spikes: ', self.IVResult['Nspike']
+
 
 
     def parseStim(self, res):
@@ -69,6 +73,7 @@ class AnalyzeRun():
             ispk
             eventually should also include time constant measures,and adaptation ratio
         """
+        print 'starting analyzieIV'
         ntraces = np.shape(V)[0]
         vss     = []
         vmin    = []
@@ -88,6 +93,7 @@ class AnalyzeRun():
         xihfit = {}
         yihfit = {}
         for j in range(0, ntraces):
+            print 'trace: %d' % (j)
             ts = tw[0]
             te = tw[1]
             td = tw[2]
@@ -117,7 +123,6 @@ class AnalyzeRun():
                 vmin.append(minv[0]) # and min voltage
                 tmin.append(minv[1]) # and min time
                 tauih[j], xihfit[j], yihfit[j] = self.single_taufit(t, V[j,:], minv[1], te) # fit the end of the trace
-                print tauih[j]
 
         vss = np.array(vss)  # steady state during current pulse
         vrmss = np.array(vrmss)  # resting potential for hyperpolarizaing pulses only
@@ -129,13 +134,29 @@ class AnalyzeRun():
         Rinss = np.max(RinIVss)  # extract max
         Rinpk = np.max(RinIVpk)  # extract max
 
-        return({'I': ic, 'Vmin': vmin, 'Vss': vss, 'Vrmss': vrmss,
+        self.IVResult = {'I': ic, 'Vmin': vmin, 'Vss': vss, 'Vrmss': vrmss,
                 'Vm': vm, 'Tmin': np.array(tmin),
                 'Ispike': np.array(ispikes), 'Nspike': np.array(nspikes), 'Tspike': np.array(spk),
                 'FSL': np.array(fsl), 'FISI': np.array(fisi), 'taus': taus, 'tauih': tauih,
                 'Rinss': Rinss, 'Rinpk': Rinpk,
                 'taufit': [xtfit, ytfit], 'ihfit': [xihfit, yihfit],
-                })
+                }
+
+
+    def saveIVResult(self, name = None):
+        """
+        Save the result of multiple runs to disk. Results is in a dictionary,
+        each element of which is a Param structure, which we then turn into
+         a dictionary...
+         The file name is a tuple, where the first element is a path and the
+         second is a string name that will be decorated with the data type (by appending)
+        """
+        if name is None:
+            return
+        fn = os.path.join(name[0], name[1] + '_IVresult.p')
+        pfout = open(fn, 'wb')
+        pickle.dump({'IVResult': self.IVResult}, pfout)
+        pfout.close()
 
 
     def expfit(self, p, x, y=None, C=None, sumsq=False, weights=None):

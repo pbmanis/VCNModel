@@ -36,12 +36,19 @@ class channelManager():
                             'ihvcn': self.gBar.ihbar / 2., 'leak': self.gBar.leakbar, },
                 'soma': {'nacn': self.gBar.nabar, 'klt': self.gBar.kltbar, 'kht': self.gBar.khtbar,
                          'ihvcn': self.gBar.ihbar, 'leak': self.gBar.leakbar, },
-                'dend': {'nacn': 0.0, 'klt': self.gBar.kltbar * 0.5, 'kht': self.gBar.khtbar * 0.5,
+                'dend': {'nacn': self.gBar.nabar, 'klt': self.gBar.kltbar * 0.5, 'kht': self.gBar.khtbar * 0.5,
                          'ihvcn': self.gBar.ihbar / 3., 'leak': self.gBar.leakbar * 0.5, },
                 'apic': {'nacn': self.gBar.nabar, 'klt': self.gBar.kltbar * 0.2, 'kht': self.gBar.khtbar * 0.2,
                          'ihvcn': self.gBar.ihbar / 4., 'leak': self.gBar.leakbar * 0.2, },
             }
-            self.irange = np.linspace(-0.3, 0.3, 5)
+            self.irange = np.linspace(-2., 2., 7)
+            self.distMap = {'dend': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'nacn': {'gradient': 'exp', 'gminf': 0., 'lambda': 100.}}, # linear with distance, gminf (factor) is multiplied by gbar
+                            'apic': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'nacn': {'gradient': 'exp', 'gminf': 0., 'lambda': 100.}}, # gradients are: flat, linear, exponential
+                            }
 
 
         elif celltype in ['Stellate_RM03']:
@@ -68,6 +75,11 @@ class channelManager():
                          'leak': self.gBar.leakbar * 0.2, },
             }
             self.irange = np.linspace(-0.1, 0.1, 5)
+            self.distMap = {'dend': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.}}, # linear with distance, gminf (factor) is multiplied by gbar
+                            'apic': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.}}, # gradients are: flat, linear, exponential
+                            }
 
 
         elif celltype in ['Stellate_XM13']:
@@ -94,6 +106,14 @@ class channelManager():
                          'leak': self.gBar.leakbar * 0.2, },
             }
             self.irange = np.linspace(-0.1, 0.1, 3)
+            self.distMap = {'dend': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'nav11': {'gradient': 'exp', 'gminf': 0., 'lambda': 100.}}, # linear with distance, gminf (factor) is multiplied by gbar
+                            'apic': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'nav11': {'gradient': 'exp', 'gminf': 0., 'lambda': 100.}}, # gradients are: flat, linear, exponential
+                }
+
 
 
         elif celltype == 'Bushy_XM13':
@@ -115,12 +135,19 @@ class channelManager():
                             'ihvcn': self.gBar.ihbar / 2., 'leak': self.gBar.leakbar, },
                 'soma': {'nav11': self.gBar.nabar, 'klt': self.gBar.kltbar, 'kht': self.gBar.khtbar,
                          'ihvcn': self.gBar.ihbar, 'leak': self.gBar.leakbar, },
-                'dend': {'nav11': 0.0, 'klt': self.gBar.kltbar * 0.5, 'kht': self.gBar.khtbar * 0.5,
+                'dend': {'nav11': self.gBar.ihbar, 'klt': self.gBar.kltbar * 0.5, 'kht': self.gBar.khtbar * 0.5,
                          'ihvcn': self.gBar.ihbar / 3., 'leak': self.gBar.leakbar * 0.5, },
                 'apic': {'nav11': self.gBar.nabar, 'klt': self.gBar.kltbar * 0.2, 'kht': self.gBar.khtbar * 0.2,
                          'ihvcn': self.gBar.ihbar / 4., 'leak': self.gBar.leakbar * 0.2, },
             }
-            self.irange = np.linspace(-0.3, 0.3, 5)
+            self.irange = np.linspace(-1, 1, 5)
+            self.distMap = {'dend': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'nav11': {'gradient': 'linear', 'gminf': 0., 'lambda': 50.}}, # linear with distance, gminf (factor) is multiplied by gbar
+                            'apic': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'nav11': {'gradient': 'exp', 'gminf': 0., 'lambda': 200.}}, # gradients are: flat, linear, exponential
+                            }
 
         elif celltype == 'Calyx':
             totcap = 12.0E-12
@@ -146,6 +173,7 @@ class channelManager():
                          'ihvcn': self.gBar.ihbar / 4., 'leak': self.gBar.leakbar * 0.2, },
             }
             self.irange = np.linspace(-0.5, 0.5, 5)
+            self.distMap = {}  # uniform, as defined above.
 
 
         elif celltype == 'MNTB':
@@ -157,8 +185,6 @@ class channelManager():
                                ihbar=20.00E-9/refarea,
                                leakbar=2.00E-9/refarea,
             )
-
-
             self.channelMap = {
                   'axon': {'nacn': 0.0, 'klt': self.gBar.kltbar / 4., 'kht': self.gBar.khtbar, 'ihvcn': 0.,
                            'leak': self.gBar.leakbar / 4.},
@@ -174,6 +200,11 @@ class channelManager():
                            'ihvcn': self.gBar.ihbar / 4., 'leak': self.gBar.leakbar * 0.2, },
               },
             self.irange = np.linspace(-0.3, 0.3, 5)
+            self.distMap = {'dend': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.}}, # linear with distance, gminf (factor) is multiplied by gbar
+                            'apic': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
+                                     'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.}}, # gradients are: flat, linear, exponential
+                            }
 
         elif celltype == 'L23pyr':
             self.gBar = Params(nabar=0.30, khtbar=0.002, kltbar=0.0, ihbar=0.0, leakbar=0.0002)
@@ -190,6 +221,7 @@ class channelManager():
                          'leak': self.gBar.leakbar * 0.2, },
                 }
             self.irange = np.linspace(-0.1, 0.1, 5)
+            self.distMap = {}  # uniform
 
         else:
             raise Exception('Unrecognized cell/parameter set type: %s' % celltype)

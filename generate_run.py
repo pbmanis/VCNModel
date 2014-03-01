@@ -27,14 +27,15 @@ verbose = False # use this for testing.
 
 
 class GenerateRun():
-    def __init__(self, hf, celltype=None, electrodeSection = 'soma[0]', cd=None):
+    def __init__(self, hf, celltype=None, electrodeSection = 'soma[0]', cd=None, plotting=True):
         self.run_initialized = False
-        self.plotting = True
+        self.plotting = plotting
         self.hf = hf # get the reader structure and the hoc pointer object locally
         # use the Params class to hold program run information and states
         # runInfo holds information that is specific the the run - stimuli, conditions, etc
         # DO NOT add .p to filename...
-        self.runInfo = Params(fileName='Normal', runName='Run', manipulation="Canonical", folder="Simulations",
+        self.runInfo = Params(folder="Simulations", fileName='Normal', runName='Run',
+                              manipulation="Canonical",
                               preMode="cc",
                               postMode='cc',
                               TargetCellType=celltype, # valid are "Bushy", "Stellate", "MNTB"
@@ -92,23 +93,23 @@ class GenerateRun():
 
 
     def doRun(self, filename=None):
-        self.filename = filename
+        self.runInfo.filename = filename # change filename in structure
         self.hf.update() # make sure channels are all up to date
-        results={}
+        self.results={}
         for k, i in enumerate(self.runInfo.stimInj):
             self._prepareRun(inj=i) # build the recording arrays
             self._initRun()  # this also sets nseg in the axon - so do it before setting up shapes
-            results[i] = self._executeRun() # now you can do the run
+            self.results[i] = self._executeRun() # now you can do the run
             if self.plotting:
                 if k == 0:
-                    self.plotRun(results[i])
+                    self.plotRun(self.results[i])
                 else:
-                    self.plotRun(results[i], init=False)
-        arun = ar.AnalyzeRun(results) # create an instance of the class with the data
-        IV = arun.IV()  # compute the IV on the data
-#        print IVsummary
-        self.plotFits(1, IV['taufit'], c='r')
-        self.plotFits(1, IV['ihfit'], c='b')
+                    self.plotRun(self.results[i], init=False)
+        self.arun = ar.AnalyzeRun(self.results) # create an instance of the class with the data
+        self.arun.IV()  # compute the IV on the data
+        self.IVResult = self.arun.IVResult
+        self.plotFits(1, self.IVResult['taufit'], c='r')
+        self.plotFits(1, self.IVResult['ihfit'], c='b')
         if self.plotting:
             self.cplts.show()
 
@@ -143,7 +144,7 @@ class GenerateRun():
 #        print self.runInfo.electrodeSection
         self.electrodeSite = self.hf.sections[self.runInfo.electrodeSection]
         if self.runInfo.postMode in ['vc', 'vclamp']:
-            print 'vclamp'
+            #print 'vclamp'
             # Note to self (so to speak): the hoc object returned by this call must have a life after
             # the routine exits. Thus, it must be "self." Same for the IC stimulus...
             self.vcPost = self.hf.h.SEClamp(0.5, sec=self.electrodeSite) #self.hf.sections[electrodeSite])
@@ -171,7 +172,7 @@ class GenerateRun():
             self.monitor['postsynapticI'].record(self.vcPost._ref_i, sec=self.electrodeSite)
             self.mons = ['postsynapticI', 'v_stim0']
         elif self.runInfo.postMode in ['cc', 'iclamp']:
-            print 'iclamp'
+            #print 'iclamp'
             stim = {}
             stim['NP'] = self.runInfo.nStim
             stim['Sfreq'] = self.runInfo.stimFreq  # stimulus frequency
@@ -248,7 +249,7 @@ class GenerateRun():
 #            print 'fadvance'
             n += 1
             self.hf.h.fadvance()
-        print 'init steps: ', n
+#        print 'init steps: ', n
 #        if cvode.active():
 #            cvode.active(1)
         self.hf.h.dt = dtsav
@@ -270,8 +271,8 @@ class GenerateRun():
         Inputs: flag to put up a test plot....
         """
         assert self.run_initialized == True
-        print 'executeRun: Running for: ', self.hf.h.tstop
-        print 'V = : ', self.electrodeSite.v
+#        print 'executeRun: Running for: ', self.hf.h.tstop
+#        print 'V = : ', self.electrodeSite.v
         self.hf.h.run()
         if testPlot:
             pg.mkQApp()
@@ -280,7 +281,7 @@ class GenerateRun():
                 pl.setTitle('%s' % self.filename)
             else:
                 pl.setTitle('executeRun, no filename')
-        print 'run done'
+#        print 'run done'
         np_monitor = {}
         for k in self.monitor.keys():
             np_monitor[k] = np.array(self.monitor[k])
@@ -298,7 +299,7 @@ class GenerateRun():
 
     def saveRun(self, results):
         """
-        Save the results to disk. Results must be a Param structure, which we turn into
+        Save the result of a single run to disk. Results must be a Param structure, which we turn into
          a dictionary...
         """
         dtime = time.strftime("%y.%m.%d-%H.%M.%S")
@@ -310,6 +311,25 @@ class GenerateRun():
                      'modelPars': [],
                      'Results': results.todict()}, pfout)
         pfout.close()
+
+    def saveRuns(self, results):
+        """
+        Save the result of multiple runs to disk. Results is in a dictionary,
+        each element of which is a Param structure, which we then turn into
+         a dictionary...
+        """
+        dtime = time.strftime("%y.%m.%d-%H.%M.%S")
+        if os.path.exists(self.runInfo.folder) is False:
+            os.mkdir(self.runInfo.folder)
+        basename = os.path.join(self.runInfo.folder, self.runInfo.fileName + dtime)
+        fn = os.path.join(basename + '_mrun.p')
+        pfout = open(fn, 'wb')
+        pickle.dump({'runInfo': self.runInfo.todict(),
+                     'modelPars': [],
+                     'Results': [{k:x.todict()} for k,x in results.iteritems()]}, pfout)
+        pfout.close()
+        return (self.runInfo.folder, self.runInfo.fileName + dtime) # return tuple to assemble name elsewhere
+
 
         # if recordSection:
         #     fns = os.path.join(self.runInfo.folder, self.runInfo.fileName + '_swellings_' + dtime + '.p')
