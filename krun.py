@@ -25,9 +25,12 @@ else:
     machine = 'Killdevil'
 
 # system selection:
-sysChoice = {'Killdevil': {'uname': 'pmanis', 'dir': 'PyNeuronLibrary/Cortex-STDP', 'addr': 'killdevil.unc.edu'}, #'152.19.187.84'},
-             'Lytle': {'uname': 'pbmanis', 'dir': '/Users/pbmanis/Desktop/Python/PyNeuronLibrary/Cortex-STDP', 'addr': '152.19.86.111'},
-             'Tule': {'uname': 'pbmanis', 'dir': '/Users/pbmanis/Desktop/Python/PyNeuronLibrary/Cortex-STDP', 'addr': '152.19.86.116'},
+model = 'CalyxModel'
+sourceFiles = ['analyze_run.py', 'channel_decorate.py', 'channel_manager.py', 'generate_run.py',
+               'listDirs.py', 'model_run.py', 'remap_hoc.py', ]
+sysChoice = {'Killdevil': {'uname': 'pmanis', 'dir': 'PyNeuronLibrary/%s' % model, 'addr': 'killdevil.unc.edu'}, #'152.19.187.84'},
+             'Lytle': {'uname': 'pbmanis', 'dir': '/Users/pbmanis/Desktop/Python/PyNeuronLibrary/%s', model, 'addr': '152.19.86.111'},
+             'Tule': {'uname': 'pbmanis', 'dir': '/Users/pbmanis/Desktop/Python/PyNeuronLibrary/%s', model, 'addr': '152.19.86.116'},
             }
 
 if machine not in sysChoice.keys():
@@ -58,7 +61,8 @@ print 'open ftp:'
 ftp = ssh.open_sftp()
 ftp.chdir(sysChoice[machine]['dir'])  # however this works for the sftp
 print ftp.getcwd()
-ftp.put('stdp_test_parallel.py', 'stdp_test_parallel.py')  # update the source file
+for f in sourceFiles:
+    ftp.put(f, f)  # update the source files
 ftp.close()
 
 # print 'execute ls'
@@ -71,12 +75,12 @@ if run is True:
     if machine == 'Killdevil':
         if interactive:
             print 'run the bsub... interactive'
-            stdin, stdout, stderr = ssh.exec_command(cdcmd + ' ; bsub -Ip python stdp_test_parallel.py')
+            stdin, stdout, stderr = ssh.exec_command(cdcmd + ' ; bsub -Ip python parallel_model_run.py')
             for l in stdout.readlines():
                 print l,
         else:
             print 'run bsub, non-interactive'
-            stdin, stdout, stderr = ssh.exec_command(cdcmd + '  ; bsub python stdp_test_parallel.py')
+            stdin, stdout, stderr = ssh.exec_command(cdcmd + '  ; bsub python parallel_model_run.py')
     else:
         print 'run standard job'
         stdin, stdout, stderr = ssh.exec_command(cdcmd + ' ;  python stdp_test_parallel.py')

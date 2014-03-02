@@ -8,6 +8,7 @@ import lmfit
 import matplotlib.pylab as PL
 from pylibrary.Params import Params
 
+verbose = False
 
 class AnalyzeRun():
     def __init__(self, results):
@@ -23,10 +24,8 @@ class AnalyzeRun():
         """
         self.analyzeIV(self.t, self.V, self.I, self.tw, self.thr)
 
-        # now get input resistance
-
-        print 'Current: ', self.IVResult['I']
-        print '# spikes: ', self.IVResult['Nspike']
+       # print 'Current: ', self.IVResult['I']
+       # print '# spikes: ', self.IVResult['Nspike']
 
 
 
@@ -73,7 +72,8 @@ class AnalyzeRun():
             ispk
             eventually should also include time constant measures,and adaptation ratio
         """
-        print 'starting analyzieIV'
+        if verbose:
+            print 'starting analyzeIV'
         ntraces = np.shape(V)[0]
         vss     = []
         vmin    = []
@@ -92,8 +92,10 @@ class AnalyzeRun():
         ytfit = {}
         xihfit = {}
         yihfit = {}
+        dt = t[1]-t[0]
         for j in range(0, ntraces):
-            print 'trace: %d' % (j)
+            if verbose:
+                print '    analyzing trace: %d' % (j)
             ts = tw[0]
             te = tw[1]
             td = tw[2]
@@ -115,15 +117,30 @@ class AnalyzeRun():
             vm.append(rvm[0])  # rmp
 
             # fit the hyperpolarizing responses for Rin and "sag"
-            if ssi[0] < 0.0: # just for hyperpolarizing pulses...
+            if ssi[0] < 0.0 and (minv[1]-ts) > 5.*dt: # just for hyperpolarizing pulses...
+                if verbose:
+                    print '    fitting trace %d' % j
+
+                    print t.shape
+                    print V[j,:].shape
+                    print ts, minv
+
                 taus[j], xtfit[j], ytfit[j] = self.single_taufit(t, V[j,:], ts, minv[1])
                 vrmss.append(rvm[0])
                 ic.append(ssi[0])
                 vss.append(ssv[0]) # get steady state voltage
                 vmin.append(minv[0]) # and min voltage
                 tmin.append(minv[1]) # and min time
-                tauih[j], xihfit[j], yihfit[j] = self.single_taufit(t, V[j,:], minv[1], te) # fit the end of the trace
-
+                if verbose:
+                    print '     calling fit'
+                if (te-minv[1]) > 10.*dt:
+                    tauih[j], xihfit[j], yihfit[j] = self.single_taufit(t, V[j,:], minv[1], te) # fit the end of the trace
+                if verbose:
+                    print '     completed fit'
+            if verbose:
+                print '   >>> completed analyzing trace %d' % j
+        if verbose:
+            print 'done with traces'
         vss = np.array(vss)  # steady state during current pulse
         vrmss = np.array(vrmss)  # resting potential for hyperpolarizaing pulses only
         ic = np.array(ic)  # injected current
@@ -131,9 +148,16 @@ class AnalyzeRun():
         tmin = np.array(tmin)  # time of min with hyp (used for Ih fitting)
         RinIVss = (vss - vrmss)/ic  # measure steady-state input resistance
         RinIVpk = (vmin - vrmss)/ic  # measure "peak" input resistance
-        Rinss = np.max(RinIVss)  # extract max
-        Rinpk = np.max(RinIVpk)  # extract max
-
+        if len(RinIVss) > 0:
+            Rinss = np.max(RinIVss)  # extract max
+        else:
+            Rinss = np.nan
+        if len(RinIVpk) > 0:
+            Rinpk = np.max(RinIVpk)  # extract max
+        else:
+            Rinpk = np.nan
+        if verbose:
+            print 'building IVResult'
         self.IVResult = {'I': ic, 'Vmin': vmin, 'Vss': vss, 'Vrmss': vrmss,
                 'Vm': vm, 'Tmin': np.array(tmin),
                 'Ispike': np.array(ispikes), 'Nspike': np.array(nspikes), 'Tspike': np.array(spk),
@@ -141,6 +165,9 @@ class AnalyzeRun():
                 'Rinss': Rinss, 'Rinpk': Rinpk,
                 'taufit': [xtfit, ytfit], 'ihfit': [xihfit, yihfit],
                 }
+        if verbose:
+            print 'analyzeIV::IVResult:\n', self.IVResult
+
 
 
     def saveIVResult(self, name = None):
@@ -187,6 +214,8 @@ class AnalyzeRun():
 
         (cx, cy) = pu.clipdata(y, x, t0, t1, minFlag = False)
         cx -= t0   # fitting is reference to zero time
+        #print p
+        #print cx, cy
         mi = lmfit.minimize(self.expfit, p, args=(cx, cy))
         mi.leastsq()
         yfit = self.expfit(mi.params, cx)

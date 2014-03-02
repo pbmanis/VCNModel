@@ -19,7 +19,7 @@ import nrnlibrary.nrnutils as nu
 from channel_manager import channelManager
 
 class ChannelDecorate():
-    def __init__(self, hf, celltype=None, modeltype=None):
+    def __init__(self, hf, celltype=None, modeltype=None, parMap=None):
 
         self.channelInfo = Params(newCm=1.0,
                               newRa=100.0,  # // changed 10/20/2007 to center in range')
@@ -30,8 +30,9 @@ class ChannelDecorate():
                               pharmManip={'TTX': False, 'ZD': False, 'Cd': False, 'DTX': False, 'TEA': False,
                                           'XE': False},
                               celltype=celltype,
-                              modeltype = modeltype,
-                              distanceMap = hf.distanceMap
+                              modeltype=modeltype,
+                              distanceMap=hf.distanceMap,
+                              parMap=parMap,
         )
 
         self.cMan = channelManager(celltype+'_'+modeltype)
@@ -45,7 +46,7 @@ class ChannelDecorate():
         # dictionary may help when adding other conductances.
 
         self.gmapper = self.cMan.gmapper
-        self.biophys(hf)
+        self.biophys(hf )
         hf.update() # make sure we update the information about mechanisms in each section.
 
     def biophys(self, hf, verify=False):
@@ -67,6 +68,7 @@ class ChannelDecorate():
         """
        # createFlag = False
         celltype = self.channelInfo.celltype
+        parMap = self.channelInfo.parMap
         dmap = self.channelInfo.distanceMap
         if self.channelInfo is None:
             raise Exception('biophys - no parameters or info passed!')
@@ -84,6 +86,13 @@ class ChannelDecorate():
                 x.insert_into(hf.sections[s])
                 setup = ('%s_%s' % (self.gmapper[mech], mech))
                 gbar = self.gbarAdjust(sectype, mech, s)  # map density by location/distance
+                #print 'parmap: ', parMap, mech
+                if parMap is not None and mech in parMap.keys():
+                    if verify:
+                        print 'parMap[mech]', mech, parMap[mech], gbar,
+                    gbar = gbar * parMap[mech]
+                    if verify:
+                        print '  new gbar: ', gbar
                 setattr(hf.sections[s](), setup, gbar)
         if verify:
             self.channelValidate(hf)

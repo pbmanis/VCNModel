@@ -9,6 +9,8 @@ from pylibrary.Params import Params
 import pylibrary.PyNrnUtilities as pn
 import pprint as pp
 import numpy as np
+
+
 class channelManager():
     def __init__(self, celltype):
 
@@ -74,7 +76,7 @@ class channelManager():
                 'apic': {'nacn': 0.0, 'klt': 0., 'kht': self.gBar.khtbar * 0.2, 'ihvcn': self.gBar.ihbar / 4.,
                          'leak': self.gBar.leakbar * 0.2, },
             }
-            self.irange = np.linspace(-0.1, 0.1, 5)
+            self.irange = np.linspace(-0.1, 0.1, 7)
             self.distMap = {'dend': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
                                      'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.}}, # linear with distance, gminf (factor) is multiplied by gbar
                             'apic': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
@@ -105,7 +107,7 @@ class channelManager():
                 'apic': {'nav11': 0.0, 'klt': 0., 'kht': self.gBar.khtbar * 0.2, 'ihvcn': self.gBar.ihbar / 4.,
                          'leak': self.gBar.leakbar * 0.2, },
             }
-            self.irange = np.linspace(-0.1, 0.1, 3)
+            self.irange = np.linspace(-0.1, 0.1, 7)
             self.distMap = {'dend': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
                                      'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
                                      'nav11': {'gradient': 'exp', 'gminf': 0., 'lambda': 100.}}, # linear with distance, gminf (factor) is multiplied by gbar
@@ -172,7 +174,7 @@ class channelManager():
                 'apic': {'nacn': 0.0, 'klt': self.gBar.kltbar * 0.2, 'kht': self.gBar.khtbar * 0.2,
                          'ihvcn': self.gBar.ihbar / 4., 'leak': self.gBar.leakbar * 0.2, },
             }
-            self.irange = np.linspace(-0.5, 0.5, 5)
+            self.irange = np.linspace(-0.5, 0.5, 7)
             self.distMap = {}  # uniform, as defined above.
 
 
@@ -199,7 +201,7 @@ class channelManager():
                   'apic': {'nacn': self.gBar.nabar, 'klt': self.gBar.kltbar * 0.2, 'kht': self.gBar.khtbar * 0.2,
                            'ihvcn': self.gBar.ihbar / 4., 'leak': self.gBar.leakbar * 0.2, },
               },
-            self.irange = np.linspace(-0.3, 0.3, 5)
+            self.irange = np.linspace(-0.3, 0.3, 7)
             self.distMap = {'dend': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
                                      'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.}}, # linear with distance, gminf (factor) is multiplied by gbar
                             'apic': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},

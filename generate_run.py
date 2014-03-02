@@ -93,10 +93,14 @@ class GenerateRun():
 
 
     def doRun(self, filename=None):
+        if verbose:
+            print 'dorun'
         self.runInfo.filename = filename # change filename in structure
         self.hf.update() # make sure channels are all up to date
         self.results={}
         for k, i in enumerate(self.runInfo.stimInj):
+            if verbose:
+                print 'doRun: inj = ', i
             self._prepareRun(inj=i) # build the recording arrays
             self._initRun()  # this also sets nseg in the axon - so do it before setting up shapes
             self.results[i] = self._executeRun() # now you can do the run
@@ -106,11 +110,18 @@ class GenerateRun():
                 else:
                     self.plotRun(self.results[i], init=False)
         self.arun = ar.AnalyzeRun(self.results) # create an instance of the class with the data
+        if verbose:
+            print 'doRun, calling IV'
         self.arun.IV()  # compute the IV on the data
-        self.IVResult = self.arun.IVResult
-        self.plotFits(1, self.IVResult['taufit'], c='r')
-        self.plotFits(1, self.IVResult['ihfit'], c='b')
+        self.IVResult =self.arun.IVResult
+        if verbose:
+            print 'doRun, back from IV'
+      #  self.IVResult = self.arun.IVResult
+        if verbose:
+            print 'doRun: ivresult is: ', self.IVResult
         if self.plotting:
+            self.plotFits(1, self.IVResult['taufit'], c='r')
+            self.plotFits(1, self.IVResult['ihfit'], c='b')
             self.cplts.show()
 
     def _prepareRun(self, inj=None):
@@ -123,6 +134,8 @@ class GenerateRun():
         Side Effects: A number of class variables are created and modified, mostly related to the
         generation of stimuli and monitoring of voltages and currents
         """
+        if verbose:
+            print '_prepareRun'
         for var in self.hf.sections: # get morphological components
             self.allsecVec[var] = self.hf.h.Vector()
             self.allsecVec[var].record(self.hf.sections[var](0.5)._ref_v, sec=self.hf.sections[var])
@@ -221,6 +234,8 @@ class GenerateRun():
         Action: Initializes the NEURON state to begin a run.
         Does not instantiate recording or stimulating.
         """
+        if verbose:
+            print '_initRun'
         if self.runInfo is None:
             raise Exception('GenerateRun: initRun has no runInfo')
 
@@ -270,6 +285,8 @@ class GenerateRun():
         assembles the data, saves it to disk and plots the results.
         Inputs: flag to put up a test plot....
         """
+        if verbose:
+            print '_executeRun'
         assert self.run_initialized == True
 #        print 'executeRun: Running for: ', self.hf.h.tstop
 #        print 'V = : ', self.electrodeSite.v
@@ -294,6 +311,8 @@ class GenerateRun():
                          monitor=np_monitor, stim=self.stim, runInfo=self.runInfo,
                          distanceMap = self.hf.distanceMap,
         )
+        if verbose:
+            print '    _executeRun completed'
         return results
 
 

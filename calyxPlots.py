@@ -36,7 +36,6 @@ class CalyxPlots():
         QtGui.QApplication.instance().exec_()
 
 
-    
     def plotResults(self, res, runInfo, somasite=['postsynapticV', 'postsynapticI']):
         clist={'axon': 'r', 'heminode': 'g', 'stalk':'y', 'branch': 'g', 'neck': 'b',
                 'swelling': 'm', 'tip': 'k', 'parentaxon': '', r'synapse': 'c', 'soma': 'k'}
@@ -61,6 +60,12 @@ class CalyxPlots():
 
                 #p2.set_ylim(-5e-12, 1e-12)
         PH.cleanAxes([self.p1, self.p2, self.p3, self.p4])
+
+
+    def plotFit(self, panel, x, y, c='g'):
+        p = eval('self.p%d' % panel)
+        for j in y.keys():
+            p.plot(np.array(x[j]), np.array(y[j]), pen=pg.mkPen(c, width=1.5))
 
 
     def show(self):

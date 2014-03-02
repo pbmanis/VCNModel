@@ -19,26 +19,33 @@ from neuronvis.hoc_reader import HocReader
 from neuronvis.hoc_graphics import HocGraphic
 from channel_decorate import ChannelDecorate
 from generate_run import GenerateRun
-from pyqtgraph.Qt import QtGui
-import pyqtgraph as pg
+import time
+try:
+    import pyqtgraph as pg
+    from pyqtgraph.Qt import QtGui
+    import pylibrary.pyqtgraphPlotHelpers as pgh
+    HAVE_PG = True
+except:
+	HAVE_PG = False
+
 import numpy as np
 
-class ModelRun():
-    def __init__(self, args):
-        if isinstance(args, list):
-            celltype = args[0] # must be string, not list...
-        else:
-            celltype = args
-        if celltype not in ['Bushy', 'Stellate', 'L23pyr']:
-            print 'Celltype must be one of Bushy, Stellate or L23pyr'
-            exit()
-        modelType = 'RM03'
-        if len(args) > 1:
-            modelType = args[1]
-        if modelType not in ['RM03', 'XM13', 'MS']:
-            print 'Model type mist be one of RM03, XM13, or MS'
-            exit()
+verbose = False
 
+class ModelRun():
+    def __init__(self, args=None):
+        if verbose:
+            print args
+        if isinstance(args, list) and len(args) > 0:
+            self.set_celltype(args[0]) # must be string, not list...
+        else:
+            self.set_celltype('Bushy')
+        if isinstance(args, list) and len(args) > 1:
+            self.set_modeltype(args[1])
+        else:
+            self.set_modeltype('XM13')
+
+        self.plotFlag = False
         #infile = 'L23pyr.hoc'
         #infile = 'LC_nmscaled_cleaned.hoc'
         #infile = 'Calyx-68cvt2.hoc'
@@ -46,23 +53,76 @@ class ModelRun():
         infile = 'wholeThing_cleaned.hoc'
         #infile = 'somaOnly.hoc'
         self.infile = infile
+
+
+    def runModel(self, parMap=None):
+        if verbose:
+            print 'runModel entry'
         self.hf = HocReader('MorphologyFiles/' + self.infile)
-        cellType = celltype # 'Bushy_RM03' # possibly this should come from the morphology file itself...
-        electrodeSection = 'soma[0]'
+        self.electrodeSection = 'soma[0]'
         self.hg = HocGraphic(self.hf)
         self.get_hoc_file(self.infile)
-        self.distances(electrodeSection) # make distance map from electrode site
-        cd = ChannelDecorate(self.hf, celltype=cellType, modeltype = modelType)
+        self.distances(self.electrodeSection) # make distance map from electrode site
+        if verbose:
+            print 'Parmap in Runmodel: ', parMap
+        cd = ChannelDecorate(self.hf, celltype=self.cellType, modeltype=self.modelType, parMap=parMap)
 
        # self.render(['nav11', 'gbar'])
        # QtGui.QApplication.instance().exec_()
-        self.R = GenerateRun(self.hf, celltype=cellType, electrodeSection=electrodeSection, cd=cd)
+        if verbose:
+            print 'generateRun'
+        self.R = GenerateRun(self.hf, celltype=self.cellType,
+                             electrodeSection=self.electrodeSection, cd=cd,
+                             plotting = HAVE_PG and self.plotFlag)
+        if verbose:
+            print 'doRun'
         self.R.doRun(self.infile)
-        basename = self.R.saveRuns(self.R.results)
-        print self.R.IVResult
-        self.R.arun.saveIVResult(basename)
+        if verbose:
+            print '  doRun completed'
+            print self.R.IVResult
+        #basename = self.R.saveRuns(self.R.results)
+        #self.R.arun.saveIVResult(basename)
+        isteps = self.R.IVResult['I']
+        if verbose:
+            for k, i in enumerate(self.R.IVResult['tauih'].keys()):
+                print 'ih: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['tauih'][i]['tau'].value)
+                print '        dV : %f' % self.R.IVResult['tauih'][i]['a'].value
+            for k, i in enumerate(self.R.IVResult['taus'].keys()):
+                print 'i: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['taus'][i]['tau'].value)
+                print '       dV : %f' % (self.R.IVResult['taus'][i]['a'].value)
 
+            print 'Nspike, Ispike: ', self.R.IVResult['Nspike'], self.R.IVResult['Ispike']
+            print 'Rinss: ', self.R.IVResult['Rinss']
+            print 'Vm: ', np.mean(self.R.IVResult['Vm'])
+
+        taum_mean = np.mean([self.R.IVResult['taus'][i]['tau'].value for k, i in enumerate(self.R.IVResult['taus'].keys())])
+        tauih_mean = np.mean([self.R.IVResult['tauih'][i]['tau'].value for k, i in  enumerate(self.R.IVResult['tauih'].keys())])
+        #print 'taum_mean: ', taum_mean
+        #print 'tauih_mean: ', tauih_mean
+        # construct dictionary for return results:
+        self.IVSummary = {'par': parMap, 'Vm': np.mean(self.R.IVResult['Vm']),
+                          'Rin': self.R.IVResult['Rinss'],
+                          'taum': taum_mean, 'tauih': tauih_mean,
+                          'spikes': {'i': self.R.IVResult['Ispike'], 'n': self.R.IVResult['Nspike']},
+                          }
+
+        #print 'ivsummary: ', self.IVSummary
+        return self.IVSummary
         #cd.channelValidate(self.hf)
+
+
+    def set_celltype(self, celltype):
+        self.cellType = celltype
+        if self.cellType not in ['Bushy', 'Stellate', 'L23pyr']:
+            print 'Celltype must be one of Bushy, Stellate or L23pyr, got: %s', self.cellType
+            exit()
+
+
+    def set_modeltype(self, modeltype):
+        self.modelType = modeltype
+        if self.modelType not in ['RM03', 'XM13', 'MS']:
+            print 'Model type mist be one of RM03, XM13, or MS, got: ' % (self.modelType)
+            exit()
 
 
     def get_hoc_file(self, infile):
@@ -130,5 +190,6 @@ class ModelRun():
 
 
 if __name__ == "__main__":
-    ModelRun(sys.argv[1:])
+    model = ModelRun(sys.argv[1:])
+    model.runModel() # then run the model
     #QtGui.QApplication.instance().exec_()
