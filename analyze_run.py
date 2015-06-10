@@ -24,18 +24,18 @@ class AnalyzeRun():
         """
         self.analyzeIV(self.t, self.V, self.I, self.tw, self.thr)
 
-       # print 'Current: ', self.IVResult['I']
-       # print '# spikes: ', self.IVResult['Nspike']
-
-
 
     def parseStim(self, res):
         """
         parse the stimulus informaiton in the results dictionary.
         We only need to look at the first element to get the delay and duration
         """
-        self.delay = res[self.injs[0]].stim['delay']
-        self.duration = res[res.keys()[0]].stim['dur']
+        try:
+            site = res[self.injs[0]].stim
+        except:
+            site = res[self.injs[0]]['stim']
+        self.delay = site['delay']
+        self.duration = site['dur']
         self.tw = [self.delay, self.duration, 10.]
 
 
@@ -45,14 +45,19 @@ class AnalyzeRun():
         and a vector for t
         """
         self.somasite=['postsynapticV', 'postsynapticI']
-        vlen = len(res[self.injs[0]].monitor[self.somasite[1]])
+        #print res[self.injs[0]].keys()
+        try:
+            msite = res[self.injs[0]].monitor
+        except:
+            msite = res[self.injs[0]]['monitor']
+        vlen = len(msite[self.somasite[1]])
         self.V = np.zeros((self.nRun, vlen))
         self.I = np.zeros((self.nRun, vlen))
         for j,i in enumerate(res.keys()):  # each result key is a current level...
             if j == 0:
-                self.t = res[self.injs[j]].monitor['time'][0:vlen]
-            self.V[j,:] = res[self.injs[j]].monitor[self.somasite[0]]
-            self.I[j,:] = res[self.injs[j]].monitor[self.somasite[1]]
+                self.t = msite['time'][0:vlen]
+            self.V[j,:] = msite[self.somasite[0]]
+            self.I[j,:] = msite[self.somasite[1]]
         self.thr = -10.0  # mV
 
 
@@ -167,7 +172,6 @@ class AnalyzeRun():
                 }
         if verbose:
             print 'analyzeIV::IVResult:\n', self.IVResult
-
 
 
     def saveIVResult(self, name = None):

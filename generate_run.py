@@ -14,7 +14,7 @@ February 2014, Paul B. Manis UNC Chapel Hill
 
 import os
 import numpy as np
-import nrnlibrary.makestim as makestim
+import nrnlibrary.makestim
 from pylibrary.Params import Params
 import CalyxPlots as cp
 import analyze_run as ar
@@ -27,10 +27,21 @@ verbose = False # use this for testing.
 
 
 class GenerateRun():
-    def __init__(self, hf, celltype=None, electrodeSection = 'soma[0]', cd=None, plotting=True):
+    def __init__(self, hf, idnum=0, celltype=None,
+                 electrodeSection = 'soma',
+                 starttime=None,
+                 cd=None,
+                 plotting=False,
+                 saveAllSections=False):
+
         self.run_initialized = False
         self.plotting = plotting
+
         self.hf = hf # get the reader structure and the hoc pointer object locally
+        self.basename = 'basenamenotset'
+        self.idnum = idnum
+        self.startTime = starttime
+        self.saveAllSections = saveAllSections
         # use the Params class to hold program run information and states
         # runInfo holds information that is specific the the run - stimuli, conditions, etc
         # DO NOT add .p to filename...
@@ -59,8 +70,9 @@ class GenerateRun():
                               # 'ANFiles/AN10000Hz.txt', # if this is not None, then we will use these spike times...
                               inFileRep=1,  # which rep to use (or array of reps)
                               spikeTimeList={},  # Dictionary of spike times
-                              v_init = -63.9,  # from Rothman type II model - not appropriate in all cases
+                              v_init = -61.0,  # from Rothman type II model - not appropriate in all cases
         )
+
 
         if self.runInfo.inFile is None:
             self.runInfo.tstop = 1000.0 * (
@@ -92,11 +104,43 @@ class GenerateRun():
             print 'runinfo initialization done'
 
 
-    def doRun(self, filename=None):
+    def makeFileName(self, filename=None, subdir=None):
+        self.runInfo.filename = filename
+        if self.startTime is None:
+            self.dtime = time.strftime("%y.%m.%d-%H.%M.%S")
+        else:  # convert time object
+            self.dtime = dtime = time.strftime("%y.%m.%d-%H.%M.%S", time.localtime(self.startTime))
+        if os.path.exists(self.runInfo.folder) is False:
+            os.mkdir(self.runInfo.folder)
+        if subdir is not None:
+            folder = os.path.join(self.runInfo.folder, subdir)
+        else:
+            folder = self.runInfo.folder
+        if os.path.exists(folder) is False:
+            os.mkdir(folder)
+        self.basename = os.path.join(folder, filename + self.dtime)
+
+
+    def doRun(self, filename=None, parMap = None, save=False):
         if verbose:
-            print 'dorun'
-        self.runInfo.filename = filename # change filename in structure
-        self.hf.update() # make sure channels are all up to date
+            print 'generat_run::doRun'
+        (p, e) = os.path.splitext(filename)  # make sure filename is clean
+        self.runInfo.filename = p  # change filename in structure, just name, no extension
+        if parMap is None:
+            self.makeFileName(filename = self.runInfo.filename) # base name pluse underscore
+        else:
+            mstr = '_'
+            for k in parMap.keys():
+                if k == 'id':
+                    continue
+                mstr += k + '_'
+            #if 'id' in parMap.keys():
+            #    mstr += 'ID%04d_' % parMap['id']
+            self.makeFileName(self.runInfo.filename + mstr )
+
+        if verbose:
+            print 'genrate_run::doRun: basename is = ', self.basename
+        #self.hf.update() # make sure channels are all up to date
         self.results={}
         for k, i in enumerate(self.runInfo.stimInj):
             if verbose:
@@ -106,9 +150,11 @@ class GenerateRun():
             self.results[i] = self._executeRun() # now you can do the run
             if self.plotting:
                 if k == 0:
-                    self.plotRun(self.results[i])
+                    self.plotRun(self.results[i], init=True)
                 else:
                     self.plotRun(self.results[i], init=False)
+        if save == 'monitor':
+            self.saveRuns('monitor')
         self.arun = ar.AnalyzeRun(self.results) # create an instance of the class with the data
         if verbose:
             print 'doRun, calling IV'
@@ -137,8 +183,13 @@ class GenerateRun():
         if verbose:
             print '_prepareRun'
         for var in self.hf.sections: # get morphological components
-            self.allsecVec[var] = self.hf.h.Vector()
-            self.allsecVec[var].record(self.hf.sections[var](0.5)._ref_v, sec=self.hf.sections[var])
+            if not self.saveAllSections:  # just save soma sections
+                if var.rsplit('[')[0] == 'soma':
+                    self.allsecVec[var] = self.hf.h.Vector()
+                    self.allsecVec[var].record(self.hf.sections[var](0.5)._ref_v, sec=self.hf.sections[var])
+            else:
+                self.allsecVec[var] = self.hf.h.Vector()
+                self.allsecVec[var].record(self.hf.sections[var](0.5)._ref_v, sec=self.hf.sections[var])
 
         for var in ['time', 'postsynapticV', 'postsynapticI', 'i_stim0', 'v_stim0']: # get standard stuff
             self.monitor[var] = self.hf.h.Vector()
@@ -154,8 +205,12 @@ class GenerateRun():
         # soma.insert('hh')
         #
         #electrodeSite = soma
-#        print self.runInfo.electrodeSection
-        self.electrodeSite = self.hf.sections[self.runInfo.electrodeSection]
+        print self.hf.sec_groups.keys()
+        print 'electrode : ', self.hf.sec_groups[self.runInfo.electrodeSection]
+        self.electrodeSite = self.hf.get_section(list(self.hf.sec_groups[self.runInfo.electrodeSection])[0])
+        print self.electrodeSite
+        print dir(self.electrodeSite)
+        print self.electrodeSite.name()
         if self.runInfo.postMode in ['vc', 'vclamp']:
             #print 'vclamp'
             # Note to self (so to speak): the hoc object returned by this call must have a life after
@@ -176,7 +231,8 @@ class GenerateRun():
             stim['amp'] = self.runInfo.vstimInj
             stim['PT'] = 0.0
            # print self.hf.h.soma[0]
-            (secmd, maxt, tstims) = makestim(stim, pulsetype='square', dt=self.hf.h.dt)
+
+            (secmd, maxt, tstims) = nrnlibrary.makestim.makestim(stim, pulsetype='square', dt=self.hf.h.dt)
             self.stim = stim
             secmd = secmd + self.runInfo.vstimHolding # add holding
             self.monitor['v_stim0'] = self.hf.h.Vector(secmd)
@@ -196,7 +252,7 @@ class GenerateRun():
             else:
                 stim['amp'] = self.runInfo.stimInj[0]
             stim['PT'] = 0.0
-            (secmd, maxt, tstims) = makestim(stim, pulsetype='square', dt=self.hf.h.dt)
+            (secmd, maxt, tstims) = nrnlibrary.makestim.makestim(stim, pulsetype='square', dt=self.hf.h.dt)
             self.stim = stim
             self.icPost = self.hf.h.iStim(0.5, sec=self.electrodeSite)
             self.icPost.delay = 2
@@ -212,6 +268,9 @@ class GenerateRun():
             return
         self.hf.h.tstop = maxt
         self.monitor['time'].record(self.hf.h._ref_t)
+        #self.hf.h.topology()
+        #pg.show()
+        #self.hf.h(access %s' % self.hf.get_section(self.electrodeSite))
 
 
     def testRun(self, title='testing...'):
@@ -250,11 +309,13 @@ class GenerateRun():
         # 2. use ic_constant to inject current in each segment to set rmp
         # 3. allow vm to vary in segments, using existing conductances (may be unstable)
 
-        cvode = self.hf.h.CVode()
-        if cvode.active():
-            cvode.active(0)  # turn cvode off (note, in this model it will be off because one of the mechanisms is not compatible with cvode at this time
+        if self.hf.h.CVode().active():
+            self.hf.h.CVode().active(0)  # turn cvode off (note, in this model it will be off because one of the mechanisms is not compatible with cvode at this time
 
-        self.hf.h.finitialize()  #(self.runInfo.v_init)
+        print 'init V: ', self.runInfo.v_init
+        self.hf.h.finitialize(self.runInfo.v_init)
+        #self.run_initialized = True
+        #return
         # starting way back in time
         self.hf.h.t = -1e10
         dtsav = self.hf.h.dt
@@ -269,13 +330,15 @@ class GenerateRun():
 #            cvode.active(1)
         self.hf.h.dt = dtsav
         self.hf.h.t = 0
-        if cvode.active():
-            cvode.re_init()
+        if self.hf.h.CVode().active():
+            self.hf.h.CVode().re_init()
         #else:
         self.hf.h.fcurrent()
        # self.hf.h.finitialize()
         self.hf.h.frecord_init()
         self.run_initialized = True
+        #print dir(self.hf.h)
+        print 'final init V: ', self.hf.h('v')
 
 
     def _executeRun(self, testPlot=False):
@@ -290,7 +353,9 @@ class GenerateRun():
         assert self.run_initialized == True
 #        print 'executeRun: Running for: ', self.hf.h.tstop
 #        print 'V = : ', self.electrodeSite.v
+        print 'starting v: ', self.hf.h('v')
         self.hf.h.run()
+        print 'finishing v: ', self.hf.h('v')
         if testPlot:
             pg.mkQApp()
             pl = pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))
@@ -307,7 +372,7 @@ class GenerateRun():
         for k in self.allsecVec.keys():
             np_allsecVec[k] = np.array(self.allsecVec[k])
         self.runInfo.clist = self.clist
-        results = Params(Sections=self.hf.sections.keys(), vec=np_allsecVec,
+        results = Params(Sections=self.hf.sections.keys(),  vec=np_allsecVec,
                          monitor=np_monitor, stim=self.stim, runInfo=self.runInfo,
                          distanceMap = self.hf.distanceMap,
         )
@@ -321,33 +386,30 @@ class GenerateRun():
         Save the result of a single run to disk. Results must be a Param structure, which we turn into
          a dictionary...
         """
-        dtime = time.strftime("%y.%m.%d-%H.%M.%S")
-        if os.path.exists(self.runInfo.folder) is False:
-            os.mkdir(self.runInfo.folder)
-        fn = os.path.join(self.runInfo.folder, self.runInfo.fileName + dtime + '.p')
+        fn = self.basename +  '.p'
         pfout = open(fn, 'wb')
-        pickle.dump({'runInfo': self.runInfo.todict(),
+        pickle.dump({'basename': self.basename,
+                     'runInfo': self.runInfo.todict(),
                      'modelPars': [],
                      'Results': results.todict()}, pfout)
         pfout.close()
 
-    def saveRuns(self, results):
+
+    def saveRuns(self, save=None):
         """
         Save the result of multiple runs to disk. Results is in a dictionary,
         each element of which is a Param structure, which we then turn into
-         a dictionary...
+        a dictionary...
         """
-        dtime = time.strftime("%y.%m.%d-%H.%M.%S")
-        if os.path.exists(self.runInfo.folder) is False:
-            os.mkdir(self.runInfo.folder)
-        basename = os.path.join(self.runInfo.folder, self.runInfo.fileName + dtime)
-        fn = os.path.join(basename + '_mrun.p')
+        #print 'self.idnum: ', self.idnum
+        fn = self.basename + '_mrun' + '_ID%04d.p' % self.idnum
         pfout = open(fn, 'wb')
-        pickle.dump({'runInfo': self.runInfo.todict(),
+        pickle.dump({'basename': self.basename,
+                     'runInfo': self.runInfo.todict(),
                      'modelPars': [],
-                     'Results': [{k:x.todict()} for k,x in results.iteritems()]}, pfout)
+                     'Results': [{k:x.todict()} for k,x in self.results.iteritems()]}, pfout)
         pfout.close()
-        return (self.runInfo.folder, self.runInfo.fileName + dtime) # return tuple to assemble name elsewhere
+        return (self.runInfo.folder, self.basename) # return tuple to assemble name elsewhere
 
 
         # if recordSection:
@@ -355,7 +417,7 @@ class GenerateRun():
         #     srsave = sr.SimulationResult()
         #     srsave.save(fns, data=np.array(self.vswel),
         #             time=np.array(self.vec['time']),
-        #             hoc_file = 'MorphologyFiles/' + self.modelPars.topofile,
+        #             hoc_file = 'MorphologyFiles/' + self.modelPars.file,
         #             section_map=secarray,
         #     )
             # pfout = open(fns, 'wb')

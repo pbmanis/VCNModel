@@ -13,13 +13,23 @@ L23pyr (sort of... not a very good rendition)
 """
 
 import sys
-import neuronvis.sim_result as sr
+import os.path
+#import neuronvis.sim_result as sr
 from neuronvis.hoc_viewer import HocViewer
 from neuronvis.hoc_reader import HocReader
-from neuronvis.hoc_graphics import HocGraphic
+import neuronvis.hoc_graphics as hoc_graphics
 from channel_decorate import ChannelDecorate
 from generate_run import GenerateRun
+from nrnlibrary.protocols import protocol
+from nrnlibrary import cells
+from nrnlibrary import synapses
+from nrnlibrary.util import get_anspikes
+from nrnlibrary.util import sound
+import nrnlibrary.util as nu
 import time
+from neuron import h
+import neuron
+
 try:
     import pyqtgraph as pg
     from pyqtgraph.Qt import QtGui
@@ -28,9 +38,16 @@ try:
 except:
 	HAVE_PG = False
 
+if HAVE_PG:
+    import render
+
 import numpy as np
 
 verbose = False
+showCell = False
+
+ANPSTH_mode = True
+IV_mode = False
 
 class ModelRun():
     def __init__(self, args=None):
@@ -44,39 +61,84 @@ class ModelRun():
             self.set_modeltype(args[1])
         else:
             self.set_modeltype('XM13')
-
+        if isinstance(args, list) and len(args) > 2:
+            infile = args[2]
+        else:
+            raise ValueError (' need a valid hoc file to read.')
+        self.startTime = None
         self.plotFlag = False
         #infile = 'L23pyr.hoc'
         #infile = 'LC_nmscaled_cleaned.hoc'
         #infile = 'Calyx-68cvt2.hoc'
         #infile = 'Calyx-S53Acvt3.hoc'
-        infile = 'wholeThing_cleaned.hoc'
+        #infile = 'wholeThing_cleaned.hoc'
+        #infile = 'MNTB_Cell2_cleaned.hoc'
+        #infile = 'VCN_Dend.hoc'
         #infile = 'somaOnly.hoc'
         self.infile = infile
 
 
-    def runModel(self, parMap=None):
+    def runModel(self, parMap={}):
         if verbose:
             print 'runModel entry'
-        self.hf = HocReader('MorphologyFiles/' + self.infile)
-        self.electrodeSection = 'soma[0]'
-        self.hg = HocGraphic(self.hf)
-        self.get_hoc_file(self.infile)
-        self.distances(self.electrodeSection) # make distance map from electrode site
+        if 'id' in parMap.keys():
+            self.idnum = parMap['id']
+        else:
+            self.idnum = 9999
+
+        if parMap == {}:
+            self.plotFlag = True
+        filename = os.path.join('MorphologyFiles/', self.infile)
+        print 'reading input file: %s' % filename
+        self.hf = HocReader(filename)
+        self.hf.h.celsius = 38.
+        self.hf.h.Ra = 150.
+        print 'Ra is: ', self.hf.h.Ra
+        print 'Temp is: ', self.hf.h.celsius
+        for group in self.hf.sec_groups.keys():
+            g = self.hf.sec_groups[group]
+            for section in list(g):
+                self.hf.get_section(section).Ra = self.hf.h.Ra
+                # print 'section: ', section
+                # print 'Ra: ', self.hf.get_section(section).Ra
+
+        
+        self.electrodeSection = 'soma'
+        self.hg = hoc_graphics
+        self.get_hoc_file(filename)
+        sg = self.hf.sec_groups['soma']
+        self.distances(self.hf.get_section(list(sg)[0]).name()) # make distance map from soma
         if verbose:
             print 'Parmap in Runmodel: ', parMap
-        cd = ChannelDecorate(self.hf, celltype=self.cellType, modeltype=self.modelType, parMap=parMap)
+        self.cd = ChannelDecorate(self.hf, celltype=self.cellType, modeltype=self.modelType,
+                             parMap=parMap)
+#        self.cd.channelValidate(self.hf, verify=False)
 
-       # self.render(['nav11', 'gbar'])
-       # QtGui.QApplication.instance().exec_()
+        if ANPSTH_mode:
+            self.ANinputs(self.hf)
+
+#        self.render(['nav11', 'gbar'])
+#        QtGui.QApplication.instance().exec_()
+        
+        elif IV_mode:
+            self.IVRun(parMap)
+
+        if showCell:
+            self.render = HocViewer(self.hf)
+            cylinder=self.render.draw_cylinders()
+            cylinder.set_group_colors(self.section_colors, alpha=0.8, mechanism=['nav11', 'gbar'])
+        
+    def IVRun(self, parMap={}):
         if verbose:
             print 'generateRun'
-        self.R = GenerateRun(self.hf, celltype=self.cellType,
-                             electrodeSection=self.electrodeSection, cd=cd,
+        self.R = GenerateRun(self.hf, idnum=self.idnum, celltype=self.cellType,
+                             starttime=self.startTime,
+                             electrodeSection=self.electrodeSection, cd=self.cd,
                              plotting = HAVE_PG and self.plotFlag)
+
         if verbose:
             print 'doRun'
-        self.R.doRun(self.infile)
+        self.R.doRun(self.infile, parMap, save='monitor')
         if verbose:
             print '  doRun completed'
             print self.R.IVResult
@@ -94,21 +156,28 @@ class ModelRun():
             print 'Nspike, Ispike: ', self.R.IVResult['Nspike'], self.R.IVResult['Ispike']
             print 'Rinss: ', self.R.IVResult['Rinss']
             print 'Vm: ', np.mean(self.R.IVResult['Vm'])
-
-        taum_mean = np.mean([self.R.IVResult['taus'][i]['tau'].value for k, i in enumerate(self.R.IVResult['taus'].keys())])
-        tauih_mean = np.mean([self.R.IVResult['tauih'][i]['tau'].value for k, i in  enumerate(self.R.IVResult['tauih'].keys())])
+        print 'ivresult keys: ', self.R.IVResult['taus'].keys()
+        if len(self.R.IVResult['taus'].keys()) == 0:
+            taum_mean = 0.
+            tauih_mean = 0.
+        else:
+            taum_mean = np.mean([self.R.IVResult['taus'][i]['tau'].value for k, i in enumerate(self.R.IVResult['taus'].keys())])
+            tauih_mean = np.mean([self.R.IVResult['tauih'][i]['tau'].value for k, i in  enumerate(self.R.IVResult['tauih'].keys())])
         #print 'taum_mean: ', taum_mean
         #print 'tauih_mean: ', tauih_mean
         # construct dictionary for return results:
-        self.IVSummary = {'par': parMap, 'Vm': np.mean(self.R.IVResult['Vm']),
+        self.IVSummary = {'basefile': self.R.basename,
+                          'parmap': parMap, 'ID': self.idnum,
+                          'Vm': np.mean(self.R.IVResult['Vm']),
                           'Rin': self.R.IVResult['Rinss'],
                           'taum': taum_mean, 'tauih': tauih_mean,
                           'spikes': {'i': self.R.IVResult['Ispike'], 'n': self.R.IVResult['Nspike']},
                           }
 
         #print 'ivsummary: ', self.IVSummary
+        print 'model_run::runModel: write summary for file set = ', self.R.basename
         return self.IVSummary
-        #cd.channelValidate(self.hf)
+        #self.cd.channelValidate(self.hf)
 
 
     def set_celltype(self, celltype):
@@ -121,22 +190,124 @@ class ModelRun():
     def set_modeltype(self, modeltype):
         self.modelType = modeltype
         if self.modelType not in ['RM03', 'XM13', 'MS']:
-            print 'Model type mist be one of RM03, XM13, or MS, got: ' % (self.modelType)
+            print 'Model type must be one of RM03, XM13, or MS, got: %s ' % (self.modelType)
             exit()
 
+
+    def set_starttime(self, starttime):
+        self.startTime = starttime
+
+
+    def ANinputs(self, hf, verify=False, seed=0, synapseConfig=[(int(216.66*0.65), 0., 2), (int(122.16*0.65), 0., 2), 
+    (int(46.865*0.65), 0., 2), (int(84.045*0.65), 0., 2), (int(2.135*0.65), 0, 2), (int(3.675*0.65), 0, 2), (int(80.27*0.65), 0, 2)]):
+        """
+        Establish AN inputs to soma
+        synapseConfig: list of tuples
+            each tuple represents an AN fiber (SGC cell) with:
+            (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high])
+        """
+        self.run_duration = 0.5
+        self.pip_duration = 0.1
+        self.pip_start = [0.1]
+        self.Fs = 100e3
+        self.f0 = 1000.
+        nReps = 10
+        win = pgh.figure(title='AN Inputs')
+        layout = pgh.LayoutMaker(cols=1,rows=2, win=win, labelEdges=True, ticks='talbot')
+
+        # hf.h.tstop = 100.
+        # hf.h.finitialize()
+        # hf.h.run()
+        #synapseConfig = [synapseConfig[2]]
+        sg = hf.sec_groups['soma']
+        dend = hf.sec_groups['dendrite']
+        dendrite = hf.get_section(list(dend)[99])
+        postCell = cells.Generic.create(soma=hf.get_section(list(sg)[0]))
+        #postCell = cells.Bushy.create(nach='nav11')
+#        print 'postcell.cell: ', postCell.all_sections
+        
+        preCell = []
+        synapse = []
+        vsoma = []
+        time = []
+        vdend = []
+        for i, syn in enumerate(synapseConfig):
+            preCell.append(cells.DummySGC(cf=self.f0, sr=syn[2]))
+            synapse.append(preCell[-1].connect(postCell, pre_opts={'nzones':syn[0], 'delay':syn[1]}))
+        self.pre_cell = preCell
+        self.post_cell = postCell
+        self.synapse = synapse
+        # for s in synapse:
+        #     psds = s.psd.ampa_psd
+        #     for p in psds:
+        #         #print p.gmax
+        #         p.gmax = p.gmax
+        # for s in synapse:
+        #     psds = s.psd.ampa_psd
+        #     for p in psds:
+        #         #print p.gmax
+        #         pass
+        
+        seeds = np.random.randint(32678, size=(nReps, len(synapseConfig)))
+        print seeds
+        k = 0
+        for j, N in enumerate(range(nReps)):
+            print 'Rep: %d' % N
+            self.stim=[]
+            for i, syn in enumerate(synapseConfig):
+                self.stim.append(sound.TonePip(rate=self.Fs, duration=self.run_duration, f0=self.f0, dbspl=90,
+                                      ramp_duration=2.5e-3, pip_duration=self.pip_duration,
+                                      pip_start=self.pip_start))
+        
+                nseed = seeds[j, i]
+
+                preCell[i].set_sound_stim(self.stim[-1], seed=nseed)  # generate new waveform for every trace
+
+            self.Vsoma = self.hf.h.Vector()
+            self.time = self.hf.h.Vector()
+            self.Vdend = self.hf.h.Vector()
+            self.Vsoma.record(postCell.soma(0.5)._ref_v, sec=postCell.soma)
+            self.Vdend.record(dendrite(0.5)._ref_v, sec=dendrite)
+            self.time.record(self.hf.h._ref_t)
+            print '...running '
+            hf.h.tstop = self.run_duration*1000.
+            hf.h.finitialize()
+            hf.h.run()
+            print '...done'
+            vsoma.append(self.Vsoma)
+            time.append(self.time)
+            vdend.append(self.Vdend)
+            layout.plot(0, np.array(time[N]), np.array(vsoma[N]), pen=pg.mkPen(pg.intColor(N, nReps)))
+
+            layout.plot(1, np.array(time[N]), np.array(vdend[N]), pen=pg.mkPen(pg.intColor(N, nReps)))  # just for checking dendritic attenuatoin
+        pgh.show()
+        #self.vm = postCell.soma(0.5)._ref_v
+        #self['prevm'] = preCell.soma(0.5)._ref_v
+        # for i in range(30):
+        #     self['xmtr%d'%i] = synapse.terminal.relsite._ref_XMTR[i]
+        #     synapse.terminal.relsite.Dep_Flag = False
+
+    def distances(self, section):
+        self.hf.distanceMap = {}
+        self.hf.h('access %s' % section) # reference point
+        d = self.hf.h.distance()
+        for si in self.hf.sections.keys():
+            self.hf.h('access %s' % si)
+            self.hf.distanceMap[si] = self.hf.h.distance(0.5) # should be distance from first point
 
     def get_hoc_file(self, infile):
         if self.hf.file_loaded is False:
             exit()
         self.section_list = self.hf.get_section_prefixes()
+        print 'section groups: ', self.hf.sec_groups.keys()
         self.hf.sec_groups.keys()
         if len(self.hf.sec_groups) > 1: # multiple names, so assign colors to structure type
             self.section_colors = {}
             for i, s in enumerate(self.hf.sec_groups.keys()):
-                self.section_colors[s] = self.hg.get_color_map(i)
-        else: # single section name, assign colors to SectionList types:
-            self.section_colors={'axon': 'r', 'heminode': 'g', 'stalk':'y', 'branch': 'b', 'neck': 'brown',
-                'swelling': 'magenta', 'tip': 'powderblue', 'parentaxon': 'orange', 'synapse': 'k'}
+                self.section_colors[s] = self.hg.colorMap[i]
+#        else: # single section name, assign colors to SectionList types:
+#        self.section_colors={'axon': 'r', 'heminode': 'g', 'stalk':'y', 'branch': 'b', 'neck': 'brown',
+#            'swelling': 'magenta', 'tip': 'powderblue', 'parentaxon': 'orange', 'synapse': 'k'}
 
         (v, e) = self.hf.get_geometry()
         self.clist = []
@@ -153,43 +324,9 @@ class ModelRun():
                 self.clist.append([n1, None])
 
 
-    def distances(self, section):
-        self.hf.distanceMap = {}
-        self.hf.h('access %s' % section) # reference point
-        d = self.hf.h.distance()
-        for si in self.hf.sections.keys():
-            self.hf.h('access %s' % si)
-            self.hf.distanceMap[si] = self.hf.h.distance(0.5) # should be distance from first point
-
-
-    def render(self, mech):
-        pg.mkQApp()
-        render = HocViewer(self.hf)
-
-        type = 'line'
-        if type == 'line':
-            line = render.draw_graph()
-            line.set_group_colors(self.section_colors, alpha=0.35)
-        if type == 'surface':
-            surface = render.draw_surface(resolution = 1.0)
-            surface.set_group_colors(self.section_colors, alpha=0.35)
-        elif type == 'cylinder':
-            cylinder=render.draw_cylinders()
-            cylinder.set_group_colors(self.section_colors, alpha=0.35)
-        elif type == 'volume':
-            volume = render.draw_volume(resolution = 1.0, max_size=1e9)
-            #volume.set_group_colors(section_colors, alpha=0.35)
-
-#        render.hr.read_hoc_section_lists(self.section_colors.keys())
-        #surface = render.draw_surface()
-        # cylinder = render.draw_cylinders()
-        # cylinder.set_group_colors(self.section_colors, alpha=0.35, mechanism=mech)
-        # line = render.draw_graph()
-       # surface.set_group_colors(self.section_colors, alpha=0.35)
-       # surface.set_group_colors(self.section_colors, alpha=0.35, mechanism=mech)
-
 
 if __name__ == "__main__":
     model = ModelRun(sys.argv[1:])
     model.runModel() # then run the model
-    #QtGui.QApplication.instance().exec_()
+    if showCell:
+        QtGui.QApplication.instance().exec_()

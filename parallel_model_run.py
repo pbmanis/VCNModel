@@ -11,6 +11,8 @@ import numpy as np
 celltype = 'Stellate'
 modeltype = 'XM13'
 
+start_time = time.time()
+
 def run_model_Star(*args):
     """
     This parses out the parameter exploration, for parallel processing
@@ -18,31 +20,55 @@ def run_model_Star(*args):
     thisModel = model_run.ModelRun()
     thisModel.set_celltype(celltype)
     thisModel.set_modeltype(modeltype)
+    thisModel.set_starttime(start_time)
     return thisModel.runModel(*args)
 
-start_time = time.time()
 # define parameter space to explore
-# use logspace with odd number of values so that middle is always 1x
 #
-space = {'ihvcn': np.logspace(0.1, 10, 5), 'kht': np.logspace(0.1, 10, 5)}
+#
+if celltype == 'Stellate':
+    space = {'ihvcn': np.linspace(0.2, 2.0, 19), 'kht': np.linspace(0.5, 2.0, 19)}
+elif celltype == 'Bushy':
+    space = {'ihvcn': np.linspace(0.2, 2, 5), 'klt': np.linspace(0.2, 2, 5)}
+else:
+    print 'What cell type? %s' % (celltype)
+    exit()
+
 spvalues = [x for x in apply(itertools.product, space.values())]
 spaceMap = [dict(zip(space.keys(), p)) for p in spvalues]
+for idnum, x in enumerate(spaceMap): # add an ID as a key
+    x['id'] = idnum
 
+test = False  # false for parallel runs, true for serial testing
+######
+#  non parallel run with no save: testing for errors
+if test is True:
+    for s in spaceMap:
+        run_model_Star(s)
 
-# non parallel run with no save: testing for errors
-for s in spaceMap:
-    run_model_Star(s)
-
-exit()
-#
+    runtime = time.time() - start_time
+    print 'run time: ', runtime, "seconds"
+    exit()
+######
 
 PROCESSES = len(spaceMap)
-pool = multiprocessing.Pool(PROCESSES)
-
-TASKS = [vals for vals in spaceMap]
+TASKS = [s for s in spaceMap]
 print "Number of tasks: ", len(TASKS)
 
-imap_it = pool.imap(run_model_Star, TASKS)
+ncpu = multiprocessing.cpu_count()
+print 'ncpu: ', ncpu
+pool = multiprocessing.Pool(ncpu)
+
+if len(TASKS) < ncpu:
+    chunksize = len(TASKS)
+else:
+    chunksize = len(TASKS) // ncpu
+print 'chunksize: ', chunksize
+
+#print 'tasks: ', TASKS
+
+
+imap_it = pool.imap(run_model_Star, TASKS, chunksize)
 
 n = 0
 result = {}
@@ -50,7 +76,7 @@ result = {}
 for x in imap_it:
     if x is not None:
         result[n] = x
-        print 'Result %d:\n' %(n) , result[n]
+        #print 'Result %d:\n' % (n), result[n]
         n = n + 1
     else:
         print '>'*80
@@ -62,14 +88,18 @@ for x in imap_it:
 pool.close()
 pool.join()
 
-print '*'*80
-print 'result: ', result
-print '*'*80
+# print '*'*80
+# print 'result: ', result
+# print '*'*80
 
 big_result = {'space': space, 'spacemap': spaceMap, 'result': result}
 fn = celltype + '_' + modeltype + '_'
-fn = fn + ''.join([k+'_' for k in space.keys()])  # add variables for run
-dtime = time.strftime("%y.%m.%d-%H.%M.%S")
+for k in space.keys():
+    if k == 'id':
+        continue
+    fn = fn + k + '_' # add variables for run
+#dtime = time.strftime("%y.%m.%d-%H.%M.%S")
+dtime = time.strftime("%y.%m.%d-%H.%M.%S", time.localtime(start_time))  # use run starttime
 fn += dtime + '.p'
 f = open(fn, 'wb')
 pickle.dump(big_result, f)
@@ -77,4 +107,4 @@ f.close()
 
 runtime = time.time() - start_time
 print 'run time: ', runtime, "seconds"
-
+print 'file: ', fn

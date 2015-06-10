@@ -12,13 +12,15 @@ with his routine
 import neuron as h
 from neuron import *
 import gc
-
+import faulthandler
 import numpy as np
-import scipy as sp
+#import scipy as sp
 import nrnlibrary
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
-import pylibrary
+import pylibrary.Utility as Util
+faulthandler.enable()
+
 
 class ChannelKinetics():
     def __init__(self, args):
@@ -26,11 +28,11 @@ class ChannelKinetics():
             modfile = args[0] # must be string, not list...
         else:
             modfile = args # 'CaPCalyx'
+        print 'modfile: ', modfile
+        modfile2 = None
+        if isinstance(args, list) and len(args) > 1:
+            modfile2 = args[1]
         doKinetics = False
-        if len(args) > 1:
-            doKinetics = True
-        print len(args)
-        print doKinetics
         self.app = pg.mkQApp()
         self.win = pg.GraphicsWindow(title="VC Plots")
        # self.win.show()
@@ -43,27 +45,38 @@ class ChannelKinetics():
         self.p3 = self.win.addPlot(title="Vcmd")
         self.win.nextCol()
         self.p4 = self.win.addPlot(title="I_min")
+        #
+        # self.tdur is a table of durations for the pulse and post-pulse for each channel type (best to highlight features
+        # on appropriate time scales)
+        #
         self.tdur = {'CaPCalyx': [20., 10.], 'hcno': [1000., 200.], 'ih': [1000., 200.], 'ihvcn': [1000., 200.],
-                     'nav11': [20., 5.], 'jsrna': [10., 5.], 'kht':[200., 20.], 'klt': [200., 20.], 'nacn': [10., 5.]}
-
+                     'nav11': [20., 5.], 'jsrna': [10., 5.], 'ichanwt2005': [10., 5.], 'kht':[200., 20.], 'klt': [200., 20.], 'nacn': [10., 5.],
+                     'ihsgcApical': [1000., 200.],
+                     'ihsgcBasalMiddle': [1000., 200.],
+                     }
+        print 'prior to run'
         self.run(modfile=modfile)
+        print 'after run'
+        if modfile2 is not None:
+            self.run(modfile = modfile2, color='b')
         self.win.setWindowTitle('VC Plots: ' + modfile)
         gc.collect()
 
         if doKinetics:
             self.win2 = pg.GraphicsWindow(title='KineticPlots')
             self.win2.resize(800, 600)
-            self.kp1 = self.win.adPlot(title="htau")
+            self.kp1 = self.win.addPlot(title="htau")
             self.computeKinetics('nav11')
 
         self.show()
+        print 'after show'
 
     def show(self):
         self.win.show()
         QtGui.QApplication.instance().exec_()
 
 
-    def run(self, modfile='CaPCalyx'):
+    def run(self, modfile='CaPCalyx', color='r'):
         if isinstance(modfile, list):
             modfile = modfile[0]
         if modfile in self.tdur:
@@ -79,8 +92,8 @@ class ChannelKinetics():
         self.soma = nrnlibrary.nrnutils.Section(L=10, diam=10, mechanisms=[Channel, leak])
 #        Channel.insert_into(soma)
 #        leak.insert_into(soma)
-        print dir(self.soma)
-        h.celsius = 37 # set the temperature.
+#        print dir(self.soma)
+        h.celsius = 22 # set the temperature.
         ca_init = 70e-6
 
         self.vec={}
@@ -99,10 +112,13 @@ class ChannelKinetics():
         self.vcPost.dur3 = tstep[1]
         self.vcPost.amp3 = clampV
         self.vcPost.rs = 1e-6
-        print "soma: ", self.soma
-        print 'vcpost sec: ', self.vcPost.Section()
+        print "soma: ", self.soma, 
+        print ' vcpost sec: ', self.vcPost.Section()
 
-        stimamp = np.linspace(-100, 60, num=35, endpoint=True)
+        if modfile[0:2] == 'ih':
+            stimamp = np.linspace(-140, -40, num=21, endpoint=True)
+        else:
+            stimamp = np.linspace(-100, 60, num=35, endpoint=True)
         self.ivss = np.zeros((2, stimamp.shape[0]))
         self.ivmin = np.zeros((2, stimamp.shape[0]))
 
@@ -118,22 +134,22 @@ class ChannelKinetics():
             self.vec['IChan'].record(self.vcPost._ref_i, sec=self.soma)
             self.vec['V'].record(self.soma()._ref_v, sec=self.soma)
             self.vec['time'].record(h._ref_t)
-            print 'V = ', V
+            print 'V = ', V, 
             h.tstop = self.vcPost.dur1+self.vcPost.dur2+self.vcPost.dur3
             h.finitialize(v_init)
             h.run()
             self.t = np.array(self.vec['time'])
             self.ichan = np.array(self.vec['IChan'])
             self.v = np.array(self.vec['V'])
-            self.p1.plot(self.t, self.ichan)
-            self.p3.plot(self.t, self.v)
-            (self.ivss[1,i], r2) = pylibrary.Utility.measure('mean', self.t, self.ichan, tdelay+tstep[0]-10., tdelay+tstep[0])
-            (self.ivmin[1,i], r2) = pylibrary.Utility.measure('minormax', self.t, self.ichan, tdelay+0.1, tdelay+tstep[0]/5.0)
+            self.p1.plot(self.t, self.ichan, pen=pg.mkPen(color))
+            self.p3.plot(self.t, self.v, pen=pg.mkPen(color))
+            (self.ivss[1,i], r2) = Util.measure('mean', self.t, self.ichan, tdelay+tstep[0]-10., tdelay+tstep[0])
+            (self.ivmin[1,i], r2) = Util.measure('minormax', self.t, self.ichan, tdelay+0.1, tdelay+tstep[0]/5.0)
             self.ivss[0,i] = V
             self.ivmin[0,i] = V
-            print 'T = ', h.celsius
-        self.p2.plot(self.ivss[0,:], self.ivss[1,:], symbol='o', symbolsize=2.0, pen= pg.mkPen('r'))
-        self.p4.plot(self.ivmin[0,:], self.ivmin[1,:], symbol='s', symbolsize=2.0, pen=pg.mkPen('b'))
+            print ' T = ', h.celsius
+        self.p2.plot(self.ivss[0,:], self.ivss[1,:], symbol='o', symbolsize=2.0, pen= pg.mkPen(color))
+        self.p4.plot(self.ivmin[0,:], self.ivmin[1,:], symbol='s', symbolsize=2.0, pen=pg.mkPen(color))
 
 
     def computeKinetics(self, ch):
@@ -142,3 +158,4 @@ class ChannelKinetics():
 if __name__ == "__main__":
 
     ChannelKinetics(sys.argv[1:])
+    print 'at last'
