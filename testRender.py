@@ -14,8 +14,9 @@ import string
 # infile = 'Calyx-68cvt4.hoc'
 #infile = 'mainDenHOC_cleaned.hoc'
 #infile = 'wholeThing_cleaned.hoc'
-infile = 'VCN_c18_final_rescaled.hoc'
-infile = 'test.hoc'
+#infile = 'VCN_c18_final_rescaled.hoc'
+#infile = 'test.hoc'
+infile = 'VCN_c18_reparented748_nohillock.hoc'
 hf = HocReader('MorphologyFiles/' + infile)
 if hf.file_loaded is False:
     exit()
@@ -25,20 +26,20 @@ hf.h.topology()
 # print 'hf sections: ', hf.sections
 named_section_colors = {'axon': 'r', 'AXON_0': 'r', 'heminode': 'g', 'stalk':'y', 'branch': 'b', 'neck': 'brown',
     'swelling': 'magenta', 'tip': 'powderblue', 'parentaxon': 'orange', 'synapse': 'k',
-    'soma': 'b', 'dend': 'g', 'dendscaled_0': 'g', 'dendscaled_2': 'y', 'sections': 'b'}
-if len(hf.sections) > 1: # multiple names, so assign colors to structure type
+    'soma': 'b', 'dend': 'g', 'dendscaled_0': 'g', 'dendscaled_2': 'y', 'sections': 'b', 'hillock': 'magenta',
+    'initseg': 'orange', 'undefined': 'k', 'dendrite': 'g', 'apical_dendrite': 'y'}
+section_colors = {}
+if len(hf.sec_groups) > 1: # multiple names, so assign colors to structure type
     section_colors = {}
-    for i, s in enumerate(hf.sections.keys()):
-#        print 'section number, key: ', i, s
-        s_clean = string.rsplit(s, '[')[0]
-        if s_clean in named_section_colors.keys():
-            section_colors[s] = named_section_colors[s_clean]
-        else:
-            icolor = i % 12
-            section_colors[s] = hoc_graphics.colorMap[icolor]
+    for i, s in enumerate(hf.sec_groups.keys()):
+        section_colors[s] = named_section_colors[s]
+        print 'section type %s assigned color %s' % (s, named_section_colors[s])
+        # else:
+        #     icolor = i % 12
+        #     section_colors[s] = hoc_graphics.colorMap[icolor]
 else: # single section name, assign colors to SectionList types:
     # here we should find out the names of the section lists in hoc
-    section_colors=named_section_colors
+    section_colors = named_section_colors
 print 'section colors:', section_colors
 
 (v, e) = hf.get_geometry()
@@ -86,12 +87,12 @@ azim = render.opts['azimuth']
 
 print 'Pos (center, dist, elev, azim)', center, dist, elev, azim
 
-for i in range(0,3):
-    print 'Soma section [%d] diameter = %6.1f microns' % (i, hf.h('soma[%d].diam' % i))
-    print 'Soma section [%d] length = %6.1f microns' % (i, hf.h('soma[%d].L' % i))
+# for i in range(0,3):
+#     print 'Soma section [%d] diameter = %6.1f microns' % (i, hf.h('soma[%d].diam' % i))
+#     print 'Soma section [%d] length = %6.1f microns' % (i, hf.h('soma[%d].L' % i))
 
-print 'total soma: ', hf.h('soma.diam'), hf.h('soma.L')
-print 'AXON_0 diameter = %6.1f microns' % hf.h('AXON_0[0].diam')
-print 'AXON_0 length = %6.1f microns' % hf.h('AXON_0[0].L')
+# print 'total soma: ', hf.h('soma.diam'), hf.h('soma.L')
+# print 'AXON_0 diameter = %6.1f microns' % hf.h('AXON_0[0].diam')
+# print 'AXON_0 length = %6.1f microns' % hf.h('AXON_0[0].L')
 
 QtGui.QApplication.instance().exec_()

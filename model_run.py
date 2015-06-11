@@ -46,8 +46,8 @@ import numpy as np
 verbose = False
 showCell = False
 
-ANPSTH_mode = True
-IV_mode = False
+ANPSTH_mode = False
+IV_mode = True
 
 class ModelRun():
     def __init__(self, args=None):
@@ -102,7 +102,6 @@ class ModelRun():
                 # print 'section: ', section
                 # print 'Ra: ', self.hf.get_section(section).Ra
 
-        
         self.electrodeSection = 'soma'
         self.hg = hoc_graphics
         self.get_hoc_file(filename)
@@ -113,13 +112,9 @@ class ModelRun():
         self.cd = ChannelDecorate(self.hf, celltype=self.cellType, modeltype=self.modelType,
                              parMap=parMap)
 #        self.cd.channelValidate(self.hf, verify=False)
-
+        self.hf.h.topology()
         if ANPSTH_mode:
             self.ANinputs(self.hf)
-
-#        self.render(['nav11', 'gbar'])
-#        QtGui.QApplication.instance().exec_()
-        
         elif IV_mode:
             self.IVRun(parMap)
 
@@ -206,12 +201,12 @@ class ModelRun():
             each tuple represents an AN fiber (SGC cell) with:
             (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high])
         """
-        self.run_duration = 0.5
+        self.run_duration = 0.25
         self.pip_duration = 0.1
         self.pip_start = [0.1]
         self.Fs = 100e3
         self.f0 = 1000.
-        nReps = 10
+        nReps = 1
         win = pgh.figure(title='AN Inputs')
         layout = pgh.LayoutMaker(cols=1,rows=2, win=win, labelEdges=True, ticks='talbot')
 
@@ -237,6 +232,11 @@ class ModelRun():
         self.pre_cell = preCell
         self.post_cell = postCell
         self.synapse = synapse
+        for i, s in enumerate(synapse):
+            s.terminal.relsite.Dep_Flag = 0  # turn off depression computation
+            print 'Depression flag for synapse %d = %d ' % (i, s.terminal.relsite.Dep_Flag)
+
+        # checking the gmax for all synapses
         # for s in synapse:
         #     psds = s.psd.ampa_psd
         #     for p in psds:
@@ -254,14 +254,13 @@ class ModelRun():
         for j, N in enumerate(range(nReps)):
             print 'Rep: %d' % N
             self.stim=[]
+            # make independent inputs for each synapse
             for i, syn in enumerate(synapseConfig):
                 self.stim.append(sound.TonePip(rate=self.Fs, duration=self.run_duration, f0=self.f0, dbspl=90,
                                       ramp_duration=2.5e-3, pip_duration=self.pip_duration,
                                       pip_start=self.pip_start))
-        
                 nseed = seeds[j, i]
-
-                preCell[i].set_sound_stim(self.stim[-1], seed=nseed)  # generate new waveform for every trace
+                preCell[i].set_sound_stim(self.stim[-1], seed=nseed)  # generate spike train, connect to terminal
 
             self.Vsoma = self.hf.h.Vector()
             self.time = self.hf.h.Vector()
@@ -277,15 +276,12 @@ class ModelRun():
             vsoma.append(self.Vsoma)
             time.append(self.time)
             vdend.append(self.Vdend)
+            dvdt = np.diff(np.array(vsoma[N]))
+            sp = np.where(dvdt > 2.0)
             layout.plot(0, np.array(time[N]), np.array(vsoma[N]), pen=pg.mkPen(pg.intColor(N, nReps)))
-
-            layout.plot(1, np.array(time[N]), np.array(vdend[N]), pen=pg.mkPen(pg.intColor(N, nReps)))  # just for checking dendritic attenuatoin
+            layout.plot(1, np.array(time[N])[:-1], dvdt, pen=pg.mkPen(pg.intColor(N, nReps)))
+            layout.get_plot(0).setXLink(layout.get_plot(1))
         pgh.show()
-        #self.vm = postCell.soma(0.5)._ref_v
-        #self['prevm'] = preCell.soma(0.5)._ref_v
-        # for i in range(30):
-        #     self['xmtr%d'%i] = synapse.terminal.relsite._ref_XMTR[i]
-        #     synapse.terminal.relsite.Dep_Flag = False
 
     def distances(self, section):
         self.hf.distanceMap = {}
