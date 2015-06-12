@@ -16,7 +16,9 @@ import string
 #infile = 'wholeThing_cleaned.hoc'
 #infile = 'VCN_c18_final_rescaled.hoc'
 #infile = 'test.hoc'
-infile = 'VCN_c18_reparented748_nohillock.hoc'
+#infile = 'VCN_c18_final_rescaled.hoc'
+infile = 'VCN_c18_reparented755.hoc'
+
 hf = HocReader('MorphologyFiles/' + infile)
 if hf.file_loaded is False:
     exit()

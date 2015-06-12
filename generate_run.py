@@ -28,7 +28,7 @@ verbose = False # use this for testing.
 
 class GenerateRun():
     def __init__(self, hf, idnum=0, celltype=None,
-                 electrodeSection = 'soma',
+                 electrodeSection=None,
                  starttime=None,
                  cd=None,
                  plotting=False,
@@ -56,7 +56,7 @@ class GenerateRun():
                               stimFreq=200.,  # hz
                               stimInj=cd.irange,  # nA
                               stimDur=100.0,  # msec
-                              stimDelay=2.0,  # msec
+                              stimDelay=5.0,  # msec
                               stimPost=3.0,  # msec
                               vnStim=1,
                               vstimFreq=200.,  # hz
@@ -84,7 +84,7 @@ class GenerateRun():
             with open(self.runInfo.inFile, 'r') as csvfile:
                 spks = csv.reader(csvfile, delimiter=',')
                 for i, row in enumerate(spks):
-                    if i == 0:  # ture first line
+                    if i == 0:  # first line
                         print row
                         maxt = float(row[1]) * 1000
                         reps = int(row[0])
@@ -170,6 +170,7 @@ class GenerateRun():
             self.plotFits(1, self.IVResult['ihfit'], c='b')
             self.cplts.show()
 
+
     def _prepareRun(self, inj=None):
         """
         (private method)
@@ -182,14 +183,20 @@ class GenerateRun():
         """
         if verbose:
             print '_prepareRun'
-        for var in self.hf.sections: # get morphological components
+        for group in self.hf.sec_groups.keys(): # get morphological components
             if not self.saveAllSections:  # just save soma sections
-                if var.rsplit('[')[0] == 'soma':
-                    self.allsecVec[var] = self.hf.h.Vector()
-                    self.allsecVec[var].record(self.hf.sections[var](0.5)._ref_v, sec=self.hf.sections[var])
+                if group.rsplit('[')[0] == 'soma':
+                    self.allsecVec['soma'] = self.hf.h.Vector()
+                    section = list(self.hf.sec_groups[group])[0]
+                    sec = self.hf.get_section(section)
+                    self.allsecVec['soma'].record(sec(0.5)._ref_v, sec=sec)
+                    break  # only save the FIRST occurance.
             else:
-                self.allsecVec[var] = self.hf.h.Vector()
-                self.allsecVec[var].record(self.hf.sections[var](0.5)._ref_v, sec=self.hf.sections[var])
+                g = self.hf.sec_groups[group]
+                for section in list(g):
+                    sec = self.hf.get_section(section)
+                    self.allsecVec[sec.name()] = self.hf.h.Vector()
+                    self.allsecVec[sec.name()].record(sec(0.5)._ref_v, sec=sec)
 
         for var in ['time', 'postsynapticV', 'postsynapticI', 'i_stim0', 'v_stim0']: # get standard stuff
             self.monitor[var] = self.hf.h.Vector()
@@ -205,12 +212,12 @@ class GenerateRun():
         # soma.insert('hh')
         #
         #electrodeSite = soma
-        print self.hf.sec_groups.keys()
-        print 'electrode : ', self.hf.sec_groups[self.runInfo.electrodeSection]
-        self.electrodeSite = self.hf.get_section(list(self.hf.sec_groups[self.runInfo.electrodeSection])[0])
-        print self.electrodeSite
-        print dir(self.electrodeSite)
-        print self.electrodeSite.name()
+        # print self.hf.sec_groups.keys()
+        electrodeSection = list(self.hf.sec_groups[self.runInfo.electrodeSection])[0]
+        self.electrodeSite = self.hf.get_section(electrodeSection)
+        print 'group: ', self.runInfo.electrodeSection
+        print 'electrode section, site: ', electrodeSection, self.electrodeSite
+        print 'electrodeSite name: ', self.electrodeSite.name()
         if self.runInfo.postMode in ['vc', 'vclamp']:
             #print 'vclamp'
             # Note to self (so to speak): the hoc object returned by this call must have a life after
@@ -270,7 +277,7 @@ class GenerateRun():
         self.monitor['time'].record(self.hf.h._ref_t)
         #self.hf.h.topology()
         #pg.show()
-        #self.hf.h(access %s' % self.hf.get_section(self.electrodeSite))
+        #self.hf.h('access %s' % self.hf.get_section(self.electrodeSite).name())
 
 
     def testRun(self, title='testing...'):
@@ -303,42 +310,56 @@ class GenerateRun():
             self.run_initialized = True
             return
 
-        # otherwise in current clamp
+        # otherwise we are in current clamp
         # Options:
         # 1. adjust e_leak so that the rmp in each segment is the same
         # 2. use ic_constant to inject current in each segment to set rmp
         # 3. allow vm to vary in segments, using existing conductances (may be unstable)
 
         if self.hf.h.CVode().active():
-            self.hf.h.CVode().active(0)  # turn cvode off (note, in this model it will be off because one of the mechanisms is not compatible with cvode at this time
+            self.hf.h.CVode().active(0)  # turn cvode off (note, in this model it will be off because one of the mechanisms is not compatible with cvode at this time)
 
-        print 'init V: ', self.runInfo.v_init
+        # print 'init V: ', self.runInfo.v_init
+        # print 'prior to init: electrode site: ', self.electrodeSite, ' named: ', self.electrodeSite.name()
+        # print 'v init: ', self.electrodeSite.v
         self.hf.h.finitialize(self.runInfo.v_init)
+        self.hf.h.finitialize()
         #self.run_initialized = True
         #return
         # starting way back in time
-        self.hf.h.t = -1e10
+        # print 'v init1: ', self.electrodeSite.v
+        self.hf.h.t = -1e8
         dtsav = self.hf.h.dt
-        self.hf.h.dt = 1e8  # big time steps for slow process
+        self.hf.h.dt = 1e6  # big time steps for slow process
         n = 0
+        # print 'v init0: ', self.electrodeSite.v
+        # print 'hf v: ', self.hf.h('v')
         while self.hf.h.t < 0:
-#            print 'fadvance'
+            # print 'fadvance ',
             n += 1
             self.hf.h.fadvance()
-#        print 'init steps: ', n
+        #     if n < 5:
+        #         print 'v init2: ', self.electrodeSite.v
+        # print 'init steps: ', n
 #        if cvode.active():
 #            cvode.active(1)
+        # print 'v init3: ', self.electrodeSite.v
         self.hf.h.dt = dtsav
+        # print 'dt: ', self.hf.h.dt
         self.hf.h.t = 0
         if self.hf.h.CVode().active():
             self.hf.h.CVode().re_init()
         #else:
         self.hf.h.fcurrent()
+        # print 'v init4: ', self.electrodeSite.v
+        # print 'hf v: ', self.hf.h('v')
        # self.hf.h.finitialize()
         self.hf.h.frecord_init()
         self.run_initialized = True
         #print dir(self.hf.h)
-        print 'final init V: ', self.hf.h('v')
+        # print 'electrode site: ', self.electrodeSite, ' named: ', self.electrodeSite.name()
+        # print 'final init v: ', self.electrodeSite.v
+        print 'final init V hoc: ', self.hf.h('v')
 
 
     def _executeRun(self, testPlot=False):
@@ -353,9 +374,9 @@ class GenerateRun():
         assert self.run_initialized == True
 #        print 'executeRun: Running for: ', self.hf.h.tstop
 #        print 'V = : ', self.electrodeSite.v
-        print 'starting v: ', self.hf.h('v')
+        print 'starting v: ', self.electrodeSite.v
         self.hf.h.run()
-        print 'finishing v: ', self.hf.h('v')
+        print 'finishing v: ', self.electrodeSite.v
         if testPlot:
             pg.mkQApp()
             pl = pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))

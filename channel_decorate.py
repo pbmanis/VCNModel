@@ -24,6 +24,7 @@ import nrnlibrary.util as nu
 
 #import nrnlibrary.nrnutils as nu
 from channel_manager import channelManager
+excludeMechs = [] # ['ihvcn', 'kht', 'klt', 'nav11']
 
 class ChannelDecorate():
     def __init__(self, hf, celltype=None, modeltype=None, parMap=None):
@@ -54,7 +55,7 @@ class ChannelDecorate():
 
         self.gmapper = self.cMan.gmapper
         self.biophys(hf)
-
+            
 
     def biophys(self, hf, verify=False):
         """
@@ -97,6 +98,11 @@ class ChannelDecorate():
                 if mech not in self.gmapper.keys():
                     print 'mech %s not found? ' % mech
                     continue
+                if mech in excludeMechs:
+                    continue
+                # if mech in ['ihvcn']:
+                #     print 'mechanism %s excluded' % mech
+                #     continue
                 if verify:
                     print 'Biophys: section: %s  insert mechanism: %s at ' % (s, mech), self.cMan.channelMap[sectype][mech]
                 x = nu.Mechanism(mech)
@@ -149,14 +155,17 @@ class ChannelDecorate():
          go through all the groups, and find inserted conductances and their values
          print the results to the terminal
         """
+        secstuff = {}
         for s in hf.sec_groups.keys():
             sectype = self.remapSectionType(string.rsplit(s, '[')[0])
             if sectype not in self.cMan.channelMap.keys():
                 print 'encountered unknown section group type: %s  Cannot Validate' % sectype
                 continue
-            print 'Validating Section: %s' % s
+#            print 'Validating Section: %s' % s
             for mech in self.cMan.channelMap[sectype].keys():
                 if mech not in self.gmapper.keys():
+                    continue
+                if mech in excludeMechs:
                     continue
                 if verify:
                     print '\tSection: %s  find mechanism: %s at ' % (s, mech), self.cMan.channelMap[sectype][mech]
@@ -164,7 +173,12 @@ class ChannelDecorate():
                 setup = ('%s_%s' % (self.gmapper[mech], mech))
                 for sec in hf.sec_groups[s]:
                     bar = getattr(hf.get_section(sec), setup)
-                    print '\t\tsec: %s mech: %8s  gbar: %g' % (sec, mech, bar)
+                    if sec in secstuff.keys():
+                        secstuff[sec] += ', g_%s = %g ' % (mech, bar)
+                    else:
+                        secstuff[sec] = '(%10s) g_%-6s = %g ' % (sectype, mech, bar)
+        for i, k in enumerate(secstuff.keys()):
+            print '%-20s ' % k, secstuff[k]
                 
 
     def remapSectionType(self, sectype):

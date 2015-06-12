@@ -2804,4 +2804,7 @@ proc biophys() {
 // access dendscaled_0
 celldef()
 
+forall for i=0,n3d()-1 \
+  if (diam3d(i) < 1) \
+    print secname(), " ", i, diam3d(i)
 

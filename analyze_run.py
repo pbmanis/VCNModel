@@ -8,7 +8,7 @@ import lmfit
 import matplotlib.pylab as PL
 from pylibrary.Params import Params
 
-verbose = False
+verbose = True
 
 class AnalyzeRun():
     def __init__(self, results):
@@ -79,6 +79,8 @@ class AnalyzeRun():
         """
         if verbose:
             print 'starting analyzeIV'
+        print 'tw: ', tw
+        print 'thr: ', thr
         ntraces = np.shape(V)[0]
         vss     = []
         vmin    = []
@@ -105,6 +107,8 @@ class AnalyzeRun():
             te = tw[1]
             td = tw[2]
             ssv  = pu.measure('mean', t, V[j,:], te-td, te)
+            print 'te, td, ', te, td
+            print 't min/max: ', np.min(t), np.max(t)
             ssi  = pu.measure('mean', t, I[j,:], te-td, te)
             rvm  = pu.measure('mean', t, V[j,:], 0.0, ts-1.0)
             minv = pu.measure('min', t, V[j,:], ts, te)
@@ -122,6 +126,7 @@ class AnalyzeRun():
             vm.append(rvm[0])  # rmp
 
             # fit the hyperpolarizing responses for Rin and "sag"
+            print 'ssi: ', ssi[0]
             if ssi[0] < 0.0 and (minv[1]-ts) > 5.*dt: # just for hyperpolarizing pulses...
                 if verbose:
                     print '    fitting trace %d' % j
@@ -146,6 +151,8 @@ class AnalyzeRun():
                 print '   >>> completed analyzing trace %d' % j
         if verbose:
             print 'done with traces'
+        print 'vss: ', vss
+        print 'vss: ', vss
         vss = np.array(vss)  # steady state during current pulse
         vrmss = np.array(vrmss)  # resting potential for hyperpolarizaing pulses only
         ic = np.array(ic)  # injected current

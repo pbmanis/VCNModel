@@ -43,11 +43,11 @@ if HAVE_PG:
 
 import numpy as np
 
-verbose = False
+verbose = True
 showCell = False
 
-ANPSTH_mode = False
-IV_mode = True
+ANPSTH_mode = True
+IV_mode = False
 
 class ModelRun():
     def __init__(self, args=None):
@@ -113,6 +113,13 @@ class ModelRun():
                              parMap=parMap)
 #        self.cd.channelValidate(self.hf, verify=False)
         self.hf.h.topology()
+        self.cd.channelValidate(self.hf, verify=False)
+        #return
+        # for group in self.hf.sec_groups.keys():
+        #     g = self.hf.sec_groups[group]
+        #     for section in list(g):
+        #         secinfo = self.hf.get_section(section)
+                
         if ANPSTH_mode:
             self.ANinputs(self.hf)
         elif IV_mode:
@@ -176,16 +183,18 @@ class ModelRun():
 
 
     def set_celltype(self, celltype):
+        validCells = ['Bushy', 'Stellate', 'L23pyr']
         self.cellType = celltype
-        if self.cellType not in ['Bushy', 'Stellate', 'L23pyr']:
-            print 'Celltype must be one of Bushy, Stellate or L23pyr, got: %s', self.cellType
+        if self.cellType not in validCells:
+            print 'Celltype must be one of: %s. Got: %s', (', '.join(validCells), self.cellType)
             exit()
 
 
     def set_modeltype(self, modeltype):
+        validModels = ['RM03', 'XM13', 'XM13Simple', 'MS']
         self.modelType = modeltype
-        if self.modelType not in ['RM03', 'XM13', 'MS']:
-            print 'Model type must be one of RM03, XM13, or MS, got: %s ' % (self.modelType)
+        if self.modelType not in validModels:
+            print 'Model type must be one of: %s. Got: %s ' % (', '.join(validmodels), self.modelType)
             exit()
 
 
@@ -220,6 +229,7 @@ class ModelRun():
         postCell = cells.Generic.create(soma=hf.get_section(list(sg)[0]))
         #postCell = cells.Bushy.create(nach='nav11')
 #        print 'postcell.cell: ', postCell.all_sections
+        self.cd.channelValidate(hf, verify=True)
         
         preCell = []
         synapse = []
@@ -280,7 +290,7 @@ class ModelRun():
             sp = np.where(dvdt > 2.0)
             layout.plot(0, np.array(time[N]), np.array(vsoma[N]), pen=pg.mkPen(pg.intColor(N, nReps)))
             layout.plot(1, np.array(time[N])[:-1], dvdt, pen=pg.mkPen(pg.intColor(N, nReps)))
-            layout.get_plot(0).setXLink(layout.get_plot(1))
+            layout.getPlot(0).setXLink(layout.getPlot(1))
         pgh.show()
 
     def distances(self, section):
