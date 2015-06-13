@@ -46,8 +46,11 @@ import numpy as np
 verbose = True
 showCell = False
 
-ANPSTH_mode = True
-IV_mode = False
+make_init = False
+test_init = False
+make_ANIntialConditions = False
+ANPSTH_mode = False
+IV_mode = True
 
 class ModelRun():
     def __init__(self, args=None):
@@ -120,9 +123,25 @@ class ModelRun():
         #     for section in list(g):
         #         secinfo = self.hf.get_section(section)
                 
+        if make_init:
+            self.R = GenerateRun(self.hf, idnum=self.idnum, celltype=self.cellType,
+                             starttime=self.startTime,
+                             electrodeSection=self.electrodeSection, cd=self.cd,
+                             plotting = HAVE_PG and self.plotFlag)
+            self.R.getInitialConditionsState(tdur=3000.)
+            print 'Ran to get initial state for %f msec' % self.hf.h.t
+            return
+        if test_init:
+            self.R = GenerateRun(self.hf, idnum=self.idnum, celltype=self.cellType,
+                             starttime=self.startTime,
+                             electrodeSection=self.electrodeSection, cd=self.cd,
+                             plotting = HAVE_PG and self.plotFlag, )
+            self.R.testRun()
+            return  # that is ALL, never make init and then keep running.
+           
         if ANPSTH_mode:
             self.ANinputs(self.hf)
-        elif IV_mode:
+        if IV_mode:
             self.IVRun(parMap)
 
         if showCell:
@@ -133,6 +152,7 @@ class ModelRun():
     def IVRun(self, parMap={}):
         if verbose:
             print 'generateRun'
+        print 'IVRun begins'
         self.R = GenerateRun(self.hf, idnum=self.idnum, celltype=self.cellType,
                              starttime=self.startTime,
                              electrodeSection=self.electrodeSection, cd=self.cd,
@@ -140,7 +160,7 @@ class ModelRun():
 
         if verbose:
             print 'doRun'
-        self.R.doRun(self.infile, parMap, save='monitor')
+        self.R.doRun(self.infile, parMap, save='monitor', restoreFromFile=True)
         if verbose:
             print '  doRun completed'
             print self.R.IVResult
@@ -227,6 +247,8 @@ class ModelRun():
         dend = hf.sec_groups['dendrite']
         dendrite = hf.get_section(list(dend)[99])
         postCell = cells.Generic.create(soma=hf.get_section(list(sg)[0]))
+
+
         #postCell = cells.Bushy.create(nach='nav11')
 #        print 'postcell.cell: ', postCell.all_sections
         self.cd.channelValidate(hf, verify=True)
@@ -271,7 +293,8 @@ class ModelRun():
                                       pip_start=self.pip_start))
                 nseed = seeds[j, i]
                 preCell[i].set_sound_stim(self.stim[-1], seed=nseed)  # generate spike train, connect to terminal
-
+                print dir(preCell[i])
+                return
             self.Vsoma = self.hf.h.Vector()
             self.time = self.hf.h.Vector()
             self.Vdend = self.hf.h.Vector()
@@ -279,9 +302,13 @@ class ModelRun():
             self.Vdend.record(dendrite(0.5)._ref_v, sec=dendrite)
             self.time.record(self.hf.h._ref_t)
             print '...running '
+
             hf.h.tstop = self.run_duration*1000.
-            hf.h.finitialize()
-            hf.h.run()
+            hf.h.t = 0.
+            hf.h.batch_save() # save nothing
+            hf.h.batch_run(hf.h.tstop, hf.h.dt, "an.dat")
+            # old - don't d this! #hf.h.finitialize()
+            # hf.h.run()
             print '...done'
             vsoma.append(self.Vsoma)
             time.append(self.time)

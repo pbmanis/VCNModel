@@ -22,6 +22,7 @@ import time
 import csv
 import pickle
 import pyqtgraph as pg
+from pyqtgraph.Qt import QtGui
 
 verbose = False # use this for testing.
 
@@ -32,7 +33,8 @@ class GenerateRun():
                  starttime=None,
                  cd=None,
                  plotting=False,
-                 saveAllSections=False):
+                 saveAllSections=False,
+                 useSavedState=True):
 
         self.run_initialized = False
         self.plotting = plotting
@@ -71,8 +73,11 @@ class GenerateRun():
                               inFileRep=1,  # which rep to use (or array of reps)
                               spikeTimeList={},  # Dictionary of spike times
                               v_init = -61.0,  # from Rothman type II model - not appropriate in all cases
+                              useSaveState = useSavedState,  # use the saved state.
         )
 
+        electrodeSection = list(self.hf.sec_groups[self.runInfo.electrodeSection])[0]
+        self.electrodeSite = self.hf.get_section(electrodeSection)
 
         if self.runInfo.inFile is None:
             self.runInfo.tstop = 1000.0 * (
@@ -119,57 +124,6 @@ class GenerateRun():
         if os.path.exists(folder) is False:
             os.mkdir(folder)
         self.basename = os.path.join(folder, filename + self.dtime)
-
-
-    def doRun(self, filename=None, parMap = None, save=False):
-        if verbose:
-            print 'generat_run::doRun'
-        (p, e) = os.path.splitext(filename)  # make sure filename is clean
-        self.runInfo.filename = p  # change filename in structure, just name, no extension
-        if parMap is None:
-            self.makeFileName(filename = self.runInfo.filename) # base name pluse underscore
-        else:
-            mstr = '_'
-            for k in parMap.keys():
-                if k == 'id':
-                    continue
-                mstr += k + '_'
-            #if 'id' in parMap.keys():
-            #    mstr += 'ID%04d_' % parMap['id']
-            self.makeFileName(self.runInfo.filename + mstr )
-
-        if verbose:
-            print 'genrate_run::doRun: basename is = ', self.basename
-        #self.hf.update() # make sure channels are all up to date
-        self.results={}
-        for k, i in enumerate(self.runInfo.stimInj):
-            if verbose:
-                print 'doRun: inj = ', i
-            self._prepareRun(inj=i) # build the recording arrays
-            self._initRun()  # this also sets nseg in the axon - so do it before setting up shapes
-            self.results[i] = self._executeRun() # now you can do the run
-            if self.plotting:
-                if k == 0:
-                    self.plotRun(self.results[i], init=True)
-                else:
-                    self.plotRun(self.results[i], init=False)
-        if save == 'monitor':
-            self.saveRuns('monitor')
-        self.arun = ar.AnalyzeRun(self.results) # create an instance of the class with the data
-        if verbose:
-            print 'doRun, calling IV'
-        self.arun.IV()  # compute the IV on the data
-        self.IVResult =self.arun.IVResult
-        if verbose:
-            print 'doRun, back from IV'
-      #  self.IVResult = self.arun.IVResult
-        if verbose:
-            print 'doRun: ivresult is: ', self.IVResult
-        if self.plotting:
-            self.plotFits(1, self.IVResult['taufit'], c='r')
-            self.plotFits(1, self.IVResult['ihfit'], c='b')
-            self.cplts.show()
-
 
     def _prepareRun(self, inj=None):
         """
@@ -273,29 +227,23 @@ class GenerateRun():
         else:
             print 'generate_run.py, mode %s  unknown' % self.runInfo.postMode
             return
-        self.hf.h.tstop = maxt
+        self.hf.h.tstop = maxt+self.runInfo.stimDelay
+        print 'PrepareRun: \n maxt = %8.2f' % maxt
+        print 'delay, dur: ', self.runInfo.stimDelay, self.runInfo.stimDur
+        print 'tstop: ', self.hf.h.tstop
+        print "t:  %8.2f\n----------------\n" % self.hf.h.t
         self.monitor['time'].record(self.hf.h._ref_t)
         #self.hf.h.topology()
         #pg.show()
         #self.hf.h('access %s' % self.hf.get_section(self.electrodeSite).name())
 
 
-    def testRun(self, title='testing...'):
-        self.hf.h.tstop = 10
-        self.hf.h.finitialize()
-        self.hf.h.run()
-        pg.mkQApp()
-        pl = pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))
-        pl.setTitle(title)
-
-
-    def _initRun(self):
+    def _initRun(self, restoreFromFile=False):
         """
         (private method)
         Model initialization procedure:
         Set RMP to the resting RMP of the model cell.
-        Make sure nseg is large enough in the proximal axon.
-        Initialize the leak, and stabilize the pumps, etc.
+        Run Finitialize or similar
         Outputs: None.
         Action: Initializes the NEURON state to begin a run.
         Does not instantiate recording or stimulating.
@@ -315,51 +263,146 @@ class GenerateRun():
         # 1. adjust e_leak so that the rmp in each segment is the same
         # 2. use ic_constant to inject current in each segment to set rmp
         # 3. allow vm to vary in segments, using existing conductances (may be unstable)
-
+        
+        if restoreFromFile:
+            self._restoreInitialConditionsState()
+            self.hf.h.frecord_init()
+            self.run_initialized = True
+            return        
+        
         if self.hf.h.CVode().active():
             self.hf.h.CVode().active(0)  # turn cvode off (note, in this model it will be off because one of the mechanisms is not compatible with cvode at this time)
 
-        # print 'init V: ', self.runInfo.v_init
-        # print 'prior to init: electrode site: ', self.electrodeSite, ' named: ', self.electrodeSite.name()
-        # print 'v init: ', self.electrodeSite.v
         self.hf.h.finitialize(self.runInfo.v_init)
-        self.hf.h.finitialize()
-        #self.run_initialized = True
-        #return
-        # starting way back in time
-        # print 'v init1: ', self.electrodeSite.v
         self.hf.h.t = -1e8
         dtsav = self.hf.h.dt
         self.hf.h.dt = 1e6  # big time steps for slow process
         n = 0
-        # print 'v init0: ', self.electrodeSite.v
-        # print 'hf v: ', self.hf.h('v')
         while self.hf.h.t < 0:
-            # print 'fadvance ',
             n += 1
             self.hf.h.fadvance()
-        #     if n < 5:
-        #         print 'v init2: ', self.electrodeSite.v
-        # print 'init steps: ', n
-#        if cvode.active():
-#            cvode.active(1)
-        # print 'v init3: ', self.electrodeSite.v
         self.hf.h.dt = dtsav
-        # print 'dt: ', self.hf.h.dt
         self.hf.h.t = 0
         if self.hf.h.CVode().active():
             self.hf.h.CVode().re_init()
-        #else:
+#        self.hf.h.finitialize()
         self.hf.h.fcurrent()
-        # print 'v init4: ', self.electrodeSite.v
-        # print 'hf v: ', self.hf.h('v')
-       # self.hf.h.finitialize()
         self.hf.h.frecord_init()
         self.run_initialized = True
+        
         #print dir(self.hf.h)
         # print 'electrode site: ', self.electrodeSite, ' named: ', self.electrodeSite.name()
-        # print 'final init v: ', self.electrodeSite.v
+        print 'Initialized with finitialize, starting at %8.2f, ending %8.2f ' % (self.runInfo.v_init, self.electrodeSite.v)
+
         print 'final init V hoc: ', self.hf.h('v')
+
+
+    def getInitialConditionsState(self, tdur=2000., filename=None):
+        """
+        Run model for a time, and then save the state
+        """
+        # first to an initialization to get close
+        print 'getInitialCondistionsState\n'
+        print '  starting t = %8.2f' % self.hf.h.t
+        self._initRun(restoreFromFile=False)
+        self._prepareRun(inj=0.)
+        self.hf.h.tstop = tdur
+        self.hf.h.run()
+        print '  ran until t = %8.2f' % self.hf.h.t
+        vfinal = self.electrodeSite.v
+        print '  V = %8.2f' % vfinal
+        state = self.hf.h.SaveState()
+        stateFile = self.hf.h.File()
+        state.save()
+        if filename is None:
+            filename = 'neuronstate.dat'
+        stateFile.wopen(filename)
+        state.fwrite(stateFile)
+        stateFile.close()
+
+
+    def _restoreInitialConditionsState(self, filename=None):
+        print 'restoring initial conditions'
+        self.hf.h.finitialize()
+        stateFile = self.hf.h.File() # restore state AFTER finitialize
+        state = self.hf.h.SaveState()
+        if filename is None:
+            filename = 'neuronstate.dat'
+        stateFile.ropen(filename)
+        state.fread(stateFile)
+        stateFile.close()
+        state.restore(1)
+        vm = self.electrodeSite.v
+#        print 'restored soma v: %8.2f' % vm
+#        print 'v_init after restore: %8.2f' % self.hf.h.v_init
+        self.hf.h.v_init = vm  # note: this leaves a very slight offset...
+#        for group in self.hf.sec_groups.keys():
+#            for sec in self.hf.sec_groups[group]:
+#                section = self.hf.get_section(sec)
+#                print 'section: %s  vm=%8.3f' % (section.name(), section(0.5).v)
+
+
+    def doRun(self, filename=None, parMap = None, save=False, restoreFromFile=False):
+        if verbose:
+            print 'generat_run::doRun'
+        (p, e) = os.path.splitext(filename)  # make sure filename is clean
+        self.runInfo.filename = p  # change filename in structure, just name, no extension
+        if parMap is None:
+            self.makeFileName(filename = self.runInfo.filename) # base name pluse underscore
+        else:
+            mstr = '_'
+            for k in parMap.keys():
+                if k == 'id':
+                    continue
+                mstr += k + '_'
+            #if 'id' in parMap.keys():
+            #    mstr += 'ID%04d_' % parMap['id']
+            self.makeFileName(self.runInfo.filename + mstr )
+
+        if verbose:
+            print 'genrate_run::doRun: basename is = ', self.basename
+        #self.hf.update() # make sure channels are all up to date
+        self.results={}
+        for k, i in enumerate(self.runInfo.stimInj):
+            #if verbose:
+            print 'doRun: inj = ', i
+            self._prepareRun(inj=i) # build the recording arrays
+            self._initRun(restoreFromFile=restoreFromFile)  # this also sets nseg in the axon - so do it before setting up shapes
+            self.results[i] = self._executeRun() # now you can do the run
+            if self.plotting:
+                if k == 0:
+                    self.plotRun(self.results[i], init=True)
+                else:
+                    self.plotRun(self.results[i], init=False)
+        if save == 'monitor':
+            self.saveRuns('monitor')
+        self.arun = ar.AnalyzeRun(self.results) # create an instance of the class with the data
+        if verbose:
+            print 'doRun, calling IV'
+        self.arun.IV()  # compute the IV on the data
+        self.IVResult =self.arun.IVResult
+        if verbose:
+            print 'doRun, back from IV'
+      #  self.IVResult = self.arun.IVResult
+        if verbose:
+            print 'doRun: ivresult is: ', self.IVResult
+        if self.plotting:
+            self.plotFits(1, self.IVResult['taufit'], c='r')
+            self.plotFits(1, self.IVResult['ihfit'], c='b')
+            self.cplts.show()
+
+
+    def testRun(self, title='testing...'):
+        self._prepareRun(inj=0.0)
+        self._initRun(restoreFromFile=True)
+        self.hf.h.t = 0.
+        self.hf.h.tstop = 10
+        #self.hf.h.run()
+        self._executeRun()
+        pg.mkQApp()
+        pl = pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))
+        pl.setTitle(title)
+        QtGui.QApplication.instance().exec_()
 
 
     def _executeRun(self, testPlot=False):
@@ -375,7 +418,16 @@ class GenerateRun():
 #        print 'executeRun: Running for: ', self.hf.h.tstop
 #        print 'V = : ', self.electrodeSite.v
         print 'starting v: ', self.electrodeSite.v
-        self.hf.h.run()
+        
+        # one way
+        self.hf.h.t = 0
+        #while (self.hf.h.t < self.hf.h.tstop):
+#                for i=0, tstep/dt {
+        #    self.hf.h.fadvance()
+
+        # self.hf.h.run()  # calls finitialize, causes offset
+        self.hf.h.batch_save() # save nothing
+        self.hf.h.batch_run(self.hf.h.tstop, self.hf.h.dt, "v.dat")
         print 'finishing v: ', self.electrodeSite.v
         if testPlot:
             pg.mkQApp()
@@ -390,6 +442,7 @@ class GenerateRun():
             np_monitor[k] = np.array(self.monitor[k])
 
         np_allsecVec = {}
+        print self.monitor['time']
         for k in self.allsecVec.keys():
             np_allsecVec[k] = np.array(self.allsecVec[k])
         self.runInfo.clist = self.clist

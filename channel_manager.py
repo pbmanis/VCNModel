@@ -125,7 +125,7 @@ class channelManager():
             self.gBar = Params(nabar=500.E-9/refarea,
                                khtbar=58.0E-9/refarea,
                                kltbar=80.0E-9/refarea,  # note doubled here... 
-                               ihbar=30.0E-9/refarea,
+                               ihbar=0.5*30.0E-9/refarea,
                                leakbar=2.0E-9/refarea,
             )
             print 'gbar: ', self.gBar
@@ -138,12 +138,12 @@ class channelManager():
                             'ihvcn': self.gBar.ihbar * 0.5, 'leak': self.gBar.leakbar, },
                 'soma': {'nav11': self.gBar.nabar, 'klt': self.gBar.kltbar, 'kht': self.gBar.khtbar,
                          'ihvcn': self.gBar.ihbar, 'leak': self.gBar.leakbar, },
-                'dend': {'nav11': self.gBar.nabar * 0.5, 'klt': self.gBar.kltbar , 'kht': self.gBar.khtbar,
-                         'ihvcn': self.gBar.ihbar, 'leak': self.gBar.leakbar * 0.5, },
-                'apic': {'nav11': self.gBar.nabar * 0.25, 'klt': self.gBar.kltbar * 0.5, 'kht': self.gBar.khtbar * 0.2,
-                         'ihvcn': self.gBar.ihbar *0.25, 'leak': self.gBar.leakbar * 0.2, },
+                'dend': {'nav11': self.gBar.nabar * 0.5, 'klt': self.gBar.kltbar *0.5, 'kht': self.gBar.khtbar *0.5,
+                         'ihvcn': self.gBar.ihbar *0.5, 'leak': self.gBar.leakbar * 0.5, },
+                'apic': {'nav11': self.gBar.nabar * 0.25, 'klt': self.gBar.kltbar * 0.25, 'kht': self.gBar.khtbar * 0.25,
+                         'ihvcn': self.gBar.ihbar *0.25, 'leak': self.gBar.leakbar * 0.25, },
             }
-            self.irange = np.linspace(-1, 1, 7)
+            self.irange = np.linspace(-2, 2, 9)
             self.distMap = {'dend': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 200.},
                                      'kht': {'gradient': 'llinear', 'gminf': 0., 'lambda': 200.},
                                      'nav11': {'gradient': 'linear', 'gminf': 0., 'lambda': 200.}}, # linear with distance, gminf (factor) is multiplied by gbar
