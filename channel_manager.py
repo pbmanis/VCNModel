@@ -125,8 +125,8 @@ class channelManager():
             self.gBar = Params(nabar=500.E-9/refarea,
                                khtbar=58.0E-9/refarea,
                                kltbar=80.0E-9/refarea,  # note doubled here... 
-                               ihbar=0.5*30.0E-9/refarea,
-                               leakbar=2.0E-9/refarea,
+                               ihbar=0.25*30.0E-9/refarea,
+                               leakbar=0.5*2.0E-9/refarea,
             )
             print 'gbar: ', self.gBar
             self.channelMap = {

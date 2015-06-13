@@ -14,18 +14,24 @@ L23pyr (sort of... not a very good rendition)
 
 import sys
 import os.path
+import pickle
 #import neuronvis.sim_result as sr
 from neuronvis.hoc_viewer import HocViewer
 from neuronvis.hoc_reader import HocReader
 import neuronvis.hoc_graphics as hoc_graphics
 from channel_decorate import ChannelDecorate
 from generate_run import GenerateRun
+import cellInitialization as cellInit
+
 from nrnlibrary.protocols import protocol
 from nrnlibrary import cells
 from nrnlibrary import synapses
 from nrnlibrary.util import get_anspikes
 from nrnlibrary.util import sound
 import nrnlibrary.util as nu
+
+import pylibrary.Utility as pu  # access to spike finder routine
+
 import time
 from neuron import h
 import neuron
@@ -43,14 +49,14 @@ if HAVE_PG:
 
 import numpy as np
 
-verbose = True
+verbose = False
 showCell = False
 
 make_init = False
 test_init = False
 make_ANIntialConditions = False
-ANPSTH_mode = False
-IV_mode = True
+ANPSTH_mode = True
+IV_mode = False
 
 class ModelRun():
     def __init__(self, args=None):
@@ -102,8 +108,9 @@ class ModelRun():
             g = self.hf.sec_groups[group]
             for section in list(g):
                 self.hf.get_section(section).Ra = self.hf.h.Ra
-                # print 'section: ', section
-                # print 'Ra: ', self.hf.get_section(section).Ra
+                if verbose:
+                    print 'section: ', section
+                    print 'Ra: ', self.hf.get_section(section).Ra
 
         self.electrodeSection = 'soma'
         self.hg = hoc_graphics
@@ -111,19 +118,22 @@ class ModelRun():
         sg = self.hf.sec_groups['soma']
         self.distances(self.hf.get_section(list(sg)[0]).name()) # make distance map from soma
         if verbose:
-            print 'Parmap in Runmodel: ', parMap
+            print 'Parmap in runModel: ', parMap
         self.cd = ChannelDecorate(self.hf, celltype=self.cellType, modeltype=self.modelType,
                              parMap=parMap)
-#        self.cd.channelValidate(self.hf, verify=False)
-        self.hf.h.topology()
-        self.cd.channelValidate(self.hf, verify=False)
+
+        # self.hf.h.topology()
+        # self.cd.channelValidate(self.hf, verify=False)
+
         #return
         # for group in self.hf.sec_groups.keys():
         #     g = self.hf.sec_groups[group]
         #     for section in list(g):
         #         secinfo = self.hf.get_section(section)
-                
+
         if make_init:
+            if verbose:
+                print 'make_init'
             self.R = GenerateRun(self.hf, idnum=self.idnum, celltype=self.cellType,
                              starttime=self.startTime,
                              electrodeSection=self.electrodeSection, cd=self.cd,
@@ -131,24 +141,33 @@ class ModelRun():
             self.R.getInitialConditionsState(tdur=3000.)
             print 'Ran to get initial state for %f msec' % self.hf.h.t
             return
+
         if test_init:
+            if verbose:
+                print 'test_init'
             self.R = GenerateRun(self.hf, idnum=self.idnum, celltype=self.cellType,
                              starttime=self.startTime,
                              electrodeSection=self.electrodeSection, cd=self.cd,
                              plotting = HAVE_PG and self.plotFlag, )
             self.R.testRun()
             return  # that is ALL, never make init and then keep running.
-           
-        if ANPSTH_mode:
-            self.ANinputs(self.hf)
+
+        if ANPSTH_mode or make_ANIntialConditions:
+            if verbose:
+                print 'ANPSTH or make_ANInit'
+            self.ANRun(self.hf)
+            
         if IV_mode:
+            if verbose:
+                print 'iv_mode'
             self.IVRun(parMap)
 
         if showCell:
             self.render = HocViewer(self.hf)
             cylinder=self.render.draw_cylinders()
             cylinder.set_group_colors(self.section_colors, alpha=0.8, mechanism=['nav11', 'gbar'])
-        
+
+
     def IVRun(self, parMap={}):
         if verbose:
             print 'generateRun'
@@ -199,7 +218,6 @@ class ModelRun():
         #print 'ivsummary: ', self.IVSummary
         print 'model_run::runModel: write summary for file set = ', self.R.basename
         return self.IVSummary
-        #self.cd.channelValidate(self.hf)
 
 
     def set_celltype(self, celltype):
@@ -214,18 +232,21 @@ class ModelRun():
         validModels = ['RM03', 'XM13', 'XM13Simple', 'MS']
         self.modelType = modeltype
         if self.modelType not in validModels:
-            print 'Model type must be one of: %s. Got: %s ' % (', '.join(validmodels), self.modelType)
+            print 'Model type must be one of: %s. Got: %s ' % (', '.join(validModels), self.modelType)
             exit()
 
 
     def set_starttime(self, starttime):
         self.startTime = starttime
 
+    VCN_c18_synconfig = [(int(216.66*0.65), 0., 2), (int(122.16*0.65), 0., 2), 
+        (int(46.865*0.65), 0., 2), (int(84.045*0.65), 0., 2), (int(2.135*0.65), 0, 2), (int(3.675*0.65), 0, 2), (int(80.27*0.65), 0, 2)]
 
-    def ANinputs(self, hf, verify=False, seed=0, synapseConfig=[(int(216.66*0.65), 0., 2), (int(122.16*0.65), 0., 2), 
-    (int(46.865*0.65), 0., 2), (int(84.045*0.65), 0., 2), (int(2.135*0.65), 0, 2), (int(3.675*0.65), 0, 2), (int(80.27*0.65), 0, 2)]):
+    test_synconfig = [(80, 0, 2)]
+
+    def ANRun(self, hf, verify=False, seed=0, synapseConfig=VCN_c18_synconfig):
         """
-        Establish AN inputs to soma
+        Establish AN inputs to soma, and run the model.
         synapseConfig: list of tuples
             each tuple represents an AN fiber (SGC cell) with:
             (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high])
@@ -234,8 +255,17 @@ class ModelRun():
         self.pip_duration = 0.1
         self.pip_start = [0.1]
         self.Fs = 100e3
-        self.f0 = 1000.
-        nReps = 1
+        self.f0 = 4000.
+        self.dB = 65.
+        self.RF = 2.5e-3
+
+        nReps = 50
+        stimInfo = {'Morphology': self.infile, 'synapseConfig': synapseConfig,
+                    'runDur': self.run_duration, 'pip_dur': self.pip_duration, 'pip_start': self.pip_start,
+                    'Fs': self.Fs, 'F0': self.f0, 'dB': self.dB, 'RF': self.RF, 
+                    'cellType': self.cellType, 'modelType': self.modelType, 'nReps': nReps}
+        
+
         win = pgh.figure(title='AN Inputs')
         layout = pgh.LayoutMaker(cols=1,rows=2, win=win, labelEdges=True, ticks='talbot')
 
@@ -248,10 +278,7 @@ class ModelRun():
         dendrite = hf.get_section(list(dend)[99])
         postCell = cells.Generic.create(soma=hf.get_section(list(sg)[0]))
 
-
-        #postCell = cells.Bushy.create(nach='nav11')
-#        print 'postcell.cell: ', postCell.all_sections
-        self.cd.channelValidate(hf, verify=True)
+        self.cd.channelValidate(hf, verify=False)
         
         preCell = []
         synapse = []
@@ -266,7 +293,14 @@ class ModelRun():
         self.synapse = synapse
         for i, s in enumerate(synapse):
             s.terminal.relsite.Dep_Flag = 0  # turn off depression computation
-            print 'Depression flag for synapse %d = %d ' % (i, s.terminal.relsite.Dep_Flag)
+            #print dir(s.psd.ampa_psd[0])
+
+        #  ****** uncomment here to adjust gmax.
+
+            # for p in s.psd.ampa_psd:
+            #     p.gmax = p.gmax*2.5
+            #
+            #print 'Depression flag for synapse %d = %d ' % (i, s.terminal.relsite.Dep_Flag)
 
         # checking the gmax for all synapses
         # for s in synapse:
@@ -279,22 +313,39 @@ class ModelRun():
         #     for p in psds:
         #         #print p.gmax
         #         pass
+        electrodeSection = list(self.hf.sec_groups['soma'])[0]
+        # print 'soma groups: ', self.hf.sec_groups['soma']
+        self.electrodeSite = self.hf.get_section(electrodeSection)
+        # print 'temp: ', hf.h.celsius
+        # print 'Ra: ', hf.h.Ra
         
+        # see if we need to save the cell state now.
+        if make_ANIntialConditions:
+            print 'getting initial conditions for AN'
+            cellInit.getInitialConditionsState(self.hf, tdur=3000., 
+                filename='an_neuronstate.dat', electrodeSite=self.electrodeSite)
+            cellInit.testInitialConditions(self.hf, filename='an_neuronstate.dat',
+                electrodeSite=self.electrodeSite)
+            return
+        
+        threshold = -20. # spike threshold, mV
         seeds = np.random.randint(32678, size=(nReps, len(synapseConfig)))
-        print seeds
+        print 'AN Seeds: ', seeds
+        stimInfo['seeds'] = seeds  # keep the seed values too.
         k = 0
+        spikeTimes = {}
+        inputSpikeTimes = {}
         for j, N in enumerate(range(nReps)):
             print 'Rep: %d' % N
+            cellInit.restoreInitialConditionsState(self.hf, electrodeSite=None, filename='an_neuronstate.dat')
             self.stim=[]
             # make independent inputs for each synapse
             for i, syn in enumerate(synapseConfig):
-                self.stim.append(sound.TonePip(rate=self.Fs, duration=self.run_duration, f0=self.f0, dbspl=90,
-                                      ramp_duration=2.5e-3, pip_duration=self.pip_duration,
+                self.stim.append(sound.TonePip(rate=self.Fs, duration=self.run_duration, f0=self.f0, dbspl=self.dB,
+                                      ramp_duration=self.RF, pip_duration=self.pip_duration,
                                       pip_start=self.pip_start))
                 nseed = seeds[j, i]
                 preCell[i].set_sound_stim(self.stim[-1], seed=nseed)  # generate spike train, connect to terminal
-                print dir(preCell[i])
-                return
             self.Vsoma = self.hf.h.Vector()
             self.time = self.hf.h.Vector()
             self.Vdend = self.hf.h.Vector()
@@ -302,7 +353,7 @@ class ModelRun():
             self.Vdend.record(dendrite(0.5)._ref_v, sec=dendrite)
             self.time.record(self.hf.h._ref_t)
             print '...running '
-
+            hf.h.finitialize()
             hf.h.tstop = self.run_duration*1000.
             hf.h.t = 0.
             hf.h.batch_save() # save nothing
@@ -316,9 +367,19 @@ class ModelRun():
             dvdt = np.diff(np.array(vsoma[N]))
             sp = np.where(dvdt > 2.0)
             layout.plot(0, np.array(time[N]), np.array(vsoma[N]), pen=pg.mkPen(pg.intColor(N, nReps)))
+            layout.plot(0, [np.min(time[N]), np.max(time[N])], [threshold, threshold], pen=pg.mkPen((0.5, 0.5, 0.5), width=0.5))
             layout.plot(1, np.array(time[N])[:-1], dvdt, pen=pg.mkPen(pg.intColor(N, nReps)))
             layout.getPlot(0).setXLink(layout.getPlot(1))
+            spikeTimes[N] = pu.findspikes(self.time, self.Vsoma, threshold, t0=0., t1=hf.h.tstop, dt=1.0, mode='peak')
+            inputSpikeTimes[N] = [preCell[i]._spiketrain for i in range(len(preCell))]
+        result = [stimInfo, spikeTimes, inputSpikeTimes]
+
+        fname = os.path.splitext(self.infile)[0]
+        f = open('AN_Result_' + fname + 'N%03d_%03ddB_%06.1f' % (nReps, int(self.dB), self.f0) + '.p', 'w')
+        pickle.dump(result, f)
+        f.close()
         pgh.show()
+
 
     def distances(self, section):
         self.hf.distanceMap = {}
