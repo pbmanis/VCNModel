@@ -57,7 +57,8 @@ showCell = False
 make_init = False
 test_init = False
 make_ANIntialConditions = False
-ANPSTH_mode = True
+ANPSTH_mode = False
+ANSingles = True
 IV_mode = False
 
 
@@ -88,6 +89,18 @@ class ModelRun():
         #infile = 'VCN_Dend.hoc'
         #infile = 'somaOnly.hoc'
         self.infile = infile
+        self.srname = ['**', 'LS', 'MS', 'HS']  # runs 1-3, not starting at 0
+        self.run_duration = 0.25
+        self.pip_duration = 0.1
+        self.pip_start = [0.1]
+        self.Fs = 100e3
+        self.f0 = 4000.
+        self.dB = 40.
+        self.RF = 2.5e-3
+        self.SR = 3  # if None, DO NOT Reconfigure, otherwise, override
+        # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
+        
+        
 
 
     def runModel(self, parMap={}):
@@ -159,6 +172,11 @@ class ModelRun():
             if verbose:
                 print 'ANPSTH or make_ANInit'
             self.ANRun(self.hf)
+
+        if ANSingles:
+            if verbose:
+                print 'ANSingles'
+            self.ANRun_singles(self.hf)
             
         if IV_mode:
             if verbose:
@@ -256,53 +274,163 @@ class ModelRun():
             each tuple represents an AN fiber (SGC cell) with:
             (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high])
         """
-        self.run_duration = 0.25
-        self.pip_duration = 0.1
-        self.pip_start = [0.1]
-        self.Fs = 100e3
-        self.f0 = 4000.
-        self.dB = 40.
-        self.RF = 2.5e-3
-        self.SR = 3  # if None, DO NOT Reconfigure, otherwise, override
-        # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
 
-        start_time = time.time()
+        self.start_time = time.time()
 
-        nReps = 50
+        nReps = 1
+        threshold = -20. # spike threshold, mV
+
         stimInfo = {'Morphology': self.infile, 'synapseConfig': synapseConfig,
                     'runDur': self.run_duration, 'pip_dur': self.pip_duration, 'pip_start': self.pip_start,
-                    'Fs': self.Fs, 'F0': self.f0, 'dB': self.dB, 'RF': self.RF, 
-                    'cellType': self.cellType, 'modelType': self.modelType, 'nReps': nReps}
+                    'run_duration': self.run_duration,
+                    'Fs': self.Fs, 'F0': self.f0, 'dB': self.dB, 'RF': self.RF, 'SR': self.SR,
+                    'cellType': self.cellType, 'modelType': self.modelType, 'nReps': nReps, 'threshold': threshold}
 
-        win = pgh.figure(title='AN Inputs')
-        layout = pgh.LayoutMaker(cols=1,rows=2, win=win, labelEdges=True, ticks='talbot')
+        preCell, postCell, self.electrodeSite = self.configureCell(hf, synapseConfig, stimInfo)
 
-        # hf.h.tstop = 100.
-        # hf.h.finitialize()
-        # hf.h.run()
-        #synapseConfig = [synapseConfig[2]]
+        # see if we need to save the cell state now.
+        if make_ANIntialConditions:
+            print 'getting initial conditions for AN'
+            cellInit.getInitialConditionsState(hf, tdur=3000., 
+                filename='an_neuronstate.dat', electrodeSite=self.electrodeSite)
+            cellInit.testInitialConditions(hf, filename='an_neuronstate.dat',
+                electrodeSite=self.electrodeSite)
+            return
+
+        seeds = np.random.randint(32678, size=(nReps, len(synapseConfig)))
+        print 'AN Seeds: ', seeds
+        stimInfo['seeds'] = seeds  # keep the seed values too.
+        k = 0
+        spikeTimes = {}
+        inputSpikeTimes = {}
+        somaVoltage = {}
+        celltime = []
+        
+        self.setup_time = time.time() - self.start_time
+        self.nrn_run_time = 0.0
+        self.an_setup_time = 0.
+        for j, N in enumerate(range(nReps)):
+            print 'Rep: %d' % N
+            
+            preCell, postCell = self.singleANRun(hf, j, synapseConfig, stimInfo, seeds, preCell, postCell)
+
+            celltime.append(self.time)
+            spikeTimes[N] = pu.findspikes(self.time, self.Vsoma, threshold, t0=0., t1=hf.h.tstop, dt=1.0, mode='peak')
+            inputSpikeTimes[N] = [preCell[i]._spiketrain for i in range(len(preCell))]
+            somaVoltage[N] = np.array(self.Vsoma)
+
+        total_elapsed_time = time.time() - self.start_time
+#        total_run_time = time.time() - run_time
+        print "Total Elapsed Time = %8.2f min (%8.0fs)" % (total_elapsed_time/60., total_elapsed_time)
+        print "Total Setup Time = %8.2f min (%8.0fs)" % (self.setup_time/60., self.setup_time)
+        print "Total AN Calculation Time = %8.2f min (%8.0fs)" % (self.an_setup_time/60., self.an_setup_time)
+        print "Total Neuron Run Time = %8.2f min (%8.0fs)" % (self.nrn_run_time/60., self.nrn_run_time)
+        
+        result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes, 
+            'somaVoltage': somaVoltage, 'time': np.array(self.time)}
+        
+        self.analysis_filewriter(self.infile, result)
+        self.plotAN(np.array(self.time), result['somaVoltage'], result['stimInfo'])
+
+    def ANRun_singles(self, hf, verify=False, seed=0, synapseConfig=VCN_c18_synconfig):
+        """
+        Establish AN inputs to soma, and run the model.
+        synapseConfig: list of tuples
+            each tuple represents an AN fiber (SGC cell) with:
+            (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high])
+        This routine is special - it runs nReps for each synapse, turning off all of the other synapses
+        by setting the synaptic conductance to 0 (to avoid upsetting initialization)
+        
+        """
+
+        self.start_time = time.time()
+
+        nReps = 5
+        threshold = -20. # spike threshold, mV
+
+        stimInfo = {'Morphology': self.infile, 'synapseConfig': synapseConfig,
+                    'runDur': self.run_duration, 'pip_dur': self.pip_duration, 'pip_start': self.pip_start,
+                    'run_duration': self.run_duration,
+                    'Fs': self.Fs, 'F0': self.f0, 'dB': self.dB, 'RF': self.RF, 'SR': self.SR,
+                    'cellType': self.cellType, 'modelType': self.modelType, 'nReps': nReps, 'threshold': threshold}
+
+        preCell, postCell, synapse, self.electrodeSite = self.configureCell(hf, synapseConfig, stimInfo)
+
+        # see if we need to save the cell state now.
+        if make_ANIntialConditions:
+            print 'getting initial conditions for AN'
+            cellInit.getInitialConditionsState(hf, tdur=3000., 
+                filename='an_neuronstate.dat', electrodeSite=self.electrodeSite)
+            cellInit.testInitialConditions(hf, filename='an_neuronstate.dat',
+                electrodeSite=self.electrodeSite)
+            return
+        nSyns = len(synapseConfig)
+        seeds = np.random.randint(32678, size=(nReps, len(synapseConfig)))
+        print 'AN Seeds: ', seeds
+        stimInfo['seeds'] = seeds  # keep the seed values too.
+        k = 0
+        spikeTimes = {}
+        inputSpikeTimes = {}
+        somaVoltage = {}
+        celltime = []
+        
+        self.setup_time = time.time() - self.start_time
+        self.nrn_run_time = 0.0
+        self.an_setup_time = 0.
+        # get the gMax's
+        gMax = np.zeros(nSyns)
+        for i, s in enumerate(synapse):
+            for p in s.psd.ampa_psd:
+                gMax[i] = p.gmax
+        print 'synapse gMax: ', gMax
+        
+        for k in range(nSyns):
+            # only enable gsyn on the selected input
+            for i, s in enumerate(synapse):
+                for p in s.psd.ampa_psd:
+                    if i != k:
+                        p.gmax = 0.  # disable all
+                    else:
+                        p.gmax = gMax[i]  # except the shosen one
+            for j, N in enumerate(range(nReps)):
+                print 'Rep: %d' % N
+            
+                preCell, postCell = self.singleANRun(hf, j, synapseConfig, stimInfo, seeds, preCell, postCell)
+
+                celltime.append(self.time)
+                spikeTimes[N] = pu.findspikes(self.time, self.Vsoma, threshold, t0=0., t1=hf.h.tstop, dt=1.0, mode='peak')
+                inputSpikeTimes[N] = [preCell[i]._spiketrain for i in range(len(preCell))]
+                somaVoltage[N] = np.array(self.Vsoma)
+
+            total_elapsed_time = time.time() - self.start_time
+    #        total_run_time = time.time() - run_time
+            print "Total Elapsed Time = %8.2f min (%8.0fs)" % (total_elapsed_time/60., total_elapsed_time)
+            print "Total Setup Time = %8.2f min (%8.0fs)" % (self.setup_time/60., self.setup_time)
+            print "Total AN Calculation Time = %8.2f min (%8.0fs)" % (self.an_setup_time/60., self.an_setup_time)
+            print "Total Neuron Run Time = %8.2f min (%8.0fs)" % (self.nrn_run_time/60., self.nrn_run_time)
+        
+            result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes, 
+                'somaVoltage': somaVoltage, 'time': np.array(self.time)}
+        
+            self.analysis_filewriter(self.infile, result, tag='Syn%03d' % k)
+        #self.plotAN(np.array(self.time), result['somaVoltage'], result['stimInfo'])
+
+
+    def configureCell(self, hf, synapseConfig, stimInfo):
         sg = hf.sec_groups['soma']
-        dend = hf.sec_groups['dendrite']
-        dendrite = hf.get_section(list(dend)[99])
         postCell = cells.Generic.create(soma=hf.get_section(list(sg)[0]))
 
         self.cd.channelValidate(hf, verify=False)
 
         preCell = []
         synapse = []
-        vsoma = []
-        celltime = []
-        vdend = []
         # reconfigure syanpses to set the spont rate group
         for i, syn in enumerate(synapseConfig):
-            if self.SR is None:  # use the one in the table
-                preCell.append(cells.DummySGC(cf=self.f0, sr=syn[2]))
+            if stimInfo['SR'] is None:  # use the one in the table
+                preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=syn[2]))
             else:
-                preCell.append(cells.DummySGC(cf=self.f0, sr=self.SR))  # override
+                preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=stimInfo['SR']))  # override
             synapse.append(preCell[-1].connect(postCell, pre_opts={'nzones':syn[0], 'delay':syn[1]}))
-        self.pre_cell = preCell
-        self.post_cell = postCell
-        self.synapse = synapse
         for i, s in enumerate(synapse):
             s.terminal.relsite.Dep_Flag = 0  # turn off depression computation
             #print dir(s.psd.ampa_psd[0])
@@ -325,93 +453,70 @@ class ModelRun():
         #     for p in psds:
         #         #print p.gmax
         #         pass
-        electrodeSection = list(self.hf.sec_groups['soma'])[0]
-        # print 'soma groups: ', self.hf.sec_groups['soma']
-        self.electrodeSite = self.hf.get_section(electrodeSection)
-        # print 'temp: ', hf.h.celsius
-        # print 'Ra: ', hf.h.Ra
+        electrodeSection = list(hf.sec_groups['soma'])[0]
+        electrodeSite = hf.get_section(electrodeSection)
+        return (preCell, postCell, synapse, electrodeSite)
 
-        # see if we need to save the cell state now.
-        if make_ANIntialConditions:
-            print 'getting initial conditions for AN'
-            cellInit.getInitialConditionsState(self.hf, tdur=3000., 
-                filename='an_neuronstate.dat', electrodeSite=self.electrodeSite)
-            cellInit.testInitialConditions(self.hf, filename='an_neuronstate.dat',
-                electrodeSite=self.electrodeSite)
-            return
 
-        threshold = -20. # spike threshold, mV
-        seeds = np.random.randint(32678, size=(nReps, len(synapseConfig)))
-        print 'AN Seeds: ', seeds
-        stimInfo['seeds'] = seeds  # keep the seed values too.
-        k = 0
-        spikeTimes = {}
-        inputSpikeTimes = {}
-        somaVoltage = {}
+    def singleANRun(self, hf, j, synapseConfig, stimInfo, seeds, preCell, postCell):
+        cellInit.restoreInitialConditionsState(hf, electrodeSite=None, filename='an_neuronstate.dat')
+        self.stim=[]
+        # make independent inputs for each synapse
+        an0_time = time.time()
+        for i, syn in enumerate(synapseConfig):
+            self.stim.append(sound.TonePip(rate=self.Fs, duration=self.run_duration, f0=self.f0, dbspl=self.dB,
+                                  ramp_duration=self.RF, pip_duration=self.pip_duration,
+                                  pip_start=self.pip_start))
+            nseed = seeds[j, i]
+            preCell[i].set_sound_stim(self.stim[-1], seed=nseed)  # generate spike train, connect to terminal
+        self.an_setup_time += (time.time() - an0_time)
+        nrn_start = time.time()
+        self.Vsoma = hf.h.Vector()
+        self.time = hf.h.Vector()
+        self.Vsoma.record(postCell.soma(0.5)._ref_v, sec=postCell.soma)
+        self.time.record(hf.h._ref_t)
+        print '...running '
+        hf.h.finitialize()
+        hf.h.tstop = self.run_duration*1000.
+        hf.h.t = 0.
+        hf.h.batch_save() # save nothing
+        hf.h.batch_run(hf.h.tstop, hf.h.dt, "an.dat")
+        # old - don't d this! #hf.h.finitialize()
+        # hf.h.run()
+        self.nrn_run_time += (time.time() - nrn_start)
+        print '...done'
+        return(preCell, postCell)
 
-        setup_time = time.time() - start_time
-        nrn_run_time = 0.0
-        an_setup_time = 0.
-        for j, N in enumerate(range(nReps)):
-            print 'Rep: %d' % N
-            cellInit.restoreInitialConditionsState(self.hf, electrodeSite=None, filename='an_neuronstate.dat')
-            self.stim=[]
-            # make independent inputs for each synapse
-            an0_time = time.time()
-            for i, syn in enumerate(synapseConfig):
-                self.stim.append(sound.TonePip(rate=self.Fs, duration=self.run_duration, f0=self.f0, dbspl=self.dB,
-                                      ramp_duration=self.RF, pip_duration=self.pip_duration,
-                                      pip_start=self.pip_start))
-                nseed = seeds[j, i]
-                preCell[i].set_sound_stim(self.stim[-1], seed=nseed)  # generate spike train, connect to terminal
-            an_setup_time += (time.time() - an0_time)
-            nrn_start = time.time()
-            self.Vsoma = self.hf.h.Vector()
-            self.time = self.hf.h.Vector()
-            self.Vdend = self.hf.h.Vector()
-            self.Vsoma.record(postCell.soma(0.5)._ref_v, sec=postCell.soma)
-            self.Vdend.record(dendrite(0.5)._ref_v, sec=dendrite)
-            self.time.record(self.hf.h._ref_t)
-            print '...running '
-            hf.h.finitialize()
-            hf.h.tstop = self.run_duration*1000.
-            hf.h.t = 0.
-            hf.h.batch_save() # save nothing
-            hf.h.batch_run(hf.h.tstop, hf.h.dt, "an.dat")
-            # old - don't d this! #hf.h.finitialize()
-            # hf.h.run()
-            nrn_run_time += (time.time() - nrn_start)
-            print '...done'
-            vsoma.append(self.Vsoma)
-            celltime.append(self.time)
-            vdend.append(self.Vdend)
-            dvdt = np.diff(np.array(vsoma[N]))
-            sp = np.where(dvdt > 2.0)
-            layout.plot(0, np.array(celltime[N]), np.array(vsoma[N]), pen=pg.mkPen(pg.intColor(N, nReps)))
-            layout.plot(0, [np.min(celltime[N]), np.max(celltime[N])], [threshold, threshold], pen=pg.mkPen((0.5, 0.5, 0.5), width=0.5))
-            layout.plot(1, np.array(celltime[N])[:-1], dvdt, pen=pg.mkPen(pg.intColor(N, nReps)))
+
+    def plotAN(self, celltime, somaVoltage, stimInfo):
+        nReps = stimInfo['nReps']
+        threshold = stimInfo['threshold']
+        win = pgh.figure(title='AN Inputs')
+        layout = pgh.LayoutMaker(cols=1,rows=2, win=win, labelEdges=True, ticks='talbot')
+        for j, N in enumerate(range(len(somaVoltage))):
+            layout.plot(0, celltime, somaVoltage[N], pen=pg.mkPen(pg.intColor(N, nReps)))
+            layout.plot(0, [np.min(celltime), np.max(celltime)], [threshold, threshold], pen=pg.mkPen((0.5, 0.5, 0.5), width=0.5))
+            dvdt = np.diff(somaVoltage[N])
+            layout.plot(1, celltime[:-1], dvdt, pen=pg.mkPen(pg.intColor(N, nReps)))
             layout.getPlot(0).setXLink(layout.getPlot(1))
-            spikeTimes[N] = pu.findspikes(self.time, self.Vsoma, threshold, t0=0., t1=hf.h.tstop, dt=1.0, mode='peak')
-            inputSpikeTimes[N] = [preCell[i]._spiketrain for i in range(len(preCell))]
-            somaVoltage[N] = np.array(self.Vsoma)
 
-        total_elapsed_time = time.time() - start_time
-#        total_run_time = time.time() - run_time
-        print "Total Elapsed Time = %8.2f min (%8.0fs)" % (total_elapsed_time/60., total_elapsed_time)
-        print "Total Setup Time = %8.2f min (%8.0fs)" % (setup_time/60., setup_time)
-        print "Total AN Calculation Time = %8.2f min (%8.0fs)" % (an_setup_time/60., an_setup_time)
-        print "Total Neuron Run Time = %8.2f min (%8.0fs)" % (nrn_run_time/60., nrn_run_time)
-        
-        result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes, 
-            'somaVoltage': somaVoltage, 'time': np.array(self.time)}
-
-        fname = os.path.splitext(self.infile)[0]
-        srname = ['**', 'LS', 'MS', 'HS']  # runs 1-3, not starting at 0
-        f = open('AN_Result_' + fname + 'N%03d_%03ddB_%06.1f_%2s' % (nReps, int(self.dB), self.f0, srname[self.SR]) + '.p', 'w')
-        pickle.dump(result, f)
-        f.close()
         pgh.show()
 
+        # result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes,
+        #     'somaVoltage': somaVoltage, 'time': np.array(self.time)}
+
+    def analysis_filewriter(self, filebase, result, tag=''):
+        k = result.keys()
+        requiredKeys = ['stimInfo', 'spikeTimes', 'inputSpikeTimes', 'somaVoltage', 'time']
+        for rk in requiredKeys:
+            assert rk in k
+
+        stimInfo = result['stimInfo']
+        fname = os.path.splitext(self.infile)[0]
+        f = open('AN_Result_' + fname + '%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
+                int(stimInfo['dB']), stimInfo['F0'], stimInfo['SR']) + '.p', 'w')
+        pickle.dump(result, f)
+        f.close()        
 
     def distances(self, section):
         self.hf.distanceMap = {}

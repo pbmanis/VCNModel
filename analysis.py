@@ -18,24 +18,22 @@ import numpy as np
 
 filename = 'AN_Result_VCN_c18_reparented755N050_040dB_4000.0_MS.p'
 
+synfile_template = 'AN_Result_VCN_c18_reparented755Syn%03d_N005_040dB_4000.0_ 3.p'
 
-f = open(filename, 'r')
-d = pickle.load(f)
-f.close()
-if isinstance(d, list):
-    stimInfo = d[0]
-    spikeTimes = d[1]
-    inputSpikeTimes = d[2]
-else:
-    stimInfo = d['stimInfo']
-    spikeTimes = d['spikeTimes']
-    inputSpikeTimes = d['inputSpikeTimes']
+def readFile(filename):
+    f = open(filename, 'r')
+    d = pickle.load(f)
+    f.close()
+    if isinstance(d, list):
+        stimInfo = d[0]
+        spikeTimes = d[1]
+        inputSpikeTimes = d[2]
+    else:
+        stimInfo = d['stimInfo']
+        spikeTimes = d['spikeTimes']
+        inputSpikeTimes = d['inputSpikeTimes']
 
-
-starttime = 1000.*stimInfo['pip_start'][0]
-sstartdur = stimInfo['pip_dur']
-nReps = stimInfo['nReps']
-
+    return(spikeTimes, inputSpikeTimes, stimInfo, d)
 
 
 def ANfspike(spikes, stime, nReps):
@@ -79,43 +77,71 @@ def CNfspike(spikes, stime, nReps):
     print '   mean Second spike latency: %8.3f ms stdev: %8.3f (N=%3d)' % (np.nanmean(sl2), np.nanstd(sl2), 
         np.count_nonzero(~np.isnan(sl2)))
 
-print 'AN: '
-ANfspike(inputSpikeTimes, starttime, nReps)
-print 'CN: '
-CNfspike(spikeTimes, starttime, nReps)
 
-# plot PSTH's
+def plot1(spikeTimes, inputSpikeTimes, stiminfo):
+    win = pgh.figure(title='AN Inputs')
+    layout = pgh.LayoutMaker(cols=1,rows=2, win=win, labelEdges=True, ticks='talbot')
+    # flatten spike times
+    spt = []
+    for r in range(nReps):
+        spt.extend(spikeTimes[r])
 
+    oneANF = inputSpikeTimes[0]
+    anf = []
+    for r in range(len(oneANF)):
+        anf.extend(oneANF[r])
+    #print stimInfo
 
-win = pgh.figure(title='AN Inputs')
-layout = pgh.LayoutMaker(cols=1,rows=2, win=win, labelEdges=True, ticks='talbot')
-# flatten spike times
-spt = []
-for r in range(nReps):
-    spt.extend(spikeTimes[r])
+    (anpsth, anbins) = np.histogram(anf, bins=np.linspace(0., 250., 250), density=False)
+    anrate = (anpsth*1e3)/nReps  # convert spikes/msec/50 trials to spikes/sec per trial in each bin
+    curve = pg.PlotCurveItem(anbins, anrate, stepMode=True, fillLevel=0, brush=(0, 0, 0, 255))
+    layout.getPlot(1).addItem(curve)
+    layout.getPlot(1).setLabel('left', 'spikes/sec (1 msec bins)')
+    layout.getPlot(1).setTitle('AN (1 fiber: %.1f kHz, %ddb SPL, %sR, %d Reps)' % (stimInfo['F0']/1000., stimInfo['dB'], 'MS', stimInfo['nReps']))
+    (CNpsth, CNbins) = np.histogram(spt, bins=np.linspace(0., 250., 250), density=False)
+    CNrate = (CNpsth*1e3)/nReps
+    curve = pg.PlotCurveItem(CNbins, CNrate, stepMode=True, fillLevel=0, brush=(0, 0, 255, 255))
+    layout.getPlot(0).addItem(curve)
+    layout.getPlot(0).setLabel('left', 'spikes/sec (1 msec bins)')
+    layout.getPlot(0).setTitle('VCN Cell 18')
 
-oneANF = inputSpikeTimes[0]
-anf = []
-for r in range(len(oneANF)):
-    anf.extend(oneANF[r])
-#print stimInfo
-
-(anpsth, anbins) = np.histogram(anf, bins=np.linspace(0., 250., 250), density=False)
-anrate = (anpsth*1e3)/nReps  # convert spikes/msec/50 trials to spikes/sec per trial in each bin
-curve = pg.PlotCurveItem(anbins, anrate, stepMode=True, fillLevel=0, brush=(0, 0, 0, 255))
-layout.getPlot(1).addItem(curve)
-layout.getPlot(1).setLabel('left', 'spikes/sec (1 msec bins)')
-layout.getPlot(1).setTitle('AN (1 fiber: %.1f kHz, %ddb SPL, %sR, %d Reps)' % (stimInfo['F0']/1000., stimInfo['dB'], 'MS', stimInfo['nReps']))
-(CNpsth, CNbins) = np.histogram(spt, bins=np.linspace(0., 250., 250), density=False)
-CNrate = (CNpsth*1e3)/nReps
-curve = pg.PlotCurveItem(CNbins, CNrate, stepMode=True, fillLevel=0, brush=(0, 0, 255, 255))
-layout.getPlot(0).addItem(curve)
-layout.getPlot(0).setLabel('left', 'spikes/sec (1 msec bins)')
-layout.getPlot(0).setTitle('VCN Cell 18')
-
-pgh.show()
+    pgh.show()
 
 
+def plotPSTH():
+    spikeTimes, inputSpikeTimes, stimInfo, d = readFile(filename)
+    nReps = stimInfo['nReps']
+    starttime = 1000.*stimInfo['pip_start'][0]
+    stimdur = stimInfo['pip_dur']
+    print 'AN: '
+    ANfspike(inputSpikeTimes, starttime, nReps)
+    print 'CN: '
+    CNfspike(spikeTimes, starttime, nReps)
+    plot1(spikeTimes, inputSpikeTimes, stimInfo)
+
+
+def plotSingles():
+    win = pgh.figure(title='AN Inputs')
+    win.resize(400, 900)
+    layout = pgh.LayoutMaker(cols=1,rows=7, win=win, labelEdges=True, ticks='talbot')
+    
+    for i in range(0, 7):
+        fname = synfile_template % i
+        print fname
+        spikeTimes, inputSpikeTimes, stimInfo, d = readFile(fname)
+        nReps = stimInfo['nReps']
+        pl = layout.getPlot(i)
+        sv = d['somaVoltage']
+        tm = d['time']
+        for j in range(nReps):
+            pl.plot(tm, sv[j], pen=pg.mkPen(pg.intColor(j, nReps), width=1.0))
+            pl.setLabel('left', 'mV')
+            pl.setYRange(-65, -5)
+            pgh.do_talbotTicks(pl, ndec=0)
+    pgh.show()
+
+
+plotSingles()
 
 
 
