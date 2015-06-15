@@ -18,7 +18,7 @@ import numpy as np
 
 filename = 'AN_Result_VCN_c18_reparented755N050_040dB_4000.0_HS.p'
 
-#synfile_template = 'AN_Result_VCN_c18_reparented755V2Syn%03d_N005_040dB_4000.0_ 3.p'
+synfile_template = 'AN_Result_VCN_c18_reparented755V2Syn%03d_N001_040dB_4000.0_ 3.p'
 
 def readFile(filename):
     f = open(filename, 'r')
@@ -149,7 +149,7 @@ def plotSingles():
     pgh.show()
 
 
-plotPSTH()
+plotSingles()
 
 
 

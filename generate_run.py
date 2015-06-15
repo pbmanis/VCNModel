@@ -24,6 +24,7 @@ import csv
 import pickle
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
+import pyqtgraph.multiprocess as mproc
 
 verbose = False # use this for testing.
 
@@ -364,14 +365,31 @@ class GenerateRun():
             print 'genrate_run::doRun: basename is = ', self.basename
         #self.hf.update() # make sure channels are all up to date
         self.results={}
+
+        nLevels = len(self.runInfo.stimInj)
+        nWorkers = 4
+
+        TASKS = [s for s in range(nLevels)]
+        tresults = [None]*len(TASKS)
+        runner = [None]*nLevels
+        
+        # run using pyqtgraph's parallel support
+        with mproc.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
+            for i, x in tasker:
+                inj = self.runInfo.stimInj[i]
+                self._prepareRun(inj=inj) # build the recording arrays
+                self.run_initialized = cellInit.initModel(self.hf, mode='cc', restoreFromFile=restoreFromFile)  # this also sets nseg in the axon - so do it before setting up shapes
+                tresults = self._executeRun() # now you can do the run
+                tasker.results[i] = {'r': tresults, 'i': inj}
+        
+#        self.results = results
+        self.results={}
+        for i in range(len(tresults)):
+            self.results[tresults[i]['i']] = tresults[i]['r']
         for k, i in enumerate(self.runInfo.stimInj):
-            #if verbose:
-            print 'doRun: inj = ', i
-            self._prepareRun(inj=i) # build the recording arrays
-            self.run_initialized = cellInit.initModel(self.hf, mode='cc', restoreFromFile=restoreFromFile)  # this also sets nseg in the axon - so do it before setting up shapes
-            self.results[i] = self._executeRun() # now you can do the run
             if self.plotting:
                 if k == 0:
+                    self.mons = self.results[i].monitor.keys()
                     self.plotRun(self.results[i], init=True)
                 else:
                     self.plotRun(self.results[i], init=False)
@@ -443,7 +461,7 @@ class GenerateRun():
             np_monitor[k] = np.array(self.monitor[k])
 
         np_allsecVec = {}
-        print self.monitor['time']
+#        print self.monitor['time']
         for k in self.allsecVec.keys():
             np_allsecVec[k] = np.array(self.allsecVec[k])
         self.runInfo.clist = self.clist
@@ -510,6 +528,7 @@ class GenerateRun():
     def plotRun(self, results, init=True, show=False):
         if init:
             self.cplts = cp.CalyxPlots(title=self.filename)
+        print 'self.mons (somasite): ', self.mons
         self.cplts.plotResults(results.todict(), self.runInfo.todict(), somasite=self.mons)
         if show:
             self.cplts.show()

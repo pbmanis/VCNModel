@@ -33,6 +33,7 @@ from nrnlibrary.util import sound
 import nrnlibrary.util as nu
 
 import pylibrary.Utility as pu  # access to spike finder routine
+import pyqtgraph.multiprocess as mproc
 
 import time
 from neuron import h
@@ -67,8 +68,8 @@ IV_mode = False
 # AN
 AN_neuronStateFile = 'aniv_neuronstateV2.dat'
 make_ANIntialConditions = False
-ANPSTH_mode = True
-ANSingles = False
+ANPSTH_mode = False
+ANSingles = True
 
 
 
@@ -328,7 +329,7 @@ class ModelRun():
         for j, N in enumerate(range(nReps)):
             print 'Rep: %d' % N
             
-            preCell, postCell = self.singleANRun(hf, j, synapseConfig, stimInfo, seeds, preCell, postCell)
+            preCell, postCell = self.singleANRun(hf, j, synapseConfig, stimInfo, seeds, preCell, postCell, self.an_setup_time)
 
             celltime.append(self.time)
             spikeTimes[N] = pu.findspikes(self.time, self.Vsoma, threshold, t0=0., t1=hf.h.tstop, dt=1.0, mode='peak')
@@ -347,6 +348,7 @@ class ModelRun():
         
         self.analysis_filewriter(self.infile, result)
         self.plotAN(np.array(self.time), result['somaVoltage'], result['stimInfo'])
+
 
     def ANRun_singles(self, hf, verify=False, seed=0, synapseConfig=VCN_c18_synconfig):
         """
@@ -408,15 +410,27 @@ class ModelRun():
                         p.gmax = 0.  # disable all
                     else:
                         p.gmax = gMax[i]  # except the shosen one
-            for j, N in enumerate(range(nReps)):
-                print 'Rep: %d' % N
-            
-                preCell, postCell = self.singleANRun(hf, j, synapseConfig, stimInfo, seeds, preCell, postCell)
 
-                celltime.append(self.time)
-                spikeTimes[N] = pu.findspikes(self.time, self.Vsoma, threshold, t0=0., t1=hf.h.tstop, dt=1.0, mode='peak')
-                inputSpikeTimes[N] = [preCell[i]._spiketrain for i in range(len(preCell))]
-                somaVoltage[N] = np.array(self.Vsoma)
+            nWorkers = 4
+            TASKS = [s for s in range(nReps)]
+            tresults = [None]*len(TASKS)
+
+            # run using pyqtgraph's parallel support
+            with mproc.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
+                for j, x in tasker:
+                    tresults = self.singleANRun(hf, j, synapseConfig,
+                        stimInfo, seeds, preCell, postCell, self.an_setup_time)
+                    tasker.results[j] = tresults
+            
+            for j, N in enumerate(range(nReps)):
+#                print 'Rep: %d' % N
+
+#                preCell, postCell = self.singleANRun(hf, j, synapseConfig, stimInfo, seeds, preCell, postCell)
+                
+                celltime.append(tresults[j]['time']) # (self.time)
+                spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold, t0=0., t1=hf.h.tstop, dt=1.0, mode='peak')
+                inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
+                somaVoltage[N] = np.array(tresults[j]['Vsoma'])
 
             total_elapsed_time = time.time() - self.start_time
     #        total_run_time = time.time() - run_time
@@ -426,7 +440,7 @@ class ModelRun():
             print "Total Neuron Run Time = %8.2f min (%8.0fs)" % (self.nrn_run_time/60., self.nrn_run_time)
         
             result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes, 
-                'somaVoltage': somaVoltage, 'time': np.array(self.time)}
+                'somaVoltage': somaVoltage, 'time': np.array(tresults[j]['time'])}
         
             self.analysis_filewriter(self.infile, result, tag='Syn%03d' % k)
         #self.plotAN(np.array(self.time), result['somaVoltage'], result['stimInfo'])
@@ -474,35 +488,40 @@ class ModelRun():
         return (preCell, postCell, synapse, electrodeSite)
 
 
-    def singleANRun(self, hf, j, synapseConfig, stimInfo, seeds, preCell, postCell):
+    def singleANRun(self, hf, j, synapseConfig, stimInfo, seeds, preCell, postCell, an_setup_time):
         cellInit.restoreInitialConditionsState(hf, electrodeSite=None, filename=AN_neuronStateFile)
-        self.stim=[]
+        stim=[]
         # make independent inputs for each synapse
+        ANSpikeTimes=[]
         an0_time = time.time()
+        nrn_run_time = 0.
         for i, syn in enumerate(synapseConfig):
-            self.stim.append(sound.TonePip(rate=self.Fs, duration=self.run_duration, f0=self.f0, dbspl=self.dB,
-                                  ramp_duration=self.RF, pip_duration=self.pip_duration,
-                                  pip_start=self.pip_start))
+            stim.append(sound.TonePip(rate=stimInfo['Fs'], duration=stimInfo['run_duration'], 
+            f0=stimInfo['F0'], dbspl=stimInfo['dB'],
+                                  ramp_duration=stimInfo['RF'], pip_duration=stimInfo['pip_dur'],
+                                  pip_start=stimInfo['pip_start']))
             nseed = seeds[j, i]
-            preCell[i].set_sound_stim(self.stim[-1], seed=nseed)  # generate spike train, connect to terminal
-        self.an_setup_time += (time.time() - an0_time)
+            preCell[i].set_sound_stim(stim[-1], seed=nseed)  # generate spike train, connect to terminal
+            ANSpikeTimes.append(preCell[i]._spiketrain)
+        an_setup_time += (time.time() - an0_time)
         nrn_start = time.time()
-        self.Vsoma = hf.h.Vector()
-        self.time = hf.h.Vector()
-        self.Vsoma.record(postCell.soma(0.5)._ref_v, sec=postCell.soma)
-        self.time.record(hf.h._ref_t)
+        Vsoma = hf.h.Vector()
+        rtime = hf.h.Vector()
+        Vsoma.record(postCell.soma(0.5)._ref_v, sec=postCell.soma)
+        rtime.record(hf.h._ref_t)
         print '...running '
         hf.h.finitialize()
-        hf.h.tstop = self.run_duration*1000.
+        hf.h.tstop = stimInfo['run_duration']*1000.
         hf.h.t = 0.
         hf.h.batch_save() # save nothing
         hf.h.batch_run(hf.h.tstop, hf.h.dt, "an.dat")
         # old - don't d this! #hf.h.finitialize()
         # hf.h.run()
-        self.nrn_run_time += (time.time() - nrn_start)
+        nrn_run_time += (time.time() - nrn_start)
         print '...done'
-        return(preCell, postCell)
-
+        anresult = {'Vsoma': np.array(Vsoma), 'time': np.array(rtime), 'ANSpikeTimes': ANSpikeTimes}
+        return anresult
+        
 
     def plotAN(self, celltime, somaVoltage, stimInfo):
         nReps = stimInfo['nReps']
@@ -518,8 +537,6 @@ class ModelRun():
 
         pgh.show()
 
-        # result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes,
-        #     'somaVoltage': somaVoltage, 'time': np.array(self.time)}
 
     def analysis_filewriter(self, filebase, result, tag=''):
         k = result.keys()
