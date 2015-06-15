@@ -54,12 +54,22 @@ import numpy as np
 verbose = False
 showCell = False
 
+# use v2 files for model with rescaled soma
+
+
+
+# IV
+IV_neuronStateFile = 'an_neuronstateV2.dat'
 make_init = False
 test_init = False
-make_ANIntialConditions = False
-ANPSTH_mode = False
-ANSingles = True
 IV_mode = False
+
+# AN
+AN_neuronStateFile = 'aniv_neuronstateV2.dat'
+make_ANIntialConditions = False
+ANPSTH_mode = True
+ANSingles = False
+
 
 
 class ModelRun():
@@ -128,6 +138,8 @@ class ModelRun():
                     print 'section: ', section
                     print 'Ra: ', self.hf.get_section(section).Ra
 
+        electrodeSection = list(self.hf.sec_groups['soma'])[0]
+        self.electrodeSite = self.hf.get_section(electrodeSection)
         self.electrodeSection = 'soma'
         self.hg = hoc_graphics
         self.get_hoc_file(filename)
@@ -154,7 +166,8 @@ class ModelRun():
                              starttime=self.startTime,
                              electrodeSection=self.electrodeSection, cd=self.cd,
                              plotting = HAVE_PG and self.plotFlag)
-            self.R.getInitialConditionsState(tdur=3000.)
+            cellInit.getInitialConditionsState(self.hf, tdur=3000., 
+                filename=IV_neuronStateFile, electrodeSite=self.electrodeSite)
             print 'Ran to get initial state for %f msec' % self.hf.h.t
             return
 
@@ -165,7 +178,9 @@ class ModelRun():
                              starttime=self.startTime,
                              electrodeSection=self.electrodeSection, cd=self.cd,
                              plotting = HAVE_PG and self.plotFlag, )
-            self.R.testRun()
+            cellInit.testInitialConditions(self.hf, filename=IV_neuronStateFile,
+                electrodeSite=self.electrodeSite)
+            #self.R.testRun()
             return  # that is ALL, never make init and then keep running.
 
         if ANPSTH_mode or make_ANIntialConditions:
@@ -261,8 +276,9 @@ class ModelRun():
         self.startTime = starttime
 
     VCN_c18_synconfig = [(int(216.66*0.65), 0., 2), (int(122.16*0.65), 0., 2), 
-        (int(46.865*0.65), 0., 2), (int(84.045*0.65), 0., 2), (int(2.135*0.65), 0, 2), (int(3.675*0.65), 0, 2), (int(80.27*0.65), 0, 2)]
-
+        (int(46.865*0.65), 0., 2), (int(84.045*0.65), 0., 2), (int(80.27*0.65), 0, 2)]
+    # VCN_c18_synconfig_original = [(int(216.66*0.65), 0., 2), (int(122.16*0.65), 0., 2),
+    #     (int(46.865*0.65), 0., 2), (int(84.045*0.65), 0., 2), (int(2.135*0.65), 0, 2), (int(3.675*0.65), 0, 2), (int(80.27*0.65), 0, 2)]
     test_synconfig = [(80, 0, 2)]  # if switching configs, need to re-run with AN_InitialConditions to set up the
     # save/restore state. Any change in input configuration requires a new "state" 
 
@@ -277,8 +293,8 @@ class ModelRun():
 
         self.start_time = time.time()
 
-        nReps = 1
-        threshold = -20. # spike threshold, mV
+        nReps = 50
+        threshold = -15. # spike threshold, mV
 
         stimInfo = {'Morphology': self.infile, 'synapseConfig': synapseConfig,
                     'runDur': self.run_duration, 'pip_dur': self.pip_duration, 'pip_start': self.pip_start,
@@ -286,14 +302,14 @@ class ModelRun():
                     'Fs': self.Fs, 'F0': self.f0, 'dB': self.dB, 'RF': self.RF, 'SR': self.SR,
                     'cellType': self.cellType, 'modelType': self.modelType, 'nReps': nReps, 'threshold': threshold}
 
-        preCell, postCell, self.electrodeSite = self.configureCell(hf, synapseConfig, stimInfo)
+        preCell, postCell, synapse, self.electrodeSite = self.configureCell(hf, synapseConfig, stimInfo)
 
         # see if we need to save the cell state now.
         if make_ANIntialConditions:
             print 'getting initial conditions for AN'
             cellInit.getInitialConditionsState(hf, tdur=3000., 
-                filename='an_neuronstate.dat', electrodeSite=self.electrodeSite)
-            cellInit.testInitialConditions(hf, filename='an_neuronstate.dat',
+                filename=AN_neuronStateFile, electrodeSite=self.electrodeSite)
+            cellInit.testInitialConditions(hf, filename=AN_neuronStateFile,
                 electrodeSite=self.electrodeSite)
             return
 
@@ -360,8 +376,8 @@ class ModelRun():
         if make_ANIntialConditions:
             print 'getting initial conditions for AN'
             cellInit.getInitialConditionsState(hf, tdur=3000., 
-                filename='an_neuronstate.dat', electrodeSite=self.electrodeSite)
-            cellInit.testInitialConditions(hf, filename='an_neuronstate.dat',
+                filename=AN_neuronStateFile, electrodeSite=self.electrodeSite)
+            cellInit.testInitialConditions(hf, filename=AN_neuronStateFile,
                 electrodeSite=self.electrodeSite)
             return
         nSyns = len(synapseConfig)
@@ -459,7 +475,7 @@ class ModelRun():
 
 
     def singleANRun(self, hf, j, synapseConfig, stimInfo, seeds, preCell, postCell):
-        cellInit.restoreInitialConditionsState(hf, electrodeSite=None, filename='an_neuronstate.dat')
+        cellInit.restoreInitialConditionsState(hf, electrodeSite=None, filename=AN_neuronStateFile)
         self.stim=[]
         # make independent inputs for each synapse
         an0_time = time.time()

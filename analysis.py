@@ -16,9 +16,9 @@ import pylibrary.pyqtgraphPlotHelpers as pgh
 
 import numpy as np
 
-filename = 'AN_Result_VCN_c18_reparented755N050_040dB_4000.0_MS.p'
+filename = 'AN_Result_VCN_c18_reparented755N050_040dB_4000.0_HS.p'
 
-synfile_template = 'AN_Result_VCN_c18_reparented755Syn%03d_N005_040dB_4000.0_ 3.p'
+#synfile_template = 'AN_Result_VCN_c18_reparented755V2Syn%03d_N005_040dB_4000.0_ 3.p'
 
 def readFile(filename):
     f = open(filename, 'r')
@@ -78,26 +78,33 @@ def CNfspike(spikes, stime, nReps):
         np.count_nonzero(~np.isnan(sl2)))
 
 
-def plot1(spikeTimes, inputSpikeTimes, stiminfo):
+def plot1(spikeTimes, inputSpikeTimes, stimInfo):
     win = pgh.figure(title='AN Inputs')
     layout = pgh.LayoutMaker(cols=1,rows=2, win=win, labelEdges=True, ticks='talbot')
     # flatten spike times
     spt = []
+    nReps = stimInfo['nReps']
     for r in range(nReps):
         spt.extend(spikeTimes[r])
 
-    oneANF = inputSpikeTimes[0]
+    ANFs = [0]
     anf = []
-    for r in range(len(oneANF)):
-        anf.extend(oneANF[r])
+    for r in range(nReps):
+        for n in range(len(ANFs)):
+            anf.extend(inputSpikeTimes[r][ANFs[n]])  # pick the ANF
     #print stimInfo
-
+    srGroups = ['', 'LS', 'MS', 'HS']
     (anpsth, anbins) = np.histogram(anf, bins=np.linspace(0., 250., 250), density=False)
     anrate = (anpsth*1e3)/nReps  # convert spikes/msec/50 trials to spikes/sec per trial in each bin
     curve = pg.PlotCurveItem(anbins, anrate, stepMode=True, fillLevel=0, brush=(0, 0, 0, 255))
     layout.getPlot(1).addItem(curve)
     layout.getPlot(1).setLabel('left', 'spikes/sec (1 msec bins)')
-    layout.getPlot(1).setTitle('AN (1 fiber: %.1f kHz, %ddb SPL, %sR, %d Reps)' % (stimInfo['F0']/1000., stimInfo['dB'], 'MS', stimInfo['nReps']))
+    if 'SR' in stimInfo.keys():
+        sr =srGroups[stimInfo['SR']]
+    else:
+        sr = 'HS'
+    layout.getPlot(1).setTitle('AN (1 fiber: %.1f kHz, %ddb SPL, %sR, %d Reps)' % 
+            (stimInfo['F0']/1000., stimInfo['dB'], sr, stimInfo['nReps']))
     (CNpsth, CNbins) = np.histogram(spt, bins=np.linspace(0., 250., 250), density=False)
     CNrate = (CNpsth*1e3)/nReps
     curve = pg.PlotCurveItem(CNbins, CNrate, stepMode=True, fillLevel=0, brush=(0, 0, 255, 255))
@@ -121,11 +128,12 @@ def plotPSTH():
 
 
 def plotSingles():
+    nInputs = 5
     win = pgh.figure(title='AN Inputs')
-    win.resize(400, 900)
-    layout = pgh.LayoutMaker(cols=1,rows=7, win=win, labelEdges=True, ticks='talbot')
+    win.resize(400, 125*nInputs)
+    layout = pgh.LayoutMaker(cols=1,rows=nInputs, win=win, labelEdges=True, ticks='talbot')
     
-    for i in range(0, 7):
+    for i in range(0, nInputs):
         fname = synfile_template % i
         print fname
         spikeTimes, inputSpikeTimes, stimInfo, d = readFile(fname)
@@ -141,7 +149,7 @@ def plotSingles():
     pgh.show()
 
 
-plotSingles()
+plotPSTH()
 
 
 
