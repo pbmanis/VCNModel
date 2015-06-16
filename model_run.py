@@ -254,7 +254,7 @@ class ModelRun():
 
         if verbose:
             print 'doRun'
-        self.R.doRun(self.Params['infile'], parMap, save='monitor', restoreFromFile=True)
+        self.R.doRun(self.Params['infile'], parMap, save='monitor', restoreFromFile=True, workers=self.Params['nWorkers'])
         if verbose:
             print '  doRun completed'
             print self.R.IVResult

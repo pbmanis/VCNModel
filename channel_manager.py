@@ -6,7 +6,7 @@ For each channel, given a canonical cell type, we define:
 basic conductance set
 """
 from pylibrary.Params import Params
-import pylibrary.PyNrnUtilities as pn
+# import pylibrary.PyNrnUtilities as pn
 import pprint as pp
 import numpy as np
 

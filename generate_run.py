@@ -16,7 +16,7 @@ import os
 import numpy as np
 import nrnlibrary.makestim
 from pylibrary.Params import Params
-import CalyxPlots as cp
+import calyxPlots as cp
 import analyze_run as ar
 import cellInitialization as cellInit
 import time
@@ -344,7 +344,7 @@ class GenerateRun():
 # #                print 'section: %s  vm=%8.3f' % (section.name(), section(0.5).v)
 #
 
-    def doRun(self, filename=None, parMap = None, save=False, restoreFromFile=False):
+    def doRun(self, filename=None, parMap = None, save=False, restoreFromFile=False, workers=4):
         if verbose:
             print 'generat_run::doRun'
         (p, e) = os.path.splitext(filename)  # make sure filename is clean
@@ -367,7 +367,7 @@ class GenerateRun():
         self.results={}
 
         nLevels = len(self.runInfo.stimInj)
-        nWorkers = 4
+        nWorkers = workers
 
         TASKS = [s for s in range(nLevels)]
         tresults = [None]*len(TASKS)

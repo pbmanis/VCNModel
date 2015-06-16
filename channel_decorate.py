@@ -11,7 +11,7 @@ It also takes the celltype, a string that directs how conductances should be ins
 
 """
 from pylibrary.Params import Params
-import pylibrary.PyNrnUtilities as pn
+import nrnlibrary.util.pynrnutilities as pn
 import pprint
 import string
 import numpy as np
