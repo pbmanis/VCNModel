@@ -420,7 +420,7 @@ class ModelRun():
         self.start_time = time.time()
 
         nReps = self.Params['nReps']
-        threshold = -20. # spike threshold, mV
+        threshold = self.Params['threshold'] # spike threshold, mV
 
         stimInfo = self.Params
         # {'Morphology': self.Params['infile'], 'synapseConfig': synapseConfig,
@@ -431,14 +431,14 @@ class ModelRun():
 
         preCell, postCell, synapse, self.electrodeSite = self.configureCell(hf, synapseConfig, stimInfo)
 
-        # see if we need to save the cell state now.
-        if make_ANIntialConditions:
-            print 'getting initial conditions for AN'
-            cellInit.getInitialConditionsState(hf, tdur=3000., 
-                filename=self.Params['initANStateFile'], electrodeSite=self.electrodeSite)
-            cellInit.testInitialConditions(hf, filename=self.Params['initANStateFile'],
-                electrodeSite=self.electrodeSite)
-            return
+        # # see if we need to save the cell state now.
+        # if self.Params['make_ANIntialConditions:
+        #     print 'getting initial conditions for AN'
+        #     cellInit.getInitialConditionsState(hf, tdur=3000.,
+        #         filename=self.Params['initANStateFile'], electrodeSite=self.electrodeSite)
+        #     cellInit.testInitialConditions(hf, filename=self.Params['initANStateFile'],
+        #         electrodeSite=self.electrodeSite)
+        #     return
         nSyns = len(synapseConfig)
         seeds = np.random.randint(32678, size=(nReps, len(synapseConfig)))
         print 'AN Seeds: ', seeds
@@ -448,7 +448,7 @@ class ModelRun():
         inputSpikeTimes = {}
         somaVoltage = {}
         celltime = []
-        
+        parallel = True
         self.setup_time = time.time() - self.start_time
         self.nrn_run_time = 0.0
         self.an_setup_time = 0.
@@ -472,13 +472,18 @@ class ModelRun():
             TASKS = [s for s in range(nReps)]
             tresults = [None]*len(TASKS)
 
-            # run using pyqtgraph's parallel support
-            with mproc.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
-                for j, x in tasker:
-                    tresults = self.singleANRun(hf, j, synapseConfig,
-                        stimInfo, seeds, preCell, postCell, self.an_setup_time)
-                    tasker.results[j] = tresults
-            # retreive the data
+            if parallel:
+                # run using pyqtgraph's parallel support
+                with mproc.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
+                    for j, x in tasker:
+                        tresults = self.singleANRun(hf, j, synapseConfig,
+                            stimInfo, seeds, preCell, postCell, self.an_setup_time)
+                        tasker.results[j] = tresults
+                # retreive the data
+            else:  # easier to debug
+                for j, N in enumerate(range(nReps)):
+                    tresults[j] = self.singleANRun(hf, j, synapseConfig,
+                            stimInfo, seeds, preCell, postCell, self.an_setup_time)
             for j, N in enumerate(range(nReps)):
 #                print 'Rep: %d' % N
 
@@ -566,8 +571,8 @@ class ModelRun():
                                   f0=stimInfo['F0'], dbspl=stimInfo['dB'],
                                   ramp_duration=stimInfo['RF'], pip_duration=stimInfo['pip_duration'],
                                   pip_start=stimInfo['pip_start']))
-            #print stim[-1]
             nseed = seeds[j, i]
+            print 'nseed: ', nseed
             preCell[i].set_sound_stim(stim[-1], seed=nseed)  # generate spike train, connect to terminal
             ANSpikeTimes.append(preCell[i]._spiketrain)
         an_setup_time += (time.time() - an0_time)

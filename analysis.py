@@ -19,7 +19,7 @@ import numpy as np
 filename = 'AN_Result_VCN_c18_reparented755V2_delays_N050_040dB_4000.0_HS.p'
 
 synfile_template = 'AN_Result_VCN_c18_reparented755V2Syn%03d_N005_040dB_4000.0_ 3.p'
-
+synfile_template = 'AN_Result_VCN_c18_reparented755V2_Syn%03d_N002_040dB_4000.0_HS.p'
 def readFile(filename):
     f = open(filename, 'r')
     d = pickle.load(f)
@@ -167,9 +167,9 @@ def plotSingles():
             pgh.do_talbotTicks(pl, ndec=0)
     pgh.show()
 
-plotPSTH()
+#plotPSTH()
 
-#plotSingles()
+plotSingles()
 
 
 
