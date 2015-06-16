@@ -16,7 +16,7 @@ import pylibrary.pyqtgraphPlotHelpers as pgh
 
 import numpy as np
 
-filename = 'AN_Result_VCN_c18_reparented755V2_delays_N001_040dB_4000.0_HS.p'
+filename = 'AN_Result_VCN_c18_reparented755V2_N050_040dB_4000.0_ 3.p'
 
 synfile_template = 'AN_Result_VCN_c18_reparented755V2Syn%03d_N005_040dB_4000.0_ 3.p'
 
@@ -62,7 +62,6 @@ def getFirstSpikes(spikes, stime, nReps):
     sl1 = np.full(nReps, np.nan)
     sl2 = np.full(nReps, np.nan)
     for r in range(nReps):
-        print spikes[r]
         rs = np.where(spikes[r] > stime)[0]  # get spike times post stimulus onset
         if len(spikes[r]) > 0 and len(rs) > 0:
             sl1[r] = spikes[r][rs[0]]
