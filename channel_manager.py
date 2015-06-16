@@ -43,7 +43,7 @@ class channelManager():
                 'apic': {'nacn': self.gBar.nabar, 'klt': self.gBar.kltbar * 0.2, 'kht': self.gBar.khtbar * 0.2,
                          'ihvcn': self.gBar.ihbar / 4., 'leak': self.gBar.leakbar * 0.2, },
             }
-            self.irange = np.linspace(-2., 2., 7)
+            self.irange = np.linspace(-1., 1., 11)
             self.distMap = {'dend': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
                                      'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
                                      'nacn': {'gradient': 'exp', 'gminf': 0., 'lambda': 100.}}, # linear with distance, gminf (factor) is multiplied by gbar
@@ -143,7 +143,7 @@ class channelManager():
                 'apic': {'nav11': self.gBar.nabar * 0.25, 'klt': self.gBar.kltbar * 0.25, 'kht': self.gBar.khtbar * 0.25,
                          'ihvcn': self.gBar.ihbar *0.25, 'leak': self.gBar.leakbar * 0.25, },
             }
-            self.irange = np.linspace(-1, 1, 9)
+            self.irange = np.linspace(-1, 1, 21)
             self.distMap = {'dend': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 200.},
                                      'kht': {'gradient': 'llinear', 'gminf': 0., 'lambda': 200.},
                                      'nav11': {'gradient': 'linear', 'gminf': 0., 'lambda': 200.}}, # linear with distance, gminf (factor) is multiplied by gbar
@@ -155,6 +155,7 @@ class channelManager():
         elif celltype == 'Bushy_XM13PasDend':
             # bushy form Xie and Manis, 2013, based on Cao and Oertel mouse conductances
             # passive dendritestotcap = 26.0E-12 # uF/cm2 
+            totcap = 26.0E-12 # uF/cm2 
             refarea = totcap  / self.c_m  # see above for units
             self.gBar = Params(nabar=500.E-9/refarea,
                                khtbar=58.0E-9/refarea,
@@ -177,7 +178,7 @@ class channelManager():
                 'apic': {'nav11': self.gBar.nabar * 0.0, 'klt': self.gBar.kltbar * 0, 'kht': self.gBar.khtbar * 0.,
                          'ihvcn': self.gBar.ihbar *0., 'leak': self.gBar.leakbar * 0.25, },
             }
-            self.irange = np.linspace(-1, 1, 7)
+            self.irange = np.linspace(-1, 1, 21)
             self.distMap = {'dend': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 200.},
                                      'kht': {'gradient': 'llinear', 'gminf': 0., 'lambda': 200.},
                                      'nav11': {'gradient': 'linear', 'gminf': 0., 'lambda': 200.}}, # linear with distance, gminf (factor) is multiplied by gbar
