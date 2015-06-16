@@ -68,8 +68,8 @@ IV_mode = False
 # AN
 AN_neuronStateFile = 'aniv_neuronstateV2.dat'
 make_ANIntialConditions = False
-ANPSTH_mode = False
-ANSingles = True
+ANPSTH_mode = True
+ANSingles = False
 
 
 
@@ -276,8 +276,19 @@ class ModelRun():
     def set_starttime(self, starttime):
         self.startTime = starttime
 
-    VCN_c18_synconfig = [(int(216.66*0.65), 0., 2), (int(122.16*0.65), 0., 2), 
-        (int(46.865*0.65), 0., 2), (int(84.045*0.65), 0., 2), (int(80.27*0.65), 0, 2)]
+    #synconfig consists of a list of tuples.
+    # Each element in the list corresponds to one terminal and all of it's active zones
+    # each tuple consists of N sites (calculated from area * average synapses/um2)
+    # delay, and SR
+    # the 4th and 5th entries in the tuple are the length of axon from the edge of the block (?)
+    # and the diameter. The brances are not included. distances are in microns
+    
+    VCN_c18_synconfig = [[int(216.66*0.65), 0., 2, 49.2, 1.222],
+                         [int(122.16*0.65), 0., 2, 82.7, 1.417], 
+                         [int(46.865*0.65), 0., 2, 67.3, 1.309],
+                         [int(84.045*0.65), 0., 2, 22.4, 1.416],
+                         [int(80.27*0.65),  0., 2, 120.3, 0.687],
+                        ]
     # VCN_c18_synconfig_original = [(int(216.66*0.65), 0., 2), (int(122.16*0.65), 0., 2),
     #     (int(46.865*0.65), 0., 2), (int(84.045*0.65), 0., 2), (int(2.135*0.65), 0, 2), (int(3.675*0.65), 0, 2), (int(80.27*0.65), 0, 2)]
     test_synconfig = [(80, 0, 2)]  # if switching configs, need to re-run with AN_InitialConditions to set up the
@@ -293,9 +304,15 @@ class ModelRun():
         """
 
         self.start_time = time.time()
+        # compute delays in a simple manner
+        # assumption 3 meters/second conduction time
+        # delay then is dist/(3 m/s), or 0.001 ms/um of length
+        for i, s in enumerate(synapseConfig):
+            s[1] = s[3]*0.001/3.0
+            print 'delay for input %d is %8.4f msec' % (i, s[1])
 
         nReps = 50
-        threshold = -15. # spike threshold, mV
+        threshold = -20. # spike threshold, mV
 
         stimInfo = {'Morphology': self.infile, 'synapseConfig': synapseConfig,
                     'runDur': self.run_duration, 'pip_dur': self.pip_duration, 'pip_start': self.pip_start,
@@ -326,15 +343,35 @@ class ModelRun():
         self.setup_time = time.time() - self.start_time
         self.nrn_run_time = 0.0
         self.an_setup_time = 0.
-        for j, N in enumerate(range(nReps)):
-            print 'Rep: %d' % N
-            
-            preCell, postCell = self.singleANRun(hf, j, synapseConfig, stimInfo, seeds, preCell, postCell, self.an_setup_time)
 
-            celltime.append(self.time)
-            spikeTimes[N] = pu.findspikes(self.time, self.Vsoma, threshold, t0=0., t1=hf.h.tstop, dt=1.0, mode='peak')
-            inputSpikeTimes[N] = [preCell[i]._spiketrain for i in range(len(preCell))]
-            somaVoltage[N] = np.array(self.Vsoma)
+        nWorkers = 4
+        TASKS = [s for s in range(nReps)]
+        tresults = [None]*len(TASKS)
+
+        # run using pyqtgraph's parallel support
+        with mproc.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
+            for j, x in tasker:
+                tresults = self.singleANRun(hf, j, synapseConfig,
+                    stimInfo, seeds, preCell, postCell, self.an_setup_time)
+                tasker.results[j] = tresults
+        # retreive the data
+        for j, N in enumerate(range(nReps)):
+           
+            celltime.append(tresults[j]['time']) # (self.time)
+            spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'],
+                    threshold, t0=0., t1=stimInfo['run_duration']*1000., dt=1.0, mode='peak')
+            inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
+            somaVoltage[N] = np.array(tresults[j]['Vsoma'])
+
+        # for j, N in enumerate(range(nReps)):
+        #     print 'Rep: %d' % N
+        #
+        #     preCell, postCell = self.singleANRun(hf, j, synapseConfig, stimInfo, seeds, preCell, postCell, self.an_setup_time)
+        #
+        #     celltime.append(self.time)
+        #     spikeTimes[N] = pu.findspikes(self.time, self.Vsoma, threshold, t0=0., t1=hf.h.tstop, dt=1.0, mode='peak')
+        #     inputSpikeTimes[N] = [preCell[i]._spiketrain for i in range(len(preCell))]
+        #     somaVoltage[N] = np.array(self.Vsoma)
 
         total_elapsed_time = time.time() - self.start_time
 #        total_run_time = time.time() - run_time
@@ -344,10 +381,10 @@ class ModelRun():
         print "Total Neuron Run Time = %8.2f min (%8.0fs)" % (self.nrn_run_time/60., self.nrn_run_time)
         
         result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes, 
-            'somaVoltage': somaVoltage, 'time': np.array(self.time)}
+            'somaVoltage': somaVoltage, 'time': np.array(celltime[0])}
         
-        self.analysis_filewriter(self.infile, result)
-        self.plotAN(np.array(self.time), result['somaVoltage'], result['stimInfo'])
+        self.analysis_filewriter(self.infile, result, tag='delays')
+        self.plotAN(np.array(celltime[0]), result['somaVoltage'], result['stimInfo'])
 
 
     def ANRun_singles(self, hf, verify=False, seed=0, synapseConfig=VCN_c18_synconfig):
@@ -421,14 +458,15 @@ class ModelRun():
                     tresults = self.singleANRun(hf, j, synapseConfig,
                         stimInfo, seeds, preCell, postCell, self.an_setup_time)
                     tasker.results[j] = tresults
-            
+            # retreive the data
             for j, N in enumerate(range(nReps)):
 #                print 'Rep: %d' % N
 
 #                preCell, postCell = self.singleANRun(hf, j, synapseConfig, stimInfo, seeds, preCell, postCell)
                 
                 celltime.append(tresults[j]['time']) # (self.time)
-                spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold, t0=0., t1=hf.h.tstop, dt=1.0, mode='peak')
+                spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold, t0=0.,
+                        t1=stimInfo['run_duration']*1000, dt=1.0, mode='peak')
                 inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
                 somaVoltage[N] = np.array(tresults[j]['Vsoma'])
 
@@ -546,7 +584,7 @@ class ModelRun():
 
         stimInfo = result['stimInfo']
         fname = os.path.splitext(self.infile)[0]
-        f = open('AN_Result_' + fname + '%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
+        f = open('AN_Result_' + fname + '_%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
                 int(stimInfo['dB']), stimInfo['F0'], stimInfo['SR']) + '.p', 'w')
         pickle.dump(result, f)
         f.close()        

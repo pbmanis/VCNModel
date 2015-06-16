@@ -16,7 +16,7 @@ import pylibrary.pyqtgraphPlotHelpers as pgh
 
 import numpy as np
 
-filename = 'AN_Result_VCN_c18_reparented755N050_040dB_4000.0_HS.p'
+filename = 'AN_Result_VCN_c18_reparented755V2_delays_N001_040dB_4000.0_HS.p'
 
 synfile_template = 'AN_Result_VCN_c18_reparented755V2Syn%03d_N005_040dB_4000.0_ 3.p'
 
@@ -58,24 +58,29 @@ def ANfspike(spikes, stime, nReps):
     print '   mean Second spike latency: %8.3f ms stdev: %8.3f  (N=%3d)' % (np.nanmean(sl2), np.nanstd(sl2),
         np.count_nonzero(~np.isnan(sl2)))
 
-
-def CNfspike(spikes, stime, nReps):
-    # print spikes
-    # print
-    
+def getFirstSpikes(spikes, stime, nReps):
     sl1 = np.full(nReps, np.nan)
     sl2 = np.full(nReps, np.nan)
     for r in range(nReps):
+        print spikes[r]
         rs = np.where(spikes[r] > stime)[0]  # get spike times post stimulus onset
-        if len(spikes[r]) > 0:
+        if len(spikes[r]) > 0 and len(rs) > 0:
             sl1[r] = spikes[r][rs[0]]
-        if len(spikes[r]) > 1:
+        if len(spikes[r]) > 1 and len(rs) > 0:
             sl2[r] = spikes[r][rs[1]]  # second spikes
+    return(sl1, sl2)    
+
+def CNfspike(spikes, stime, nReps):
+    # print spikes
+    print 'stime: ', stime
+    sl1, sl2 = getFirstSpikes(spikes, stime, nReps)
+
     print 'Cochlear Nucleus Bushy Cell: '
     print '   mean First spike latency:  %8.3f ms stdev: %8.3f (N=%3d)' % (np.nanmean(sl1), np.nanstd(sl1),
         np.count_nonzero(~np.isnan(sl1)))
     print '   mean Second spike latency: %8.3f ms stdev: %8.3f (N=%3d)' % (np.nanmean(sl2), np.nanstd(sl2), 
         np.count_nonzero(~np.isnan(sl2)))
+    return(sl1, sl2)
 
 
 def plot1(spikeTimes, inputSpikeTimes, stimInfo):
@@ -84,6 +89,7 @@ def plot1(spikeTimes, inputSpikeTimes, stimInfo):
     # flatten spike times
     spt = []
     nReps = stimInfo['nReps']
+    stime = stimInfo[ 'pip_start'][0]*1000.
     for r in range(nReps):
         spt.extend(spikeTimes[r])
 
@@ -106,9 +112,23 @@ def plot1(spikeTimes, inputSpikeTimes, stimInfo):
     layout.getPlot(1).setTitle('AN (1 fiber: %.1f kHz, %ddb SPL, %sR, %d Reps)' % 
             (stimInfo['F0']/1000., stimInfo['dB'], sr, stimInfo['nReps']))
     (CNpsth, CNbins) = np.histogram(spt, bins=np.linspace(0., 250., 250), density=False)
-    CNrate = (CNpsth*1e3)/nReps
+    CNrate = (CNpsth*1e3)/nReps    
     curve = pg.PlotCurveItem(CNbins, CNrate, stepMode=True, fillLevel=0, brush=(0, 0, 255, 255))
     layout.getPlot(0).addItem(curve)
+
+    (sl1, sl2) = getFirstSpikes(spikeTimes, stime, nReps)  # get first and secons in respond to stimulus only
+    (CNpsthFS, CNbinsFS) = np.histogram(sl1, bins=np.linspace(0., 250., 250), density=False)
+    CNrateFS = (CNpsthFS*1e3)/nReps
+    curveFS = pg.PlotCurveItem(CNbinsFS, CNrateFS, stepMode=True, fillLevel=0,
+        brush=(255, 0, 0, 255), pen=None)
+    layout.getPlot(0).addItem(curveFS)
+
+    (CNpsthSecS, CNbinsSecS) = np.histogram(sl2, bins=np.linspace(0., 250., 250), density=False)
+    CNrateSecS = (CNpsthSecS*1e3)/nReps
+    curveSecS = pg.PlotCurveItem(CNbinsSecS, CNrateSecS, stepMode=True, fillLevel=0,
+        brush=(255, 0, 255, 255), pen=None)
+    layout.getPlot(0).addItem(curveSecS)
+    
     layout.getPlot(0).setLabel('left', 'spikes/sec (1 msec bins)')
     layout.getPlot(0).setTitle('VCN Cell 18')
 
@@ -148,8 +168,9 @@ def plotSingles():
             pgh.do_talbotTicks(pl, ndec=0)
     pgh.show()
 
+plotPSTH()
 
-plotSingles()
+#plotSingles()
 
 
 
