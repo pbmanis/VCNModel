@@ -16,7 +16,7 @@ import pylibrary.pyqtgraphPlotHelpers as pgh
 
 import numpy as np
 
-filename = 'AN_Result_VCN_c18_reparented755V2_N050_040dB_4000.0_ 3.p'
+filename = 'AN_Result_VCN_c18_reparented755V2_delays_N050_040dB_4000.0_HS.p'
 
 synfile_template = 'AN_Result_VCN_c18_reparented755V2Syn%03d_N005_040dB_4000.0_ 3.p'
 
@@ -105,7 +105,7 @@ def plot1(spikeTimes, inputSpikeTimes, stimInfo):
     layout.getPlot(1).addItem(curve)
     layout.getPlot(1).setLabel('left', 'spikes/sec (1 msec bins)')
     if 'SR' in stimInfo.keys():
-        sr =srGroups[stimInfo['SR']]
+        sr =stimInfo['SR']
     else:
         sr = 'HS'
     layout.getPlot(1).setTitle('AN (1 fiber: %.1f kHz, %ddb SPL, %sR, %d Reps)' % 
@@ -138,7 +138,7 @@ def plotPSTH():
     spikeTimes, inputSpikeTimes, stimInfo, d = readFile(filename)
     nReps = stimInfo['nReps']
     starttime = 1000.*stimInfo['pip_start'][0]
-    stimdur = stimInfo['pip_dur']
+    stimdur = stimInfo['pip_duration']
     print 'AN: '
     ANfspike(inputSpikeTimes, starttime, nReps)
     print 'CN: '
