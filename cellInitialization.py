@@ -84,7 +84,7 @@ def getInitialConditionsState(hf, tdur=2000., filename=None, electrodeSite=None)
     hf.h.tstop = tdur
     print 'running for %8.2f ms' % tdur
     hf.h.run()
-    print '  ran until t = %8.2f' % hf.h.t
+    print '  run completed, t = %8.2f' % hf.h.t
     if electrodeSite is not None:
         vfinal = electrodeSite.v
     else:
@@ -102,13 +102,13 @@ def getInitialConditionsState(hf, tdur=2000., filename=None, electrodeSite=None)
 
 
 def restoreInitialConditionsState(hf, electrodeSite=None, filename=None):
-    print 'restoring initial conditions'
+
     hf.h.finitialize()
     stateFile = hf.h.File() # restore state AFTER finitialize
     state = hf.h.SaveState()
     if filename is None:
         filename = 'neuronstate.dat'
-    print ' .. restoring file from: %s' % filename
+    print ' .. Restored initial conditions from file: %s' % filename
     stateFile.ropen(filename)
     state.fread(stateFile)
     stateFile.close()

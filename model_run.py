@@ -156,7 +156,7 @@ class ModelRun():
         if parMap == {}:
             self.plotFlag = True
         filename = os.path.join('MorphologyFiles/', self.Params['infile'])
-        print 'reading input file: %s' % filename
+        print 'Reading input file: %s' % filename
         self.hf = HocReader(filename)
         self.hf.h.celsius = 38.
         self.hf.h.Ra = 150.
@@ -520,12 +520,12 @@ class ModelRun():
                 stimInfo['SR'] = self.srname[syn[2]] # use and report value from table
             else:
                 try:
-                    srindx = self.srname.index(stimInfo['SRType'])
-                    print 'retrieved index %d with SR type %s' % (srindx, stimInfo['SRType'])
+                    srindex = self.srname.index(stimInfo['SRType'])
+                    print 'retrieved index %d with SR type %s' % (srindex, stimInfo['SRType'])
                 except:
                     raise ValueError('SR type "%s" not found in Sr type list' % stimInfo['SRType'])
                     
-                preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=syn[srindx]))  # override
+                preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=srindex))  # override
             synapse.append(preCell[-1].connect(postCell, pre_opts={'nzones':syn[0], 'delay':syn[1]}))
         for i, s in enumerate(synapse):
             s.terminal.relsite.Dep_Flag = 0  # turn off depression computation
@@ -566,7 +566,7 @@ class ModelRun():
                                   f0=stimInfo['F0'], dbspl=stimInfo['dB'],
                                   ramp_duration=stimInfo['RF'], pip_duration=stimInfo['pip_duration'],
                                   pip_start=stimInfo['pip_start']))
-            print stim[-1]
+            #print stim[-1]
             nseed = seeds[j, i]
             preCell[i].set_sound_stim(stim[-1], seed=nseed)  # generate spike train, connect to terminal
             ANSpikeTimes.append(preCell[i]._spiketrain)
@@ -696,7 +696,7 @@ if __name__ == "__main__":
             help=('Specify a sequence for the primary run parameters'))
     parser.add_argument('--plot',  action="store_true", default=False, dest = 'showPlot', 
             help='Plot results as they are generated - requires user intervention... ')
-type=int,  default=4, dest = 'nWorkers', 
+    parser.add_argument('--workers', type=int,  default=4, dest = 'nWorkers', 
             help='Number of "workers" for parallel processing (default: 4)')
 
     # parser.add_argument('-p', '--print', action="store_true", default=False, dest = 'print_info',
