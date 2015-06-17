@@ -240,111 +240,7 @@ class GenerateRun():
         #self.hf.h('access %s' % self.hf.get_section(self.electrodeSite).name())
 
 
-#     def _initRun(self, restoreFromFile=False):
-#         """
-#         (private method)
-#         Model initialization procedure:
-#         Set RMP to the resting RMP of the model cell.
-#         Run Finitialize or similar
-#         Outputs: None.
-#         Action: Initializes the NEURON state to begin a run.
-#         Does not instantiate recording or stimulating.
-#         """
-#         if verbose:
-#             print '_initRun'
-#         if self.runInfo is None:
-#             raise Exception('GenerateRun: initRun has no runInfo')
-#
-#         if self.runInfo.postMode in ['vc', 'vclamp']:
-#             self.hf.h.finitialize(self.runInfo.vstimHolding)
-#             self.run_initialized = True
-#             return
-#
-#         # otherwise we are in current clamp
-#         # Options:
-#         # 1. adjust e_leak so that the rmp in each segment is the same
-#         # 2. use ic_constant to inject current in each segment to set rmp
-#         # 3. allow vm to vary in segments, using existing conductances (may be unstable)
-#
-#         if restoreFromFile:
-#             self._restoreInitialConditionsState()
-#             self.hf.h.frecord_init()
-#             self.run_initialized = True
-#             return
-#
-#         if self.hf.h.CVode().active():
-#             self.hf.h.CVode().active(0)  # turn cvode off (note, in this model it will be off because one of the mechanisms is not compatible with cvode at this time)
-#
-#         self.hf.h.finitialize(self.runInfo.v_init)
-#         self.hf.h.t = -1e8
-#         dtsav = self.hf.h.dt
-#         self.hf.h.dt = 1e6  # big time steps for slow process
-#         n = 0
-#         while self.hf.h.t < 0:
-#             n += 1
-#             self.hf.h.fadvance()
-#         self.hf.h.dt = dtsav
-#         self.hf.h.t = 0
-#         if self.hf.h.CVode().active():
-#             self.hf.h.CVode().re_init()
-# #        self.hf.h.finitialize()
-#         self.hf.h.fcurrent()
-#         self.hf.h.frecord_init()
-#         self.run_initialized = True
-#
-#         #print dir(self.hf.h)
-#         # print 'electrode site: ', self.electrodeSite, ' named: ', self.electrodeSite.name()
-#         print 'Initialized with finitialize, starting at %8.2f, ending %8.2f ' % (self.runInfo.v_init, self.electrodeSite.v)
-#
-#         print 'final init V hoc: ', self.hf.h('v')
-#
-#
-#     def getInitialConditionsState(self, tdur=2000., filename=None):
-#         """
-#         Run model for a time, and then save the state
-#         """
-#         # first to an initialization to get close
-#         print 'getInitialCondistionsState\n'
-#         print '  starting t = %8.2f' % self.hf.h.t
-#         self._initRun(restoreFromFile=False)
-#         self._prepareRun(inj=0.)
-#         self.hf.h.tstop = tdur
-#         self.hf.h.run()
-#         print '  ran until t = %8.2f' % self.hf.h.t
-#         vfinal = self.electrodeSite.v
-#         print '  V = %8.2f' % vfinal
-#         state = self.hf.h.SaveState()
-#         stateFile = self.hf.h.File()
-#         state.save()
-#         if filename is None:
-#             filename = 'neuronstate.dat'
-#         stateFile.wopen(filename)
-#         state.fwrite(stateFile)
-#         stateFile.close()
-#
-#
-#     def _restoreInitialConditionsState(self, filename=None):
-#         print 'restoring initial conditions'
-#         self.hf.h.finitialize()
-#         stateFile = self.hf.h.File() # restore state AFTER finitialize
-#         state = self.hf.h.SaveState()
-#         if filename is None:
-#             filename = 'neuronstate.dat'
-#         stateFile.ropen(filename)
-#         state.fread(stateFile)
-#         stateFile.close()
-#         state.restore(1)
-#         vm = self.electrodeSite.v
-# #        print 'restored soma v: %8.2f' % vm
-# #        print 'v_init after restore: %8.2f' % self.hf.h.v_init
-#         self.hf.h.v_init = vm  # note: this leaves a very slight offset...
-# #        for group in self.hf.sec_groups.keys():
-# #            for sec in self.hf.sec_groups[group]:
-# #                section = self.hf.get_section(sec)
-# #                print 'section: %s  vm=%8.3f' % (section.name(), section(0.5).v)
-#
-
-    def doRun(self, filename=None, parMap = None, save=False, restoreFromFile=False, workers=4):
+    def doRun(self, filename=None, parMap=None, save=False, restoreFromFile=False, initfile=None, workers=4):
         if verbose:
             print 'generat_run::doRun'
         (p, e) = os.path.splitext(filename)  # make sure filename is clean
@@ -365,10 +261,10 @@ class GenerateRun():
             print 'genrate_run::doRun: basename is = ', self.basename
         #self.hf.update() # make sure channels are all up to date
         self.results={}
-
+        
         nLevels = len(self.runInfo.stimInj)
         nWorkers = workers
-
+        print 'doRun: initfile = ', initfile
         TASKS = [s for s in range(nLevels)]
         tresults = [None]*len(TASKS)
         runner = [None]*nLevels
@@ -378,7 +274,8 @@ class GenerateRun():
             for i, x in tasker:
                 inj = self.runInfo.stimInj[i]
                 self._prepareRun(inj=inj) # build the recording arrays
-                self.run_initialized = cellInit.initModel(self.hf, mode='cc', restoreFromFile=restoreFromFile)  # this also sets nseg in the axon - so do it before setting up shapes
+                self.run_initialized = cellInit.initModel(self.hf, mode='cc', restoreFromFile=restoreFromFile, 
+                    filename=initfile)
                 tresults = self._executeRun() # now you can do the run
                 tasker.results[i] = {'r': tresults, 'i': inj}
         

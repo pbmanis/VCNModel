@@ -96,7 +96,7 @@ def getInitialConditionsState(hf, tdur=2000., filename=None, electrodeSite=None)
     if filename is None:
         filename = 'neuronstate.dat'
     print '  writing state to : %s' % filename
-    stateFile.wopen(filename)
+    stateFile.wopen(str(filename))
     state.fwrite(stateFile)
     stateFile.close()
 
@@ -107,7 +107,8 @@ def restoreInitialConditionsState(hf, electrodeSite=None, filename=None):
     stateFile = hf.h.File() # restore state AFTER finitialize
     state = hf.h.SaveState()
     if filename is None:
-        filename = 'neuronstate.dat'
+        print 'filename is NONE?'
+        exit() # filename = 'neuronstate.dat'
     print ' .. Restored initial conditions from file: %s' % filename
     stateFile.ropen(filename)
     state.fread(stateFile)

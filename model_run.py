@@ -10,6 +10,24 @@ Stellate
 MNTB
 L23pyr (sort of... not a very good rendition)
 
+Directory structure:
+VCN_Cells/   # top level for data
+    cell_ID/    # VCN_c18, for example
+        MorphologyFiles/  # location for swc and hoc files
+            VCN_c18_755V2.hoc (cell body scaled version)
+            VCN_c18_755.hoc  (unscaled version)
+            misc.swc  (various swc files that were translated to hoc files)
+        InitializationFiles/  # location for Init files
+            IV/  # initialization for just the IV with no synaptic input
+                VCN_c18_755v2.ninit  # different base structures
+                VCN_c18755.ninit
+            AN/  # initialization for synaptic inputs
+                (ditto)  # different base structures of input arrangements
+        Simulations/
+            IV/  # results from IV simulations
+            AN/  # results from AN simulations
+         
+
 """
 
 import sys
@@ -55,9 +73,15 @@ if HAVE_PG:
 
 import numpy as np
 
+import syn_config
+
 verbose = False
 showCell = False
 
+baseDirectory = 'VCN_Cells'
+morphDirectory = 'Morphology'
+initDirectory = 'Initialization'
+simDirectory = 'Simulations'
 
         #infile = 'L23pyr.hoc'
         #infile = 'LC_nmscaled_cleaned.hoc'
@@ -93,8 +117,8 @@ class ModelRun():
         
         self.Params = OrderedDict()
         
-        self.Params['initIVStateFile'] = 'an_neuronstateV2.dat'
-        self.Params['initANStateFile'] = 'aniv_neuronstateV2.dat'
+        self.Params['initIVStateFile'] = 'IVneuronState.dat'
+        self.Params['initANStateFile'] = 'ANneuronState.dat'
         self.Params['infile ']= ''
 
         self.Params['cellType'] = self.cellChoices[0]
@@ -143,8 +167,6 @@ class ModelRun():
     def set_starttime(self, starttime):
         self.Params['StartTime'] = starttime
 
-
-
     def runModel(self, parMap={}):
         if verbose:
             print 'runModel entry'
@@ -155,7 +177,10 @@ class ModelRun():
 
         if parMap == {}:
             self.plotFlag = True
-        filename = os.path.join('MorphologyFiles/', self.Params['infile'])
+        fname = os.path.splitext(self.Params['infile'])[0]
+        ivinitfile = os.path.join(baseDirectory, fname, 
+                            initDirectory, self.Params['initIVStateFile'])
+        filename = os.path.join(baseDirectory, fname, morphDirectory, self.Params['infile'])
         print 'Reading input file: %s' % filename
         self.hf = HocReader(filename)
         self.hf.h.celsius = 38.
@@ -196,23 +221,30 @@ class ModelRun():
         if self.Params['runProtocol'] == 'initIV':
             if verbose:
                 print 'initIV'
+            fname = os.path.splitext(self.Params['infile'])[0]
+            ivinitfile = os.path.join(baseDirectory, fname, 
+                                initDirectory, self.Params['initIVStateFile'])
             self.R = GenerateRun(self.hf, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
                              electrodeSection=self.electrodeSection, cd=self.cd,
                              plotting = HAVE_PG and self.plotFlag)
+            print ivinitfile
             cellInit.getInitialConditionsState(self.hf, tdur=3000., 
-                filename=self.Params['initIVStateFile'], electrodeSite=self.electrodeSite)
+                filename=ivinitfile, electrodeSite=self.electrodeSite)
             print 'Ran to get initial state for %f msec' % self.hf.h.t
             return
 
         if self.Params['runProtocol'] == 'testIV':
             if verbose:
                 print 'test_init'
+            fname = os.path.splitext(self.Params['infile'])[0]
+            ivinitfile = os.path.join(baseDirectory, fname, 
+                                initDirectory, self.Params['initIVStateFile'])
             self.R = GenerateRun(self.hf, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
                              electrodeSection=self.electrodeSection, cd=self.cd,
                              plotting = HAVE_PG and self.plotFlag, )
-            cellInit.testInitialConditions(self.hf, filename=self.Params['initIVStateFile'],
+            cellInit.testInitialConditions(self.hf, filename=ivinitfile,
                 electrodeSite=self.electrodeSite)
             #self.R.testRun()
             return  # that is ALL, never make init and then keep running.
@@ -251,10 +283,14 @@ class ModelRun():
                              starttime=None,
                              electrodeSection=self.electrodeSection, cd=self.cd,
                              plotting = HAVE_PG and self.plotFlag)
-
+        fname = os.path.splitext(self.Params['infile'])[0]
+        ivinitfile = os.path.join(baseDirectory, fname, 
+                                initDirectory, self.Params['initIVStateFile'])
+        self.R.runInfo.folder = os.path.join('VCN_Cells', fname, 'Simulations', 'IV')
         if verbose:
             print 'doRun'
-        self.R.doRun(self.Params['infile'], parMap, save='monitor', restoreFromFile=True, workers=self.Params['nWorkers'])
+        self.R.doRun(self.Params['infile'], parMap=parMap, save='monitor', restoreFromFile=True, initfile=ivinitfile,
+            workers=self.Params['nWorkers'])
         if verbose:
             print '  doRun completed'
             print self.R.IVResult
@@ -294,40 +330,27 @@ class ModelRun():
         print 'model_run::runModel: write summary for file set = ', self.R.basename
         return self.IVSummary
 
-    #synconfig consists of a list of tuples.
-    # Each element in the list corresponds to one terminal and all of it's active zones
-    # each tuple consists of N sites (calculated from area * average synapses/um2)
-    # delay, and SR
-    # the 4th and 5th entries in the tuple are the length of axon from the edge of the block (?)
-    # and the diameter. The brances are not included. distances are in microns
-    
-    VCN_c18_synconfig = [[int(216.66*0.65), 0., 2, 49.2, 1.222],
-                         [int(122.16*0.65), 0., 2, 82.7, 1.417], 
-                         [int(46.865*0.65), 0., 2, 67.3, 1.309],
-                         [int(84.045*0.65), 0., 2, 22.4, 1.416],
-                         [int(80.27*0.65),  0., 2, 120.3, 0.687],
-                        ]
-    # VCN_c18_synconfig_original = [(int(216.66*0.65), 0., 2), (int(122.16*0.65), 0., 2),
-    #     (int(46.865*0.65), 0., 2), (int(84.045*0.65), 0., 2), (int(2.135*0.65), 0, 2), (int(3.675*0.65), 0, 2), (int(80.27*0.65), 0, 2)]
+
     test_synconfig = [(80, 0, 2)]  # if switching configs, need to re-run with AN_InitialConditions to set up the
     # save/restore state. Any change in input configuration requires a new "state" 
 
 
-    def ANRun(self, hf, verify=False, seed=0, synapseConfig=VCN_c18_synconfig, make_ANIntialConditions=False):
+    def ANRun(self, hf, verify=False, seed=0, make_ANIntialConditions=False):
         """
         Establish AN inputs to soma, and run the model.
-        synapseConfig: list of tuples
-            each tuple represents an AN fiber (SGC cell) with:
+        requires a synapseConfig list of dicts from syn_config.makeDict()
+        each list element represents an AN fiber (SGC cell) with:
             (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high])
         """
-
+        fname = os.path.splitext(self.Params['infile'])[0]
+        synapseConfig = syn_config.makeDict(fname)
         self.start_time = time.time()
         # compute delays in a simple manner
         # assumption 3 meters/second conduction time
         # delay then is dist/(3 m/s), or 0.001 ms/um of length
-        for i, s in enumerate(synapseConfig):
-            s[1] = s[3]*0.001/3.0
-            print 'delay for input %d is %8.4f msec' % (i, s[1])
+        # for i, s in enumerate(synapseConfig):
+        #     s[1] = s[3]*0.001/3.0
+        #     print 'delay for input %d is %8.4f msec' % (i, s[1])
 
         nReps = self.Params['nReps']
         threshold = self.Params['threshold'] # spike threshold, mV
@@ -344,9 +367,12 @@ class ModelRun():
         # see if we need to save the cell state now.
         if make_ANIntialConditions:
             print 'getting initial conditions for AN'
+            fname = os.path.splitext(self.Params['infile'])[0]
+            aninitfile = os.path.join(baseDirectory, fname, 
+                                initDirectory, self.Params['initANStateFile'])
             cellInit.getInitialConditionsState(hf, tdur=3000., 
-                filename=self.Params['initANStateFile'], electrodeSite=self.electrodeSite)
-            cellInit.testInitialConditions(hf, filename=self.Params['initANStateFile'],
+                filename=aninitfile, electrodeSite=self.electrodeSite)
+            cellInit.testInitialConditions(hf, filename=aninitfile,
                 electrodeSite=self.electrodeSite)
             return
 
@@ -406,7 +432,7 @@ class ModelRun():
         self.plotAN(np.array(celltime[0]), result['somaVoltage'], result['stimInfo'])
 
 
-    def ANRun_singles(self, hf, verify=False, seed=0, synapseConfig=VCN_c18_synconfig):
+    def ANRun_singles(self, hf, verify=False, seed=0):
         """
         Establish AN inputs to soma, and run the model.
         synapseConfig: list of tuples
@@ -418,7 +444,8 @@ class ModelRun():
         """
 
         self.start_time = time.time()
-
+        fname = os.path.splitext(self.Params['infile'])[0]
+        synapseConfig = syn_config.makeDict(fname)
         nReps = self.Params['nReps']
         threshold = self.Params['threshold'] # spike threshold, mV
 
@@ -431,14 +458,7 @@ class ModelRun():
 
         preCell, postCell, synapse, self.electrodeSite = self.configureCell(hf, synapseConfig, stimInfo)
 
-        # # see if we need to save the cell state now.
-        # if self.Params['make_ANIntialConditions:
-        #     print 'getting initial conditions for AN'
-        #     cellInit.getInitialConditionsState(hf, tdur=3000.,
-        #         filename=self.Params['initANStateFile'], electrodeSite=self.electrodeSite)
-        #     cellInit.testInitialConditions(hf, filename=self.Params['initANStateFile'],
-        #         electrodeSite=self.electrodeSite)
-        #     return
+
         nSyns = len(synapseConfig)
         seeds = np.random.randint(32678, size=(nReps, len(synapseConfig)))
         print 'AN Seeds: ', seeds
@@ -521,7 +541,7 @@ class ModelRun():
         stimInfo['SR'] = stimInfo['SRType']
         for i, syn in enumerate(synapseConfig):
             if stimInfo['SRType'] is 'fromcell':  # use the one in the table
-                preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=syn[2]))
+                preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=syn['SR']))
                 stimInfo['SR'] = self.srname[syn[2]] # use and report value from table
             else:
                 try:
@@ -531,7 +551,7 @@ class ModelRun():
                     raise ValueError('SR type "%s" not found in Sr type list' % stimInfo['SRType'])
                     
                 preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=srindex))  # override
-            synapse.append(preCell[-1].connect(postCell, pre_opts={'nzones':syn[0], 'delay':syn[1]}))
+            synapse.append(preCell[-1].connect(postCell, pre_opts={'nzones':syn['nSyn'], 'delay':syn['delay2']}))
         for i, s in enumerate(synapse):
             s.terminal.relsite.Dep_Flag = 0  # turn off depression computation
             #print dir(s.psd.ampa_psd[0])
@@ -560,7 +580,9 @@ class ModelRun():
 
 
     def singleANRun(self, hf, j, synapseConfig, stimInfo, seeds, preCell, postCell, an_setup_time):
-        cellInit.restoreInitialConditionsState(hf, electrodeSite=None, filename=self.Params['initANStateFile'])
+        fname = os.path.splitext(self.Params['infile'])[0]
+        filename = os.path.join(baseDirectory, fname, initDirectory, self.Params['initANStateFile'])
+        cellInit.restoreInitialConditionsState(hf, electrodeSite=None, filename=filename)
         stim=[]
         # make independent inputs for each synapse
         ANSpikeTimes=[]
@@ -618,8 +640,10 @@ class ModelRun():
 
         stimInfo = result['stimInfo']
         fname = os.path.splitext(self.Params['infile'])[0]
-        f = open('AN_Result_' + fname + '_%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
-                int(stimInfo['dB']), stimInfo['F0'], stimInfo['SR']) + '.p', 'w')
+        outPath = os.path.join('VCN_Cells', fname, 'Simulations', 'AN')
+        
+        f = open(os.path.join(outPath, 'AN_Result_' + fname + '_%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
+                int(stimInfo['dB']), stimInfo['F0'], stimInfo['SR']) + '.p'), 'w')
         pickle.dump(result, f)
         f.close()        
 
