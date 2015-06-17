@@ -72,12 +72,12 @@ class SAC(object):
         elif test == 'B':
             for i in range(ntestrep):
                 X[i] = np.arange(baseper, stimdur, baseper)  # all identical
-                X[i] = X[i] + 0.08*np.random.random(len(X[i]))
+                X[i] = X[i] + np.random.normal(0.0, 0.08, len(X[i]))
 
         elif test == 'C':
             for i in range(ntestrep):
                 X[i] = np.arange(baseper, stimdur, baseper)  # all identical
-                X[i] = X[i] + 0.08*np.random.random(len(X[i]))
+                X[i] = X[i] + np.random.normal(0.0, 0.08, len(X[i]))
                 n = len(X[i])
                 sig = stimdur*np.sort(np.random.rand(n/4))
                 X[i] = np.sort(np.append(X[i], sig))
@@ -85,20 +85,20 @@ class SAC(object):
         elif test == 'D':
             for i in range(ntestrep):
                 X[i] = np.arange(baseper, stimdur, baseper)  # all identical
-                X[i] = X[i] + 0.170*np.random.random(len(X[i]))
+                X[i] = X[i] + np.random.normal(0.0, 0.170, len(X[i]))
 
         elif test == 'E':
             for i in range(ntestrep):
                 bx = np.random.permutation(np.arange(baseper, stimdur, baseper))
                 bx = bx[:int(len(bx)/2)]
                 X[i] = sorted(bx); # elimnate half by random selection
-                X[i] = X[i] + 0.170*np.random.random(len(X[i]))
+                X[i] = X[i] +  np.random.normal(0.0, 0.170, len(X[i]))
                 
         elif test == 'F':
             binw = 0.15
             x=[None]*ntestrep
             for i in range(ntestrep):
-                X[i] = stimdur*np.sort(np.random.random(120)) # corresponds to about 120 s/s
+                X[i] = stimdur*np.sort(np.random.rand(120)) # corresponds to about 120 s/s
             ddur = 100.
 
         elif test == 'G':
@@ -121,50 +121,34 @@ class SAC(object):
         binw = pars['binw']
         delay = pars['delay']
         dur = pars['dur']
-        lx = len(X)
+        N = len(X)
         # make sure input bin width and window are integer mulitples.
-        if(((twin/binw) - np.floor(twin/binw)) != 0):
-            x = np.floor(twin/binw);
-            twin = binw * x; # recalculate the window
+        # if(((twin/binw) - np.floor(twin/binw)) != 0):
+        #     x = np.floor(twin/binw);
+        #     twin = binw * x; # recalculate the window
 
-        maxlx = 100;
-        maxn = 100000;
-        if (lx > maxlx): # for testing purposes.
-            lx = maxlx
+        maxn = 10000000
 
-        yc = [[]]*lx # Prellocation helps ALOT with speed
+        yc = np.nan*np.zeros(maxn)
         n = 1
-        spcount = np.zeros(lx)
-        for i in range(lx):
-            xi = X[i] # get spike train i
-            kxi = np.where((xi >= delay) & (xi < delay+dur)) # window the data to be analyzed
-            xi = xi[kxi] # reduce data set
-            spcount[i] = len(xi)
-        #    fprintf(1, 'i=#d  ns: #d n', i, spcount(i)); # let user know we're working
-
-            yj = np.nan*np.zeros(maxn) # preallocate space for cross correlation
-            n = 0
-            for j in range(lx):
-                if j != i:
-                    xj = X[j]; # get spike train j
-                    kxj = np.where((xj >= delay) & (xj < delay+dur))
-                    xj = xj[kxj[0]] # reduce data set
-                    for ti in range(len(xi)): # cross correlate against all spikes in xi
-                        iti = xi[ti] # time of ti'th spike in spike train i
-                        xjk = np.where((xj >= (iti-twin-binw/2.)) & (xj < (iti+twin+binw/2.))) # find spikes in j, in the window relative to current spike
-                        # binw/2 are egde effect corrections for the histogram stuff below.
-                        nx = len(xjk[0])
-                        if nx > 0 and (n+nx) < maxn:
-                            n = n + 1
-                            yj[n:n+nx] =  xj[xjk] - iti # compute the difference in time between spike in j and relative to current spike in i
-                            n = n + nx-1
-            yc[i] = yj
-        #    fprintf(1, ' elapsed: #8.3fs  last n = #d\n', toc, n);
-        ya = np.array(yc).flatten()
-        y = ya[~np.isnan(ya)] # clean it up - and shorten.
-#        print 'y: ', y
-        if len(y) == 0: # no spikes in this window
-            return;
+        # window data
+        Y=[[]]*N
+        spcount = np.zeros(N)
+        for i in range(N):
+            Y[i] = X[i][np.where((X[i] >= delay) & (X[i] < (delay+dur)))]
+            spcount[i] = len(Y[i])
+        ns = 0
+        for n in range(N):  # for each trial
+            for m in range(N):  # against each other trial, except:
+                if m == n:
+                    continue  # skip identical trains
+                for i in range(len(Y[m])): # cross correlate against all spikes in Yi
+                    xd = Y[n]-Y[m][i]  # all differences from i'th spike in m'th trial to spikes in nth trial
+                    xd = xd[np.where((xd >= (-twin-binw/2.)) & (xd <= (twin+binw/2.)))]  # limit window
+                    yc[ns:(ns+len(xd))] = xd # store
+                    ns += len(xd)  # keep track of storage location
+        #    fprintf(1, ' 'elapsed: #8.3fs  last n = #d\n', toc, n);
+        y = yc[~np.isnan(yc)] # clean it up.
 
         # now calculate the normalized histogram.
         # normalization is N*(N-1)*r^2*deltat*D
@@ -173,31 +157,33 @@ class SAC(object):
         # the trace (?).
         # normalization goes to 1 as the time gets larger...
         #
-        # rate = sum(spcount)/(lx*dur/1000.); # get average rate
-        # print'Mean firing rate: %8.1f' % rate
-        # mr = rate
-        # nfac = lx*(lx-1)*rate*rate*(binw/1000.)*(dur/1000.); # correction factor
-        # yh, bins = np.histogram(y, binw); # generate histogram
-        # yh = yh/nfac; # to convert to rate, spikes/second
-        #       #m = mean(yh);
-        #fprintf(1, 'Mean value of yh: #8.3f, scale factor: #f\n', m, nfac);
-        return y
+#        rate = sum(spcount)/(lx*dur/1000.) # get average rate, in spikes/second
+        rate = np.sum(spcount)/(p['ntestrep']*p['dur']/1000.)
+#        print'Mean firing rate: %8.1f' % rate
+        nfac = N*(N-1)*rate*rate*(binw/1000.)*(dur/1000.) # correction factor
+        yh, bins = np.histogram(y, bins=np.linspace(-p['ddur'], p['ddur'], num=2*int(p['ddur']/binw)), density=False)
+        yh = yh/nfac # to convert to rate, spikes/second
+        return yh, bins 
 
 if __name__ == '__main__':
 
     sac = SAC()
     tests = ['A' ,'B' ,'C', 'D', 'E', 'F', 'G']
+    ymax = {'A': 30, 'B': 6, 'C': 6, 'D': 6, 'E': 6, 'F': 6, 'G': 56}
     win = pgh.figure(title='AN Inputs')
     layout = pgh.LayoutMaker(cols=2,rows=len(tests), win=win, labelEdges=True, ticks='talbot')
-    win.resize(600, 125*len(tests))
+    if len(tests) <= 2:
+        win.resize(600, 300)
+    else:
+        win.resize(600, 125*len(tests))
     for i, t in enumerate(tests):
         X, p = sac.makeTests(t)
-        y = sac.compute(X, p)
-        yh, bins = np.histogram(y, bins=np.linspace(-p['ddur'], p['ddur'], int(p['ddur']/0.05)), density=False)
+        yh, bins = sac.compute(X, p)
         sach = pg.PlotCurveItem(bins, yh, stepMode=True, fillLevel=0,
             brush=(255, 0, 255, 255), pen=None)
         layout.getPlot((i, 1)).addItem(sach)
         layout.getPlot((i, 1)).setXRange(-5., 5.)
+        layout.getPlot((i, 1)).setYRange(0, ymax[t])
         size = 4
         Y=[[]]*len(X)
         for j in range(len(X)):
