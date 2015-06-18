@@ -57,7 +57,10 @@ class AnalyzeRun():
         self.V = np.zeros((self.nRun, vlen))
         self.I = np.zeros((self.nRun, vlen))
         for j,i in enumerate(res.keys()):  # each result key is a current level...
-            msite = res[self.injs[j]]['monitor']
+            try:
+                msite = res[self.injs[0]].monitor
+            except:
+                msite = res[self.injs[0]]['monitor']
             if j == 0:
                 self.t = msite['time'][0:vlen]
             self.V[j,:] = msite[self.somasite[0]]

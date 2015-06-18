@@ -18,7 +18,7 @@ import calyxPlots as cp
 import numpy as np
 
 baseName = 'VCN_Cells'
-cell = 'VCN_c08'
+cell = 'VCN_c18'
 filename = 'AN_Result_VCN_c08_delays_N050_040dB_4000.0_HS.p'
 
 synfile_template = 'AN_Result_VCN_c18_reparented755V2Syn%03d_N005_040dB_4000.0_ 3.p'

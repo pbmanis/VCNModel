@@ -246,7 +246,7 @@ class GenerateRun():
             print 'generat_run::doRun'
         (p, e) = os.path.splitext(filename)  # make sure filename is clean
         self.runInfo.filename = p  # change filename in structure, just name, no extension
-        if parMap is None or len(parMap) == 0):
+        if parMap is None or len(parMap) == 0:
             self.makeFileName(filename = self.runInfo.filename) # base name pluse underscore
         else:
             mstr = '_'
