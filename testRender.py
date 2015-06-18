@@ -17,9 +17,10 @@ import string
 #infile = 'VCN_c18_final_rescaled.hoc'
 #infile = 'test.hoc'
 #infile = 'VCN_c18_final_rescaled.hoc'
-infile = 'VCN_c18_reparented755.hoc'
+#infile = 'VCN_c18_reparented755.hoc'
+infile = 'VCN_c08.hoc'
 
-hf = HocReader('MorphologyFiles/' + infile)
+hf = HocReader('VCN_Cells/VCN_c08/Morphology/' + infile)
 if hf.file_loaded is False:
     exit()
 

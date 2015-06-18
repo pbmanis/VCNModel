@@ -8,7 +8,7 @@ import lmfit
 import matplotlib.pylab as PL
 from pylibrary.Params import Params
 
-verbose = True
+verbose = False
 
 class AnalyzeRun():
     def __init__(self, results):
@@ -22,6 +22,10 @@ class AnalyzeRun():
         """
         Compute the IV of the loaded dataset
         """
+        # print 'V shape in IV: ', self.V.shape
+        # print 'min v1: ', np.min(self.V[0,:])
+        # print 'min v4: ', np.min(self.V[3,:])
+        # return
         self.analyzeIV(self.t, self.V, self.I, self.tw, self.thr)
 
 
@@ -45,7 +49,6 @@ class AnalyzeRun():
         and a vector for t
         """
         self.somasite=['postsynapticV', 'postsynapticI']
-        #print res[self.injs[0]].keys()
         try:
             msite = res[self.injs[0]].monitor
         except:
@@ -54,6 +57,7 @@ class AnalyzeRun():
         self.V = np.zeros((self.nRun, vlen))
         self.I = np.zeros((self.nRun, vlen))
         for j,i in enumerate(res.keys()):  # each result key is a current level...
+            msite = res[self.injs[j]]['monitor']
             if j == 0:
                 self.t = msite['time'][0:vlen]
             self.V[j,:] = msite[self.somasite[0]]
@@ -79,8 +83,8 @@ class AnalyzeRun():
         """
         if verbose:
             print 'starting analyzeIV'
-        print 'tw: ', tw
-        print 'thr: ', thr
+        # print 'tw: ', tw
+        # print 'thr: ', thr
         ntraces = np.shape(V)[0]
         vss     = []
         vmin    = []
@@ -107,8 +111,8 @@ class AnalyzeRun():
             te = tw[1]
             td = tw[2]
             ssv  = pu.measure('mean', t, V[j,:], te-td, te)
-            print 'te, td, ', te, td
-            print 't min/max: ', np.min(t), np.max(t)
+            # print 'te, td, ', te, td
+            # print 't min/max: ', np.min(t), np.max(t)
             ssi  = pu.measure('mean', t, I[j,:], te-td, te)
             rvm  = pu.measure('mean', t, V[j,:], 0.0, ts-1.0)
             minv = pu.measure('min', t, V[j,:], ts, te)
@@ -126,14 +130,15 @@ class AnalyzeRun():
             vm.append(rvm[0])  # rmp
 
             # fit the hyperpolarizing responses for Rin and "sag"
-            print 'ssi: ', ssi[0]
+            # print 'ssi: ', ssi[0]
             if ssi[0] < 0.0 and (minv[1]-ts) > 5.*dt: # just for hyperpolarizing pulses...
                 if verbose:
                     print '    fitting trace %d' % j
 
-                    print t.shape
-                    print V[j,:].shape
-                    print ts, minv
+                    print 't.shape: ', t.shape
+                    print 'V.shape: ', V[j,:].shape
+                    print 'ts, minv: ', ts, minv
+                    print 'ssi[0]: ', ssi[0]
 
                 taus[j], xtfit[j], ytfit[j] = self.single_taufit(t, V[j,:], ts, minv[1])
                 vrmss.append(rvm[0])
@@ -151,8 +156,7 @@ class AnalyzeRun():
                 print '   >>> completed analyzing trace %d' % j
         if verbose:
             print 'done with traces'
-        print 'vss: ', vss
-        print 'vss: ', vss
+        # print 'vss: ', vss
         vss = np.array(vss)  # steady state during current pulse
         vrmss = np.array(vrmss)  # resting potential for hyperpolarizaing pulses only
         ic = np.array(ic)  # injected current
@@ -177,8 +181,8 @@ class AnalyzeRun():
                 'Rinss': Rinss, 'Rinpk': Rinpk,
                 'taufit': [xtfit, ytfit], 'ihfit': [xihfit, yihfit],
                 }
-        if verbose:
-            print 'analyzeIV::IVResult:\n', self.IVResult
+        # if verbose:
+ #            print 'analyzeIV::IVResult:\n', self.IVResult
 
 
     def saveIVResult(self, name = None):
@@ -203,7 +207,7 @@ class AnalyzeRun():
         'DC', 'a1', 'v1', 'k1', 'a2', 'v2', 'k2'
         """
         yd = p['dc'].value + (p['a'].value * np.exp(-x/p['tau'].value))
-        if y == None:
+        if y is None:
             return yd
         else:
             if sumsq is True:

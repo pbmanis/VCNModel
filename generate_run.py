@@ -125,7 +125,8 @@ class GenerateRun():
             folder = self.runInfo.folder
         if os.path.exists(folder) is False:
             os.mkdir(folder)
-        self.basename = os.path.join(folder, filename + self.dtime)
+        #self.basename = os.path.join(folder, filename + self.dtime)
+        self.basename = os.path.join(folder, filename)
 
     def _prepareRun(self, inj=None):
         """
@@ -245,7 +246,7 @@ class GenerateRun():
             print 'generat_run::doRun'
         (p, e) = os.path.splitext(filename)  # make sure filename is clean
         self.runInfo.filename = p  # change filename in structure, just name, no extension
-        if parMap is None:
+        if parMap is None or len(parMap) == 0):
             self.makeFileName(filename = self.runInfo.filename) # base name pluse underscore
         else:
             mstr = '_'
@@ -290,16 +291,15 @@ class GenerateRun():
                     self.plotRun(self.results[i], init=True)
                 else:
                     self.plotRun(self.results[i], init=False)
-        if save == 'monitor':
-            self.saveRuns('monitor')
-        self.arun = ar.AnalyzeRun(self.results) # create an instance of the class with the data
         if verbose:
             print 'doRun, calling IV'
+        self.arun = ar.AnalyzeRun(self.results) # create an instance of the class with the data
         self.arun.IV()  # compute the IV on the data
         self.IVResult =self.arun.IVResult
         if verbose:
             print 'doRun, back from IV'
-      #  self.IVResult = self.arun.IVResult
+        if save == 'monitor':
+            self.saveRuns('monitor')
         if verbose:
             print 'doRun: ivresult is: ', self.IVResult
         if self.plotting:
@@ -381,7 +381,9 @@ class GenerateRun():
         pickle.dump({'basename': self.basename,
                      'runInfo': self.runInfo.todict(),
                      'modelPars': [],
-                     'Results': results.todict()}, pfout)
+                     'Results': results.todict(),
+                     'IVResults': self.IVResult},
+                     pfout)
         pfout.close()
 
 
@@ -392,12 +394,14 @@ class GenerateRun():
         a dictionary...
         """
         #print 'self.idnum: ', self.idnum
-        fn = self.basename + '_mrun' + '_ID%04d.p' % self.idnum
+        #fn = self.basename + '_mrun' + '_ID%04d.p' % self.idnum
+        fn = self.basename + '.p'
         pfout = open(fn, 'wb')
         pickle.dump({'basename': self.basename,
                      'runInfo': self.runInfo.todict(),
                      'modelPars': [],
                      'Results': [{k:x.todict()} for k,x in self.results.iteritems()]}, pfout)
+                     
         pfout.close()
         return (self.runInfo.folder, self.basename) # return tuple to assemble name elsewhere
 

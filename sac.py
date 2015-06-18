@@ -1,6 +1,4 @@
-# function [y, yh, hx, mr, X] = sac(varargin)
-#    [yan, sachist, sacx, mr] = sac(allsp, width, binw, delay, dur);
-#
+
 # Shuffled autocorrelation function
 # Based on Louage et al., 2004
 # X is an array of N responses x length(t) points in time. The times are in
@@ -28,26 +26,13 @@
 # Note: calling the routine with letters as the first argument will generate the plots
 # from Figure 2 of Louage et al.
 
-# adapted from Matlab version.
+# Python version, adapted from Matlab version, 6/16/2015 pbm.
 
 import numpy as np
 import pyqtgraph as pg
 import pylibrary.pyqtgraphPlotHelpers as pgh
 
-# global ALLCH DFILE
-#
-#
-# y = []; yh = []; hx = []; mr = 0; X={};
-#
-# switch nargin
-#     case 0
-#         return;
-#     case 5
-#         X = varargin{1};
-#         twin = varargin{2};
-#         binw = varargin{3};
-#         delay = varargin{4};
-#         dur = varargin{5};
+
 class SAC(object):
 
     def __init__(self):
@@ -91,7 +76,7 @@ class SAC(object):
             for i in range(ntestrep):
                 bx = np.random.permutation(np.arange(baseper, stimdur, baseper))
                 bx = bx[:int(len(bx)/2)]
-                X[i] = sorted(bx); # elimnate half by random selection
+                X[i] = sorted(bx) # elimnate half by random selection
                 X[i] = X[i] +  np.random.normal(0.0, 0.170, len(X[i]))
                 
         elif test == 'F':
@@ -114,7 +99,7 @@ class SAC(object):
         return(X, pars)   
 
 
-    def compute(self, X, pars):
+    def SAC(self, X, pars):
         """
         """# now the SAC calculations.
         twin = pars['twin']
@@ -122,12 +107,8 @@ class SAC(object):
         delay = pars['delay']
         dur = pars['dur']
         N = len(X)
-        # make sure input bin width and window are integer mulitples.
-        # if(((twin/binw) - np.floor(twin/binw)) != 0):
-        #     x = np.floor(twin/binw);
-        #     twin = binw * x; # recalculate the window
 
-        maxn = 10000000
+        maxn = 10000000  # pre-allocation for spike trains diffs to avoid extending array repeatedly
 
         yc = np.nan*np.zeros(maxn)
         n = 1
@@ -147,7 +128,6 @@ class SAC(object):
                     xd = xd[np.where((xd >= (-twin-binw/2.)) & (xd <= (twin+binw/2.)))]  # limit window
                     yc[ns:(ns+len(xd))] = xd # store
                     ns += len(xd)  # keep track of storage location
-        #    fprintf(1, ' 'elapsed: #8.3fs  last n = #d\n', toc, n);
         y = yc[~np.isnan(yc)] # clean it up.
 
         # now calculate the normalized histogram.
@@ -157,7 +137,6 @@ class SAC(object):
         # the trace (?).
         # normalization goes to 1 as the time gets larger...
         #
-#        rate = sum(spcount)/(lx*dur/1000.) # get average rate, in spikes/second
         rate = np.sum(spcount)/(p['ntestrep']*p['dur']/1000.)
 #        print'Mean firing rate: %8.1f' % rate
         nfac = N*(N-1)*rate*rate*(binw/1000.)*(dur/1000.) # correction factor
@@ -165,8 +144,70 @@ class SAC(object):
         yh = yh/nfac # to convert to rate, spikes/second
         return yh, bins 
 
+
+    def XAC(self, X, Y, pars):
+        """
+        """# now the SAC calculations.
+        twin = pars['twin']
+        binw = pars['binw']
+        delay = pars['delay']
+        dur = pars['dur']
+        N = len(Y)
+        M = len(X)
+        
+        maxn = 10000000  # pre-allocation for spike trains diffs to avoid extending array repeatedly
+
+        yc = np.nan*np.zeros(maxn)
+        n = 1
+        # window data
+        Xa = [[]]*M
+        Ya = [[]]*N
+        spcountx = np.zeros(M)
+        spcounty = np.zeros(N)
+        for i in range(M):
+            Xa[i] = X[i][np.where((X[i] >= delay) & (X[i] < (delay+dur)))]
+            spcountx[i] = len(Xa[i])
+        for i in range(N):
+            Ya[i] = Y[i][np.where((Y[i] >= delay) & (Y[i] < (delay+dur)))]
+            spcountx[i] = len(Ya[i])
+        ns = 0
+        for n in range(N):  # for each trial
+            for m in range(M):  # against each other trial, except:
+                # if m == n:
+                #     continue  # skip identical trains
+                for i in range(len(Xa[m])): # cross correlate against all spikes in Yi
+                    xd = Ya[n]-Xa[m][i]  # all differences from i'th spike in m'th trial to spikes in nth trial
+                    xd = xd[np.where((xd >= (-twin-binw/2.)) & (xd <= (twin+binw/2.)))]  # limit window
+                    yc[ns:(ns+len(xd))] = xd # store
+                    ns += len(xd)  # keep track of storage location
+        y = yc[~np.isnan(yc)] # clean it up.
+
+        # now calculate the normalized histogram.
+        # normalization is N*(N-1)*r^2*deltat*D
+        # where N is the number of presentations (lx), r is the rate (sp/sec),
+        # deltat is the bin width for the histogram (sec), and D is the duration of
+        # the trace (?).
+        # normalization goes to 1 as the time gets larger...
+        #
+        ratex = np.sum(spcountx)/(p['ntestrep']*p['dur']/1000.)
+        rateY = np.sum(spcountx)/(p['ntestrep']*p['dur']/1000.)
+#        print'Mean firing rate: %8.1f' % rate
+        nfac = N*M*ratex*ratey*(binw/1000.)*(dur/1000.) # correction factor
+        yh, bins = np.histogram(y, bins=np.linspace(-p['ddur'], p['ddur'], num=2*int(p['ddur']/binw)), density=False)
+        yh = yh/nfac # to convert to rate, spikes/second
+        return yh, bins 
+
+    def diffcorr(self, X, Y, pars):
+        ysac, binsac = self.SAC(X, pars)
+        yxac, binxac = self.XAC(x, y, pars)
+        diffcorr = ysac - yxac
+        return diffcor, binsac
+
 if __name__ == '__main__':
 
+    """
+    Test the SAC method, regenerating Figure 2 of Louage et al. J. Neurophys, 2004
+    """
     sac = SAC()
     tests = ['A' ,'B' ,'C', 'D', 'E', 'F', 'G']
     ymax = {'A': 30, 'B': 6, 'C': 6, 'D': 6, 'E': 6, 'F': 6, 'G': 56}
@@ -178,7 +219,7 @@ if __name__ == '__main__':
         win.resize(600, 125*len(tests))
     for i, t in enumerate(tests):
         X, p = sac.makeTests(t)
-        yh, bins = sac.compute(X, p)
+        yh, bins = sac.SAC(X, p)
         sach = pg.PlotCurveItem(bins, yh, stepMode=True, fillLevel=0,
             brush=(255, 0, 255, 255), pen=None)
         layout.getPlot((i, 1)).addItem(sach)

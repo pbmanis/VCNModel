@@ -1,18 +1,13 @@
 __author__ = 'pbmanis'
 
-
 """
-celltype options:
-Bushy_RM03
-Bushy_XM13
-Calyx
-Stellate
-MNTB
-L23pyr (sort of... not a very good rendition)
+model_run.py
+
+Run a model based on a hoc structure, decorating the structure with ion channels and synapses.
 
 Directory structure:
 VCN_Cells/   # top level for data
-    cell_ID/    # VCN_c18, for example
+    cell_ID/    # VCN_c18, for example (first argument in call should be this directory name)
         MorphologyFiles/  # location for swc and hoc files
             VCN_c18_755V2.hoc (cell body scaled version)
             VCN_c18_755.hoc  (unscaled version)
@@ -27,6 +22,39 @@ VCN_Cells/   # top level for data
             IV/  # results from IV simulations
             AN/  # results from AN simulations
          
+Usage:
+Simulate activity in a reconstructed model cell
+
+positional arguments:
+  cell                  Select the cell (no default)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --type {Bushy,TStellate,DStellate}, -T {Bushy,TStellate,DStellate}
+                        Define the cell type (default: Bushy)
+  --model {XM13,RM03,XM13PasDend,Calyx,MNTB,L23Pyr}, -M {XM13,RM03,XM13PasDend,Calyx,MNTB,L23Pyr}
+                        Define the model type (default: XM13)
+  --protocol {initIV,testIV,runIV,initAN,runANPSTH,runANSingles}, -P {initIV,testIV,runIV,initAN,runANPSTH,runANSingles}
+                        Protocol to use for simulation (default: IV)
+  --hoc INFILE, -H INFILE
+                        hoc file to use for simulation (default is the
+                        selected "cell".hoc)
+  -r NREPS, --reps NREPS
+                        # repetitions
+  --modf MODFREQ        Set SAM modulation frequency
+  --moddepth MODDEPTH   Set SAM modulation depth (in percent)
+  --S2M SIGNALTOMASKER  Signal to Masker ratio (dB)
+  --cmmrmode {CM,CD,REF}
+                        Specify mode (from: ['CM', 'CD', 'REF'])
+  --allmodes            Force run of all modes (CMR, CMD, REF) for stimulus
+                        configuration.
+  -S {LS,MS,HS,fromcell}, --SRType {LS,MS,HS,fromcell}
+                        Specify SR type (from: ['LS', 'MS', 'HS', 'fromcell'])
+  --sequence SEQUENCE   Specify a sequence for the primary run parameters
+  --plot                Plot results as they are generated - requires user
+                        intervention...
+  --workers NWORKERS    Number of "workers" for parallel processing (default:
+                        4)
 
 """
 
@@ -83,14 +111,6 @@ morphDirectory = 'Morphology'
 initDirectory = 'Initialization'
 simDirectory = 'Simulations'
 
-        #infile = 'L23pyr.hoc'
-        #infile = 'LC_nmscaled_cleaned.hoc'
-        #infile = 'Calyx-68cvt2.hoc'
-        #infile = 'Calyx-S53Acvt3.hoc'
-        #infile = 'wholeThing_cleaned.hoc'
-        #infile = 'MNTB_Cell2_cleaned.hoc'
-        #infile = 'VCN_Dend.hoc'
-        #infile = 'somaOnly.hoc'
 
 class ModelRun():
     def __init__(self, args=None):
@@ -102,24 +122,15 @@ class ModelRun():
         self.SRChoices = ['LS', 'MS', 'HS', 'fromcell']  # AN SR groups (assigned across all inputs)
         self.protocolChoices = ['initIV', 'testIV', 'runIV', 'initAN', 'runANPSTH', 'runANSingles']
         self.soundChoices = ['tone', 'noise', 'stationaryNoise', 'SAM', 'CMMR']
-        
-        # IV_neuronStateFile = 'an_neuronstateV2.dat'
-        # make_init = False
-        # test_init = False
-        # IV_mode = False
-        #
-        # # AN
-        # AN_neuronStateFile = 'aniv_neuronstateV2.dat'
-        # make_ANIntialConditions = False
-        # ANPSTH_mode = True
-        # ANSingles = False
+
         self.srname = ['**', 'LS', 'MS', 'HS']  # runs 1-3, not starting at 0
-        
+        self.cellID = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
+
         self.Params = OrderedDict()
-        
+
         self.Params['initIVStateFile'] = 'IVneuronState.dat'
         self.Params['initANStateFile'] = 'ANneuronState.dat'
-        self.Params['infile ']= ''
+        self.Params['infile ']= None
 
         self.Params['cellType'] = self.cellChoices[0]
         self.Params['modelType'] = self.modelChoices[0]
@@ -137,13 +148,31 @@ class ModelRun():
         # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
         self.Params['threshold'] = -20
         self.Params['plotFlag'] = False
-        
+
+
     def printModelSetup(self):
+        """
+        Print out all of the parameters in the model
+        """
         for p in self.Params.keys():
             print '%18s = ' % p, self.Params[p]
         print '-----------'
 
+
     def set_celltype(self, cellType):
+        """
+        Set the cell Type, as requested. The cell type must be in the cell choices
+        
+        Parameters
+        ----------
+        cellType : string
+            The type of the cell that will be the basis for the model
+        
+        Returns
+        -------
+            Nothing
+        
+        """
         if cellType not in self.cellChoices:
             print 'Celltype must be one of: %s. Got: %s', (', '.join(self.cellChoices), cellType)
             exit()
@@ -151,6 +180,19 @@ class ModelRun():
 
 
     def set_modeltype(self, modelType):
+        """
+        Set the model Type, as requested. The model type must be in the model choices
+        
+        Parameters
+        ----------
+        modelType : string
+            The type of the model that will be used (condutance settings)
+        
+        Returns
+        -------
+            Nothing
+        
+        """
         if modelType not in self.modelChoices:
             print 'Model type must be one of: %s. Got: %s ' % (', '.join(self.modelChoices), modelType)
             exit()
@@ -158,6 +200,19 @@ class ModelRun():
 
 
     def set_SR(self, SRType):
+        """
+        Set the SR, overriding SR in the syn_config file. The SR type must be in the SR choices
+        
+        Parameters
+        ----------
+        SRType : string
+            The SR type that will be used for AN fibers.
+        
+        Returns
+        -------
+            Nothing
+        
+        """
         if self.SRType not in self.SRChoices:
             print 'SR type must be one of: %s. Got: %s ' % (', '.join(self.SRChoices), SRType)
             exit()
@@ -167,21 +222,34 @@ class ModelRun():
     def set_starttime(self, starttime):
         self.Params['StartTime'] = starttime
 
+
     def runModel(self, parMap={}):
+        """
+        Main entry routine for running all models
+        
+        Parameters
+        ----------
+        parMap : dict (default: empty)
+            A dictionary of paramters, passed to models that are run (not used).
+        
+        Returns
+        -------
+            Nothing
+        
+        """
         if verbose:
             print 'runModel entry'
         if 'id' in parMap.keys():
             self.idnum = parMap['id']
         else:
             self.idnum = 9999
+        self.cellID = os.path.splitext(self.Params['cell'])[0]
 
         if parMap == {}:
             self.plotFlag = True
-        fname = os.path.splitext(self.Params['infile'])[0]
-        ivinitfile = os.path.join(baseDirectory, fname, 
+        ivinitfile = os.path.join(baseDirectory, self.cellID, 
                             initDirectory, self.Params['initIVStateFile'])
-        filename = os.path.join(baseDirectory, fname, morphDirectory, self.Params['infile'])
-        print 'Reading input file: %s' % filename
+        filename = os.path.join(baseDirectory, self.cellID, morphDirectory, self.Params['infile'])
         self.hf = HocReader(filename)
         self.hf.h.celsius = 38.
         self.hf.h.Ra = 150.
@@ -221,8 +289,7 @@ class ModelRun():
         if self.Params['runProtocol'] == 'initIV':
             if verbose:
                 print 'initIV'
-            fname = os.path.splitext(self.Params['infile'])[0]
-            ivinitfile = os.path.join(baseDirectory, fname, 
+            ivinitfile = os.path.join(baseDirectory, self.cellID, 
                                 initDirectory, self.Params['initIVStateFile'])
             self.R = GenerateRun(self.hf, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
@@ -237,8 +304,7 @@ class ModelRun():
         if self.Params['runProtocol'] == 'testIV':
             if verbose:
                 print 'test_init'
-            fname = os.path.splitext(self.Params['infile'])[0]
-            ivinitfile = os.path.join(baseDirectory, fname, 
+            ivinitfile = os.path.join(baseDirectory, self.cellID, 
                                 initDirectory, self.Params['initIVStateFile'])
             self.R = GenerateRun(self.hf, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
@@ -276,6 +342,21 @@ class ModelRun():
 
 
     def IVRun(self, parMap={}):
+        """
+        Main entry routine for running all IV (current-voltage relationships with somatic electrode)
+        
+        Parameters
+        ----------
+        parMap : dict (default: empty)
+            A dictionary of paramters, passed to models that are run (not used).
+        
+        Returns
+        -------
+            summary : dict
+                A summary of the results, including the file, parMap, resting input resistance,
+                time constant, and spike times
+        
+        """
         if verbose:
             print 'generateRun'
         print 'IVRun begins'
@@ -283,10 +364,9 @@ class ModelRun():
                              starttime=None,
                              electrodeSection=self.electrodeSection, cd=self.cd,
                              plotting = HAVE_PG and self.plotFlag)
-        fname = os.path.splitext(self.Params['infile'])[0]
-        ivinitfile = os.path.join(baseDirectory, fname, 
+        ivinitfile = os.path.join(baseDirectory, self.cellID, 
                                 initDirectory, self.Params['initIVStateFile'])
-        self.R.runInfo.folder = os.path.join('VCN_Cells', fname, 'Simulations', 'IV')
+        self.R.runInfo.folder = os.path.join('VCN_Cells', self.cellID, 'Simulations', 'IV')
         if verbose:
             print 'doRun'
         self.R.doRun(self.Params['infile'], parMap=parMap, save='monitor', restoreFromFile=True, initfile=ivinitfile,
@@ -308,13 +388,15 @@ class ModelRun():
             print 'Nspike, Ispike: ', self.R.IVResult['Nspike'], self.R.IVResult['Ispike']
             print 'Rinss: ', self.R.IVResult['Rinss']
             print 'Vm: ', np.mean(self.R.IVResult['Vm'])
-        print 'ivresult keys: ', self.R.IVResult['taus'].keys()
+#        print 'ivresult keys: ', self.R.IVResult['taus'].keys()
         if len(self.R.IVResult['taus'].keys()) == 0:
             taum_mean = 0.
             tauih_mean = 0.
         else:
-            taum_mean = np.mean([self.R.IVResult['taus'][i]['tau'].value for k, i in enumerate(self.R.IVResult['taus'].keys())])
-            tauih_mean = np.mean([self.R.IVResult['tauih'][i]['tau'].value for k, i in  enumerate(self.R.IVResult['tauih'].keys())])
+            taum_mean = np.mean([self.R.IVResult['taus'][i]['tau'].value for k, i in
+                enumerate(self.R.IVResult['taus'].keys())])
+            tauih_mean = np.mean([self.R.IVResult['tauih'][i]['tau'].value for k, i in
+                enumerate(self.R.IVResult['tauih'].keys())])
         #print 'taum_mean: ', taum_mean
         #print 'tauih_mean: ', tauih_mean
         # construct dictionary for return results:
@@ -331,19 +413,34 @@ class ModelRun():
         return self.IVSummary
 
 
-    test_synconfig = [(80, 0, 2)]  # if switching configs, need to re-run with AN_InitialConditions to set up the
-    # save/restore state. Any change in input configuration requires a new "state" 
-
-
     def ANRun(self, hf, verify=False, seed=0, make_ANIntialConditions=False):
         """
         Establish AN inputs to soma, and run the model.
-        requires a synapseConfig list of dicts from syn_config.makeDict()
+        Requires a synapseConfig list of dicts from syn_config.makeDict()
         each list element represents an AN fiber (SGC cell) with:
             (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high])
+
+        Parameters
+        ----------
+        hf : hoc_reader object
+            Access to neuron and file information
+        
+        verify : boolean (default: False)
+            Flag to control printing of various intermediate results
+        
+        seed : int (default: 0)
+            A random number seed to use when generating AN inputs (not used)
+        
+        make_ANIntitialConditions : bool (default : False)
+            Flag to control whether the initial conditions need to be recomputed and stored.
+            
+        Returns
+        -------
+            Nothing
+        
+
         """
-        fname = os.path.splitext(self.Params['infile'])[0]
-        synapseConfig = syn_config.makeDict(fname)
+        synapseConfig = syn_config.makeDict(self.cellID)
         self.start_time = time.time()
         # compute delays in a simple manner
         # assumption 3 meters/second conduction time
@@ -367,8 +464,7 @@ class ModelRun():
         # see if we need to save the cell state now.
         if make_ANIntialConditions:
             print 'getting initial conditions for AN'
-            fname = os.path.splitext(self.Params['infile'])[0]
-            aninitfile = os.path.join(baseDirectory, fname, 
+            aninitfile = os.path.join(baseDirectory, self.cellID, 
                                 initDirectory, self.Params['initANStateFile'])
             cellInit.getInitialConditionsState(hf, tdur=3000., 
                 filename=aninitfile, electrodeSite=self.electrodeSite)
@@ -428,7 +524,7 @@ class ModelRun():
         result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes, 
             'somaVoltage': somaVoltage, 'time': np.array(celltime[0])}
         
-        self.analysis_filewriter(self.Params['infile'], result, tag='delays')
+        self.analysis_filewriter(self.Params['cell'], result, tag='delays')
         self.plotAN(np.array(celltime[0]), result['somaVoltage'], result['stimInfo'])
 
 
@@ -440,12 +536,26 @@ class ModelRun():
             (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high])
         This routine is special - it runs nReps for each synapse, turning off all of the other synapses
         by setting the synaptic conductance to 0 (to avoid upsetting initialization)
+
+        Parameters
+        ----------
+        hf : hoc_reader object
+            Access to neuron and file information
+        
+        verify : boolean (default: False)
+            Flag to control printing of various intermediate results
+        
+        seed : int (default: 0)
+            A random number seed to use when generating AN inputs (not used)
+
+        Returns
+        -------
+            Nothing
         
         """
 
         self.start_time = time.time()
-        fname = os.path.splitext(self.Params['infile'])[0]
-        synapseConfig = syn_config.makeDict(fname)
+        synapseConfig = syn_config.makeDict(self.cellID)
         nReps = self.Params['nReps']
         threshold = self.Params['threshold'] # spike threshold, mV
 
@@ -525,11 +635,41 @@ class ModelRun():
             result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes, 
                 'somaVoltage': somaVoltage, 'time': np.array(tresults[j]['time'])}
         
-            self.analysis_filewriter(self.Params['infile'], result, tag='Syn%03d' % k)
+            self.analysis_filewriter(self.Params['cell'], result, tag='Syn%03d' % k)
         #self.plotAN(np.array(self.time), result['somaVoltage'], result['stimInfo'])
 
 
     def configureCell(self, hf, synapseConfig, stimInfo):
+        """
+        Configure the cell. This routine builds the cell in Neuron, adds presynaptic inputs
+        as described in the synapseConfig, and configures those according to parameters in 
+        stiminfo.
+        
+        Parameters
+        ----------
+        hf : hoc_reader object
+            Access to neuron and file information
+        
+        synapseConfig : dict
+            A dictionary with information about the synapse configuration to use. 
+            
+        stimInfo : dict
+            A dictionary whose elements used include SRType (spont rate type), F0 (stimulus frequency)
+
+        Returns
+        -------
+            preCell : list
+                A list of the preCell hoc objects attached to the synapses
+            postCell : cells object
+                The target cell
+            synapse : list
+                A list of the synapses that were created and connected to this cell
+            electrodeSite : Neuron hoc object
+                The section and location where the electrode is attached to the cell.
+        
+        
+        """
+        
         sg = hf.sec_groups['soma']
         postCell = cells.Generic.create(soma=hf.get_section(list(sg)[0]))
 
@@ -580,8 +720,38 @@ class ModelRun():
 
 
     def singleANRun(self, hf, j, synapseConfig, stimInfo, seeds, preCell, postCell, an_setup_time):
-        fname = os.path.splitext(self.Params['infile'])[0]
-        filename = os.path.join(baseDirectory, fname, initDirectory, self.Params['initANStateFile'])
+        """
+        Perform a single run with all AN input on the target cell turned off except for input j.
+        
+        Parameters
+        ----------
+        hf : hoc_reader object
+            Access to neuron and file information
+        
+        j : int
+            The input that will be active in this run
+             
+        synapseConfig : dict
+            A dictionary with information about the synapse configuration to use. 
+            
+        stimInfo : dict
+            A dictionary whose elements used include SRType (spont rate type), F0 (stimulus frequency)
+        
+        preCell : list
+            A list of the preCell hoc objects attached to the synapses
+        
+        postCell : cells object
+            The target cell
+        
+        an_setup_time : time object
+            
+        Returns
+        -------
+        anresult : dict
+            A dictionary containing 'Vsoma', 'time', and the 'ANSpikeTimes'
+        
+        """
+        filename = os.path.join(baseDirectory, self.cellID, initDirectory, self.Params['initANStateFile'])
         cellInit.restoreInitialConditionsState(hf, electrodeSite=None, filename=filename)
         stim=[]
         # make independent inputs for each synapse
@@ -594,7 +764,6 @@ class ModelRun():
                                   ramp_duration=stimInfo['RF'], pip_duration=stimInfo['pip_duration'],
                                   pip_start=stimInfo['pip_start']))
             nseed = seeds[j, i]
-            print 'nseed: ', nseed
             preCell[i].set_sound_stim(stim[-1], seed=nseed)  # generate spike train, connect to terminal
             ANSpikeTimes.append(preCell[i]._spiketrain)
         an_setup_time += (time.time() - an0_time)
@@ -615,9 +784,11 @@ class ModelRun():
         print '...done'
         anresult = {'Vsoma': np.array(Vsoma), 'time': np.array(rtime), 'ANSpikeTimes': ANSpikeTimes}
         return anresult
-        
+
 
     def plotAN(self, celltime, somaVoltage, stimInfo):
+        """
+        """
         nReps = stimInfo['nReps']
         threshold = stimInfo['threshold']
         win = pgh.figure(title='AN Inputs')
@@ -639,13 +810,13 @@ class ModelRun():
             assert rk in k
 
         stimInfo = result['stimInfo']
-        fname = os.path.splitext(self.Params['infile'])[0]
-        outPath = os.path.join('VCN_Cells', fname, 'Simulations', 'AN')
+        outPath = os.path.join('VCN_Cells', self.cellID, 'Simulations', 'AN')
         
-        f = open(os.path.join(outPath, 'AN_Result_' + fname + '_%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
+        f = open(os.path.join(outPath, 'AN_Result_' + self.cellID + '_%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
                 int(stimInfo['dB']), stimInfo['F0'], stimInfo['SR']) + '.p'), 'w')
         pickle.dump(result, f)
         f.close()        
+
 
     def distances(self, section):
         self.hf.distanceMap = {}
@@ -690,9 +861,9 @@ if __name__ == "__main__":
     pp = pprint.PrettyPrinter(indent=4, width=60)
     
     parser = argparse.ArgumentParser(description='Simulate activity in a reconstructed model cell')
-    parser.add_argument(dest='infile', action='store',
-                   default='None', 
-                   help='Select the input file (no default)')
+    parser.add_argument(dest='cell', action='store',
+                   default=None, 
+                   help='Select the cell (no default)')
     parser.add_argument('--type', '-T', dest='cellType', action='store',
                    default='Bushy', choices=model.cellChoices,
                    help='Define the cell type (default: Bushy)')
@@ -702,6 +873,10 @@ if __name__ == "__main__":
     parser.add_argument('--protocol', '-P', dest='runProtocol', action='store',
                    default='IV', choices=model.protocolChoices,
                    help='Protocol to use for simulation (default: IV)')
+    parser.add_argument('--hoc', '-H', dest='infile', action='store',
+                  default=None,
+                  help='hoc file to use for simulation (default is the selected "cell".hoc)')
+                   
                   
     # lowercase options are generally parameter settings:
 
@@ -736,10 +911,13 @@ if __name__ == "__main__":
 
     args=vars(parser.parse_args())   
 #    model.printModelSetup()
+    print args.keys()
     for k in args.keys():
         model.Params[k] = args[k]
+    print model.Params['cell']
+    if model.Params['infile'] == None: # just use the hoc file
+        model.Params['infile'] = model.Params['cell'] + '.hoc'
     print(json.dumps(model.Params, indent=4))  # pprint doesn't work well with ordered dicts
-
     
     model.runModel() # then run the model
     if showCell:
