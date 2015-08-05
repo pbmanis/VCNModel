@@ -75,12 +75,12 @@ from channel_decorate import ChannelDecorate
 from generate_run import GenerateRun
 import cellInitialization as cellInit
 
-from nrnlibrary.protocols import protocol
-from nrnlibrary import cells
-from nrnlibrary import synapses
-from nrnlibrary.util import get_anspikes
-from nrnlibrary.util import sound
-import nrnlibrary.util as nu
+from cnmodel.protocols import protocol
+from cnmodel import cells
+from cnmodel import synapses
+from cnmodel.util import get_anspikes
+from cnmodel.util import sound
+import cnmodel.util as nu
 
 import pylibrary.Utility as pu  # access to spike finder routine
 import pyqtgraph.multiprocess as mproc
@@ -671,8 +671,10 @@ class ModelRun():
         """
         
         sg = hf.sec_groups['soma']
-        postCell = cells.Generic.create(soma=hf.get_section(list(sg)[0]))
-
+#        postCell = cells.Generic.create(soma=hf.get_section(list(sg)[0]))
+        postCell = hf# .get_section(list(sg)[0])  # new api for cells (no Generic class)
+        postCell.type = stimInfo['cellType'].lower()
+        
         self.cd.channelValidate(hf, verify=False)
 
         preCell = []

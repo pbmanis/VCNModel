@@ -14,7 +14,7 @@ February 2014, Paul B. Manis UNC Chapel Hill
 
 import os
 import numpy as np
-import nrnlibrary.makestim
+import cnmodel.makestim
 from pylibrary.Params import Params
 import calyxPlots as cp
 import analyze_run as ar
@@ -172,9 +172,9 @@ class GenerateRun():
         # print self.hf.sec_groups.keys()
         electrodeSection = list(self.hf.sec_groups[self.runInfo.electrodeSection])[0]
         self.electrodeSite = self.hf.get_section(electrodeSection)
-        print 'group: ', self.runInfo.electrodeSection
-        print 'electrode section, site: ', electrodeSection, self.electrodeSite
-        print 'electrodeSite name: ', self.electrodeSite.name()
+        # print 'group: ', self.runInfo.electrodeSection
+        # print 'electrode section, site: ', electrodeSection, self.electrodeSite
+        # print 'electrodeSite name: ', self.electrodeSite.name()
         if self.runInfo.postMode in ['vc', 'vclamp']:
             #print 'vclamp'
             # Note to self (so to speak): the hoc object returned by this call must have a life after
@@ -196,7 +196,7 @@ class GenerateRun():
             stim['PT'] = 0.0
            # print self.hf.h.soma[0]
 
-            (secmd, maxt, tstims) = nrnlibrary.makestim.makestim(stim, pulsetype='square', dt=self.hf.h.dt)
+            (secmd, maxt, tstims) = cnmodel.makestim.makestim(stim, pulsetype='square', dt=self.hf.h.dt)
             self.stim = stim
             secmd = secmd + self.runInfo.vstimHolding # add holding
             self.monitor['v_stim0'] = self.hf.h.Vector(secmd)
@@ -216,7 +216,7 @@ class GenerateRun():
             else:
                 stim['amp'] = self.runInfo.stimInj[0]
             stim['PT'] = 0.0
-            (secmd, maxt, tstims) = nrnlibrary.makestim.makestim(stim, pulsetype='square', dt=self.hf.h.dt)
+            (secmd, maxt, tstims) = cnmodel.makestim.makestim(stim, pulsetype='square', dt=self.hf.h.dt)
             self.stim = stim
             self.icPost = self.hf.h.iStim(0.5, sec=self.electrodeSite)
             self.icPost.delay = 2
