@@ -11,18 +11,18 @@ It also takes the celltype, a string that directs how conductances should be ins
 
 """
 from pylibrary.Params import Params
-import nrnlibrary.util.pynrnutilities as pn
+from cnmodel.util import pynrnutilities
 import pprint
 import string
 import numpy as np
-from nrnlibrary.protocols import protocol
-from nrnlibrary import cells
-from nrnlibrary import synapses
-from nrnlibrary.util import get_anspikes
-from nrnlibrary.util import sound
-import nrnlibrary.util as nu
+from cnmodel.protocols import protocol
+from cnmodel import cells
+from cnmodel import synapses
+from cnmodel.util import get_anspikes
+from cnmodel.util import sound
+import cnmodel.util as nu
 
-#import nrnlibrary.nrnutils as nu
+#import cnmodel.nrnutils as nu
 from channel_manager import channelManager
 excludeMechs = [] # ['ihvcn', 'kht', 'klt', 'nav11']
 
