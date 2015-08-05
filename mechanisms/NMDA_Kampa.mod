@@ -62,14 +62,13 @@ THREADSAFE
 THREADSAFE
 	POINT_PROCESS NMDA_Kampa
 	POINTER XMTR
-	RANGE U, Cl, D1, D2, Open, UMg, ClMg, D1Mg, D2Mg, OMg
-	RANGE g, gmax, gNAR, vshift, Erev, rb, rmb, rmu, rbMg,rmc1b,rmc1u,rmc2b,rmc2u
+	RANGE U, Cl, D1, D2, Open, MaxOpen, UMg, ClMg, D1Mg, D2Mg, OMg
+	RANGE g, gmax, vshift, Erev, rb, rmb, rmu, rbMg,rmc1b,rmc1u,rmc2b,rmc2u
 	GLOBAL Erev, mg, Rb, Ru, Rd1, Rr1, Rd2, Rr2, Ro, Rc, Rmb, Rmu
 	GLOBAL RbMg, RuMg, Rd1Mg, Rr1Mg, Rd2Mg, Rr2Mg, RoMg, RcMg
 	GLOBAL Rmd1b,Rmd1u,Rmd2b,Rmd2u,rmd1b,rmd1u,rmd2b,rmd2u
 	GLOBAL Rmc1b,Rmc1u,Rmc2b,Rmc2u
 	GLOBAL vmin, vmax, valence, memb_fraction
-
 	NONSPECIFIC_CURRENT i
 }
 
@@ -91,9 +90,14 @@ PARAMETER {
 	vmax 	= 100	(mV)
 	valence = -2		: parameters of voltage-dependent Mg block
 	memb_fraction = 0.8
-	gNAR = 0.5
-	vshift = 0.0
+	vshift = 0.0 (mV)
 	Q10 = 2.0 : temperature sensitivity (see above)
+	
+    : Maximum open probability with Mode=0 (no rectification). 
+    : This is determined empirically by holding XMTR at a large
+    : value and v=40mV for 100 timesteps and measuring the 
+    : maximum value of Open.
+    MaxOpen = 0.01988893957 (1) 
 
 : Rates
 
@@ -166,12 +170,12 @@ STATE {
 
 INITIAL {
 	U = 1
-	qfac = Q10^((celsius-23)/10)}
+	qfac = Q10^((celsius-23)/10 (degC))}
 
 BREAKPOINT {
 	SOLVE kstates METHOD sparse
 
-	g = gNAR * gmax * Open
+	g = gmax * Open / MaxOpen
 	i = (1e-6) * g * (v - Erev)
 }
 
@@ -179,16 +183,16 @@ KINETIC kstates {
 
 	rb 	= Rb 	* (1e3) * XMTR
 	rbMg 	= RbMg 	* (1e3) * XMTR
-	rmb 	= Rmb 	* mg * (1e3) * exp((v-40+vshift) * valence * memb_fraction /25)
-	rmu 	= Rmu 	* exp((-1)*(v-40+vshift) * valence * (1-memb_fraction) /25)
-	rmc1b 	= Rmc1b * mg * (1e3) * exp((v-40+vshift) * valence * memb_fraction /25)
-	rmc1u 	= Rmc1u * exp((-1)*(v-40+vshift) * valence * (1-memb_fraction) /25)
-	rmc2b 	= Rmc2b * mg * (1e3) * exp((v-40+vshift) * valence * memb_fraction /25)
-	rmc2u 	= Rmc2u * exp((-1)*(v-40+vshift) * valence * (1-memb_fraction) /25)
-	rmd1b 	= Rmd1b * mg * (1e3) * exp((v-40+vshift) * valence * memb_fraction /25)
-	rmd1u 	= Rmd1u * exp((-1)*(v-40+vshift) * valence * (1-memb_fraction) /25)
-	rmd2b 	= Rmd2b * mg * (1e3) * exp((v-40+vshift) * valence * memb_fraction /25)
-	rmd2u 	= Rmd2u * exp((-1)*(v-40+vshift) * valence * (1-memb_fraction) /25)
+	rmb 	= Rmb 	* mg * (1e3) * exp((v-40+vshift) * valence * memb_fraction /25 (mV))
+	rmu 	= Rmu 	* exp((-1)*(v-40+vshift) * valence * (1-memb_fraction) /25 (mV))
+	rmc1b 	= Rmc1b * mg * (1e3) * exp((v-40+vshift) * valence * memb_fraction /25 (mV))
+	rmc1u 	= Rmc1u * exp((-1)*(v-40+vshift) * valence * (1-memb_fraction) /25 (mV))
+	rmc2b 	= Rmc2b * mg * (1e3) * exp((v-40+vshift) * valence * memb_fraction /25 (mV))
+	rmc2u 	= Rmc2u * exp((-1)*(v-40+vshift) * valence * (1-memb_fraction) /25 (mV))
+	rmd1b 	= Rmd1b * mg * (1e3) * exp((v-40+vshift) * valence * memb_fraction /25 (mV))
+	rmd1u 	= Rmd1u * exp((-1)*(v-40+vshift) * valence * (1-memb_fraction) /25 (mV))
+	rmd2b 	= Rmd2b * mg * (1e3) * exp((v-40+vshift) * valence * memb_fraction /25 (mV))
+	rmd2u 	= Rmd2u * exp((-1)*(v-40+vshift) * valence * (1-memb_fraction) /25 (mV))
 
 	~ U <-> Cl	(rb*qfac,Ru*qfac)
 	~ Cl <-> Open	(Ro*qfac,Rc*qfac)

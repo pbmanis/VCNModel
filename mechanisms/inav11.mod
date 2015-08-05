@@ -97,12 +97,11 @@ UNITSOFF
  
 INITIAL {
 
-    trates1(v)
+    trates(v)
     
     m = minf
     h = hinf
     s = sinf
-    
 
 }
 
@@ -114,12 +113,6 @@ DERIVATIVE states {        : Computes state variables m, h, s and n
     h' = (hinf - h)/htau
     s' = (sinf - s)/stau
 
-:    m = m + mexp*(minf-m)
-:    h = h + hexp*(hinf-h)
-:    s = s + sexp*(sinf-s)
-:    VERBATIM
-:    return 0;
-:    ENDVERBATIM
 }
  
 
@@ -148,12 +141,12 @@ PROCEDURE rates(v (mV)) {   :Computes rate and other constants at current v.
 }
  
 
-PROCEDURE trates1(v (mV)) {  :Build table with rate and other constants at current v.
+PROCEDURE trates(v (mV)) {  :Build table with rate and other constants at current v.
                             :Call once from HOC to initialize inf at resting v.
     LOCAL tinc
  
-:    TABLE minf, mexp, hinf, hexp, sinf, sexp, mtau, htau, stau
-:       DEPEND dt, celsius FROM -100 TO 100 WITH 200
+    TABLE minf, mexp, hinf, hexp, sinf, sexp, mtau, htau, stau
+       DEPEND dt, celsius FROM -100 TO 100 WITH 200
                            
     rates(v)    : not consistently executed from here if usetable_hh == 1
                 : so don't expect the tau values to be tracking along with

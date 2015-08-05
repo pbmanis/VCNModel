@@ -1,27 +1,27 @@
-TITLE Ohmic Leak Current
-:
-: Ohmic leak current that can be set on a per-section basis
-:
+TITLE passive  (leak) membrane channel
+
 UNITS {
-        (mA) = (milliamp)
-        (mV) = (millivolt)
-        (nA) = (nanoamp)
-		(S) = (siemens)
+	(mV) = (millivolt)
+	(mA) = (milliamp)
 }
 
 NEURON {
+	THREADSAFE
 	SUFFIX leak
 	NONSPECIFIC_CURRENT i
-	RANGE i, erev, gbar
-	}
+	RANGE gbar, erev
+}
+
 PARAMETER {
-	gbar = 2e-5	(S/cm2)  < 0, 1e9 >
-	erev = -50	(mV)
+	v (mV)
+	gbar = 0.001	(mho/cm2)
+	erev = -65	(mV)
 }
-ASSIGNED {
-	i  (mA/cm2)
-	v  (mV)
-}
+
+ASSIGNED { i	(mA/cm2)}
+
 BREAKPOINT {
 	i = gbar*(v - erev)
 }
+
+

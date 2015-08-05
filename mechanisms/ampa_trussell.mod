@@ -84,7 +84,7 @@ THREADSAFE
     POINTER XMTR
     RANGE C0, C1, C2, D, O1, O2
 
-    RANGE Rb, Ru1, Ru2, Rd, Rr, Ro1, Rc1, Ro2, Rc2, Open
+    RANGE Rb, Ru1, Ru2, Rd, Rr, Ro1, Rc1, Ro2, Rc2, Open, MaxOpen
     GLOBAL vmin, vmax
 	GLOBAL Q10, Mode
 	GLOBAL zd, Kd0
@@ -109,8 +109,9 @@ PARAMETER {
     vmax = 100  (mV)
 	Q10 = 1.5 : temperature sensitivity
     Mode = 0 : flag to control rectification calculation
-: polyamine block parameters
-	zd = 1.032
+
+: polyamine block parameters (Wang & Manis unpublished data)
+	zd = 1.032     
 	PA = 45
 	Kd0 = 31.e-6
 
@@ -128,8 +129,14 @@ PARAMETER {
     Rc2 = 0.25    (/ms) : closing
 
     Open = 0 (1) : total of all open states
+    
+    : Maximum open probability with Mode=0 (no rectification). 
+    : This is determined empirically by holding XMTR at a large
+    : value for 100 timesteps and measuring the maximum value
+    : of Open.
+    MaxOpen = 0.72418772400 (1)  
+    
 	aflag = 1 : Flag for control of printout of initial values.....
-
 
 }
 
@@ -180,7 +187,7 @@ BREAKPOINT {
 
     gvdepcalc(v)
     Open = O1 + O2
-    g = gmax * Open
+    g = gmax * Open / MaxOpen
     if ( Mode == 1) {
 		g0 = 1.0 + 0.6*exp((v-50)/40)  : eq. 5 of Washburn et al., 1997, slightly modified
 		gvdep = g0*(1/(1+PA/(Kd0*exp(-zd*v/25.3))))
