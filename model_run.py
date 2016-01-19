@@ -60,6 +60,8 @@ optional arguments:
 
 import sys
 import os.path
+import os
+import errno
 import pickle
 import time
 import argparse
@@ -225,6 +227,14 @@ class ModelRun():
     def set_starttime(self, starttime):
         self.Params['StartTime'] = starttime
 
+    def mkdir_p(self, path):
+        try:
+            os.makedirs(path)
+        except OSError as exc:  # Python >2.5
+            if exc.errno == errno.EEXIST and os.path.isdir(path):
+                pass
+            else:
+                raise
 
     def runModel(self, parMap={}):
         """
@@ -252,6 +262,9 @@ class ModelRun():
             self.plotFlag = True
         ivinitfile = os.path.join(baseDirectory, self.cellID, 
                             initDirectory, self.Params['initIVStateFile'])
+        ivinitdir = os.path.join(baseDirectory, self.cellID, 
+                            initDirectory)
+        self.mkdir_p(ivinitdir) # confirm existence of that file
         filename = os.path.join(baseDirectory, self.cellID, morphDirectory, self.Params['infile'])
         self.hf = HocReader(filename)
         self.hf.h.celsius = 38.
