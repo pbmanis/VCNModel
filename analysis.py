@@ -18,7 +18,7 @@ import calyxPlots as cp
 import numpy as np
 
 baseName = 'VCN_Cells'
-cell = 'VCN_c18'
+cell = 'VCN_c08'
 filename = 'AN_Result_VCN_c08_delays_N050_040dB_4000.0_HS.p'
 
 synfile_template = 'AN_Result_VCN_c18_reparented755V2Syn%03d_N005_040dB_4000.0_ 3.p'
@@ -199,6 +199,7 @@ def readIVFile(filename):
     d = pickle.load(f)
     f.close()
     tr = {}
+    print d.keys()
     for i in range(len(d['Results'])):
        dr = d['Results'][i]
        k = dr.keys()[0]
@@ -253,8 +254,9 @@ def plotIV(infile):
 infile = os.path.join(baseName, cell, 'Simulations/AN', filename)
 inpath = os.path.join(baseName, cell, 'Simulations/AN')
 #plotPSTH(infile)
-infile = os.path.join(baseName, cell, 'Simulations/IV', sys.argv[1])+ '.p'
-plotIV(infile)
+infile = os.path.join(baseName, cell, 'Simulations/AN', sys.argv[1])+ '.p'
+plotPSTH(infile)
+#plotIV(infile)
 #plotSingles(inpath)
 
 

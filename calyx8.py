@@ -37,14 +37,14 @@ import pickle
 import neuron as h
 from neuron import *
 import numpy as np
-import nrnlibrary.Cells as Cells
-import nrnlibrary.Synapses as Synapses
+import nrnlibrary.cells as Cells
+import nrnlibrary.synapses as Synapses
 import nrnlibrary.makestim as makestim
 import nrnlibrary as nrn
 from pylibrary.Params import Params
 import pprint
 import re
-import CalyxPlots as cp
+import calyxPlots as cp
 import time
 import csv
 import neuronvis as nv
@@ -57,14 +57,16 @@ from pyqtgraph.Qt import QtCore, QtGui
 # GBCFLAG controls whether we use a cut axon or a GBC soma with axon (not actually implemented in this version)
 GBCFLAG = 0  # if 0, IC is in cut axon near calyx; otherwise it is in the GBC soma.
 
-topofileList = ["Calyx-S53Acvt3.hoc", "Calyx-68cvt2.hoc", 'LC_neuromantic_scaled.hoc', 'mainDenHOC_cleaned.hoc']
+topofileList = ["Calyx-S53Acvt3.hoc", "Calyx-68cvt2.hoc", 'LC_neuromantic_scaled.hoc', 'mainDenHOC_cleaned.hoc',
+                "VCN_P30.hoc"]
 monitorSections = {
     "Calyx-S53Acvt3.hoc": [[0, 149, 149, 5, 88, 130, 117], [0, 0, 1.0, 0.5, 0.5, 0.5, 0.5]],
     "Calyx-68cvt2.hoc": [[0, 85, 85, 5, 26, 40, 67], [0, 0, 1.0, 0.5, 0.5, 0.5, 0.5]],
     "LC_neuromantic_scaled.hoc": [[0, 1], [0.5, 0.5]],
-    "manDenHOC_cleaned.hoc": [[], []]
+    "VCN_P30.hoc": [[0, 25, 32, 18, 100], [0, 0, 0.5, 0.5, 0.5]],
+    "manDenHOC_cleaned.hoc": [[], []],
 }
-selectedFile = 2  # in reference to topofileList
+selectedFile = 4  # in reference to topofileList
 renderFlag = False
 runFlag = True
 record = True
@@ -232,16 +234,14 @@ class Calyx8():
             print 'loaded topofile'
         # morphology file should include it's own definition call ("celldef")
 
-        seclist = nrn.get_sections(h)
-        print seclist
-        #print 's: ',
-        #print dir(h.SectionList())
+
+        seclist = nrn.util.get_sections(h)
         h.SectionList().printnames()
         #for s in h.SectionList():
         #    print s
         #print dir(h)
 
-        return
+        #return
 
         self.CalyxStruct = {key: None for key in range(
             self.modelPars.AN_conv[self.runInfo.TargetCellName])}  # create a dictionary to access the calyx parts
@@ -249,15 +249,20 @@ class Calyx8():
         for input in range(self.modelPars.AN_conv[self.runInfo.TargetCellName]):
             self.CalyxStruct[input] = {key: None for key in self.modelPars.structureNames}
             for name in self.modelPars.structureNames:  # for each part
-                x = eval("h.%s" % (name))  # find the associated variable
-                self.CalyxStruct[input][name] = list(x)  # and populate it with the pointers to the parts
+                try:
+                    x = eval("h.%s" % (name))  # find the associated variable
+                    self.CalyxStruct[input][name] = list(x)  # and populate it with the pointers to the parts
+                except:
+                    continue
             # h.load_file(1, "calyx_morpho.hoc")
             # h.load_file(1, "calyx_shape.hoc")
             self.biophys(runInfo=self.runInfo, modelPars=self.modelPars,
                          structure=self.CalyxStruct[input], createFlag=True)
         # get the map of inputs from the swellings to the axon id's for later.
         self.swellAxonMap = []
-        nSwellings = len(self.CalyxStruct[0]['swelling'])
+        nSwellings = 0
+        if 'swelling' in self.CalyxStruct[0].keys() and self.CalyxStruct[0]['swelling'] is not None:
+            nSwellings = len(self.CalyxStruct[0]['swelling'])
         input = 0
         for swellno in range(nSwellings):
             swelling = self.getAxonSec('swelling', swellno, input)
@@ -265,13 +270,11 @@ class Calyx8():
 
         # now for the postsynaptic cell - just a basic bushy cell, even if it is an "MNTB" model.
 
-        (self.TargetCell, [self.initseg, self.axn, self.internnode]) = Cells.bushy(debug=False, ttx=False,
-                                                                                              message=None,
-                                                                                              nach='jsrnaf',
-                                                                                              species='cat', axon=False,
-                                                                                              dendrite=False,
-                                                                                              newModFiles=False,
-                                                                                              pump=False)
+        print dir(Cells)
+        (self.TargetCell, [self.initseg, self.axn, self.internnode]) = Cells.BushyRothman(ttx=False,
+                                                                                   nach='jsrna',
+                                                                                   species='mouse',
+                                                                                              )
 
         self.modelPars.stochasticPars = Params(
             LN_Flag=self.modelPars.AN_relstd_Flag[self.runInfo.TargetCellName],
@@ -444,7 +447,7 @@ class Calyx8():
         if createFlag:  # first time through insert basics only
             for sec in structure['axon']:
                 sec.insert('leak')
-                sec().g_leak = runInfo.newg_leak
+                sec().gbar_leak = runInfo.newg_leak
                 sec.Ra = runInfo.newRa
                 sec.cm = runInfo.newCm
                 e_leak = -50
@@ -457,49 +460,55 @@ class Calyx8():
                 sec.pump0_capmp = 0
 
         for sec in structure['axon']:  #  always keep these base parameters updated
-            sec.g_leak = runInfo.newg_leak
+            sec.gbar_leak = runInfo.newg_leak
             sec.Ra = runInfo.newRa
             sec.cm = runInfo.newCm
         # for each of the parts of the calyx, insert the appropriate conductances
         # into the model, and set the conductance level and the Nernst potential.
         for name in modelPars.structureNames:
+            print 'Name: ', name
+            if structure[name] is None:
+                continue
+            print 'structure: ', structure
             gp = modelPars.gPars[name]
             for sec in structure[name]:
+                if sec is None:
+                    continue
                 # print 'for %s  sec = ' % (name), sec
                 sec.insert('na')
                 if 'na' not in modelPars.mechNames.keys():
                     modelPars.mechNames['na'] = ['na', 'gnabar']
                 if runInfo.pharmManip['TTX']:
-                    sec().gnabar_na = 0.0
+                    sec().gbar_na = 0.0
                 else:
-                    sec().gnabar_na = gp['gNabar']
+                    sec().gbar_na = gp['gNabar']
                 sec().ena = gp['ENa']
                 sec.insert('klt')
                 if 'klt' not in modelPars.mechNames.keys():
                     modelPars.mechNames['klt'] = ['klt', 'gkltbar']
 
                 if runInfo.pharmManip['DTX']:
-                    sec().gkltbar_klt = 0.0
+                    sec().gbar_klt = 0.0
                 else:
-                    sec().gkltbar_klt = gp['gKLbar']
+                    sec().gbar_klt = gp['gKLbar']
                 sec().ek = gp['EK']
                 sec.insert('kht')
                 if 'kht' not in modelPars.mechNames.keys():
                     modelPars.mechNames['kht'] = ['kht', 'gkhtbar']
 
                 if runInfo.pharmManip['TEA']:
-                    sec().gkhtbar_kht = 0.0
+                    sec().gbar_kht = 0.0
                 else:
-                    sec().gkhtbar_kht = gp['gKHbar']
-                sec.insert('ih')
+                    sec().gbar_kht = gp['gKHbar']
+                sec.insert('ihvcn')
                 if 'ih' not in modelPars.mechNames.keys():
                     modelPars.mechNames['ih'] = ['ih', 'ghbar']
 
                 if runInfo.pharmManip['ZD']:
-                    sec().ghbar_ih = 0.0
+                    sec().gbar_ihvcn = 0.0
                 else:
-                    sec().ghbar_ih = gp['gHbar']
-                sec().eh_ih = -43
+                    sec().gbar_ihvcn = gp['gHbar']
+                sec().eh_ihvcn = -43
 
                 if name is 'axon':
                     sec().cm = 0.0001  # mimic myelination
@@ -854,4 +863,4 @@ class Calyx8():
 
 if __name__ == "__main__":
     Calyx8(sys.argv[1:])
-    QtGui.QApplication.instance().exec_()
+#    QtGui.QApplication.instance().exec_()

@@ -32,8 +32,9 @@ verbose = False # use this for testing.
 class GenerateRun():
     def __init__(self, hf, idnum=0, celltype=None,
                  electrodeSection=None,
+                 dendriticElectrodeSection=None,
                  starttime=None,
-                 cd=None,
+                 iRange=[-1, 0, 1],
                  plotting=False,
                  saveAllSections=False,
                  useSavedState=True):
@@ -55,10 +56,12 @@ class GenerateRun():
                               postMode='cc',
                               TargetCellType=celltype, # valid are "Bushy", "Stellate", "MNTB"
                               electrodeSection=electrodeSection,
+                              dendriticElectrodeSection=dendriticElectrodeSection,
+                              dendriticSectionDistance=100., # microns.
                               celsius=37,  # set the temperature.
                               nStim=1,
                               stimFreq=200.,  # hz
-                              stimInj=cd.irange,  # nA
+                              stimInj=iRange,  # nA, a list of test levels for current clamp
                               stimDur=100.0,  # msec
                               stimDelay=5.0,  # msec
                               stimPost=3.0,  # msec
@@ -80,6 +83,21 @@ class GenerateRun():
 
         electrodeSection = list(self.hf.sec_groups[self.runInfo.electrodeSection])[0]
         self.electrodeSite = self.hf.get_section(electrodeSection)
+        dend_sections = list(self.hf.sec_groups[self.runInfo.dendriticElectrodeSection])
+        # invert the mappint of sections
+        # first, just get the dendrite components, making a dendrite submap
+        dendDistMap = {}
+        for k in dend_sections:
+            dendDistMap[k] = self.hf.distanceMap[k]
+        revmap = dict((v, k) for k, v in dendDistMap.iteritems())
+            
+        # now find the distlist key that corresponds to the closest value to our desired value
+        (num, dist) = min(enumerate(revmap), key=lambda x: abs(x[1]-self.runInfo.dendriticSectionDistance))
+        print('Monitoring dendrite section number {:d}, at {:6.2f} microns from soma: '.format(num, dist))
+        
+        
+        dendriticElectrodeSection = list(self.hf.sec_groups[self.runInfo.dendriticElectrodeSection])[num]
+        self.dendriticElectrodeSite = self.hf.get_section(dendriticElectrodeSection)
 
         if self.runInfo.inFile is None:
             self.runInfo.tstop = 1000.0 * (
@@ -155,28 +173,16 @@ class GenerateRun():
                     self.allsecVec[sec.name()] = self.hf.h.Vector()
                     self.allsecVec[sec.name()].record(sec(0.5)._ref_v, sec=sec)
 
-        for var in ['time', 'postsynapticV', 'postsynapticI', 'i_stim0', 'v_stim0']: # get standard stuff
+        for var in ['time', 'postsynapticV', 'dendriteV', 'postsynapticI', 'i_stim0', 'v_stim0']: # get standard stuff
             self.monitor[var] = self.hf.h.Vector()
 
         self.hf.h.celsius = self.runInfo.celsius
 
         self.clist = {}  #  color list
 
-        # make fake cell right here for testing...
-        # soma = self.hf.h.Section()
-        # soma.L = 20.
-        # soma.diam = 20.
-        # soma.insert('hh')
-        #
-        #electrodeSite = soma
-        # print self.hf.sec_groups.keys()
         electrodeSection = list(self.hf.sec_groups[self.runInfo.electrodeSection])[0]
         self.electrodeSite = self.hf.get_section(electrodeSection)
-        # print 'group: ', self.runInfo.electrodeSection
-        # print 'electrode section, site: ', electrodeSection, self.electrodeSite
-        # print 'electrodeSite name: ', self.electrodeSite.name()
         if self.runInfo.postMode in ['vc', 'vclamp']:
-            #print 'vclamp'
             # Note to self (so to speak): the hoc object returned by this call must have a life after
             # the routine exits. Thus, it must be "self." Same for the IC stimulus...
             self.vcPost = self.hf.h.SEClamp(0.5, sec=self.electrodeSite) #self.hf.sections[electrodeSite])
@@ -194,18 +200,16 @@ class GenerateRun():
             stim['dur'] = self.runInfo.vstimDur
             stim['amp'] = self.runInfo.vstimInj
             stim['PT'] = 0.0
-           # print self.hf.h.soma[0]
-
             (secmd, maxt, tstims) = cnmodel.makestim.makestim(stim, pulsetype='square', dt=self.hf.h.dt)
             self.stim = stim
             secmd = secmd + self.runInfo.vstimHolding # add holding
             self.monitor['v_stim0'] = self.hf.h.Vector(secmd)
             self.monitor['v_stim0'].play(self.vcPost._ref_amp2, self.hf.h.dt, 0, sec=self.electrodeSite)
             self.monitor['postsynapticV'].record(self.electrodeSite(0.5)._ref_v, sec=self.electrodeSite)
+            self.monitor['dendriteV'].record(self.dendriticElectrodeSite(0.5)._ref_v, sec=self.dendriticElectrodeSite)
             self.monitor['postsynapticI'].record(self.vcPost._ref_i, sec=self.electrodeSite)
             self.mons = ['postsynapticI', 'v_stim0']
         elif self.runInfo.postMode in ['cc', 'iclamp']:
-            #print 'iclamp'
             stim = {}
             stim['NP'] = self.runInfo.nStim
             stim['Sfreq'] = self.runInfo.stimFreq  # stimulus frequency
@@ -226,15 +230,16 @@ class GenerateRun():
             self.monitor['i_stim0'].play(self.icPost._ref_i, self.hf.h.dt, 0, sec=self.electrodeSite)
             self.monitor['postsynapticI'].record(self.icPost._ref_i, sec=self.electrodeSite)
             self.monitor['postsynapticV'].record(self.electrodeSite(0.5)._ref_v, sec=self.electrodeSite)
-            self.mons = ['postsynapticV', 'postsynapticI' ]
+            self.monitor['dendriteV'].record(self.dendriticElectrodeSite(0.5)._ref_v, sec=self.dendriticElectrodeSite)
+            self.mons = ['postsynapticV', 'postsynapticI', 'dendriteV' ]
         else:
             print 'generate_run.py, mode %s  unknown' % self.runInfo.postMode
             return
         self.hf.h.tstop = maxt+self.runInfo.stimDelay
-        print 'PrepareRun: \n maxt = %8.2f' % maxt
-        print 'delay, dur: ', self.runInfo.stimDelay, self.runInfo.stimDur
-        print 'tstop: ', self.hf.h.tstop
-        print "t:  %8.2f\n----------------\n" % self.hf.h.t
+        print ('PrepareRun: \n   maxt = {:8.2f}'.format(maxt))
+        print ('   delay: {:9.3f} ms\n   duration: {:9.3f} ms'.format(self.runInfo.stimDelay, self.runInfo.stimDur))
+        print ('   tstop: {:9.3f} ms'.format(self.hf.h.tstop))
+        print ("   t:  {:8.2f}\n----------------\n".format(self.hf.h.t))
         self.monitor['time'].record(self.hf.h._ref_t)
         #self.hf.h.topology()
         #pg.show()
@@ -243,7 +248,7 @@ class GenerateRun():
 
     def doRun(self, filename=None, parMap=None, save=False, restoreFromFile=False, initfile=None, workers=4):
         if verbose:
-            print 'generat_run::doRun'
+            print('generat_run::doRun')
         (p, e) = os.path.splitext(filename)  # make sure filename is clean
         self.runInfo.filename = p  # change filename in structure, just name, no extension
         if parMap is None or len(parMap) == 0:
@@ -259,13 +264,13 @@ class GenerateRun():
             self.makeFileName(self.runInfo.filename + mstr )
 
         if verbose:
-            print 'genrate_run::doRun: basename is = ', self.basename
+            print ('genrate_run::doRun: basename is = {:s}'.format(self.basename))
         #self.hf.update() # make sure channels are all up to date
         self.results={}
         
         nLevels = len(self.runInfo.stimInj)
         nWorkers = workers
-        print 'doRun: initfile = ', initfile
+        print ('doRun: initfile = {:s}'.format(initfile))
         TASKS = [s for s in range(nLevels)]
         tresults = [None]*len(TASKS)
         runner = [None]*nLevels
@@ -292,16 +297,16 @@ class GenerateRun():
                 else:
                     self.plotRun(self.results[i], init=False)
         if verbose:
-            print 'doRun, calling IV'
+            print ('doRun, calling IV')
         self.arun = ar.AnalyzeRun(self.results) # create an instance of the class with the data
         self.arun.IV()  # compute the IV on the data
         self.IVResult =self.arun.IVResult
         if verbose:
-            print 'doRun, back from IV'
+            print ('doRun, back from IV')
         if save == 'monitor':
             self.saveRuns('monitor')
         if verbose:
-            print 'doRun: ivresult is: ', self.IVResult
+            print ('doRun: ivresult is: {:32}'.format(self.IVResult))
         if self.plotting:
             self.plotFits(1, self.IVResult['taufit'], c='r')
             self.plotFits(1, self.IVResult['ihfit'], c='b')
@@ -331,8 +336,6 @@ class GenerateRun():
         if verbose:
             print '_executeRun'
         assert self.run_initialized == True
-#        print 'executeRun: Running for: ', self.hf.h.tstop
-#        print 'V = : ', self.electrodeSite.v
         print 'starting v: ', self.electrodeSite.v
         
         # one way
@@ -358,7 +361,6 @@ class GenerateRun():
             np_monitor[k] = np.array(self.monitor[k])
 
         np_allsecVec = {}
-#        print self.monitor['time']
         for k in self.allsecVec.keys():
             np_allsecVec[k] = np.array(self.allsecVec[k])
         self.runInfo.clist = self.clist
@@ -393,8 +395,6 @@ class GenerateRun():
         each element of which is a Param structure, which we then turn into
         a dictionary...
         """
-        #print 'self.idnum: ', self.idnum
-        #fn = self.basename + '_mrun' + '_ID%04d.p' % self.idnum
         fn = self.basename + '.p'
         pfout = open(fn, 'wb')
         pickle.dump({'basename': self.basename,
@@ -429,7 +429,6 @@ class GenerateRun():
     def plotRun(self, results, init=True, show=False):
         if init:
             self.cplts = cp.CalyxPlots(title=self.filename)
-        print 'self.mons (somasite): ', self.mons
         self.cplts.plotResults(results.todict(), self.runInfo.todict(), somasite=self.mons)
         if show:
             self.cplts.show()

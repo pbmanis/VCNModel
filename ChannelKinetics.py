@@ -21,6 +21,7 @@ from pyqtgraph.Qt import QtCore, QtGui
 import pylibrary.Utility as Util
 faulthandler.enable()
 
+h.load_file('stdrun.hoc')
 
 class ChannelKinetics():
     def __init__(self, args):
@@ -71,6 +72,7 @@ class ChannelKinetics():
         self.show()
         print 'after show'
 
+
     def show(self):
         self.win.show()
         QtGui.QApplication.instance().exec_()
@@ -84,15 +86,22 @@ class ChannelKinetics():
         else:
             tstep = [200., 50.]
         tdelay = 5.0
-        Channel = nrnlibrary.nrnutils.Mechanism(modfile)
-        leak = nrnlibrary.nrnutils.Mechanism('leak')
-        Channel.set_parameters({'gbar': 1})
-        leak.set_parameters({'gbar': 1e-12})
+        # print 'modfile: ', modfile
+        # Channel = nrnlibrary.utility.Mechanism(modfile)
+        # leak = nrnlibrary.util.Mechanism('leak')
+        # Channel.set_parameters({'gbar': 1})
+        # leak.set_parameters({'gbar': 1e-12})
 
-        self.soma = nrnlibrary.nrnutils.Section(L=10, diam=10, mechanisms=[Channel, leak])
+        #self.soma = nrnlibrary.nrnlibrary.util.Section(L=10, diam=10, mechanisms=[Channel, leak])
 #        Channel.insert_into(soma)
 #        leak.insert_into(soma)
 #        print dir(self.soma)
+        self.soma = h.Section()
+        self.soma.L = 10
+        self.soma.insert('leak')
+        self.soma().leak.gbar = 1e-12
+        self.soma.insert(modfile)
+        exec('self.soma().%s.gbar = 1' % modfile)
         h.celsius = 22 # set the temperature.
         ca_init = 70e-6
 
@@ -121,7 +130,7 @@ class ChannelKinetics():
             stimamp = np.linspace(-100, 60, num=35, endpoint=True)
         self.ivss = np.zeros((2, stimamp.shape[0]))
         self.ivmin = np.zeros((2, stimamp.shape[0]))
-
+        print dir(h)
         for i, V in enumerate(stimamp):
             stim={}
             stim['NP'] = 1

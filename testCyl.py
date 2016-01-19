@@ -60,7 +60,7 @@ class testcyl():
             pts = np.vstack([[x[j], x[i]],[y[j], y[i]],[z[j],z[i]]]).transpose()
             print 'pts: ', pts
             if mode == "line":
-                plt = gl.GLLinePlotItem(pos=pts, width =(d[i]+d[j])/(2.), color=pg.glColor((int(255.*d[i]/dmax), 128)), connected=True)
+                plt = gl.GLLinePlotItem(pos=pts, width =(d[i]+d[j])/(2.), color=pg.glColor((int(255.*d[i]/dmax), 128))) #connected=True)
                 self.w.addItem(plt)
             elif mode == 'sphere':
                 md = gl.MeshData.sphere(rows=10, cols=20, radius=d[i]/2.0) # , length=d(i))

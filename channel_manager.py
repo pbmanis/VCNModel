@@ -16,7 +16,7 @@ class channelManager():
 
         # Scaled params normalized to Rothman and Manis densities:
         self.c_m = 1.0E-6  # in units of F/cm^2
-
+        self.celltype = celltype  # store called cell type.
         if celltype == 'Bushy_RM03':
             totcap = 12.0E-12  # in units of F, from Rothman and Manis, 2003.
             refarea = totcap / self.c_m  # area is in cm^2
@@ -53,7 +53,7 @@ class channelManager():
                             }
 
 
-        elif celltype in ['Stellate_RM03']:
+        elif celltype in ['TStellate_RM03']:
             totcap = 12.0E-12
             refarea = totcap / self.c_m  # see above for units
             # Type I stellate Rothman and Manis, 2003c
@@ -84,7 +84,7 @@ class channelManager():
                             }
 
 
-        elif celltype in ['Stellate_XM13']:
+        elif celltype in ['TStellate_XM13']:
             totcap = 25.0E-12
             refarea = totcap / self.c_m  # see above for units
             # Type I stellate Rothman and Manis, 2003c
@@ -143,7 +143,7 @@ class channelManager():
                 'apic': {'nav11': self.gBar.nabar * 0.25, 'klt': self.gBar.kltbar * 0.25, 'kht': self.gBar.khtbar * 0.25,
                          'ihvcn': self.gBar.ihbar *0.25, 'leak': self.gBar.leakbar * 0.25, },
             }
-            self.irange = np.linspace(-1, 1, 21)
+            self.irange = np.linspace(-2, 2, 3)
             self.distMap = {'dend': {'klt': {'gradient': 'linear', 'gminf': 0., 'lambda': 200.},
                                      'kht': {'gradient': 'llinear', 'gminf': 0., 'lambda': 200.},
                                      'nav11': {'gradient': 'linear', 'gminf': 0., 'lambda': 200.}}, # linear with distance, gminf (factor) is multiplied by gbar

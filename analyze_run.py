@@ -223,17 +223,17 @@ class AnalyzeRun():
         plot = False  # use to check if this is working.
         p = lmfit.Parameters()
         if dc is True:
-            p.add('dc', value = -60., min = 0., max = -200., vary=True)
+            p.add('dc', value = -60., min = -10., max = -150., vary=True)
         else:
             p.add('dc', value = fixedDC, vary=False)
 
         p.add('a', value = -10., min= -100., max = 100.)
-        p.add('tau', value = 5., min = 0.5, max = 100.)
+        p.add('tau', value = 25., min = 0.2, max = 100.)
 
         (cx, cy) = pu.clipdata(y, x, t0, t1, minFlag = False)
         cx -= t0   # fitting is reference to zero time
-        #print p
-        #print cx, cy
+        print p
+        print cx, cy
         mi = lmfit.minimize(self.expfit, p, args=(cx, cy))
         mi.leastsq()
         yfit = self.expfit(mi.params, cx)

@@ -90,7 +90,8 @@ import neuron
 
 try:
     import pyqtgraph as pg
-    from pyqtgraph.Qt import QtGui
+    #from pyqtgraph.Qt import QtGui
+    from PyQt4 import QtCore, QtGui
     import pylibrary.pyqtgraphPlotHelpers as pgh
     HAVE_PG = True
 except:
@@ -101,7 +102,7 @@ if HAVE_PG:
 
 import numpy as np
 
-import syn_config
+import cell_config
 
 verbose = False
 showCell = False
@@ -122,6 +123,7 @@ class ModelRun():
         self.SRChoices = ['LS', 'MS', 'HS', 'fromcell']  # AN SR groups (assigned across all inputs)
         self.protocolChoices = ['initIV', 'testIV', 'runIV', 'initAN', 'runANPSTH', 'runANSingles']
         self.soundChoices = ['tone', 'noise', 'stationaryNoise', 'SAM', 'CMMR']
+        self.speciesChoices = ['mouse', 'guineapig']
 
         self.srname = ['**', 'LS', 'MS', 'HS']  # runs 1-3, not starting at 0
         self.cellID = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
@@ -134,6 +136,7 @@ class ModelRun():
 
         self.Params['cellType'] = self.cellChoices[0]
         self.Params['modelType'] = self.modelChoices[0]
+        self.Params['species'] = self.speciesChoices[0]
         self.Params['SRType'] = self.SRChoices[2]
         self.Params['SR'] = self.Params['SRType']  # actually used SR this might be cell-defined, rather than command defined
         self.Params['runProtocol'] = self.protocolChoices[2]  # testIV is default because it is fast and should be run often
@@ -155,7 +158,7 @@ class ModelRun():
         Print out all of the parameters in the model
         """
         for p in self.Params.keys():
-            print '%18s = ' % p, self.Params[p]
+            print ('{:18s} = {:12}'.format(p, self.Params[p]))
         print '-----------'
 
 
@@ -201,7 +204,7 @@ class ModelRun():
 
     def set_SR(self, SRType):
         """
-        Set the SR, overriding SR in the syn_config file. The SR type must be in the SR choices
+        Set the SR, overriding SR in the cell_config file. The SR type must be in the SR choices
         
         Parameters
         ----------
@@ -270,19 +273,16 @@ class ModelRun():
         self.get_hoc_file(filename)
         sg = self.hf.sec_groups['soma']
         self.distances(self.hf.get_section(list(sg)[0]).name()) # make distance map from soma
+        dendriticElectrode = list(self.hf.sec_groups['dendrite'])[0]
+        self.dendriticElectrodeSite = self.hf.get_section(dendriticElectrode)
+        self.dendriticElectrodeSection = 'dendrite'
         if verbose:
             print 'Parmap in runModel: ', parMap
-        self.cd = ChannelDecorate(self.hf, celltype=self.Params['cellType'], modeltype=self.Params['modelType'],
-                             parMap=parMap)
-
+        self.createdCell = self.createCell(self.hf, self.Params['cellType'],
+                self.Params['modelType'], self.Params['species'])
+        
         # self.hf.h.topology()
-        # self.cd.channelValidate(self.hf, verify=False)
 
-        #return
-        # for group in self.hf.sec_groups.keys():
-        #     g = self.hf.sec_groups[group]
-        #     for section in list(g):
-        #         secinfo = self.hf.get_section(section)
         # handle the following protocols:
         # ['initIV', 'initAN', 'runIV', 'runANPSTH', 'runANSingles']
         
@@ -293,7 +293,9 @@ class ModelRun():
                                 initDirectory, self.Params['initIVStateFile'])
             self.R = GenerateRun(self.hf, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
-                             electrodeSection=self.electrodeSection, cd=self.cd,
+                             electrodeSection=self.electrodeSection, 
+                             dendriticElectrodeSection=self.dendriticElectrodeSection,
+                             iRange=self.createdCell.cd.irange,
                              plotting = HAVE_PG and self.plotFlag)
             print ivinitfile
             cellInit.getInitialConditionsState(self.hf, tdur=3000., 
@@ -308,7 +310,9 @@ class ModelRun():
                                 initDirectory, self.Params['initIVStateFile'])
             self.R = GenerateRun(self.hf, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
-                             electrodeSection=self.electrodeSection, cd=self.cd,
+                             electrodeSection=self.electrodeSection, 
+                             dendriticElectrodeSection=self.dendriticElectrodeSection,
+                             iRange=self.createdCell.cd.irange,
                              plotting = HAVE_PG and self.plotFlag, )
             cellInit.testInitialConditions(self.hf, filename=ivinitfile,
                 electrodeSite=self.electrodeSite)
@@ -362,7 +366,9 @@ class ModelRun():
         print 'IVRun begins'
         self.R = GenerateRun(self.hf, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
-                             electrodeSection=self.electrodeSection, cd=self.cd,
+                             electrodeSection=self.electrodeSection,
+                             dendriticElectrodeSection=self.dendriticElectrodeSection,
+                             iRange=self.createdCell.cd.irange,
                              plotting = HAVE_PG and self.plotFlag)
         ivinitfile = os.path.join(baseDirectory, self.cellID, 
                                 initDirectory, self.Params['initIVStateFile'])
@@ -388,7 +394,6 @@ class ModelRun():
             print 'Nspike, Ispike: ', self.R.IVResult['Nspike'], self.R.IVResult['Ispike']
             print 'Rinss: ', self.R.IVResult['Rinss']
             print 'Vm: ', np.mean(self.R.IVResult['Vm'])
-#        print 'ivresult keys: ', self.R.IVResult['taus'].keys()
         if len(self.R.IVResult['taus'].keys()) == 0:
             taum_mean = 0.
             tauih_mean = 0.
@@ -397,8 +402,6 @@ class ModelRun():
                 enumerate(self.R.IVResult['taus'].keys())])
             tauih_mean = np.mean([self.R.IVResult['tauih'][i]['tau'].value for k, i in
                 enumerate(self.R.IVResult['tauih'].keys())])
-        #print 'taum_mean: ', taum_mean
-        #print 'tauih_mean: ', tauih_mean
         # construct dictionary for return results:
         self.IVSummary = {'basefile': self.R.basename,
                           'parmap': parMap, 'ID': self.idnum,
@@ -407,8 +410,6 @@ class ModelRun():
                           'taum': taum_mean, 'tauih': tauih_mean,
                           'spikes': {'i': self.R.IVResult['Ispike'], 'n': self.R.IVResult['Nspike']},
                           }
-
-        #print 'ivsummary: ', self.IVSummary
         print 'model_run::runModel: write summary for file set = ', self.R.basename
         return self.IVSummary
 
@@ -416,7 +417,7 @@ class ModelRun():
     def ANRun(self, hf, verify=False, seed=0, make_ANIntialConditions=False):
         """
         Establish AN inputs to soma, and run the model.
-        Requires a synapseConfig list of dicts from syn_config.makeDict()
+        Requires a synapseConfig list of dicts from cell_config.makeDict()
         each list element represents an AN fiber (SGC cell) with:
             (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high])
 
@@ -440,7 +441,7 @@ class ModelRun():
         
 
         """
-        synapseConfig = syn_config.makeDict(self.cellID)
+        synapseConfig, celltype = cell_config.makeDict(self.cellID)
         self.start_time = time.time()
         # compute delays in a simple manner
         # assumption 3 meters/second conduction time
@@ -459,7 +460,7 @@ class ModelRun():
         #             'Fs': self.Fs, 'F0': self.f0, 'dB': self.dB, 'RF': self.RF, 'SR': self.SR,
         #             'cellType': self.Params['cellType'], 'modelType': self.Params['modelType'], 'nReps': nReps, 'threshold': threshold}
 
-        preCell, postCell, synapse, self.electrodeSite = self.configureCell(hf, synapseConfig, stimInfo)
+        preCell, postCell, synapse, self.electrodeSite = self.configureCell(hf, synapseConfig, celltype, stimInfo)
 
         # see if we need to save the cell state now.
         if make_ANIntialConditions:
@@ -479,6 +480,7 @@ class ModelRun():
         spikeTimes = {}
         inputSpikeTimes = {}
         somaVoltage = {}
+        dendriteVoltage = {}
         celltime = []
         
         self.setup_time = time.time() - self.start_time
@@ -503,6 +505,7 @@ class ModelRun():
                     threshold, t0=0., t1=stimInfo['run_duration']*1000., dt=1.0, mode='peak')
             inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
             somaVoltage[N] = np.array(tresults[j]['Vsoma'])
+            dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
 
         # for j, N in enumerate(range(nReps)):
         #     print 'Rep: %d' % N
@@ -522,13 +525,13 @@ class ModelRun():
         print "Total Neuron Run Time = %8.2f min (%8.0fs)" % (self.nrn_run_time/60., self.nrn_run_time)
         
         result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes, 
-            'somaVoltage': somaVoltage, 'time': np.array(celltime[0])}
+            'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'time': np.array(celltime[0])}
         
         self.analysis_filewriter(self.Params['cell'], result, tag='delays')
-        self.plotAN(np.array(celltime[0]), result['somaVoltage'], result['stimInfo'])
+        self.plotAN(np.array(celltime[0]), result['somaVoltage'], result['stimInfo'], dendVoltage=result['dendriteVoltage'])
 
 
-    def ANRun_singles(self, hf, verify=False, seed=0):
+    def ANRun_singles(self, hf, verify=False, seed=None):
         """
         Establish AN inputs to soma, and run the model.
         synapseConfig: list of tuples
@@ -555,7 +558,7 @@ class ModelRun():
         """
 
         self.start_time = time.time()
-        synapseConfig = syn_config.makeDict(self.cellID)
+        synapseConfig, celltype = cell_config.makeDict(self.cellID)
         nReps = self.Params['nReps']
         threshold = self.Params['threshold'] # spike threshold, mV
 
@@ -566,11 +569,14 @@ class ModelRun():
         #             'Fs': self.Fs, 'F0': self.f0, 'dB': self.dB, 'RF': self.RF, 'SR': self.SR,
         #             'cellType': self.Params['cellType'], 'modelType': self.Params['modelType'], 'nReps': nReps, 'threshold': threshold}
 
-        preCell, postCell, synapse, self.electrodeSite = self.configureCell(hf, synapseConfig, stimInfo)
+        preCell, postCell, synapse, self.electrodeSite = self.configureCell(hf, synapseConfig, celltype, stimInfo)
 
 
         nSyns = len(synapseConfig)
-        seeds = np.random.randint(32678, size=(nReps, len(synapseConfig)))
+        if seed is None:
+            seeds = np.random.randint(32678, size=(nReps, len(synapseConfig)))
+        else:
+            seeds = np.random.randint()
         print 'AN Seeds: ', seeds
         stimInfo['seeds'] = seeds  # keep the seed values too.
         k = 0
@@ -624,6 +630,7 @@ class ModelRun():
                         t1=stimInfo['run_duration']*1000, dt=1.0, mode='peak')
                 inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
                 somaVoltage[N] = np.array(tresults[j]['Vsoma'])
+                dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
 
             total_elapsed_time = time.time() - self.start_time
     #        total_run_time = time.time() - run_time
@@ -633,13 +640,27 @@ class ModelRun():
             print "Total Neuron Run Time = %8.2f min (%8.0fs)" % (self.nrn_run_time/60., self.nrn_run_time)
         
             result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes, 
-                'somaVoltage': somaVoltage, 'time': np.array(tresults[j]['time'])}
+                'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'time': np.array(tresults[j]['time'])}
         
             self.analysis_filewriter(self.Params['cell'], result, tag='Syn%03d' % k)
-        #self.plotAN(np.array(self.time), result['somaVoltage'], result['stimInfo'])
+        self.plotAN(np.array(result['time']), result['somaVoltage'], result['stimInfo'])
 
+    def createCell(self, hf, celltype, modeltype, species):
+        if celltype in ['bushy', 'Bushy']:
+            postCell = cells.Bushy.create(model='hoc', hoc=hf, species=species, 
+                modeltype = modeltype, decorator=ChannelDecorate)   # note that cell was already decorated...
+        elif celltype in ['tstellate', 'TStellate']:
+            postCell = cells.TStellate.create(model='hoc', hoc=hf, species=species, 
+                modeltype = modeltype, decorator=ChannelDecorate)
+        elif celltype == ['dstellate', 'DStellate']:
+            postCell = cells.Dstellate.create(model='hoc', hoc=hf, species=species, 
+                modeltype = modeltype, decorator=ChannelDecorate)
+        else:
+            raise ValueError("Cell type %s not implemented in configureCell in model_run" % celltype)
+        postCell.type = celltype.lower()
+        return postCell
 
-    def configureCell(self, hf, synapseConfig, stimInfo):
+    def configureCell(self, hf, synapseConfig, celltype, stimInfo):
         """
         Configure the cell. This routine builds the cell in Neuron, adds presynaptic inputs
         as described in the synapseConfig, and configures those according to parameters in 
@@ -651,7 +672,11 @@ class ModelRun():
             Access to neuron and file information
         
         synapseConfig : dict
-            A dictionary with information about the synapse configuration to use. 
+            A dictionary with information about the synapse configuration to use.
+        
+        celltype : string
+            A string describing the cell type. Determines how the channels are populated
+            and how the cell is built, even if it comes from a .hoc structure.
             
         stimInfo : dict
             A dictionary whose elements used include SRType (spont rate type), F0 (stimulus frequency)
@@ -670,18 +695,21 @@ class ModelRun():
         
         """
         
-        sg = hf.sec_groups['soma']
-#        postCell = cells.Generic.create(soma=hf.get_section(list(sg)[0]))
-        postCell = hf# .get_section(list(sg)[0])  # new api for cells (no Generic class)
-        postCell.type = stimInfo['cellType'].lower()
-        
-        self.cd.channelValidate(hf, verify=False)
+        debug = False
+        if debug:
+            print 'hf.sec_groups : ', hf.sec_groups.keys()
+        postCell = self.createdCell
+        #self.createCell(hf, celltype, self.Params['modelType'], self.Params['species'])
+        if debug:
+            print postCell.print_all_mechs()
+
 
         preCell = []
         synapse = []
         # reconfigure syanpses to set the spont rate group
         stimInfo['SR'] = stimInfo['SRType']
         for i, syn in enumerate(synapseConfig):
+            # print 'SYN: ', syn
             if stimInfo['SRType'] is 'fromcell':  # use the one in the table
                 preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=syn['SR']))
                 stimInfo['SR'] = self.srname[syn[2]] # use and report value from table
@@ -693,6 +721,7 @@ class ModelRun():
                     raise ValueError('SR type "%s" not found in Sr type list' % stimInfo['SRType'])
                     
                 preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=srindex))  # override
+            # print 'precell: ', preCell
             synapse.append(preCell[-1].connect(postCell, pre_opts={'nzones':syn['nSyn'], 'delay':syn['delay2']}))
         for i, s in enumerate(synapse):
             s.terminal.relsite.Dep_Flag = 0  # turn off depression computation
@@ -750,7 +779,7 @@ class ModelRun():
         Returns
         -------
         anresult : dict
-            A dictionary containing 'Vsoma', 'time', and the 'ANSpikeTimes'
+            A dictionary containing 'Vsoma', 'Vdend', 'time', and the 'ANSpikeTimes'
         
         """
         filename = os.path.join(baseDirectory, self.cellID, initDirectory, self.Params['initANStateFile'])
@@ -771,8 +800,12 @@ class ModelRun():
         an_setup_time += (time.time() - an0_time)
         nrn_start = time.time()
         Vsoma = hf.h.Vector()
+        Vdend = hf.h.Vector()
         rtime = hf.h.Vector()
+        dendsite = postCell.all_sections['dendrite'][-1]
+        
         Vsoma.record(postCell.soma(0.5)._ref_v, sec=postCell.soma)
+        Vdend.record(dendsite(0.5)._ref_v, sec=dendsite)
         rtime.record(hf.h._ref_t)
         print '...running '
         hf.h.finitialize()
@@ -784,11 +817,11 @@ class ModelRun():
         # hf.h.run()
         nrn_run_time += (time.time() - nrn_start)
         print '...done'
-        anresult = {'Vsoma': np.array(Vsoma), 'time': np.array(rtime), 'ANSpikeTimes': ANSpikeTimes}
+        anresult = {'Vsoma': np.array(Vsoma), 'Vdend': np.array(Vdend), 'time': np.array(rtime), 'ANSpikeTimes': ANSpikeTimes}
         return anresult
 
 
-    def plotAN(self, celltime, somaVoltage, stimInfo):
+    def plotAN(self, celltime, somaVoltage, stimInfo, dendVoltage=None):
         """
         """
         nReps = stimInfo['nReps']
@@ -801,7 +834,11 @@ class ModelRun():
             dvdt = np.diff(somaVoltage[N])
             layout.plot(1, celltime[:-1], dvdt, pen=pg.mkPen(pg.intColor(N, nReps)))
             layout.getPlot(0).setXLink(layout.getPlot(1))
-
+        if dendVoltage is not None:
+            print dendVoltage
+            for j, N in enumerate(range(len(dendVoltage))):
+                layout.plot(0, celltime, dendVoltage[N], pen=pg.mkPen(pg.intColor(N, nReps)),
+                    style=QtCore.Qt.DashLine)            
         pgh.show()
 
 
@@ -859,6 +896,7 @@ class ModelRun():
 
 
 if __name__ == "__main__":
+    curdir = os.getcwd()
     model = ModelRun(sys.argv[1:])  # create instance of the model
     pp = pprint.PrettyPrinter(indent=4, width=60)
     
@@ -913,7 +951,7 @@ if __name__ == "__main__":
 
     args=vars(parser.parse_args())   
 #    model.printModelSetup()
-    print args.keys()
+
     for k in args.keys():
         model.Params[k] = args[k]
     print model.Params['cell']
@@ -924,3 +962,7 @@ if __name__ == "__main__":
     model.runModel() # then run the model
     if showCell:
         QtGui.QApplication.instance().exec_()
+    try:
+        exit()
+    except:
+        pass
