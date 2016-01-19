@@ -863,7 +863,7 @@ class ModelRun():
 
         stimInfo = result['stimInfo']
         outPath = os.path.join('VCN_Cells', self.cellID, 'Simulations', 'AN')
-        
+        self.mkdir_p(outPath) # confirm that output path exists
         f = open(os.path.join(outPath, 'AN_Result_' + self.cellID + '_%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
                 int(stimInfo['dB']), stimInfo['F0'], stimInfo['SR']) + '.p'), 'w')
         pickle.dump(result, f)
