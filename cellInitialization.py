@@ -31,7 +31,6 @@ def initModel(hf, mode='iclamp', vinit=-65., restoreFromFile=False, filename=Non
     boolean : Success of initialization. Always True, just to indicate we were called.
     
     """
-
     if mode in ['vc', 'vclamp']:
         hf.h.finitialize(vinit)
         return True
@@ -77,21 +76,22 @@ def getInitialConditionsState(hf, tdur=2000., filename=None, electrodeSite=None)
     """
     Run model for a time, and then save the state
     """
+#    print dir(hf.hr)
     # first to an initialization to get close
     print 'getInitialConditionsState\n'
-    print '  starting t = %8.2f' % hf.h.t
-    initModel(hf, restoreFromFile=False, electrodeSite=electrodeSite)
-    hf.h.tstop = tdur
+    print '  starting t = %8.2f' % hf.hr.h.t
+    initModel(hf.hr, restoreFromFile=False, electrodeSite=electrodeSite)
+    hf.hr.h.tstop = tdur
     print 'running for %8.2f ms' % tdur
-    hf.h.run()
-    print '  run completed, t = %8.2f' % hf.h.t
+    hf.hr.h.run()
+    print '  run completed, t = %8.2f' % hf.hr.h.t
     if electrodeSite is not None:
         vfinal = electrodeSite.v
     else:
         vfinal = 0.
     print '  V = %8.2f' % vfinal
-    state = hf.h.SaveState()
-    stateFile = hf.h.File()
+    state = hf.hr.h.SaveState()
+    stateFile = hf.hr.h.File()
     state.save()
     if filename is None:
         filename = 'neuronstate.dat'

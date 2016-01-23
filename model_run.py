@@ -271,8 +271,8 @@ class ModelRun():
                 modelType=self.Params['modelType'], ) 
         
                       
-        print 'PostCell: ', dir(self.postCell)
-        print 'PostCell hr: ', dir(self.postCell.hr)
+        # print 'PostCell: ', dir(self.postCell)
+       #  print 'PostCell hr: ', dir(self.postCell.hr)
 
         self.postCell.hr.h.celsius = 38.
         self.postCell.hr.h.Ra = 150.
@@ -314,12 +314,11 @@ class ModelRun():
                              starttime=None,
                              electrodeSection=self.electrodeSection, 
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
-                             iRange=self.postCell.decorator.irange,
+                             iRange=self.postCell.decorated.irange,
                              plotting = HAVE_PG and self.plotFlag)
-            print ivinitfile
             cellInit.getInitialConditionsState(self.postCell, tdur=3000., 
                 filename=ivinitfile, electrodeSite=self.electrodeSite)
-            print 'Ran to get initial state for %f msec' % self.hf.h.t
+            print 'Ran to get initial state for %f msec' % self.postCell.hr.h.t
             return
 
         if self.Params['runProtocol'] == 'testIV':
@@ -331,7 +330,7 @@ class ModelRun():
                              starttime=None,
                              electrodeSection=self.electrodeSection, 
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
-                             iRange=self.postCell.decorator.irange,
+                             iRange=self.postCell.decorated.irange,
                              plotting = HAVE_PG and self.plotFlag, )
             cellInit.testInitialConditions(self.postCell, filename=ivinitfile,
                 electrodeSite=self.electrodeSite)
