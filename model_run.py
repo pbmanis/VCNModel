@@ -60,6 +60,8 @@ optional arguments:
 
 import sys
 import os.path
+import os
+import errno
 import pickle
 import time
 import argparse
@@ -225,6 +227,14 @@ class ModelRun():
     def set_starttime(self, starttime):
         self.Params['StartTime'] = starttime
 
+    def mkdir_p(self, path):
+        try:
+            os.makedirs(path)
+        except OSError as exc:  # Python >2.5
+            if exc.errno == errno.EEXIST and os.path.isdir(path):
+                pass
+            else:
+                raise
 
     def runModel(self, parMap={}):
         """
@@ -252,6 +262,9 @@ class ModelRun():
             self.plotFlag = True
         ivinitfile = os.path.join(baseDirectory, self.cellID, 
                             initDirectory, self.Params['initIVStateFile'])
+        ivinitdir = os.path.join(baseDirectory, self.cellID, 
+                            initDirectory)
+        self.mkdir_p(ivinitdir) # confirm existence of that file
         filename = os.path.join(baseDirectory, self.cellID, morphDirectory, self.Params['infile'])
         self.postCell = cells.Bushy.create(morphology=filename, decorator=ChannelDecorate,
                 hocReader=HocReader, species=self.Params['species'], 
@@ -855,7 +868,7 @@ class ModelRun():
 
         stimInfo = result['stimInfo']
         outPath = os.path.join('VCN_Cells', self.cellID, 'Simulations', 'AN')
-        
+        self.mkdir_p(outPath) # confirm that output path exists
         f = open(os.path.join(outPath, 'AN_Result_' + self.cellID + '_%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
                 int(stimInfo['dB']), stimInfo['F0'], stimInfo['SR']) + '.p'), 'w')
         pickle.dump(result, f)

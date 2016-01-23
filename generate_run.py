@@ -25,6 +25,9 @@ import pickle
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 import pyqtgraph.multiprocess as mproc
+import errno
+
+
 
 verbose = False # use this for testing.
 
@@ -128,6 +131,14 @@ class GenerateRun():
         if verbose:
             print 'runinfo initialization done'
 
+    def mkdir_p(self, path):
+        try:
+            os.makedirs(path)
+        except OSError as exc:  # Python >2.5
+            if exc.errno == errno.EEXIST and os.path.isdir(path):
+                pass
+            else:
+                raise
 
     def makeFileName(self, filename=None, subdir=None):
         self.runInfo.filename = filename
@@ -135,8 +146,9 @@ class GenerateRun():
             self.dtime = time.strftime("%y.%m.%d-%H.%M.%S")
         else:  # convert time object
             self.dtime = dtime = time.strftime("%y.%m.%d-%H.%M.%S", time.localtime(self.startTime))
-        if os.path.exists(self.runInfo.folder) is False:
-            os.mkdir(self.runInfo.folder)
+        self.mkdir_p(self.runInfo.folder)
+        #f os.path.exists(self.runInfo.folder) is False:
+        #    os.mkdir(self.runInfo.folder)
         if subdir is not None:
             folder = os.path.join(self.runInfo.folder, subdir)
         else:
