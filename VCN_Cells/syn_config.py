@@ -53,12 +53,13 @@ VCN_c09 = [ [(53.46), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
             [(53.1), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
         ]
         
-VCN_Inputs = {'VCN_c18': VCN_c18, 'VCN_c07': VCN_c07, 'VCN_c08': VCN_c08,
-        'VCN_c09': VCN_c09}
+VCN_Inputs = {'VCN_c18': ['bushy', VCN_c18], 'VCN_c07': ['bushy', VCN_c07],
+        'VCN_c08': ['bushy', VCN_c08], 'VCN_c09': ['bushy', VCN_c09]}
         
 def makeDict(cell, velocity=3.0):
     assert cell in VCN_Inputs
-    indata = VCN_Inputs[cell]
+    indata = VCN_Inputs[cell][1]
+    celltype = VCN_Inputs[cel][0]
     r = [None]*len(indata)
     for j, i in enumerate(indata):
         r[j] = OrderedDict([('input', j+1), ('asa', i[0]),
@@ -68,13 +69,14 @@ def makeDict(cell, velocity=3.0):
             ('axonLen', i[3]), ('axonR', i[4]),
             ('branchLen', i[5]), ('branchR', i[6]), ('type', i[7])])
     
-    return r
+    return r, celltype
 
 
 def printCellInputs(r):
-    print(json.dumps(r, indent=4)) 
-    
+    print(json.dumps(r, indent=4))
 
-# Check the formatting and display the results  
-r = makeDict('VCN_c18')
+
+# Check the formatting and display the results
+r, celltype = makeDict('VCN_c18')
+print 'Cell Type: ', celltype
 printCellInputs(r)
