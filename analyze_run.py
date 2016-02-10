@@ -184,9 +184,6 @@ class AnalyzeRun():
                 'Rinss': Rinss, 'Rinpk': Rinpk,
                 'taufit': [xtfit, ytfit], 'ihfit': [xihfit, yihfit],
                 }
-        # if verbose:
- #            print 'analyzeIV::IVResult:\n', self.IVResult
-
 
     def saveIVResult(self, name = None):
         """
@@ -232,8 +229,8 @@ class AnalyzeRun():
 
         (cx, cy) = pu.clipdata(y, x, t0, t1, minFlag = False)
         cx -= t0   # fitting is reference to zero time
-        print p
-        print cx, cy
+        print 'p: ', p
+        print 'cx, cy: ', cx, cy
         mi = lmfit.minimize(self.expfit, p, args=(cx, cy))
         mi.leastsq()
         yfit = self.expfit(mi.params, cx)

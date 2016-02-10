@@ -101,15 +101,13 @@ def getInitialConditionsState(hf, tdur=2000., filename=None, electrodeSite=None)
     stateFile.close()
 
 
-def restoreInitialConditionsState(hf, electrodeSite=None, filename=None):
+def restoreInitialConditionsState(hf, filename, electrodeSite=None):
 
     hf.h.finitialize()
     stateFile = hf.h.File() # restore state AFTER finitialize
     state = hf.h.SaveState()
-    if filename is None:
-        print 'filename is NONE?'
-        exit() # filename = 'neuronstate.dat'
-    print ' .. Restored initial conditions from file: %s' % filename
+
+    print 'Restored initial conditions from file: %s' % filename
     stateFile.ropen(filename)
     state.fread(stateFile)
     stateFile.close()
@@ -144,8 +142,8 @@ def testInitialConditions(hf, electrodeSite=None, filename=None):
     hf.h.batch_save() # save nothing
     hf.h.batch_run(hf.h.tstop, hf.h.dt, "an.dat")
     pg.mkQApp()
-    print np.array(monitor['time'])
-    print np.array(monitor['Velectrode'])
+    print '\ntime: ', np.array(monitor['time'])
+    print '\nVelectrode: ', np.array(monitor['Velectrode'])
     pl = pg.plot(np.array(monitor['time']), np.array(monitor['Velectrode']))
     pl.setTitle(filename)
     QtGui.QApplication.instance().exec_()

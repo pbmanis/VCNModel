@@ -143,13 +143,16 @@ class ModelRun():
         self.Params['SR'] = self.Params['SRType']  # actually used SR this might be cell-defined, rather than command defined
         self.Params['runProtocol'] = self.protocolChoices[2]  # testIV is default because it is fast and should be run often
 
-        self.Params['run_duration'] = 0.25 # in sec
+        self.Params['run_duration'] = 0.8 # in sec
+        self.Params['soundtype'] = 'SAM'  # or 'tonepip'
         self.Params['pip_duration'] = 0.1
         self.Params['pip_start'] = [0.1]
         self.Params['Fs'] = 100e3
         self.Params['F0'] = 4000.
         self.Params['dB'] = 40.
         self.Params['RF'] = 2.5e-3
+        self.Params['fmod'] = 20 # hz, modulation if SAM
+        self.Params['dmod'] = 50 # percent if SAM
         # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
         self.Params['threshold'] = -20
         self.Params['plotFlag'] = False
@@ -223,7 +226,6 @@ class ModelRun():
             exit()
         self.Params['SRType'] = SRType
 
-
     def set_starttime(self, starttime):
         self.Params['StartTime'] = starttime
 
@@ -243,7 +245,7 @@ class ModelRun():
         Parameters
         ----------
         parMap : dict (default: empty)
-            A dictionary of paramters, passed to models that are run (not used).
+            A dictionary of parameters, passed to models that are run (not used).
         
         Returns
         -------
@@ -266,10 +268,25 @@ class ModelRun():
                             initDirectory)
         self.mkdir_p(ivinitdir) # confirm existence of that file
         filename = os.path.join(baseDirectory, self.cellID, morphDirectory, self.Params['infile'])
-        self.postCell = cells.Bushy.create(morphology=filename, decorator=ChannelDecorate,
-                hocReader=HocReader, species=self.Params['species'], 
-                modelType=self.Params['modelType'], ) 
         
+        if self.Params['cellType'] in ['Bushy', 'bushy']:
+            print 'runModel creating a bushy cell: '
+            self.postCell = cells.Bushy.create(morphology=filename, decorator=ChannelDecorate,
+                    species=self.Params['species'], 
+                    modelType=self.Params['modelType'], )
+        elif self.Params['cellType'] in ['tstellate', 'TStellate']:
+            print 'runModel creating a t-stellate cell: '
+            self.postCell = cells.TStellate.create(morphology=filename, decorator=ChannelDecorate,
+                    species=self.Params['species'], 
+                    modelType=self.Params['modelType'], ) 
+        elif self.Params['cellType'] in ['dstellate', 'DStellate']:
+            print 'runModel creating a D-stellate cell: '
+            self.postCell = cells.DStellate.create(morphology=filename, decorator=ChannelDecorate,
+                    species=self.Params['species'], 
+                    modelType=self.Params['modelType'], ) 
+        else:
+            raise ValueError("cell type %s not implemented" % (self.Params['cellType']))
+
                       
         # print 'PostCell: ', dir(self.postCell)
        #  print 'PostCell hr: ', dir(self.postCell.hr)
@@ -293,14 +310,13 @@ class ModelRun():
         self.get_hoc_file(self.postCell.hr)
         sg = self.postCell.hr.sec_groups['soma']
         #self.distances(self.postCell.get_section(list(sg)[0]).name()) # make distance map from soma
-        print self.postCell.hr.distanceMap
+#        print self.postCell.hr.distanceMap
         dendriticElectrode = list(self.postCell.hr.sec_groups['dendrite'])[0]
         self.dendriticElectrodeSite = self.postCell.hr.get_section(dendriticElectrode)
         self.dendriticElectrodeSection = 'dendrite'
         if verbose:
             print 'Parmap in runModel: ', parMap
-        
-        self.postCell.hr.h.topology()
+            self.postCell.hr.h.topology()
 
         # handle the following protocols:
         # ['initIV', 'initAN', 'runIV', 'runANPSTH', 'runANSingles']
@@ -314,7 +330,7 @@ class ModelRun():
                              starttime=None,
                              electrodeSection=self.electrodeSection, 
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
-                             iRange=self.postCell.decorated.irange,
+                             iRange=self.postCell.irange,
                              plotting = HAVE_PG and self.plotFlag)
             cellInit.getInitialConditionsState(self.postCell, tdur=3000., 
                 filename=ivinitfile, electrodeSite=self.electrodeSite)
@@ -330,7 +346,7 @@ class ModelRun():
                              starttime=None,
                              electrodeSection=self.electrodeSection, 
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
-                             iRange=self.postCell.decorated.irange,
+                             iRange=self.postCell.irange,
                              plotting = HAVE_PG and self.plotFlag, )
             cellInit.testInitialConditions(self.postCell, filename=ivinitfile,
                 electrodeSite=self.electrodeSite)
@@ -379,39 +395,37 @@ class ModelRun():
                 time constant, and spike times
         
         """
+        print 'IvRun: IVRun begins'
         if verbose:
-            print 'generateRun'
-        print 'IVRun begins'
+            print 'IVRun: calling generateRun'
         self.R = GenerateRun(self.postCell.hr, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
-                             iRange=self.postCell.decorated.irange,
+                             iRange=self.postCell.irange,
                              plotting = HAVE_PG and self.plotFlag)
         ivinitfile = os.path.join(baseDirectory, self.cellID, 
                                 initDirectory, self.Params['initIVStateFile'])
         self.R.runInfo.folder = os.path.join('VCN_Cells', self.cellID, 'Simulations', 'IV')
         if verbose:
-            print 'doRun'
+            print 'IVRun: calling doRun'
         self.R.doRun(self.Params['infile'], parMap=parMap, save='monitor', restoreFromFile=True, initfile=ivinitfile,
             workers=self.Params['nWorkers'])
         if verbose:
-            print '  doRun completed'
-            print self.R.IVResult
-        #basename = self.R.saveRuns(self.R.results)
-        #self.R.arun.saveIVResult(basename)
+            print '   doRun completed'
         isteps = self.R.IVResult['I']
         if verbose:
+            print 'IVRun: Results summary: '
             for k, i in enumerate(self.R.IVResult['tauih'].keys()):
-                print 'ih: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['tauih'][i]['tau'].value)
-                print '        dV : %f' % self.R.IVResult['tauih'][i]['a'].value
+                print '   ih: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['tauih'][i]['tau'].value)
+                print '           dV : %f' % self.R.IVResult['tauih'][i]['a'].value
             for k, i in enumerate(self.R.IVResult['taus'].keys()):
-                print 'i: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['taus'][i]['tau'].value)
-                print '       dV : %f' % (self.R.IVResult['taus'][i]['a'].value)
+                print '   i: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['taus'][i]['tau'].value)
+                print '          dV : %f' % (self.R.IVResult['taus'][i]['a'].value)
 
-            print 'Nspike, Ispike: ', self.R.IVResult['Nspike'], self.R.IVResult['Ispike']
-            print 'Rinss: ', self.R.IVResult['Rinss']
-            print 'Vm: ', np.mean(self.R.IVResult['Vm'])
+            print '   Nspike, Ispike: ', self.R.IVResult['Nspike'], self.R.IVResult['Ispike']
+            print '   Rinss: ', self.R.IVResult['Rinss']
+            print '   Vm: ', np.mean(self.R.IVResult['Vm'])
         if len(self.R.IVResult['taus'].keys()) == 0:
             taum_mean = 0.
             tauih_mean = 0.
@@ -428,7 +442,7 @@ class ModelRun():
                           'taum': taum_mean, 'tauih': tauih_mean,
                           'spikes': {'i': self.R.IVResult['Ispike'], 'n': self.R.IVResult['Nspike']},
                           }
-        print 'model_run::runModel: write summary for file set = ', self.R.basename
+#        print 'model_run::runModel::IVRun write summary for file set = ', self.R.basename
         return self.IVSummary
 
 
@@ -663,21 +677,6 @@ class ModelRun():
             self.analysis_filewriter(self.Params['cell'], result, tag='Syn%03d' % k)
         self.plotAN(np.array(result['time']), result['somaVoltage'], result['stimInfo'])
 
-    # def createCell(self, hf, celltype, modeltype, species):
-    #     if celltype in ['bushy', 'Bushy']:
-    #         postCell = cells.Bushy.create(model='hoc', hoc=hf, species=species,
-    #             modeltype = modeltype, decorator=ChannelDecorate)   # note that cell was already decorated...
-    #     elif celltype in ['tstellate', 'TStellate']:
-    #         postCell = cells.TStellate.create(model='hoc', hoc=hf, species=species,
-    #             modeltype = modeltype, decorator=ChannelDecorate)
-    #     elif celltype == ['dstellate', 'DStellate']:
-    #         postCell = cells.Dstellate.create(model='hoc', hoc=hf, species=species,
-    #             modeltype = modeltype, decorator=ChannelDecorate)
-    #     else:
-    #         raise ValueError("Cell type %s not implemented in configureCell in model_run" % celltype)
-    #     postCell.type = celltype.lower()
-    #     return postCell
-
     def configureCell(self, thisCell, synapseConfig, celltype, stimInfo):
         """
         Configure the cell. This routine builds the cell in Neuron, adds presynaptic inputs
@@ -746,9 +745,9 @@ class ModelRun():
 
         #  ****** uncomment here to adjust gmax.
 
-            # for p in s.psd.ampa_psd:
-            #     p.gmax = p.gmax*2.5
-            #
+            for p in s.psd.ampa_psd:
+                p.gmax = p.gmax*2.5
+
             #print 'Depression flag for synapse %d = %d ' % (i, s.terminal.relsite.Dep_Flag)
 
         # checking the gmax for all synapses
@@ -807,10 +806,18 @@ class ModelRun():
         an0_time = time.time()
         nrn_run_time = 0.
         for i, syn in enumerate(synapseConfig):
-            stim.append(sound.TonePip(rate=stimInfo['Fs'], duration=stimInfo['run_duration'], 
+            if stimInfo['soundtype'] == 'tonepip':
+                stim.append(sound.TonePip(rate=stimInfo['Fs'], duration=stimInfo['run_duration'], 
                                   f0=stimInfo['F0'], dbspl=stimInfo['dB'],
                                   ramp_duration=stimInfo['RF'], pip_duration=stimInfo['pip_duration'],
                                   pip_start=stimInfo['pip_start']))
+            elif stimInfo['soundtype'] == 'SAM':
+                stim.append(sound.SAMTone(rate=stimInfo['Fs'], duration=stimInfo['run_duration'], 
+                                  f0=stimInfo['F0'], dbspl=stimInfo['dB'],
+                                  ramp_duration=stimInfo['RF'], fmod=stimInfo['fmod'], dmod=stimInfo['dmod'],
+                                  pip_duration=stimInfo['pip_duration'],
+                                  pip_start=stimInfo['pip_start'] ))
+                
             nseed = seeds[j, i]
             preCell[i].set_sound_stim(stim[-1], seed=nseed)  # generate spike train, connect to terminal
             ANSpikeTimes.append(preCell[i]._spiketrain)
@@ -852,7 +859,6 @@ class ModelRun():
             layout.plot(1, celltime[:-1], dvdt, pen=pg.mkPen(pg.intColor(N, nReps)))
             layout.getPlot(0).setXLink(layout.getPlot(1))
         if dendVoltage is not None:
-            print dendVoltage
             for j, N in enumerate(range(len(dendVoltage))):
                 layout.plot(0, celltime, dendVoltage[N], pen=pg.mkPen(pg.intColor(N, nReps)),
                     style=QtCore.Qt.DashLine)            
@@ -956,7 +962,7 @@ if __name__ == "__main__":
     #     help='List results to screen')
 
 
-    args=vars(parser.parse_args())   
+    args = vars(parser.parse_args())   
 #    model.printModelSetup()
 
     for k in args.keys():
