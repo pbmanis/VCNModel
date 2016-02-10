@@ -348,18 +348,19 @@ class GenerateRun():
         if verbose:
             print '_executeRun'
         assert self.run_initialized == True
-        print 'starting v: ', self.electrodeSite.v
+        print 'Starting Vm at electrode site: ', self.electrodeSite.v
         
         # one way
         self.hf.h.t = 0
+        """
         #while (self.hf.h.t < self.hf.h.tstop):
-#                for i=0, tstep/dt {
-        #    self.hf.h.fadvance()
-
+        #    for i=0, tstep/dt {
+        #       self.hf.h.fadvance()
         # self.hf.h.run()  # calls finitialize, causes offset
+        """
         self.hf.h.batch_save() # save nothing
         self.hf.h.batch_run(self.hf.h.tstop, self.hf.h.dt, "v.dat")
-        print 'finishing v: ', self.electrodeSite.v
+        print 'Finishing Vm: ', self.electrodeSite.v
         if testPlot:
             pg.mkQApp()
             pl = pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))

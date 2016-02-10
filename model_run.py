@@ -514,7 +514,7 @@ class ModelRun():
         somaVoltage = {}
         dendriteVoltage = {}
         celltime = []
-        
+        stimWaveform = {}
         self.setup_time = time.time() - self.start_time
         self.nrn_run_time = 0.0
         self.an_setup_time = 0.
@@ -538,6 +538,8 @@ class ModelRun():
             inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
             somaVoltage[N] = np.array(tresults[j]['Vsoma'])
             dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
+            stimWaveform[N] = np.array(tresults[j]['stim']) # save the stimulus
+            
 
         # for j, N in enumerate(range(nReps)):
         #     print 'Rep: %d' % N
@@ -557,10 +559,11 @@ class ModelRun():
         print "Total Neuron Run Time = %8.2f min (%8.0fs)" % (self.nrn_run_time/60., self.nrn_run_time)
         
         result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes, 
-            'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'time': np.array(celltime[0])}
+            'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'stimWaveform': stimWaveform, 'time': np.array(celltime[0])}
         
         self.analysis_filewriter(self.Params['cell'], result, tag='delays')
-        self.plotAN(np.array(celltime[0]), result['somaVoltage'], result['stimInfo'], dendVoltage=result['dendriteVoltage'])
+        self.plotAN(np.array(celltime[0]), result['somaVoltage'], result['stimInfo'],
+            dendVoltage=result['dendriteVoltage'])
 
 
     def ANRun_singles(self, hf, verify=False, seed=None):
@@ -841,7 +844,7 @@ class ModelRun():
         # hf.h.run()
         nrn_run_time += (time.time() - nrn_start)
         print '...done'
-        anresult = {'Vsoma': np.array(Vsoma), 'Vdend': np.array(Vdend), 'time': np.array(rtime), 'ANSpikeTimes': ANSpikeTimes}
+        anresult = {'Vsoma': np.array(Vsoma), 'Vdend': np.array(Vdend), 'time': np.array(rtime), 'ANSpikeTimes': ANSpikeTimes, 'stim': stim}
         return anresult
 
 

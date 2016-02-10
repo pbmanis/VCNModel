@@ -78,7 +78,7 @@ class ChannelManager():
                             }
 
 
-        elif cellType in ['TStellate_RM03']:
+        elif cellType in ['TStellate_RM03', 'Tstellate_RM03']:
             totcap = 12.0E-12
             refarea = totcap / self.c_m  # see above for units
             # Type I stellate Rothman and Manis, 2003c
@@ -109,7 +109,7 @@ class ChannelManager():
                             }
 
 
-        elif cellType in ['TStellate_XM13']:
+        elif cellType in ['TStellate_XM13', 'Tstellate_XM13']:
             totcap = 25.0E-12
             refarea = totcap / self.c_m  # see above for units
             # Type I stellate Rothman and Manis, 2003c
@@ -288,8 +288,6 @@ class ChannelManager():
         else:
             raise Exception('Unrecognized cell/parameter set type: %s' % cellType)
 
-        self.gmapper = {'nacn': 'gbar', 'kht': 'gbar', 'klt': 'gbar', 'leak': 'gbar',
-                        'ihvcn': 'gbar', 'jsrna': 'gbar', 'nav11': 'gbar'}
 
 
     def printMap(self):
@@ -302,8 +300,9 @@ excludeMechs = [] # ['ihvcn', 'kht', 'klt', 'nav11']
 class ChannelDecorate():
     def __init__(self, hf, cellType=None, modelType=None, parMap=None, verify=False):
 
+        cellType = cellType.lower().capitalize()
         self.channelInfo = Params(newCm=1.0,
-                              newRa=100.0,  # // changed 10/20/2007 to center in range')
+                              newRa=100.0,  # changed 10/20/2007 to center in range
                               newg_leak=0.000004935,
                               eK_def=-85, eNa_def=50,
                               ca_init=70e-6,  # free calcium in molar
@@ -326,7 +325,9 @@ class ChannelDecorate():
         # The versions in the mechanisms directory here have been systematized, but this
         # dictionary may help when adding other conductances.
 
-        self.gmapper = self.cMan.gmapper
+#        self.gmapper = self.cMan.gmapper
+        self.gmapper = {'nacn': 'gbar', 'kht': 'gbar', 'klt': 'gbar', 'leak': 'gbar',
+                        'ihvcn': 'gbar', 'jsrna': 'gbar', 'nav11': 'gbar'}
         self.hf = self._biophys(hf, verify=verify)
         print 'ChannelDecorate: Model Decorated with channels (if this appears more than once per cell, there is a problem)'
 
