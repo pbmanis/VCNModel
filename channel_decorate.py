@@ -7,7 +7,7 @@ This function attempts to automatically decorate a hoc-imported model set of sec
 with appropriate conductances.
 
 The class takes as input the object hf, which is an instance of the class hoc_reader
-It also takes the celltype, a string that directs how conductances should be inserted.
+It also takes the cellType, a string that directs how conductances should be inserted.
 
 """
 
@@ -37,12 +37,12 @@ import numpy as np
 
 
 class ChannelManager():
-    def __init__(self, celltype):
+    def __init__(self, cellType):
 
         # Scaled params normalized to Rothman and Manis densities:
         self.c_m = 1.0E-6  # in units of F/cm^2
-        self.celltype = celltype  # store called cell type.
-        if celltype == 'Bushy_RM03':
+        self.cellType = cellType  # store called cell type.
+        if cellType == 'Bushy_RM03':
             totcap = 12.0E-12  # in units of F, from Rothman and Manis, 2003.
             refarea = totcap / self.c_m  # area is in cm^2
             # bushy Rothman-Manis, guinea pig type II
@@ -78,7 +78,7 @@ class ChannelManager():
                             }
 
 
-        elif celltype in ['TStellate_RM03']:
+        elif cellType in ['TStellate_RM03', 'Tstellate_RM03']:
             totcap = 12.0E-12
             refarea = totcap / self.c_m  # see above for units
             # Type I stellate Rothman and Manis, 2003c
@@ -109,7 +109,7 @@ class ChannelManager():
                             }
 
 
-        elif celltype in ['TStellate_XM13']:
+        elif cellType in ['TStellate_XM13', 'Tstellate_XM13']:
             totcap = 25.0E-12
             refarea = totcap / self.c_m  # see above for units
             # Type I stellate Rothman and Manis, 2003c
@@ -143,7 +143,7 @@ class ChannelManager():
 
 
 
-        elif celltype == 'Bushy_XM13':
+        elif cellType == 'Bushy_XM13':
             # bushy form Xie and Manis, 2013, based on Cao and Oertel mouse conductances
             totcap = 26.0E-12 # uF/cm2 
             refarea = totcap  / self.c_m  # see above for units
@@ -177,7 +177,7 @@ class ChannelManager():
                                      'nav11': {'gradient': 'exp', 'gminf': 0., 'lambda': 200.}}, # gradients are: flat, linear, exponential
                             }
 
-        elif celltype == 'Bushy_XM13PasDend':
+        elif cellType == 'Bushy_XM13PasDend':
             # bushy form Xie and Manis, 2013, based on Cao and Oertel mouse conductances
             # passive dendritestotcap = 26.0E-12 # uF/cm2 
             totcap = 26.0E-12 # uF/cm2 
@@ -211,7 +211,7 @@ class ChannelManager():
                                      'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.},
                                      'nav11': {'gradient': 'exp', 'gminf': 0., 'lambda': 200.}}, # gradients are: flat, linear, exponential
                             }
-        elif celltype == 'Calyx':
+        elif cellType == 'Calyx':
             totcap = 12.0E-12
             refarea = totcap / self.c_m  # See above for units # bushy Rothman-Manis, guinea pig type II
             self.gBar = Params(nabar=1000.0E-9/refarea,
@@ -238,7 +238,7 @@ class ChannelManager():
             self.distMap = {}  # uniform, as defined above.
 
 
-        elif celltype == 'MNTB':
+        elif cellType == 'MNTB':
             totcap = 12.0E-12
             refarea = totcap  / self.c_m  # See above for units  # bushy Rothman-Manis, guinea pig type II
             self.gBar = Params(nabar=1000.0E-9/refarea,
@@ -268,7 +268,7 @@ class ChannelManager():
                                      'kht': {'gradient': 'linear', 'gminf': 0., 'lambda': 100.}}, # gradients are: flat, linear, exponential
                             }
 
-        elif celltype == 'L23pyr':
+        elif cellType == 'L23pyr':
             self.gBar = Params(nabar=0.30, khtbar=0.002, kltbar=0.0, ihbar=0.0, leakbar=0.0002)
             self.channelMap = {
                 'axon': {'nacn': self.gBar.nabar, 'klt': 0., 'kht': self.gBar.khtbar, 'ihvcn': 0., 'leak': self.gBar.leakbar / 4.},
@@ -286,10 +286,8 @@ class ChannelManager():
             self.distMap = {}  # uniform
 
         else:
-            raise Exception('Unrecognized cell/parameter set type: %s' % celltype)
+            raise Exception('Unrecognized cell/parameter set type: %s' % cellType)
 
-        self.gmapper = {'nacn': 'gbar', 'kht': 'gbar', 'klt': 'gbar', 'leak': 'gbar',
-                        'ihvcn': 'gbar', 'jsrna': 'gbar', 'nav11': 'gbar'}
 
 
     def printMap(self):
@@ -300,23 +298,24 @@ class ChannelManager():
 excludeMechs = [] # ['ihvcn', 'kht', 'klt', 'nav11']
 
 class ChannelDecorate():
-    def __init__(self, hf, celltype=None, modeltype=None, parMap=None, verify=False):
+    def __init__(self, hf, cellType=None, modelType=None, parMap=None, verify=False):
 
+        cellType = cellType.lower().capitalize()
         self.channelInfo = Params(newCm=1.0,
-                              newRa=100.0,  # // changed 10/20/2007 to center in range')
+                              newRa=100.0,  # changed 10/20/2007 to center in range
                               newg_leak=0.000004935,
                               eK_def=-85, eNa_def=50,
                               ca_init=70e-6,  # free calcium in molar
                               v_init=-80,  # mV
                               pharmManip={'TTX': False, 'ZD': False, 'Cd': False, 'DTX': False, 'TEA': False,
                                           'XE': False},
-                              celltype=celltype,
-                              modeltype=modeltype,
+                              cellType=cellType,
+                              modelType=modelType,
                               distanceMap=hf.distanceMap,
                               parMap=parMap,
         )
 
-        self.cMan = ChannelManager(celltype+'_'+modeltype)
+        self.cMan = ChannelManager(cellType+'_'+modelType)
         self.channelMap = self.cMan.channelMap
         self.distMap = self.cMan.distMap
         self.irange = self.cMan.irange
@@ -326,7 +325,9 @@ class ChannelDecorate():
         # The versions in the mechanisms directory here have been systematized, but this
         # dictionary may help when adding other conductances.
 
-        self.gmapper = self.cMan.gmapper
+#        self.gmapper = self.cMan.gmapper
+        self.gmapper = {'nacn': 'gbar', 'kht': 'gbar', 'klt': 'gbar', 'leak': 'gbar',
+                        'ihvcn': 'gbar', 'jsrna': 'gbar', 'nav11': 'gbar'}
         self.hf = self._biophys(hf, verify=verify)
         print 'ChannelDecorate: Model Decorated with channels (if this appears more than once per cell, there is a problem)'
 
@@ -349,18 +350,19 @@ class ChannelDecorate():
         modified to use new hf hoc_reader class to access section types and mechanisms 10-14 Feb 2014 pbmanis
         """
        # createFlag = False
-        celltype = self.channelInfo.celltype
+        cellType = self.channelInfo.cellType
         parMap = self.channelInfo.parMap
         dmap = self.channelInfo.distanceMap
         if self.channelInfo is None:
             raise Exception('biophys - no parameters or info passed!')
         if verify:
-            print('Biophys: Inserting channels as if cell type is {:s} with modeltype {:s}'
-                 .format(celltype, self.channelInfo.modeltype))
+            print('Biophys: Inserting channels as if cell type is {:s} with modelType {:s}'
+                 .format(cellType, self.channelInfo.modelType))
         # print dir(hf)
         # print 'hf section groupkeys: ', hf.sec_groups.keys()
         # print 'hf section groups: ', hf.sec_groups
         
+        hf.mechanisms = []
         for s in hf.sec_groups.keys():
             sectype = self.remapSectionType(string.rsplit(s, '[')[0])
             if sectype not in self.cMan.channelMap.keys():
@@ -381,6 +383,8 @@ class ChannelDecorate():
                 if verify:
                     print('Biophys: section group: {:s}  insert mechanism: {:s} at {:.8f}'
                         .format(s, mech, self.cMan.channelMap[sectype][mech]))
+                if mech not in hf.mechanisms:
+                    hf.mechanisms.append(mech)
                 x = nu.Mechanism(mech)
                 for sec in hf.sec_groups[s]:
                     x.insert_into(hf.get_section(sec))

@@ -31,7 +31,6 @@ def initModel(hf, mode='iclamp', vinit=-65., restoreFromFile=False, filename=Non
     boolean : Success of initialization. Always True, just to indicate we were called.
     
     """
-
     if mode in ['vc', 'vclamp']:
         hf.h.finitialize(vinit)
         return True
@@ -77,21 +76,22 @@ def getInitialConditionsState(hf, tdur=2000., filename=None, electrodeSite=None)
     """
     Run model for a time, and then save the state
     """
+#    print dir(hf.hr)
     # first to an initialization to get close
     print 'getInitialConditionsState\n'
-    print '  starting t = %8.2f' % hf.h.t
-    initModel(hf, restoreFromFile=False, electrodeSite=electrodeSite)
-    hf.h.tstop = tdur
+    print '  starting t = %8.2f' % hf.hr.h.t
+    initModel(hf.hr, restoreFromFile=False, electrodeSite=electrodeSite)
+    hf.hr.h.tstop = tdur
     print 'running for %8.2f ms' % tdur
-    hf.h.run()
-    print '  run completed, t = %8.2f' % hf.h.t
+    hf.hr.h.run()
+    print '  run completed, t = %8.2f' % hf.hr.h.t
     if electrodeSite is not None:
         vfinal = electrodeSite.v
     else:
         vfinal = 0.
     print '  V = %8.2f' % vfinal
-    state = hf.h.SaveState()
-    stateFile = hf.h.File()
+    state = hf.hr.h.SaveState()
+    stateFile = hf.hr.h.File()
     state.save()
     if filename is None:
         filename = 'neuronstate.dat'
@@ -101,15 +101,13 @@ def getInitialConditionsState(hf, tdur=2000., filename=None, electrodeSite=None)
     stateFile.close()
 
 
-def restoreInitialConditionsState(hf, electrodeSite=None, filename=None):
+def restoreInitialConditionsState(hf, filename, electrodeSite=None):
 
     hf.h.finitialize()
     stateFile = hf.h.File() # restore state AFTER finitialize
     state = hf.h.SaveState()
-    if filename is None:
-        print 'filename is NONE?'
-        exit() # filename = 'neuronstate.dat'
-    print ' .. Restored initial conditions from file: %s' % filename
+
+    print 'Restored initial conditions from file: %s' % filename
     stateFile.ropen(filename)
     state.fread(stateFile)
     stateFile.close()
@@ -144,8 +142,8 @@ def testInitialConditions(hf, electrodeSite=None, filename=None):
     hf.h.batch_save() # save nothing
     hf.h.batch_run(hf.h.tstop, hf.h.dt, "an.dat")
     pg.mkQApp()
-    print np.array(monitor['time'])
-    print np.array(monitor['Velectrode'])
+    print '\ntime: ', np.array(monitor['time'])
+    print '\nVelectrode: ', np.array(monitor['Velectrode'])
     pl = pg.plot(np.array(monitor['time']), np.array(monitor['Velectrode']))
     pl.setTitle(filename)
     QtGui.QApplication.instance().exec_()
