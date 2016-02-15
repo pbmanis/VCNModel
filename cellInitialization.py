@@ -76,22 +76,21 @@ def getInitialConditionsState(hf, tdur=2000., filename=None, electrodeSite=None)
     """
     Run model for a time, and then save the state
     """
-#    print dir(hf.hr)
     # first to an initialization to get close
     print 'getInitialConditionsState\n'
-    print '  starting t = %8.2f' % hf.hr.h.t
-    initModel(hf.hr, restoreFromFile=False, electrodeSite=electrodeSite)
-    hf.hr.h.tstop = tdur
+    print '  starting t = %8.2f' % hf.h.t
+    initModel(hf, restoreFromFile=False, electrodeSite=electrodeSite)
+    hf.h.tstop = tdur
     print 'running for %8.2f ms' % tdur
-    hf.hr.h.run()
-    print '  run completed, t = %8.2f' % hf.hr.h.t
+    hf.h.run()
+    print '  run completed, t = %8.2f' % hf.h.t
     if electrodeSite is not None:
         vfinal = electrodeSite.v
     else:
         vfinal = 0.
     print '  V = %8.2f' % vfinal
-    state = hf.hr.h.SaveState()
-    stateFile = hf.hr.h.File()
+    state = hf.h.SaveState()
+    stateFile = hf.h.File()
     state.save()
     if filename is None:
         filename = 'neuronstate.dat'

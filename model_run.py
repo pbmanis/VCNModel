@@ -36,6 +36,7 @@ optional arguments:
                         Define the model type (default: XM13)
   --protocol {initIV,testIV,runIV,initAN,runANPSTH,runANSingles}, -P {initIV,testIV,runIV,initAN,runANPSTH,runANSingles}
                         Protocol to use for simulation (default: IV)
+  --inputpattern        Cell ID to use for input pattern if substituting inputs
   --hoc INFILE, -H INFILE
                         hoc file to use for simulation (default is the
                         selected "cell".hoc)
@@ -55,6 +56,8 @@ optional arguments:
                         intervention...
   --workers NWORKERS    Number of "workers" for parallel processing (default:
                         4)
+
+ex:
 
 """
 
@@ -129,7 +132,6 @@ class ModelRun():
 
         self.srname = ['**', 'LS', 'MS', 'HS']  # runs 1-3, not starting at 0
         self.cellID = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
-
         self.Params = OrderedDict()
 
         self.Params['initIVStateFile'] = 'IVneuronState.dat'
@@ -141,6 +143,8 @@ class ModelRun():
         self.Params['species'] = self.speciesChoices[0]
         self.Params['SRType'] = self.SRChoices[2]
         self.Params['SR'] = self.Params['SRType']  # actually used SR this might be cell-defined, rather than command defined
+        self.Params['inputPattern'] = None # ID of cellinput pattern (same as cellID): for substitute input patterns.
+
         self.Params['runProtocol'] = self.protocolChoices[2]  # testIV is default because it is fast and should be run often
 
         self.Params['run_duration'] = 0.8 # in sec
@@ -473,7 +477,13 @@ class ModelRun():
         
 
         """
-        synapseConfig, celltype = cell_config.makeDict(self.cellID)
+        if self.Params['inputPattern'] is not None:
+            fromdict = self.Params['inputPattern']
+            print 'Cell id: %s  using input pattern: %s' % (self.cellID, fromdict)
+        else:
+            fromdict = self.cellID
+            
+        synapseConfig, celltype = cell_config.makeDict(fromdict)
         self.start_time = time.time()
         # compute delays in a simple manner
         # assumption 3 meters/second conduction time
@@ -877,10 +887,14 @@ class ModelRun():
         stimInfo = result['stimInfo']
         outPath = os.path.join('VCN_Cells', self.cellID, 'Simulations', 'AN')
         self.mkdir_p(outPath) # confirm that output path exists
-        f = open(os.path.join(outPath, 'AN_Result_' + self.cellID + '_%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
+        ID = self.cellID
+        if self.Params['inputPattern'] is not None:
+            ID += '_%s' % self.Params['inputPattern']
+        f = open(os.path.join(outPath, 'AN_Result_' + ID + '_%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
                 int(stimInfo['dB']), stimInfo['F0'], stimInfo['SR']) + '.p'), 'w')
         pickle.dump(result, f)
-        f.close()        
+        f.close()
+        print '**** Analysis wrote output file ****\n    %s' % f        
 
     def get_hoc_file(self, hf):
         if hf.file_loaded is False:
@@ -932,7 +946,10 @@ if __name__ == "__main__":
     parser.add_argument('--hoc', '-H', dest='infile', action='store',
                   default=None,
                   help='hoc file to use for simulation (default is the selected "cell".hoc)')
-                   
+    parser.add_argument('--inputpattern', dest='inputPattern', action='store',
+                  default=None,
+                  help='cell input pattern to use (substitute) from cell_config.py')
+
                   
     # lowercase options are generally parameter settings:
 

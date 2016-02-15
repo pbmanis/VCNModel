@@ -159,7 +159,7 @@ class SAC(object):
         max_dif = int(twin/binw)
         hist = sac_asm.sac(intx, max_dif)
         spcount = np.sum([len(x) for x in X])
-        rate = np.sum(spcount)/(p['ntestrep']*p['dur']/1000.)
+        rate = np.sum(spcount)/(pars['ntestrep']*pars['dur']/1000.)
         
         nfac = N*(N-1)*rate*rate*(binw/1000.)*(dur/1000.) # correction factor
         hist = hist / nfac
@@ -186,10 +186,10 @@ class SAC(object):
         spcountx = np.zeros(M)
         spcounty = np.zeros(N)
         for i in range(M):
-            Xa[i] = X[i][np.where((X[i] >= delay) & (X[i] < (delay+dur)))]
+            Xa[i] = X[i][(X[i] >= delay) & (X[i] < (delay+dur))]
             spcountx[i] = len(Xa[i])
         for i in range(N):
-            Ya[i] = Y[i][np.where((Y[i] >= delay) & (Y[i] < (delay+dur)))]
+            Ya[i] = Y[i][(Y[i] >= delay) & (Y[i] < (delay+dur))]
             spcounty[i] = len(Ya[i])
         ns = 0
         for n in range(N):  # for each trial

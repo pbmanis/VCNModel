@@ -31,6 +31,7 @@ VCN_c18 = [ [(216.66), 0., 2, np.nan, np.nan, 49.2, 1.222, 'e' ],
 # VCN_c18_synconfig_original = [(int(216.66*0.65), 0., 2), (int(122.16*0.65), 0., 2),
 #     (int(46.865*0.65), 0., 2), (int(84.045*0.65), 0., 2), (int(2.135*0.65), 0, 2), (int(3.675*0.65), 0, 2), (int(80.27*0.65), 0, 2)]
 
+# George says cell 7 is not a GBC
 VCN_c07 = [ [(15.08), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
             [(12.95), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
             [(7.93), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
@@ -58,6 +59,8 @@ VCN_c09 = [ [(53.46), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
             [(143.97), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
             [(53.1), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
         ]
+
+
         
 VCN_Inputs = {'VCN_c18': ['bushy', VCN_c18], 'VCN_c07': ['bushy', VCN_c07],
         'VCN_c08': ['bushy', VCN_c08], 'VCN_c09': ['bushy', VCN_c09]}
