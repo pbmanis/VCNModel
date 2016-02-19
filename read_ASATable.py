@@ -12,12 +12,12 @@ print df['7'][0]
 
 for k in df.keys():
     n = 0 # count how many
-    while not np.isnan(df[k][]):
+    while not np.isnan(df[k][n]):
         if n == 0:
             print 'VCN_c%02d = [ ' % int(k)
-        print "[(%.2f), 0., 2, np.nan, np.nan, np.nan, np.nan, 'e' ]," % df[k][n]
+        print "    [(%.2f), 0., 2, np.nan, np.nan, np.nan, np.nan, 'e' ]," % df[k][n]
         n += 1
     
     if n > 0:
-        print ' ]\n'
+        print '    ]\n'
 

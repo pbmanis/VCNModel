@@ -74,24 +74,18 @@ import json
 
 #import neuronvis.sim_result as sr
 from neuronvis.hoc_viewer import HocViewer
-from neuronvis.hoc_reader import HocReader
+
 import neuronvis.hoc_graphics as hoc_graphics
 from channel_decorate import ChannelDecorate
 from generate_run import GenerateRun
 import cellInitialization as cellInit
 
-from cnmodel.protocols import protocol
 from cnmodel import cells
-from cnmodel import synapses
-from cnmodel.util import get_anspikes
 from cnmodel.util import sound
-import cnmodel.util as nu
 
 import pylibrary.Utility as pu  # access to spike finder routine
 import pyqtgraph.multiprocess as mproc
 
-from neuron import h
-import neuron
 
 try:
     import pyqtgraph as pg
@@ -102,8 +96,8 @@ try:
 except:
 	HAVE_PG = False
 
-if HAVE_PG:
-    import render
+# if HAVE_PG:
+#     import render
 
 import numpy as np
 
@@ -112,10 +106,7 @@ import cell_config
 verbose = False
 showCell = False
 
-baseDirectory = 'VCN_Cells'
-morphDirectory = 'Morphology'
-initDirectory = 'Initialization'
-simDirectory = 'Simulations'
+
 
 
 class ModelRun():
@@ -146,7 +137,7 @@ class ModelRun():
         self.Params['inputPattern'] = None # ID of cellinput pattern (same as cellID): for substitute input patterns.
 
         self.Params['runProtocol'] = self.protocolChoices[2]  # testIV is default because it is fast and should be run often
-
+        self.Params['nReps'] = 1
         self.Params['run_duration'] = 0.8 # in sec
         self.Params['soundtype'] = 'SAM'  # or 'tonepip'
         self.Params['pip_duration'] = 0.1
@@ -156,10 +147,16 @@ class ModelRun():
         self.Params['dB'] = 40.
         self.Params['RF'] = 2.5e-3
         self.Params['fmod'] = 20 # hz, modulation if SAM
-        self.Params['dmod'] = 50 # percent if SAM
+        self.Params['dmod'] = 0 # percent if SAM
         # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
         self.Params['threshold'] = -20
         self.Params['plotFlag'] = False
+        self.Params['auto_initialize'] = False
+        
+        self.baseDirectory = 'VCN_Cells'
+        self.morphDirectory = 'Morphology'
+        self.initDirectory = 'Initialization'
+        self.simDirectory = 'Simulations'
 
 
     def printModelSetup(self):
@@ -266,12 +263,12 @@ class ModelRun():
 
         if parMap == {}:
             self.plotFlag = True
-        ivinitfile = os.path.join(baseDirectory, self.cellID, 
-                            initDirectory, self.Params['initIVStateFile'])
-        ivinitdir = os.path.join(baseDirectory, self.cellID, 
-                            initDirectory)
+        ivinitfile = os.path.join(self.baseDirectory, self.cellID, 
+                            self.initDirectory, self.Params['initIVStateFile'])
+        ivinitdir = os.path.join(self.baseDirectory, self.cellID, 
+                            self.initDirectory)
         self.mkdir_p(ivinitdir) # confirm existence of that file
-        filename = os.path.join(baseDirectory, self.cellID, morphDirectory, self.Params['infile'])
+        filename = os.path.join(self.baseDirectory, self.cellID, self.morphDirectory, self.Params['infile'])
         
         if self.Params['cellType'] in ['Bushy', 'bushy']:
             print 'runModel creating a bushy cell: '
@@ -312,7 +309,7 @@ class ModelRun():
         self.electrodeSection = 'soma'
         self.hg = hoc_graphics
         self.get_hoc_file(self.postCell.hr)
-        sg = self.postCell.hr.sec_groups['soma']
+        #sg = self.postCell.hr.sec_groups['soma']
         #self.distances(self.postCell.get_section(list(sg)[0]).name()) # make distance map from soma
 #        print self.postCell.hr.distanceMap
         dendriticElectrode = list(self.postCell.hr.sec_groups['dendrite'])[0]
@@ -328,8 +325,8 @@ class ModelRun():
         if self.Params['runProtocol'] == 'initIV':
             if verbose:
                 print 'initIV'
-            ivinitfile = os.path.join(baseDirectory, self.cellID, 
-                                initDirectory, self.Params['initIVStateFile'])
+            ivinitfile = os.path.join(self.baseDirectory, self.cellID, 
+                                self.initDirectory, self.Params['initIVStateFile'])
             self.R = GenerateRun(self.postCell.hr, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
                              electrodeSection=self.electrodeSection, 
@@ -344,8 +341,8 @@ class ModelRun():
         if self.Params['runProtocol'] == 'testIV':
             if verbose:
                 print 'test_init'
-            ivinitfile = os.path.join(baseDirectory, self.cellID, 
-                                initDirectory, self.Params['initIVStateFile'])
+            ivinitfile = os.path.join(self.baseDirectory, self.cellID, 
+                                self.initDirectory, self.Params['initIVStateFile'])
             self.R = GenerateRun(self.postCell, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
                              electrodeSection=self.electrodeSection, 
@@ -408,9 +405,9 @@ class ModelRun():
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=self.postCell.irange,
                              plotting = HAVE_PG and self.plotFlag)
-        ivinitfile = os.path.join(baseDirectory, self.cellID, 
-                                initDirectory, self.Params['initIVStateFile'])
-        self.R.runInfo.folder = os.path.join('VCN_Cells', self.cellID, 'Simulations', 'IV')
+        ivinitfile = os.path.join(self.baseDirectory, self.cellID, 
+                                self.initDirectory, self.Params['initIVStateFile'])
+        self.R.runInfo.folder = os.path.join('VCN_Cells', self.cellID, self.simDirectory, 'IV')
         if verbose:
             print 'IVRun: calling doRun'
         self.R.doRun(self.Params['infile'], parMap=parMap, save='monitor', restoreFromFile=True, initfile=ivinitfile,
@@ -449,6 +446,14 @@ class ModelRun():
 #        print 'model_run::runModel::IVRun write summary for file set = ', self.R.basename
         return self.IVSummary
 
+    def checkForANStateFile(self):
+        print 'state file: ', self.Params['initANStateFile']
+        print 'cellid: ', self.Params['cell']
+        print 'base: ', self.baseDirectory
+        print 'init: ', self.initDirectory
+        statefile = os.path.join(self.baseDirectory, self.Params['cell'], 
+                            self.initDirectory, self.Params['initANStateFile'])
+        return(os.path.isfile(statefile))
 
     def ANRun(self, postCell, verify=False, seed=0, make_ANIntialConditions=False):
         """
@@ -507,10 +512,10 @@ class ModelRun():
         # see if we need to save the cell state now.
         if make_ANIntialConditions:
             print 'getting initial conditions for AN'
-            aninitfile = os.path.join(baseDirectory, self.cellID, 
-                                initDirectory, self.Params['initANStateFile'])
+            aninitfile = os.path.join(self.baseDirectory, self.cellID, 
+                                self.initDirectory, self.Params['initANStateFile'])
             cellInit.getInitialConditionsState(postCell.hr, tdur=3000., 
-                filename=aninitfile, electrodeSite=self.electrodeSite)
+                filename=aninitfile, electrodeSite=self.electrodeSite, reinit=self.Params['auto_initialize'])
             cellInit.testInitialConditions(postCell.hr, filename=aninitfile,
                 electrodeSite=self.electrodeSite)
             return
@@ -518,7 +523,6 @@ class ModelRun():
         seeds = np.random.randint(32678, size=(nReps, len(synapseConfig)))
         print 'AN Seeds: ', seeds
         stimInfo['seeds'] = seeds  # keep the seed values too.
-        k = 0
         spikeTimes = {}
         inputSpikeTimes = {}
         somaVoltage = {}
@@ -628,6 +632,7 @@ class ModelRun():
         spikeTimes = {}
         inputSpikeTimes = {}
         somaVoltage = {}
+        dendriteVoltage = {}
         celltime = []
         parallel = True
         self.setup_time = time.time() - self.start_time
@@ -730,7 +735,7 @@ class ModelRun():
             print 'hf.sec_groups : ', thisCell.sec_groups.keys()
         #self.createCell(hf, celltype, self.Params['modelType'], self.Params['species'])
         if debug:
-            print thisCellCell.print_all_mechs()
+            print thisCell.print_all_mechs()
 
 
         preCell = []
@@ -811,7 +816,7 @@ class ModelRun():
             A dictionary containing 'Vsoma', 'Vdend', 'time', and the 'ANSpikeTimes'
         
         """
-        filename = os.path.join(baseDirectory, self.cellID, initDirectory, self.Params['initANStateFile'])
+        filename = os.path.join(self.baseDirectory, self.cellID, self.initDirectory, self.Params['initANStateFile'])
         cellInit.restoreInitialConditionsState(hf, electrodeSite=None, filename=filename)
         stim=[]
         # make independent inputs for each synapse
@@ -877,7 +882,6 @@ class ModelRun():
                     style=QtCore.Qt.DashLine)            
         pgh.show()
 
-
     def analysis_filewriter(self, filebase, result, tag=''):
         k = result.keys()
         requiredKeys = ['stimInfo', 'spikeTimes', 'inputSpikeTimes', 'somaVoltage', 'time']
@@ -885,13 +889,20 @@ class ModelRun():
             assert rk in k
 
         stimInfo = result['stimInfo']
-        outPath = os.path.join('VCN_Cells', self.cellID, 'Simulations', 'AN')
+        outPath = os.path.join('VCN_Cells', self.cellID, self.simDirectory, 'AN')
         self.mkdir_p(outPath) # confirm that output path exists
         ID = self.cellID
         if self.Params['inputPattern'] is not None:
             ID += '_%s' % self.Params['inputPattern']
-        f = open(os.path.join(outPath, 'AN_Result_' + ID + '_%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
+        if stimInfo['soundtype'] in ['SAM', 'sam']:
+            f = open(os.path.join(outPath, 'AN_Result_' + ID + '_%s_N%03d_%03ddB_%06.1f_FM%03.1f_DM%03d_%2s' %
+                (tag, stimInfo['nReps'],
+                int(stimInfo['dB']), stimInfo['F0'],
+                stimInfo['fmod'], int(stimInfo['dmod']), stimInfo['SR']) + '.p'), 'w')
+        else:
+            f = open(os.path.join(outPath, 'AN_Result_' + ID + '_%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
                 int(stimInfo['dB']), stimInfo['F0'], stimInfo['SR']) + '.p'), 'w')
+
         pickle.dump(result, f)
         f.close()
         print '**** Analysis wrote output file ****\n    %s' % f        
@@ -955,9 +966,9 @@ if __name__ == "__main__":
 
     parser.add_argument('-r', '--reps', type=int, default=1, dest = 'nReps',
         help='# repetitions')
-    parser.add_argument('--modf', type=float, default=10, dest = 'modFreq', 
+    parser.add_argument('--fmod', type=float, default=20, dest = 'fmod', 
         help='Set SAM modulation frequency')
-    parser.add_argument('--moddepth', type=float, default=100., dest = 'modDepth', 
+    parser.add_argument('--depth', type=float, default=100., dest = 'dmod', 
         help='Set SAM modulation depth (in percent)')
     parser.add_argument('--S2M', type=float, default=0, dest = 'signalToMasker',
         help='Signal to Masker ratio (dB)')
@@ -975,6 +986,8 @@ if __name__ == "__main__":
             help='Plot results as they are generated - requires user intervention... ')
     parser.add_argument('--workers', type=int,  default=4, dest = 'nWorkers', 
             help='Number of "workers" for parallel processing (default: 4)')
+    parser.add_argument('--auto-intialize', action="store_true", default=False, dest='auto_initialize',
+            help='Force auto initialization if reading the state fails in initialization')
 
     # parser.add_argument('-p', '--print', action="store_true", default=False, dest = 'print_info',
     #     help='Print extra information during analysis')

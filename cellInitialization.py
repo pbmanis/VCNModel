@@ -10,7 +10,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 import numpy as np
 
-def initModel(hf, mode='iclamp', vinit=-65., restoreFromFile=False, filename=None, electrodeSite=None):
+def initModel(hf, mode='iclamp', vinit=-65., restoreFromFile=False, filename=None, electrodeSite=None, reinit=False):
     """
     Model initialization procedure to set RMP to the resting RMP of the model cell.
     Does not instantiate recording or stimulating.
@@ -42,7 +42,7 @@ def initModel(hf, mode='iclamp', vinit=-65., restoreFromFile=False, filename=Non
     # 3. allow vm to vary in segments, using existing conductances (may be unstable)
     
     if restoreFromFile:
-        restoreInitialConditionsState(hf, electrodeSite=electrodeSite, filename=filename)
+        restoreInitialConditionsState(hf, electrodeSite=electrodeSite, filename=filename, reinit=reinit)
         hf.h.frecord_init()
         return True
     
@@ -72,14 +72,14 @@ def initModel(hf, mode='iclamp', vinit=-65., restoreFromFile=False, filename=Non
 
     return True
 
-def getInitialConditionsState(hf, tdur=2000., filename=None, electrodeSite=None):
+def getInitialConditionsState(hf, tdur=2000., filename=None, electrodeSite=None, reinit=False):
     """
     Run model for a time, and then save the state
     """
     # first to an initialization to get close
     print 'getInitialConditionsState\n'
     print '  starting t = %8.2f' % hf.h.t
-    initModel(hf, restoreFromFile=False, electrodeSite=electrodeSite)
+    initModel(hf, restoreFromFile=False, electrodeSite=electrodeSite, reinit=reinit)
     hf.h.tstop = tdur
     print 'running for %8.2f ms' % tdur
     hf.h.run()
