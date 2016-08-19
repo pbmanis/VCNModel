@@ -16,15 +16,21 @@ import pylibrary.pyqtgraphPlotHelpers as pgh
 import analyze_run as ar
 import calyxPlots as cp
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import numpy as np
+import pylibrary.PlotHelpers as PH
+from collections import OrderedDict
 
 baseName = 'VCN_Cells'
-cell = 'VCN_c08'
+cell = 'VCN_c18'
 filename = 'AN_Result_VCN_c08_delays_N050_040dB_4000.0_HS.p'
 filename = 'AN_Result_VCN_c08_delays_N005_040dB_4000.0_MS.p'
 
 synfile_template = 'AN_Result_VCN_c18_reparented755V2Syn%03d_N005_040dB_4000.0_ 3.p'
 synfile_template = 'AN_Result_VCN_c18_reparented755V2_Syn%03d_N002_040dB_4000.0_HS.p'
 synfile_template = 'AN_Result_VCN_c08_Syn%03d_N005_040dB_4000.0_MS.p'
+
 def readFile(filename):
     f = open(filename, 'r')
     d = pickle.load(f)
@@ -171,28 +177,39 @@ def get_dimensions(n, pref='height'):
 
 
 def plotSingles(inpath):
-    nInputs = 10
+    nInputs = 5
     nrow, ncol = get_dimensions(nInputs, pref='width')
-    win = pgh.figure(title='AN Inputs')
-    win.resize(300*ncol, 125*nrow)
-    layout = pgh.LayoutMaker(cols=ncol,rows=nrow, win=win, labelEdges=True, ticks='talbot')
-    
+    fig = plt.figure()
+    gs = gridspec.GridSpec(nrow, ncol) 
+    ax = OrderedDict()
+    for i, g in enumerate(gs):
+        ax[i] = plt.Subplot(fig, g)
+    # win = pgh.figure(title='AN Inputs')
+    # win.resize(300*ncol, 125*nrow)
+    # layout = pgh.LayoutMaker(cols=ncol,rows=nrow, win=win, labelEdges=True, ticks='talbot')
     for i in range(0, nInputs):
         fname = synfile_template % i
         fname = os.path.join(inpath, fname)
         print fname
         spikeTimes, inputSpikeTimes, stimInfo, d = readFile(fname)
         nReps = stimInfo['nReps']
-        pl = layout.getPlot(i)
+        pl = ax[i]
+        PH.nice_plot(pl)
         sv = d['somaVoltage']
         tm = d['time']
         for j in range(nReps):
-            pl.plot(tm, sv[j], pen=pg.mkPen(pg.intColor(j, nReps), width=1.0))
-            pl.setLabel('left', 'mV')
-            pl.setYRange(-65, -5)
-            pgh.do_talbotTicks(pl, ndec=0)
-    pgh.show()
-
+            pl.plot(tm, sv[j])
+           # print dir(pl)
+            pl.set_ylabel('mV')
+            pl.set_ylim(-65., -5.)
+#            pl.plot(tm, sv[j], pen=pg.mkPen(pg.intColor(j, nReps), width=1.0))
+#            pl.setLabel('left', 'mV')
+#            pl.setYRange(-65, -5)
+            # PH.do_talbotTicks(pl, ndec=0)
+            #PH.do_talbotTicks(pl, ndec=0)
+#    pgh.show()
+    plt.draw()
+    plt.show()
 
 def readIVFile(filename):
     print 'Reading IV results file: %s', filename
@@ -258,7 +275,7 @@ inpath = os.path.join(baseName, cell, 'Simulations/AN')
 #infile = os.path.join(baseName, cell, 'Simulations/AN', sys.argv[1])+ '.p'
 plotPSTH(infile)
 #plotIV(infile)
-#plotSingles(inpath)
+plotSingles(inpath)
 
 
 
