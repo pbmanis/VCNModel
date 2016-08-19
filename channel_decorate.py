@@ -298,7 +298,7 @@ class ChannelManager():
 excludeMechs = [] # ['ihvcn', 'kht', 'klt', 'nav11']
 
 class ChannelDecorate():
-    def __init__(self, hf, cellType=None, modelType=None, parMap=None, verify=False):
+    def __init__(self, hf, cellType=None, model_type=None, parMap=None, verify=False):
 
         cellType = cellType.lower().capitalize()
         self.channelInfo = Params(newCm=1.0,
@@ -310,12 +310,12 @@ class ChannelDecorate():
                               pharmManip={'TTX': False, 'ZD': False, 'Cd': False, 'DTX': False, 'TEA': False,
                                           'XE': False},
                               cellType=cellType,
-                              modelType=modelType,
+                              model_type=model_type,
                               distanceMap=hf.distanceMap,
                               parMap=parMap,
         )
 
-        self.cMan = ChannelManager(cellType+'_'+modelType)
+        self.cMan = ChannelManager(cellType+'_'+model_type)
         self.channelMap = self.cMan.channelMap
         self.distMap = self.cMan.distMap
         self.irange = self.cMan.irange
@@ -356,8 +356,8 @@ class ChannelDecorate():
         if self.channelInfo is None:
             raise Exception('biophys - no parameters or info passed!')
         if verify:
-            print('Biophys: Inserting channels as if cell type is {:s} with modelType {:s}'
-                 .format(cellType, self.channelInfo.modelType))
+            print('Biophys: Inserting channels as if cell type is {:s} with model_type {:s}'
+                 .format(cellType, self.channelInfo.model_type))
         # print dir(hf)
         # print 'hf section groupkeys: ', hf.sec_groups.keys()
         # print 'hf section groups: ', hf.sec_groups

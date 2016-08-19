@@ -67,7 +67,6 @@ class AnalyzeRun():
             self.I[j,:] = msite[self.somasite[1]]
         self.thr = -10.0  # mV
 
-
     def analyzeIV(self, t, V, I, tw, thr):
         """ analyze a set of voltage records (IV), with spike threshold
             tw is a list of [tdelay, tdur, tssw], where tdelay is the delay to
@@ -200,7 +199,6 @@ class AnalyzeRun():
         pickle.dump({'IVResult': self.IVResult}, pfout)
         pfout.close()
 
-
     def expfit(self, p, x, y=None, C=None, sumsq=False, weights=None):
         """
         single exponential time constant with LM algorithm (using lmfit.py)
@@ -215,7 +213,6 @@ class AnalyzeRun():
             else:
                 return y - yd
 
-
     def single_taufit(self, x, y, t0, t1, dc = True, fixedDC = -60., verbose=False):
         plot = False  # use to check if this is working.
         p = lmfit.Parameters()
@@ -229,27 +226,29 @@ class AnalyzeRun():
 
         (cx, cy) = pu.clipdata(y, x, t0, t1, minFlag = False)
         cx -= t0   # fitting is reference to zero time
-        print 'p: ', p
-        print 'cx, cy: ', cx, cy
-        mi = lmfit.minimize(self.expfit, p, args=(cx, cy))
-        mi.leastsq()
-        yfit = self.expfit(mi.params, cx)
-        cx += t0  # restore absolute time
+        # print 'p: ', p
+        # print 'cx, cy: ', cx, cy
+        try:
+            mi = lmfit.minimize(self.expfit, p, args=(cx, cy))
+            mi.leastsq()
+            yfit = self.expfit(mi.params, cx)
+            cx += t0  # restore absolute time
 
-        # print 'sorted all data points'
-        # for i, v in enumerate(xst):
-        #     print '%7.2f\t%7.2f' % (v, yst[i])
-        # print '---------------------------'
+            # print 'sorted all data points'
+            # for i, v in enumerate(xst):
+            #     print '%7.2f\t%7.2f' % (v, yst[i])
+            # print '---------------------------'
 
-        if plot:
-            PL.figure(314)
-            PL.plot(x, y, 'k-')
-            PL.plot(cx, yfit, 'r--')
-            PL.show()
+            if plot:
+                PL.figure(314)
+                PL.plot(x, y, 'k-')
+                PL.plot(cx, yfit, 'r--')
+                PL.show()
 
-        fitpars = mi.params
+            fitpars = mi.params
 
-        return fitpars, cx, yfit
-
+            return fitpars, cx, yfit
+        except:
+            return None, None, None
 
 

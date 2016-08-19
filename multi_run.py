@@ -45,7 +45,7 @@ Parameters:
         self.Params['infile ']= None
 
         self.Params['cellType'] = self.cellChoices[0]
-        self.Params['modelType'] = self.modelChoices[0]
+        self.Params['model_type'] = self.modelChoices[0]
         self.Params['species'] = self.speciesChoices[0]
         self.Params['SRType'] = self.SRChoices[2]
         self.Params['SR'] = self.Params['SRType']  # actually used SR this might be cell-defined, rather than command defined
@@ -94,10 +94,10 @@ for runid in runs.keys():
 
     print(json.dumps(i1.Params, indent=4))
 
-    stateFileExists = i1.checkForANStateFile()
+    stateFileExists = i1.check_for_an_statefile()
     
     if not stateFileExists:
         i1.Params['runProtocol'] = 'initAN'
-        i1.runModel()
+        i1.run_model()
     i1.Params['runProtocol'] = 'runANPSTH'
-    i1.runModel()
+    i1.run_model()

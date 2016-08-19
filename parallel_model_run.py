@@ -9,7 +9,7 @@ import pickle
 import numpy as np
 
 celltype = 'Stellate'
-modeltype = 'XM13'
+model_type = 'XM13'
 
 start_time = time.time()
 
@@ -19,9 +19,9 @@ def run_model_Star(*args):
     """
     thisModel = model_run.ModelRun()
     thisModel.set_celltype(celltype)
-    thisModel.set_modeltype(modeltype)
+    thisModel.set_model_type(model_type)
     thisModel.set_starttime(start_time)
-    return thisModel.runModel(*args)
+    return thisModel.run_model(*args)
 
 # define parameter space to explore
 #
@@ -93,7 +93,7 @@ pool.join()
 # print '*'*80
 
 big_result = {'space': space, 'spacemap': spaceMap, 'result': result}
-fn = celltype + '_' + modeltype + '_'
+fn = celltype + '_' + model_type + '_'
 for k in space.keys():
     if k == 'id':
         continue

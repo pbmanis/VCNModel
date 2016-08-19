@@ -714,15 +714,15 @@ class Calyx8():
         nconv = self.modelPars.AN_conv[runInfo.TargetCellName]
         print 'Number of converging fibers:: ', nconv
         print 'Number of synapses per swelling: ', self.modelPars.AN_zones[runInfo.TargetCellName]
-        electrodesite = [None] * nconv
+        electrode_site = [None] * nconv
         istim = [None] * nconv
         for i in range(nconv):
             print 'Input 1: # swellings: ', len(self.CalyxStruct[i]['swelling'])
             #   print modelPars.axonnode
             #   print self.CalyxStruct[i]['axon'][modelPars.axonnode]
-            #   print len(electrodesite)
-            electrodesite[i] = self.CalyxStruct[i]['axon'][modelPars.axonnode]
-            istim[i] = h.iStim(0.5, sec=electrodesite[i])
+            #   print len(electrode_site)
+            electrode_site[i] = self.CalyxStruct[i]['axon'][modelPars.axonnode]
+            istim[i] = h.iStim(0.5, sec=electrode_site[i])
             if self.runInfo.inFile is None:
                 stim = {}
                 stim['NP'] = runInfo.nStim
@@ -751,9 +751,9 @@ class Calyx8():
                 istim[i].iMax = 0.0
 
             self.vec['i_stim%d' % i] = h.Vector(secmd)
-            self.vec['i_stim%d' % i].play(istim[i]._ref_i, h.dt, 0, sec=electrodesite[i])
-            self.vec['axon'].record(electrodesite[i]()._ref_v, sec=electrodesite[i])  # record axon voltage
-            self.vec['inj'].record(istim[i]._ref_i, sec=electrodesite[i])
+            self.vec['i_stim%d' % i].play(istim[i]._ref_i, h.dt, 0, sec=electrode_site[i])
+            self.vec['axon'].record(electrode_site[i]()._ref_v, sec=electrode_site[i])  # record axon voltage
+            self.vec['inj'].record(istim[i]._ref_i, sec=electrode_site[i])
             self.vec['time'].record(h._ref_t)
 
         if record:

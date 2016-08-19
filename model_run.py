@@ -136,8 +136,8 @@ class ModelRun():
         self.Params['infile ']= None
 
         self.Params['cellType'] = self.cellChoices[0]
-        self.Params['modelType'] = self.modelChoices[0]
-        self.Params['SGCmodelType'] = self.SGCmodelChoices[0]
+        self.Params['model_type'] = self.modelChoices[0]
+        self.Params['SGCmodel_type'] = self.SGCmodelChoices[0]
         self.Params['species'] = self.speciesChoices[0]
         self.Params['SRType'] = self.SRChoices[2]
         self.Params['SR'] = self.Params['SRType']  # actually used SR this might be cell-defined, rather than command defined
@@ -160,13 +160,14 @@ class ModelRun():
         self.Params['plotFlag'] = False
         self.Params['auto_initialize'] = False
         self.Params['nWorkers'] = 4
+        self.Params['Parallel'] = True
         self.baseDirectory = 'VCN_Cells'
         self.morphDirectory = 'Morphology'
         self.initDirectory = 'Initialization'
         self.simDirectory = 'Simulations'
 
 
-    def printModelSetup(self):
+    def print_modelsetup(self):
         """
         Print out all of the parameters in the model
         """
@@ -195,13 +196,13 @@ class ModelRun():
         self.Params['cellType'] = cellType
 
 
-    def set_modeltype(self, modelType):
+    def set_model_type(self, model_type):
         """
         Set the model Type, as requested. The model type must be in the model choices
         
         Parameters
         ----------
-        modelType : string
+        model_type : string
             The type of the model that will be used (condutance settings)
         
         Returns
@@ -209,13 +210,13 @@ class ModelRun():
             Nothing
         
         """
-        if modelType not in self.modelChoices:
-            print 'Model type must be one of: %s. Got: %s ' % (', '.join(self.modelChoices), modelType)
+        if model_type not in self.modelChoices:
+            print 'Model type must be one of: %s. Got: %s ' % (', '.join(self.modelChoices), model_type)
             exit()
-        self.Params['modelType'] = modelType
+        self.Params['model_type'] = model_type
 
 
-    def set_SR(self, SRType):
+    def set_spontaneousrate(self, spont_rate_type):
         """
         Set the SR, overriding SR in the cell_config file. The SR type must be in the SR choices
         
@@ -229,10 +230,10 @@ class ModelRun():
             Nothing
         
         """
-        if self.SRType not in self.SRChoices:
-            print 'SR type must be one of: %s. Got: %s ' % (', '.join(self.SRChoices), SRType)
+        if self.spont_rate_type not in self.spont_rate_choices:
+            print 'SR type must be one of: %s. Got: %s ' % (', '.join(self.spont_rate_choices), spont_rate_type)
             exit()
-        self.Params['SRType'] = SRType
+        self.Params['SRType'] = spont_rate_type
 
     def set_starttime(self, starttime):
         self.Params['StartTime'] = starttime
@@ -246,13 +247,13 @@ class ModelRun():
             else:
                 raise
 
-    def runModel(self, parMap={}):
+    def run_model(self, par_map={}):
         """
         Main entry routine for running all models
         
         Parameters
         ----------
-        parMap : dict (default: empty)
+        par_map : dict (default: empty)
             A dictionary of parameters, passed to models that are run (not used).
         
         Returns
@@ -261,14 +262,14 @@ class ModelRun():
         
         """
         if verbose:
-            print 'runModel entry'
-        if 'id' in parMap.keys():
-            self.idnum = parMap['id']
+            print 'run_model entry'
+        if 'id' in par_map.keys():
+            self.idnum = par_map['id']
         else:
             self.idnum = 9999
         self.cellID = os.path.splitext(self.Params['cell'])[0]
 
-        if parMap == {}:
+        if par_map == {}:
             self.plotFlag = True
         ivinitfile = os.path.join(self.baseDirectory, self.cellID, 
                             self.initDirectory, self.Params['initIVStateFile'])
@@ -278,53 +279,59 @@ class ModelRun():
         filename = os.path.join(self.baseDirectory, self.cellID, self.morphDirectory, self.Params['infile'])
         
         if self.Params['cellType'] in ['Bushy', 'bushy']:
-            print 'runModel creating a bushy cell: '
-            self.postCell = cells.Bushy.create(morphology=filename, decorator=ChannelDecorate,
+            print 'run_model creating a bushy cell: '
+            self.post_cell = cells.Bushy.create(morphology=filename, decorator=ChannelDecorate,
                     species=self.Params['species'], 
-                    modelType=self.Params['modelType'], )
+                    modelType=self.Params['model_type'], )
         elif self.Params['cellType'] in ['tstellate', 'TStellate']:
-            print 'runModel creating a t-stellate cell: '
-            self.postCell = cells.TStellate.create(morphology=filename, decorator=ChannelDecorate,
+            print 'run_model creating a t-stellate cell: '
+            self.post_cell = cells.TStellate.create(morphology=filename, decorator=ChannelDecorate,
                     species=self.Params['species'], 
-                    modelType=self.Params['modelType'], ) 
+                    modelType=self.Params['model_type'], ) 
         elif self.Params['cellType'] in ['dstellate', 'DStellate']:
-            print 'runModel creating a D-stellate cell: '
-            self.postCell = cells.DStellate.create(morphology=filename, decorator=ChannelDecorate,
+            print 'run_model creating a D-stellate cell: '
+            self.post_cell = cells.DStellate.create(morphology=filename, decorator=ChannelDecorate,
                     species=self.Params['species'], 
-                    modelType=self.Params['modelType'], ) 
+                    modelType=self.Params['model_type'], ) 
         else:
             raise ValueError("cell type %s not implemented" % (self.Params['cellType']))
 
                       
-        # print 'PostCell: ', dir(self.postCell)
-       #  print 'PostCell hr: ', dir(self.postCell.hr)
+        # print 'post_cell: ', dir(self.post_cell)
+       #  print 'post_cell hr: ', dir(self.post_cell.hr)
 
-        self.postCell.hr.h.celsius = 38.
-        self.postCell.hr.h.Ra = 150.
-        print 'Ra is: ', self.postCell.hr.h.Ra
-        print 'Temp is: ', self.postCell.hr.h.celsius
-        for group in self.postCell.hr.sec_groups.keys():
-            g = self.postCell.hr.sec_groups[group]
+        self.post_cell.hr.h.celsius = 38.
+        self.post_cell.hr.h.Ra = 150.
+        print 'Ra is: ', self.post_cell.hr.h.Ra
+        print 'Temp is: ', self.post_cell.hr.h.celsius
+        for group in self.post_cell.hr.sec_groups.keys():
+            g = self.post_cell.hr.sec_groups[group]
             for section in list(g):
-                self.postCell.hr.get_section(section).Ra = self.postCell.hr.h.Ra
+                self.post_cell.hr.get_section(section).Ra = self.post_cell.hr.h.Ra
                 if verbose:
                     print 'section: ', section
-                    print 'Ra: ', self.postCell.hr.get_section(section).Ra
+                    print 'Ra: ', self.post_cell.hr.get_section(section).Ra
 
-        electrodeSection = list(self.postCell.hr.sec_groups['soma'])[0]
-        self.electrodeSite = self.postCell.hr.get_section(electrodeSection)
+        electrode_section = list(self.post_cell.hr.sec_groups['soma'])[0]
+        self.electrode_site = self.post_cell.hr.get_section(electrode_section)
         self.electrodeSection = 'soma'
         self.hg = hoc_graphics
-        self.get_hoc_file(self.postCell.hr)
-        #sg = self.postCell.hr.sec_groups['soma']
-        #self.distances(self.postCell.get_section(list(sg)[0]).name()) # make distance map from soma
-#        print self.postCell.hr.distanceMap
-        dendriticElectrode = list(self.postCell.hr.sec_groups['dendrite'])[0]
-        self.dendriticElectrodeSite = self.postCell.hr.get_section(dendriticElectrode)
-        self.dendriticElectrodeSection = 'dendrite'
+        self.get_hoc_file(self.post_cell.hr)
+        #sg = self.post_cell.hr.sec_groups['soma']
+        #self.distances(self.post_cell.get_section(list(sg)[0]).name()) # make distance map from soma
+#        print self.post_cell.hr.distanceMap
+        try:
+            dendritic_electrode = list(self.post_cell.hr.sec_groups['dendrite'])[0]
+            self.dendriticelectrode_site = self.post_cell.hr.get_section(dendritic_electrode)
+            self.dendriticElectrodeSection = 'dendrite'
+        except:
+            dendriticElectrode = list(self.post_cell.hr.sec_groups['soma'])[0]
+            self.dendriticelectrode_site = self.post_cell.hr.get_section(dendritic_electrode)
+            self.dendriticElectrodeSection = 'dendrite'
+            
         if verbose:
-            print 'Parmap in runModel: ', parMap
-            self.postCell.hr.h.topology()
+            print 'par_map in run_model: ', par_map
+            self.post_cell.hr.h.topology()
 
         # handle the following protocols:
         # ['initIV', 'initAN', 'runIV', 'runANPSTH', 'runANSingles']
@@ -334,15 +341,15 @@ class ModelRun():
                 print 'initIV'
             ivinitfile = os.path.join(self.baseDirectory, self.cellID, 
                                 self.initDirectory, self.Params['initIVStateFile'])
-            self.R = GenerateRun(self.postCell.hr, idnum=self.idnum, celltype=self.Params['cellType'],
+            self.R = GenerateRun(self.post_cell.hr, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
                              electrodeSection=self.electrodeSection, 
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
-                             iRange=self.postCell.irange,
+                             iRange=self.post_cell.irange,
                              plotting = HAVE_PG and self.plotFlag)
-            cellInit.getInitialConditionsState(self.postCell, tdur=3000., 
-                filename=ivinitfile, electrodeSite=self.electrodeSite)
-            print 'Ran to get initial state for %f msec' % self.postCell.hr.h.t
+            cellInit.get_initial_condition_state(self.post_cell.hr, tdur=3000., 
+                filename=ivinitfile, electrode_site=self.electrode_site)
+            print 'Ran to get initial state for %f msec' % self.post_cell.hr.h.t
             return
 
         if self.Params['runProtocol'] == 'testIV':
@@ -350,80 +357,85 @@ class ModelRun():
                 print 'test_init'
             ivinitfile = os.path.join(self.baseDirectory, self.cellID, 
                                 self.initDirectory, self.Params['initIVStateFile'])
-            self.R = GenerateRun(self.postCell, idnum=self.idnum, celltype=self.Params['cellType'],
+            self.R = GenerateRun(self.post_cell.hr, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
                              electrodeSection=self.electrodeSection, 
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
-                             iRange=self.postCell.irange,
+                             iRange=self.post_cell.irange,
                              plotting = HAVE_PG and self.plotFlag, )
-            cellInit.testInitialConditions(self.postCell, filename=ivinitfile,
-                electrodeSite=self.electrodeSite)
-            #self.R.testRun()
+            cellInit.test_initial_conditions(self.post_cell.hr, filename=ivinitfile,
+                electrode_site=self.electrode_site)
+            #self.R.test_run()
             return  # that is ALL, never make init and then keep running.
 
         if self.Params['runProtocol'] == 'runANPSTH':
             if verbose:
                 print 'ANPSTH'
-            self.ANRun(self.postCell)
+            self.an_run(self.post_cell)
 
         if self.Params['runProtocol'] == 'initAN':
             if verbose:
                 print 'Init AN'
-            self.ANRun(self.postCell, make_ANIntialConditions=True)
+            self.an_run(self.post_cell, make_an_intial_conditions=True)
 
         if self.Params['runProtocol'] == 'runANSingles':
             if verbose:
                 print 'ANSingles'
-            self.ANRun_singles(self.postCell)
+            self.an_run_singles(self.post_cell)
             
         if self.Params['runProtocol'] == 'runIV':
             if verbose:
                 print 'iv_mode'
-            self.IVRun(parMap)
+            self.iv_run(par_map)
 
         if showCell:
-            self.render = HocViewer(self.postCell)
+            self.render = HocViewer(self.post_cell)
             cylinder=self.render.draw_cylinders()
             cylinder.set_group_colors(self.section_colors, alpha=0.8, mechanism=['nav11', 'gbar'])
 
 
-    def IVRun(self, parMap={}):
+    def iv_run(self, par_map={}):
         """
         Main entry routine for running all IV (current-voltage relationships with somatic electrode)
         
         Parameters
         ----------
-        parMap : dict (default: empty)
+        par_map : dict (default: empty)
             A dictionary of paramters, passed to models that are run (not used).
         
         Returns
         -------
             summary : dict
-                A summary of the results, including the file, parMap, resting input resistance,
+                A summary of the results, including the file, par_map, resting input resistance,
                 time constant, and spike times
         
         """
-        print 'IvRun: IVRun begins'
+        print 'iv_run: iv_run begins'
         if verbose:
-            print 'IVRun: calling generateRun'
-        self.R = GenerateRun(self.postCell.hr, idnum=self.idnum, celltype=self.Params['cellType'],
-                             starttime=None,
+            print 'iv_run: calling generateRun'
+        self.R = GenerateRun(self.post_cell.hr, idnum=self.idnum, celltype=self.Params['cellType'],
+                             start_time=None,
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
-                             iRange=self.postCell.irange,
+                             iRange=self.post_cell.irange,
                              plotting = HAVE_PG and self.plotFlag)
         ivinitfile = os.path.join(self.baseDirectory, self.cellID, 
                                 self.initDirectory, self.Params['initIVStateFile'])
         self.R.runInfo.folder = os.path.join('VCN_Cells', self.cellID, self.simDirectory, 'IV')
         if verbose:
-            print 'IVRun: calling doRun'
-        self.R.doRun(self.Params['infile'], parMap=parMap, save='monitor', restoreFromFile=True, initfile=ivinitfile,
-            workers=self.Params['nWorkers'])
+            print 'iv_run: calling do_run'
+        nworkers = self.Params['nWorkers']
+        print self.Params['Parallel']
+        if self.Params['Parallel'] == False:
+            nworkers = 1
+        print 'iv_run workers: ', nworkers
+        self.R.do_run(self.Params['infile'], par_map=par_map, save='monitor', restore_from_file=True, initfile=ivinitfile,
+            workers=nworkers)
         if verbose:
-            print '   doRun completed'
+            print '   do_run completed'
         isteps = self.R.IVResult['I']
         if verbose:
-            print 'IVRun: Results summary: '
+            print 'iv_run: Results summary: '
             for k, i in enumerate(self.R.IVResult['tauih'].keys()):
                 print '   ih: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['tauih'][i]['tau'].value)
                 print '           dV : %f' % self.R.IVResult['tauih'][i]['a'].value
@@ -444,16 +456,16 @@ class ModelRun():
                 enumerate(self.R.IVResult['tauih'].keys())])
         # construct dictionary for return results:
         self.IVSummary = {'basefile': self.R.basename,
-                          'parmap': parMap, 'ID': self.idnum,
+                          'par_map': par_map, 'ID': self.idnum,
                           'Vm': np.mean(self.R.IVResult['Vm']),
                           'Rin': self.R.IVResult['Rinss'],
                           'taum': taum_mean, 'tauih': tauih_mean,
                           'spikes': {'i': self.R.IVResult['Ispike'], 'n': self.R.IVResult['Nspike']},
                           }
-#        print 'model_run::runModel::IVRun write summary for file set = ', self.R.basename
+#        print 'model_run::run_model::iv_run write summary for file set = ', self.R.basename
         return self.IVSummary
 
-    def checkForANStateFile(self):
+    def check_for_an_statefile(self):
         print 'state file: ', self.Params['initANStateFile']
         print 'cellid: ', self.Params['cell']
         print 'base: ', self.baseDirectory
@@ -462,7 +474,7 @@ class ModelRun():
                             self.initDirectory, self.Params['initANStateFile'])
         return(os.path.isfile(statefile))
 
-    def ANRun(self, postCell, verify=False, seed=0, make_ANIntialConditions=False):
+    def an_run(self, post_cell, verify=False, seed=0, make_an_intial_conditions=False):
         """
         Establish AN inputs to soma, and run the model.
         Requires a synapseConfig list of dicts from cell_config.makeDict()
@@ -471,7 +483,7 @@ class ModelRun():
 
         Parameters
         ----------
-        postCell : Cell object
+        post_cell : Cell object
             Provides access to cell class, as well as neuron and hoc file information
         
         verify : boolean (default: False)
@@ -512,19 +524,19 @@ class ModelRun():
         #             'runDur': self.run_duration, 'pip_dur': self.Params['pip_duration'], 'pip_start': self.Params['pip_start'],
         #             'run_duration': self.run_duration,
         #             'Fs': self.Fs, 'F0': self.f0, 'dB': self.dB, 'RF': self.RF, 'SR': self.SR,
-        #             'cellType': self.Params['cellType'], 'modelType': self.Params['modelType'], 'nReps': nReps, 'threshold': threshold}
+        #             'cellType': self.Params['cellType'], 'model_type': self.Params['model_type'], 'nReps': nReps, 'threshold': threshold}
 
-        preCell, synapse, self.electrodeSite = self.configureCell(postCell, synapseConfig, celltype, stimInfo)
+        preCell, synapse, self.electrode_site = self.configure_cell(post_cell, synapseConfig, celltype, stimInfo)
 
         # see if we need to save the cell state now.
-        if make_ANIntialConditions:
+        if make_an_intial_conditions:
             print 'getting initial conditions for AN'
             aninitfile = os.path.join(self.baseDirectory, self.cellID, 
                                 self.initDirectory, self.Params['initANStateFile'])
-            cellInit.getInitialConditionsState(postCell.hr, tdur=3000., 
-                filename=aninitfile, electrodeSite=self.electrodeSite, reinit=self.Params['auto_initialize'])
-            cellInit.testInitialConditions(postCell.hr, filename=aninitfile,
-                electrodeSite=self.electrodeSite)
+            cellInit.get_initial_condition_state(post_cell.hr, tdur=3000., 
+                filename=aninitfile, electrode_site=self.electrode_site, reinit=self.Params['auto_initialize'])
+            cellInit.test_initial_conditions(post_cell.hr, filename=aninitfile,
+                electrode_site=self.electrode_site)
             return
 
         seeds = np.random.randint(32678, size=(nReps, len(synapseConfig)))
@@ -547,8 +559,8 @@ class ModelRun():
         # run using pyqtgraph's parallel support
         with mproc.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
             for j, x in tasker:
-                tresults = self.singleANRun(postCell.hr, j, synapseConfig,
-                    stimInfo, seeds, preCell, postCell, self.an_setup_time)
+                tresults = self.single_an_run(post_cell.hr, j, synapseConfig,
+                    stimInfo, seeds, preCell, post_cell, self.an_setup_time)
                 tasker.results[j] = tresults
         # retreive the data
         for j, N in enumerate(range(nReps)):
@@ -565,7 +577,7 @@ class ModelRun():
         # for j, N in enumerate(range(nReps)):
         #     print 'Rep: %d' % N
         #
-        #     preCell, postCell = self.singleANRun(hf, j, synapseConfig, stimInfo, seeds, preCell, postCell, self.an_setup_time)
+        #     preCell, post_cell = self.single_an_run(hf, j, synapseConfig, stimInfo, seeds, preCell, post_cell, self.an_setup_time)
         #
         #     celltime.append(self.time)
         #     spikeTimes[N] = pu.findspikes(self.time, self.Vsoma, threshold, t0=0., t1=hf.h.tstop, dt=1.0, mode='peak')
@@ -583,11 +595,11 @@ class ModelRun():
             'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'stimWaveform': stimWaveform, 'time': np.array(celltime[0])}
         
         self.analysis_filewriter(self.Params['cell'], result, tag='delays')
-        self.plotAN(np.array(celltime[0]), result['somaVoltage'], result['stimInfo'],
+        self.plot_an(np.array(celltime[0]), result['somaVoltage'], result['stimInfo'],
             dendVoltage=result['dendriteVoltage'])
 
 
-    def ANRun_singles(self, postCell, verify=False, seed=None):
+    def an_run_singles(self, post_cell, verify=False, seed=None):
         """
         Establish AN inputs to soma, and run the model.
         synapseConfig: list of tuples
@@ -625,9 +637,9 @@ class ModelRun():
         #             'runDur': self.run_duration, 'pip_dur': self.Params['pip_duration'], 'pip_start': self.Params['pip_start'],
         #             'run_duration': self.run_duration,
         #             'Fs': self.Fs, 'F0': self.f0, 'dB': self.dB, 'RF': self.RF, 'SR': self.SR,
-        #             'cellType': self.Params['cellType'], 'modelType': self.Params['modelType'], 'nReps': nReps, 'threshold': threshold}
+        #             'cellType': self.Params['cellType'], 'model_type': self.Params['model_type'], 'nReps': nReps, 'threshold': threshold}
 
-        preCell, synapse, self.electrodeSite = self.configureCell(postCell, synapseConfig, celltype, stimInfo)
+        preCell, synapse, self.electrode_site = self.configure_cell(post_cell, synapseConfig, celltype, stimInfo)
 
 
         nSyns = len(synapseConfig)
@@ -643,7 +655,7 @@ class ModelRun():
         somaVoltage = {}
         dendriteVoltage = {}
         celltime = []
-        parallel = True
+        parallel = self.Params['Parallel']
         self.setup_time = time.time() - self.start_time
         self.nrn_run_time = 0.0
         self.an_setup_time = 0.
@@ -665,24 +677,24 @@ class ModelRun():
 
             tresults = [None]*nReps
 
-            if parallel:
+            if parallel and self.Params['nWorkers'] > 1:
                 nWorkers = self.Params['nWorkers']
                 TASKS = [s for s in range(nReps)]
                 # run using pyqtgraph's parallel support
                 with mproc.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
                     for j, x in tasker:
-                        tresults = self.singleANRun(postCell.hr, j, synapseConfig,
-                            stimInfo, seeds, preCell, postCell, self.an_setup_time)
+                        tresults = self.single_an_run(post_cell.hr, j, synapseConfig,
+                            stimInfo, seeds, preCell, post_cell, self.an_setup_time)
                         tasker.results[j] = tresults
                 # retreive the data
             else:  # easier to debug
                 for j, N in enumerate(range(nReps)):
-                    tresults[j] = self.singleANRun(postCell.hr, j, synapseConfig,
-                            stimInfo, seeds, preCell, postCell, self.an_setup_time)
+                    tresults[j] = self.single_an_run(post_cell.hr, j, synapseConfig,
+                            stimInfo, seeds, preCell, post_cell, self.an_setup_time)
             for j, N in enumerate(range(nReps)):
 #                print 'Rep: %d' % N
 
-#                preCell, postCell = self.singleANRun(hf, j, synapseConfig, stimInfo, seeds, preCell, postCell)
+#                preCell, post_cell = self.single_an_run(hf, j, synapseConfig, stimInfo, seeds, preCell, post_cell)
                 
                 celltime.append(tresults[j]['time']) # (self.time)
                 spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold, t0=0.,
@@ -702,9 +714,9 @@ class ModelRun():
                 'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'time': np.array(tresults[j]['time'])}
         
             self.analysis_filewriter(self.Params['cell'], result, tag='Syn%03d' % k)
-        self.plotAN(np.array(result['time']), result['somaVoltage'], result['stimInfo'])
+        self.plot_an(np.array(result['time']), result['somaVoltage'], result['stimInfo'])
 
-    def configureCell(self, thisCell, synapseConfig, celltype, stimInfo):
+    def configure_cell(self, thisCell, synapseConfig, celltype, stimInfo):
         """
         Configure the cell. This routine builds the cell in Neuron, adds presynaptic inputs
         as described in the synapseConfig, and configures those according to parameters in 
@@ -729,11 +741,11 @@ class ModelRun():
         -------
             preCell : list
                 A list of the preCell hoc objects attached to the synapses
-            postCell : cells object
+            post_cell : cells object
                 The target cell
             synapse : list
                 A list of the synapses that were created and connected to this cell
-            electrodeSite : Neuron hoc object
+            electrode_site : Neuron hoc object
                 The section and location where the electrode is attached to the cell.
         
         
@@ -742,7 +754,7 @@ class ModelRun():
         debug = False
         if debug:
             print 'hf.sec_groups : ', thisCell.sec_groups.keys()
-        #self.createCell(hf, celltype, self.Params['modelType'], self.Params['species'])
+        #self.createCell(hf, celltype, self.Params['model_type'], self.Params['species'])
         if debug:
             print thisCell.print_all_mechs()
 
@@ -789,8 +801,8 @@ class ModelRun():
         #         #print p.gmax
         #         pass
         electrodeSection = list(thisCell.hr.sec_groups['soma'])[0]
-        electrodeSite = thisCell.hr.get_section(electrodeSection)
-        return (preCell, synapse, electrodeSite)
+        electrode_site = thisCell.hr.get_section(electrodeSection)
+        return (preCell, synapse, electrode_site)
 
     def set_dbspl(self, signal, dbspl):
         """Scale the level of `signal` to the given dB_SPL."""
@@ -802,7 +814,7 @@ class ModelRun():
         return scaled
 
 
-    def singleANRun(self, hf, j, synapseConfig, stimInfo, seeds, preCell, postCell, an_setup_time):
+    def single_an_run(self, hf, j, synapseConfig, stimInfo, seeds, preCell, post_cell, an_setup_time):
         """
         Perform a single run with all AN input on the target cell turned off except for input j.
         
@@ -823,7 +835,7 @@ class ModelRun():
         preCell : list
             A list of the preCell hoc objects attached to the synapses
         
-        postCell : cells object
+        post_cell : cells object
             The target cell
         
         an_setup_time : time object
@@ -836,7 +848,7 @@ class ModelRun():
         """
         filename = os.path.join(self.baseDirectory, self.cellID,
                     self.initDirectory, self.Params['initANStateFile'])
-        cellInit.restoreInitialConditionsState(hf, electrodeSite=None, filename=filename)
+        cellInit.restore_initial_conditions_state(hf, electrode_site=None, filename=filename)
         # make independent inputs for each synapse
         ANSpikeTimes = []
         an0_time = time.time()
@@ -866,18 +878,18 @@ class ModelRun():
         for i, syn in enumerate(synapseConfig):
             nseed = seeds[j, i]
 
-            if self.Params['SGCmodelType'] in ['Zilany']:
+            if self.Params['SGCmodel_type'] in ['Zilany']:
 #                print 'running with Zilany'
                 preCell[i].set_sound_stim(stim, seed=nseed, simulator='matlab')  # generate spike train, connect to terminal
             
-            elif self.Params['SGCmodelType'] in ['cochlea']:
+            elif self.Params['SGCmodel_type'] in ['cochlea']:
 #                print 'running with cochlea, j=%d' % j
                 wf = self.set_dbspl(stim.generate(), stimInfo['dB'])
                 stim._sound = wf
                 preCell[i].set_sound_stim(stim, seed=nseed, simulator='cochlea')  # generate spike train, connect to terminal
 
             else:
-                raise ValueError('SGC model type type %s not implemented' % self.Params['SGCmodelType'])
+                raise ValueError('SGC model type type %s not implemented' % self.Params['SGCmodel_type'])
                 
             ANSpikeTimes.append(preCell[i]._spiketrain)
         an_setup_time += (time.time() - an0_time)
@@ -885,9 +897,9 @@ class ModelRun():
         Vsoma = hf.h.Vector()
         Vdend = hf.h.Vector()
         rtime = hf.h.Vector()
-        dendsite = postCell.all_sections['dendrite'][-1]
+        dendsite = post_cell.all_sections['dendrite'][-1]
         
-        Vsoma.record(postCell.soma(0.5)._ref_v, sec=postCell.soma)
+        Vsoma.record(post_cell.soma(0.5)._ref_v, sec=post_cell.soma)
         Vdend.record(dendsite(0.5)._ref_v, sec=dendsite)
         rtime.record(hf.h._ref_t)
 #        print '...running '
@@ -904,7 +916,7 @@ class ModelRun():
         return anresult
 
 
-    def plotAN(self, celltime, somaVoltage, stimInfo, dendVoltage=None):
+    def plot_an(self, celltime, somaVoltage, stimInfo, dendVoltage=None):
         """
         """
         nReps = stimInfo['nReps']
@@ -988,10 +1000,10 @@ if __name__ == "__main__":
     parser.add_argument('--type', '-T', dest='cellType', action='store',
                    default='Bushy', choices=model.cellChoices,
                    help='Define the cell type (default: Bushy)')
-    parser.add_argument('--model', '-M', dest='modelType', action='store',
+    parser.add_argument('--model', '-M', dest='model_type', action='store',
                    default='XM13', choices=model.modelChoices,
                    help='Define the model type (default: XM13)')
-    parser.add_argument('--sgcmodel', dest='SGCmodelType', action='store',
+    parser.add_argument('--sgcmodel', dest='SGCmodel_type', action='store',
                    default='Zilany', choices=model.SGCmodelChoices,
                    help='Define the SGC model type (default: Zilany)')
     parser.add_argument('--protocol', '-P', dest='runProtocol', action='store',
@@ -1032,8 +1044,11 @@ if __name__ == "__main__":
             help='Plot results as they are generated - requires user intervention... ')
     parser.add_argument('--workers', type=int,  default=4, dest = 'nWorkers', 
             help='Number of "workers" for parallel processing (default: 4)')
+    parser.add_argument('--noparallel', action='store_false', default=True, dest='Parallel',
+            help='Use parallel or not (default: True)')
     parser.add_argument('--auto-intialize', action="store_true", default=False, dest='auto_initialize',
             help='Force auto initialization if reading the state fails in initialization')
+
 
     # parser.add_argument('-p', '--print', action="store_true", default=False, dest = 'print_info',
     #     help='Print extra information during analysis')
@@ -1042,7 +1057,7 @@ if __name__ == "__main__":
 
 
     args = vars(parser.parse_args())   
-#    model.printModelSetup()
+#    model.print_modelsetup()
 
     for k in args.keys():
         model.Params[k] = args[k]
@@ -1051,7 +1066,7 @@ if __name__ == "__main__":
         model.Params['infile'] = model.Params['cell'] + '.hoc'
     print(json.dumps(model.Params, indent=4))  # pprint doesn't work well with ordered dicts
     
-    model.runModel() # then run the model
+    model.run_model() # then run the model
     if showCell:
         QtGui.QApplication.instance().exec_()
     try:

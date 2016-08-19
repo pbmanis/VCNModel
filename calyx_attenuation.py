@@ -75,10 +75,10 @@ hoc_file = os.path.join('MorphologyFiles', 'P30_calyx.hoc')
 hoc = HocReader(hoc_file)
 view = HocViewer(hoc)
 
-electrodesite = hoc.sections['sections[26]']
-relectrodesite = hoc.sections['sections[292]']
+electrode_site = hoc.sections['sections[26]']
+relectrode_site = hoc.sections['sections[292]']
 
-istim = h.iStim(0.5, sec=electrodesite)
+istim = h.iStim(0.5, sec=electrode_site)
 
 clampV = -65
 tdelay = 1
@@ -102,7 +102,7 @@ for s in hoc.sections.keys():
     secvec[s] = h.Vector() # one for each section!
     sec_decorate(hoc.sections[s])
 
-# vcPost = h.SEClamp(0.5, sec=electrodesite)
+# vcPost = h.SEClamp(0.5, sec=electrode_site)
 # vcPost.dur1 = tdelay
 # vcPost.amp1 = clampV
 # vcPost.dur2 = tstep[0]
@@ -119,11 +119,11 @@ istim.iMax = 5.0
 
 (secmd, maxt, tstims) = cnmodel.makestim.makestim(stim, pulsetype='square', dt=h.dt)
 monitor = h.Vector(secmd)
-monitor.play(istim._ref_i, h.dt, 0, sec=electrodesite)
+monitor.play(istim._ref_i, h.dt, 0, sec=electrode_site)
 
-CI.initModel(hoc, electrodeSite=electrodesite)
+CI.init_model(hoc, electrode_site=electrode_site)
 
-CI.getInitialConditionsState(hoc, tdur=50., filename='P30_calyx_init.dat', electrodeSite=electrodesite, reinit=True)
+CI.get_initial_condition_state(hoc, tdur=50., filename='P30_calyx_init.dat', electrode_site=electrode_site, reinit=True)
 
 hoc.h.tstop = 25
 hoc.h.t = 0.
@@ -131,10 +131,10 @@ hoc.h.dt = 0.01  # force small time step. cvode is probably off.
 hoc.h.celsius = 37.0
 hoc.h.finitialize(-50)
 
-#vec['IChan'].record(vcPost._ref_i, sec=electrodesite)
+#vec['IChan'].record(vcPost._ref_i, sec=electrode_site)
 
-vec['V'].record(electrodesite()._ref_v, sec=electrodesite)
-vec['V2'].record(relectrodesite()._ref_v, sec=relectrodesite)
+vec['V'].record(electrode_site()._ref_v, sec=electrode_site)
+vec['V2'].record(relectrode_site()._ref_v, sec=relectrode_site)
 for s in hoc.sections.keys():
     secvec[s].record(hoc.sections[s]()._ref_v, sec=hoc.sections[s])
 vec['time'].record(h._ref_t)
@@ -152,7 +152,7 @@ alls = np.zeros((len(hoc.sections.keys()), len(v2)))
 
 secdist = np.zeros((len(hoc.sections.keys()), 2))
 
-electrodesite.push()  # make this the currently accessed section
+electrode_site.push()  # make this the currently accessed section
 hoc.h.distance()
 for i, s in enumerate(hoc.sections.keys()):
 #    print i, s 

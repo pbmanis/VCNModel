@@ -254,7 +254,7 @@ def plotIV(infile):
     for k, i in enumerate(d['runInfo']['stimInj']):
         layout.getPlot((0,0)).plot(tr[i]['monitor']['time'], tr[i]['monitor']['postsynapticV'], pen=blkline)
         layout.getPlot((1,0)).plot(tr[i]['monitor']['time'], tr[i]['monitor']['postsynapticI'], pen=blueline)
-          #plotRun(infile, tr[i], init=False)
+          #plot_run(infile, tr[i], init=False)
     for k in taufit[0].keys():
         layout.getPlot((0,0)).plot(taufit[0][k], taufit[1][k], pen=redline)
     layout.getPlot((0,0)).setXRange(0, 200.)

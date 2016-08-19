@@ -42,11 +42,8 @@ class CalyxPlots():
         self.plots['p3'] = self.lo.addPlot(title="IInj", row=nr1, col=1, rowspan=1, colspan=9)
         # self.plots['p4'] = self.lo.addPlot(title="", row=6, col=0, rowspan=1, colspan=1)
 
-
-
     def show(self):
         QtGui.QApplication.instance().exec_()
-
 
     def plotResults(self, res, runInfo, somasite=['postsynapticV', 'postsynapticI', 'dendriteV']):
         clist={'axon': 'r', 'heminode': 'g', 'stalk':'y', 'branch': 'g', 'neck': 'b',
@@ -57,7 +54,7 @@ class CalyxPlots():
         dlen = res['monitor']['postsynapticV'].shape[0]
         self.plots['p1'].plot(res['monitor']['time'][:dlen], res['monitor']['postsynapticV'],
             pen=pg.mkPen(clist['soma'], width=1.5), )
-        if 'dendriteV' in somasite and self.plots['p2'] is not None:
+        if 'dendriteV' in somasite and self.plots['p2'] is not None and len(res['monitor']['dendriteV']) > 0:
             self.plots['p1'].plot(res['monitor']['time'][:dlen], 
                 res['monitor']['dendriteV'], pen=pg.mkPen(clist['dendrite'], width=1.5), )
             dxmax = np.max(dx)
@@ -96,70 +93,30 @@ class CalyxPlots():
         if self.plots['p3'] is not None:
             PH.nice_plot(self.plots['p3'])
             PH.calbar(self.plots['p3'], [110, -0.1, 20, 1])
-            
-
 
     def plotFit(self, panel, x, y, c='g'):
         p = eval("self.plots[\'p%d\' % panel]")
         for j in y.keys():
+            if x[j] is None:
+                continue
             p.plot(np.array(x[j]), np.array(y[j]), pen=pg.mkPen(c, width=1.5))
-
 
     def show(self):
         QtGui.QApplication.instance().exec_()
 
 
-# class MyFrame(wx.Frame):
-#     def __init__(self, parent, id, title):
-#       wx.Frame.__init__(self, parent, id, title)
-#
-#       self.CreateStatusBar()
-#       menuBar = wx.MenuBar()
-#       menu = wx.Menu()
-#       menu.Append(101, "&File Dialog", "Shows a File Dialog")
-#       menuBar.Append(menu, "&Dialogs")
-#       self.SetMenuBar(menuBar)
-#
-#       self.Bind(wx.EVT_MENU, self.openfile, id=101)
-#
-#     def openfile(self, event):
-#         dlg = wx.FileDialog(self, "Choose a file", os.getcwd()+'/Canonical', "", "*.p", wx.OPEN)
-#         if dlg.ShowModal() == wx.ID_OK:
-#             path = dlg.GetPath()
-#             mypath = os.path.basename(path)
-#             self.SetStatusText("You selected: %s" % mypath)
-#             fo = open(path, 'r')
-#             d = pickle.load(fo)
-#             fo.close()
-#             print d['runInfo'].keys()
-#             cp.plotResults(d['Results'], d['runInfo'])
-#         dlg.Destroy()
-#
-# class MyApp(wx.App):
-#     def OnInit(self):
-#         myframe = MyFrame(None, -1, "calyxPlots")
-#         myframe.CenterOnScreen()
-#         myframe.Show(True)
-#         return True
-
 if __name__ == "__main__":
-#    tkapp = MyApp(0)
     app = pg.mkQApp()
 
     cp = CalyxPlots()
-    #path = 'Simulations/Normal14.02.08-16.34.41.p'
     path = 'Simulations/MNTB_Cell2_cleaned_14.03.09-07.49.58_mrun_ID9999.p'
     path='Simulations/MNTB_Cell2_cleaned_14.03.09-10.43.04_mrun_ID9999.p'
     fo = open(path, 'r')
     d = pickle.load(fo)
     fo.close()
-    print 'got file'
     if isinstance(d['Results'], list):
-#        print 'doing it listway'
         for i in range(len(d['Results'])):
-#            print d['Results'][i]
             for k in d['Results'][i].keys():
-#                print 'k = ', k
                 cp.plotResults(d['Results'][i][k], d['runInfo'])
     else:
         cp.plotResults(d['Results'], d['runinfo'])

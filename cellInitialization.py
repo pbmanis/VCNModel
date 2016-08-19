@@ -10,7 +10,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 import numpy as np
 
-def initModel(hf, mode='iclamp', vinit=-65., restoreFromFile=False, filename=None, electrodeSite=None, reinit=False):
+def init_model(hf, mode='iclamp', vinit=-65., restore_from_file=False, filename=None, electrode_site=None, reinit=False):
     """
     Model initialization procedure to set RMP to the resting RMP of the model cell.
     Does not instantiate recording or stimulating.
@@ -22,10 +22,10 @@ def initModel(hf, mode='iclamp', vinit=-65., restoreFromFile=False, filename=Non
         mode string ('iclamp', 'vc', 'vclamp'). Default: iclamp
     vinit : float
         initial voltage to start initialization, in mV. Default -65 mV
-    restoreFromFile : boolean
+    restore_from_file : boolean
         flag to cause model to be restored from previously saved state file. 
         The state file must be from the same model construction that exists at the
-        time of the call to initModel.
+        time of the call to init_model.
     Returns
     -------
     boolean : Success of initialization. Always True, just to indicate we were called.
@@ -41,9 +41,12 @@ def initModel(hf, mode='iclamp', vinit=-65., restoreFromFile=False, filename=Non
     # 2. use ic_constant to inject current in each segment to set rmp
     # 3. allow vm to vary in segments, using existing conductances (may be unstable)
     
-    if restoreFromFile:
-        restoreInitialConditionsState(hf, electrodeSite=electrodeSite, filename=filename, reinit=reinit)
-        hf.h.frecord_init()
+    if restore_from_file:
+        restore_initial_conditions_state(hf, electrode_site=electrode_site, filename=filename, reinit=reinit)
+        try:
+            hf.h.frecord_init()
+        except:
+            raise ValueError('Unable to restore initial state')
         return True
     
     if hf.h.CVode().active():
@@ -64,28 +67,28 @@ def initModel(hf, mode='iclamp', vinit=-65., restoreFromFile=False, filename=Non
     hf.h.fcurrent()
     hf.h.frecord_init()
     
-    if electrodeSite is not None:
-        vm = electrodeSite.v
+    if electrode_site is not None:
+        vm = electrode_site.v
     else:
         vm = 0.
     print 'Initialized with finitialize, starting at %8.2f, ending %8.2f ' % (vinit, vm)
 
     return True
 
-def getInitialConditionsState(hf, tdur=2000., filename=None, electrodeSite=None, reinit=False):
+def get_initial_condition_state(hf, tdur=2000., filename=None, electrode_site=None, reinit=False):
     """
     Run model for a time, and then save the state
     """
     # first to an initialization to get close
-    print 'getInitialConditionsState\n'
+    print 'get_initial_condition_state\n'
     print '  starting t = %8.2f' % hf.h.t
-    initModel(hf, restoreFromFile=False, electrodeSite=electrodeSite, reinit=reinit)
+    init_model(hf, restore_from_file=False, electrode_site=electrode_site, reinit=reinit)
     hf.h.tstop = tdur
     print 'running for %8.2f ms' % tdur
     hf.h.run()
     print '  run completed, t = %8.2f' % hf.h.t
-    if electrodeSite is not None:
-        vfinal = electrodeSite.v
+    if electrode_site is not None:
+        vfinal = electrode_site.v
     else:
         vfinal = 0.
     print '  V = %8.2f' % vfinal
@@ -100,39 +103,43 @@ def getInitialConditionsState(hf, tdur=2000., filename=None, electrodeSite=None,
     stateFile.close()
 
 
-def restoreInitialConditionsState(hf, filename, electrodeSite=None):
+def restore_initial_conditions_state(hf, filename, electrode_site=None, reinit=False):
 
-    hf.h.finitialize()
-    stateFile = hf.h.File() # restore state AFTER finitialize
-    state = hf.h.SaveState()
+    print 'Restoring initial conditions from file: %s' % filename
+    try:
+        hf.h.finitialize()
+        stateFile = hf.h.File() # restore state AFTER finitialize
+        state = hf.h.SaveState()
 
-    print 'Restored initial conditions from file: %s' % filename
-    stateFile.ropen(filename)
-    state.fread(stateFile)
-    stateFile.close()
-    state.restore(1)
-    if electrodeSite is not None:
-        vm = electrodeSite.v
-    else:
-        vm = hf.h('v')
-#        print 'restored soma v: %8.2f' % vm
-#        print 'v_init after restore: %8.2f' % hf.h.v_init
-    hf.h.v_init = vm  # note: this leaves a very slight offset...
-#        for group in hf.sec_groups.keys():
-#            for sec in hf.sec_groups[group]:
-#                section = hf.get_section(sec)
-#                print 'section: %s  vm=%8.3f' % (section.name(), section(0.5).v)
+        stateFile.ropen(filename)
+        state.fread(stateFile)
+        stateFile.close()
+        state.restore(1)
+        if electrode_site is not None:
+            vm = electrode_site.v
+        else:
+            vm = hf.h('v')
+    #        print 'restored soma v: %8.2f' % vm
+    #        print 'v_init after restore: %8.2f' % hf.h.v_init
+        hf.h.v_init = vm  # note: this leaves a very slight offset...
+    #        for group in hf.sec_groups.keys():
+    #            for sec in hf.sec_groups[group]:
+    #                section = hf.get_section(sec)
+    #                print 'section: %s  vm=%8.3f' % (section.name(), section(0.5).v)
+    except:
+        raise ValueError('Cannot restore state from the file - perhaps wrong cell type?')
+        
 monitor = {}
 
-def testInitialConditions(hf, electrodeSite=None, filename=None):
-    assert electrodeSite is not None
+def test_initial_conditions(hf, electrode_site=None, filename=None):
+    assert electrode_site is not None
     monitor['time'] = hf.h.Vector()
     monitor['time'].record(hf.h._ref_t)
     monitor['Velectrode'] = hf.h.Vector()
-    print 'site: ', electrodeSite
-    monitor['Velectrode'].record(electrodeSite(0.5)._ref_v, sec=electrodeSite)
+    print 'site: ', electrode_site
+    monitor['Velectrode'].record(electrode_site(0.5)._ref_v, sec=electrode_site)
 
-    restoreInitialConditionsState(hf, filename=filename, electrodeSite=electrodeSite)
+    restore_initial_conditions_state(hf, filename=filename, electrode_site=electrode_site)
     hf.h.t = 0.
     hf.h.tstop = 50.
 #    hf.h.run()
