@@ -34,6 +34,7 @@ optional arguments:
                         Define the cell type (default: Bushy)
   --model {XM13,RM03,XM13PasDend,Calyx,MNTB,L23Pyr}, -M {XM13,RM03,XM13PasDend,Calyx,MNTB,L23Pyr}
                         Define the model type (default: XM13)
+  --sgcmodel {Zilany, cochlea}, -M {Zilany, cochlea}
   --protocol {initIV,testIV,runIV,initAN,runANPSTH,runANSingles}, -P {initIV,testIV,runIV,initAN,runANPSTH,runANSingles}
                         Protocol to use for simulation (default: IV)
   --inputpattern        Cell ID to use for input pattern if substituting inputs
@@ -83,6 +84,9 @@ import cellInitialization as cellInit
 from cnmodel import cells
 from cnmodel.util import sound
 
+import cochlea
+import thorns
+
 import pylibrary.Utility as pu  # access to spike finder routine
 import pyqtgraph.multiprocess as mproc
 
@@ -115,11 +119,13 @@ class ModelRun():
         # use v2 files for model with rescaled soma
         self.cellChoices = ['Bushy', 'TStellate', 'DStellate']
         self.modelChoices = ['XM13', 'RM03', 'XM13PasDend', 'Calyx', 'MNTB', 'L23Pyr']
+        self.SGCmodelChoices = ['Zilany', 'cochlea']  # cochlea is python model of Zilany data, no matlab, JIT computation
         self.cmmrModeChoices = ['CM', 'CD', 'REF']  # comodulated, codeviant, reference
         self.SRChoices = ['LS', 'MS', 'HS', 'fromcell']  # AN SR groups (assigned across all inputs)
         self.protocolChoices = ['initIV', 'testIV', 'runIV', 'initAN', 'runANPSTH', 'runANSingles']
-        self.soundChoices = ['tone', 'noise', 'stationaryNoise', 'SAM', 'CMMR']
+        self.soundChoices = ['tonepip', 'noise', 'stationaryNoise', 'SAM', 'CMMR']
         self.speciesChoices = ['mouse', 'guineapig']
+        
 
         self.srname = ['**', 'LS', 'MS', 'HS']  # runs 1-3, not starting at 0
         self.cellID = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
@@ -131,6 +137,7 @@ class ModelRun():
 
         self.Params['cellType'] = self.cellChoices[0]
         self.Params['modelType'] = self.modelChoices[0]
+        self.Params['SGCmodelType'] = self.SGCmodelChoices[0]
         self.Params['species'] = self.speciesChoices[0]
         self.Params['SRType'] = self.SRChoices[2]
         self.Params['SR'] = self.Params['SRType']  # actually used SR this might be cell-defined, rather than command defined
@@ -152,7 +159,7 @@ class ModelRun():
         self.Params['threshold'] = -20
         self.Params['plotFlag'] = False
         self.Params['auto_initialize'] = False
-        
+        self.Params['nWorkers'] = 4
         self.baseDirectory = 'VCN_Cells'
         self.morphDirectory = 'Morphology'
         self.initDirectory = 'Initialization'
@@ -580,7 +587,7 @@ class ModelRun():
             dendVoltage=result['dendriteVoltage'])
 
 
-    def ANRun_singles(self, hf, verify=False, seed=None):
+    def ANRun_singles(self, postCell, verify=False, seed=None):
         """
         Establish AN inputs to soma, and run the model.
         synapseConfig: list of tuples
@@ -597,8 +604,10 @@ class ModelRun():
         verify : boolean (default: False)
             Flag to control printing of various intermediate results
         
-        seed : int (default: 0)
-            A random number seed to use when generating AN inputs (not used)
+        seed : int (default: None)
+            A random number seed to use when generating AN inputs.
+            Allows different runs with different spike trains, but also
+            to recreate a particular run.
 
         Returns
         -------
@@ -618,7 +627,7 @@ class ModelRun():
         #             'Fs': self.Fs, 'F0': self.f0, 'dB': self.dB, 'RF': self.RF, 'SR': self.SR,
         #             'cellType': self.Params['cellType'], 'modelType': self.Params['modelType'], 'nReps': nReps, 'threshold': threshold}
 
-        preCell, postCell, synapse, self.electrodeSite = self.configureCell(hf, synapseConfig, celltype, stimInfo)
+        preCell, synapse, self.electrodeSite = self.configureCell(postCell, synapseConfig, celltype, stimInfo)
 
 
         nSyns = len(synapseConfig)
@@ -654,21 +663,21 @@ class ModelRun():
                     else:
                         p.gmax = gMax[i]  # except the shosen one
 
-            nWorkers = self.Params['nWorkers']
-            TASKS = [s for s in range(nReps)]
-            tresults = [None]*len(TASKS)
+            tresults = [None]*nReps
 
             if parallel:
+                nWorkers = self.Params['nWorkers']
+                TASKS = [s for s in range(nReps)]
                 # run using pyqtgraph's parallel support
                 with mproc.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
                     for j, x in tasker:
-                        tresults = self.singleANRun(hf, j, synapseConfig,
+                        tresults = self.singleANRun(postCell.hr, j, synapseConfig,
                             stimInfo, seeds, preCell, postCell, self.an_setup_time)
                         tasker.results[j] = tresults
                 # retreive the data
             else:  # easier to debug
                 for j, N in enumerate(range(nReps)):
-                    tresults[j] = self.singleANRun(hf, j, synapseConfig,
+                    tresults[j] = self.singleANRun(postCell.hr, j, synapseConfig,
                             stimInfo, seeds, preCell, postCell, self.an_setup_time)
             for j, N in enumerate(range(nReps)):
 #                print 'Rep: %d' % N
@@ -783,6 +792,15 @@ class ModelRun():
         electrodeSite = thisCell.hr.get_section(electrodeSection)
         return (preCell, synapse, electrodeSite)
 
+    def set_dbspl(self, signal, dbspl):
+        """Scale the level of `signal` to the given dB_SPL."""
+        p0 = 20e-6
+        rms = np.sqrt(np.sum(signal**2) / signal.size)
+
+        scaled = signal * 10**(dbspl / 20.0) * p0 / rms
+
+        return scaled
+
 
     def singleANRun(self, hf, j, synapseConfig, stimInfo, seeds, preCell, postCell, an_setup_time):
         """
@@ -816,28 +834,51 @@ class ModelRun():
             A dictionary containing 'Vsoma', 'Vdend', 'time', and the 'ANSpikeTimes'
         
         """
-        filename = os.path.join(self.baseDirectory, self.cellID, self.initDirectory, self.Params['initANStateFile'])
+        filename = os.path.join(self.baseDirectory, self.cellID,
+                    self.initDirectory, self.Params['initANStateFile'])
         cellInit.restoreInitialConditionsState(hf, electrodeSite=None, filename=filename)
-        stim=[]
         # make independent inputs for each synapse
-        ANSpikeTimes=[]
+        ANSpikeTimes = []
         an0_time = time.time()
         nrn_run_time = 0.
+        #
+        # Generate stimuli - they are always the same for every synaptic input, so just generate once
+        #
+        if isinstance(stimInfo['pip_start'], list):
+            pips = stimInfo['pip_start']
+        else:
+            pips = [stimInfo['pip_start']]
+        if stimInfo['soundtype'] == 'tonepip':
+            stim = sound.TonePip(rate=stimInfo['Fs'], duration=stimInfo['run_duration'], 
+                              f0=stimInfo['F0'], dbspl=stimInfo['dB'],
+                              ramp_duration=stimInfo['RF'], pip_duration=stimInfo['pip_duration'],
+                              pip_start=pips)
+        elif stimInfo['soundtype'] == 'SAM':
+            stim = sound.SAMTone(rate=stimInfo['Fs'], duration=stimInfo['run_duration'], 
+                              f0=stimInfo['F0'], dbspl=stimInfo['dB'],
+                              ramp_duration=stimInfo['RF'], fmod=stimInfo['fmod'],
+                                   dmod=stimInfo['dmod'],
+                              pip_duration=stimInfo['pip_duration'],
+                              pip_start=pips)
+        else:
+            raise ValueError('StimInfo sound type %s not implemented' % stimInfo['soundtype'])
+
         for i, syn in enumerate(synapseConfig):
-            if stimInfo['soundtype'] == 'tonepip':
-                stim.append(sound.TonePip(rate=stimInfo['Fs'], duration=stimInfo['run_duration'], 
-                                  f0=stimInfo['F0'], dbspl=stimInfo['dB'],
-                                  ramp_duration=stimInfo['RF'], pip_duration=stimInfo['pip_duration'],
-                                  pip_start=stimInfo['pip_start']))
-            elif stimInfo['soundtype'] == 'SAM':
-                stim.append(sound.SAMTone(rate=stimInfo['Fs'], duration=stimInfo['run_duration'], 
-                                  f0=stimInfo['F0'], dbspl=stimInfo['dB'],
-                                  ramp_duration=stimInfo['RF'], fmod=stimInfo['fmod'], dmod=stimInfo['dmod'],
-                                  pip_duration=stimInfo['pip_duration'],
-                                  pip_start=stimInfo['pip_start'] ))
-                
             nseed = seeds[j, i]
-            preCell[i].set_sound_stim(stim[-1], seed=nseed)  # generate spike train, connect to terminal
+
+            if self.Params['SGCmodelType'] in ['Zilany']:
+#                print 'running with Zilany'
+                preCell[i].set_sound_stim(stim, seed=nseed, simulator='matlab')  # generate spike train, connect to terminal
+            
+            elif self.Params['SGCmodelType'] in ['cochlea']:
+#                print 'running with cochlea, j=%d' % j
+                wf = self.set_dbspl(stim.generate(), stimInfo['dB'])
+                stim._sound = wf
+                preCell[i].set_sound_stim(stim, seed=nseed, simulator='cochlea')  # generate spike train, connect to terminal
+
+            else:
+                raise ValueError('SGC model type type %s not implemented' % self.Params['SGCmodelType'])
+                
             ANSpikeTimes.append(preCell[i]._spiketrain)
         an_setup_time += (time.time() - an0_time)
         nrn_start = time.time()
@@ -849,16 +890,16 @@ class ModelRun():
         Vsoma.record(postCell.soma(0.5)._ref_v, sec=postCell.soma)
         Vdend.record(dendsite(0.5)._ref_v, sec=dendsite)
         rtime.record(hf.h._ref_t)
-        print '...running '
+#        print '...running '
         hf.h.finitialize()
         hf.h.tstop = stimInfo['run_duration']*1000.
         hf.h.t = 0.
         hf.h.batch_save() # save nothing
         hf.h.batch_run(hf.h.tstop, hf.h.dt, "an.dat")
-        # old - don't d this! #hf.h.finitialize()
+        # old - don't di this! #hf.h.finitialize()
         # hf.h.run()
         nrn_run_time += (time.time() - nrn_start)
-        print '...done'
+#        print '...done'
         anresult = {'Vsoma': np.array(Vsoma), 'Vdend': np.array(Vdend), 'time': np.array(rtime), 'ANSpikeTimes': ANSpikeTimes, 'stim': stim}
         return anresult
 
@@ -951,6 +992,9 @@ if __name__ == "__main__":
     parser.add_argument('--model', '-M', dest='modelType', action='store',
                    default='XM13', choices=model.modelChoices,
                    help='Define the model type (default: XM13)')
+    parser.add_argument('--sgcmodel', dest='SGCmodelType', action='store',
+                   default='Zilany', choices=model.SGCmodelChoices,
+                   help='Define the SGC model type (default: Zilany)')
     parser.add_argument('--protocol', '-P', dest='runProtocol', action='store',
                    default='IV', choices=model.protocolChoices,
                    help='Protocol to use for simulation (default: IV)')
@@ -960,6 +1004,9 @@ if __name__ == "__main__":
     parser.add_argument('--inputpattern', dest='inputPattern', action='store',
                   default=None,
                   help='cell input pattern to use (substitute) from cell_config.py')
+    parser.add_argument('--stimulus', dest='soundtype', action='store',
+                   default='tonepip', choices=model.soundChoices,
+                   help='Define the stimulus type (default: tonepip)')
 
                   
     # lowercase options are generally parameter settings:

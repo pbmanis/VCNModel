@@ -69,8 +69,8 @@ Parameters:
         self.Params['auto_initialize'] = False
 
 """
-common = {'F0': 4000., 'fmod': 20., 'dmod': 50., 'nReps': 2, 'SRType': 'MS',
-    'run_duration': 0.8, 'dB': 40., 'cellType': 'Bushy'}
+common = {'F0': 4000., 'fmod': 20., 'dmod': 0., 'nReps': 2, 'SRType': 'MS',
+    'run_duration': 2.25, 'dB': 40., 'cellType': 'Bushy', 'pip_duration': 2.0}
 
 # For each run, the following values are changed:
 
@@ -99,3 +99,5 @@ for runid in runs.keys():
     if not stateFileExists:
         i1.Params['runProtocol'] = 'initAN'
         i1.runModel()
+    i1.Params['runProtocol'] = 'runANPSTH'
+    i1.runModel()

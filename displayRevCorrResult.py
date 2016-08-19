@@ -11,6 +11,7 @@ import sac_campagnola as SAC
 import os.path
 import pycircstat as PCS
 import pylibrary.PlotHelpers as PH
+import spikestatistics as SPKS
 
 pattern_list = ['c18', 'c08', 'c09', 'no']
 patterns =  pattern_list #[0] # ['no']
@@ -20,12 +21,41 @@ fn[pattern_list[1]] = 'AN_Result_VCN_c18_VCN_c08_delays_N020_040dB_4000.0_MS.p'
 fn[pattern_list[2]] = 'AN_Result_VCN_c18_VCN_c09_delays_N020_040dB_4000.0_MS.p'
 fn[pattern_list[3]] = 'AN_Result_VCN_c18_delays_N020_040dB_4000.0_FM10.0_DM000_MS.p'
 
-# patterns = ['c18']
-# fn = {'c18':'AN_Result_VCN_c18_VCN_c18_delays_N002_040dB_4000.0_FM20.0_DM000_MS.p'}
+patterns = ['c18']
+fn = {'c18':'AN_Result_VCN_c18_VCN_c18_delays_N002_040dB_4000.0_FM20.0_DM000_MS.p'}
 basepath = 'VCN_Cells/VCN_c18/Simulations/AN'
 
 d = {}
+p = 'c18'
+h = open(os.path.join(basepath, fn[p]))
+d[p] = pickle.load(h)
+h.close()
 
+print d[p].keys()
+st = d[p]['spikeTimes']
+an = d[p]['inputSpikeTimes']
+print len(an[0])
+fig, ax = plt.subplots()
+binw = 0.2
+width = 5.
+tx = np.arange(-width, 0, binw)
+for anno in range(len(an[0])):  # for each ANF input (get frim those on first trial)
+    nt = 0
+    for trial in range(len(st)):  # sum across trials
+        ann = an[trial][anno]
+        if trial == 0:
+            C = SPKS.correlogram(st[trial], ann, width=width, bin=binw, T=None)
+        else:
+            C = C + SPKS.correlogram(st[trial], ann, width=width, bin=binw, T=None)
+        nt = nt + 1
+    nc = len(C)
+    ax.plot(tx, C[0:nc/2])
+PH.nice_plot(ax)
+ax.set_ylim(0, 0.015)
+ax.set_ylabel('R')
+ax.set_xlabel('Time before Bushy cell spike')
+plt.show()
+exit()
 
 
 #fig, ax = plt.subplots(len(pattern_list)+1, 3)
@@ -56,10 +86,6 @@ fig.tight_layout()
 # plt.show()
 # exit()
 
-for p in patterns:
-    h = open(os.path.join(basepath, fn[p]))
-    d[p] = pickle.load(h)
-    h.close()
 
 # d[cell] has keys: ['inputSpikeTimes', 'somaVoltage', 'spikeTimes', 'time', 'dendriteVoltage', 'stimInfo', 'stimWaveform']
 #print 'data keys: ', d.keys()
