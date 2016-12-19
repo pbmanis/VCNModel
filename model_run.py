@@ -424,7 +424,7 @@ class ModelRun():
         print ('iv_run: iv_run begins')
         if verbose:
             print ('iv_run: calling generateRun')
-        self.R = GenerateRun(self.post_cell.hr, idnum=self.idnum, celltype=self.Params['cellType'],
+        self.R = GenerateRun(self.post_cell, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,

@@ -21,12 +21,46 @@ synperum2 = 0.65 # average density of synapses, synapses per micron sequared
 # Measurements:
 # distances are in microns
 # size is measured as radii (NOT diameter)
+#    [(ASA), nsyn(calculated), delay, SRgroup, delay2, axonlength, branch length, e or i]
+    
+# VCN_c18 = [ [(216.66), 0., 2, np.nan, np.nan, 49.2, 1.222, 'e' ],
+#             [(122.16), 0., 2, 82.7, 1.417, np.nan, np.nan, 'e'],
+#             [(46.865), 0., 2, 67.3 , 1.309, 62.1, 0.717,  'e' ],
+#             [(84.045), 0., 2, 22.4 , 1.416, 90.3, 0.924, 'e'],
+#             [(80.27),  0., 2, np.nan, np.nan, 120.3,  0.687, 'e'],
+#             ]
 
-VCN_c18 = [ [(216.66), 0., 2, np.nan, np.nan, 49.2, 1.222, 'e' ],
-            [(122.16), 0., 2, 82.7, 1.417, np.nan, np.nan, 'e'], 
-            [(46.865), 0., 2, 67.3 , 1.309, 62.1, 0.717,  'e' ],
-            [(84.045), 0., 2, 22.4 , 1.416, 90.3, 0.924, 'e'],
-            [(80.27),  0., 2, np.nan, np.nan, 120.3,  0.687, 'e'],
+# based on new data 12/17/2016, from Spirou (table in Final7_Somatic_Input_ASAs.ods)
+VCN_c18 = [ [(249.94), 0., 2, np.nan, np.nan, 49.2, 1.222, 'e' ],
+            [(155.8), 0., 2, 82.7, 1.417, np.nan, np.nan, 'e'], 
+            [(115.99),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            [(98.37), 0., 2, 22.4 , 1.416, 90.3, 0.924, 'e'],
+            [(64.3),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            [(63.27),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            [(61.3), 0., 2, 67.3 , 1.309, 62.1, 0.717,  'e' ],
+            [(34.03),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            [(32.49),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            [(26.14),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(19.77),  0., 2, np.nan, np.nan, 1,  1, 'e'],  # George says not to consider these yet - are of unknown origin
+            # [(19.72),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(17.08),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(16.71),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(15.66),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(14.74),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(13.45),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(12.71),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(7.11),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(6.86),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(6.82),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(6.71),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(6.55),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(5.74),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(5.41),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(5.38),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(5.02),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(3.59),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(1.08),  0., 2, np.nan, np.nan, 1,  1, 'e'],
+            # [(0.87),  0., 2, np.nan, np.nan, 1,  1, 'e'],
             ]
 
 # George says cell 7 is not a GBC
