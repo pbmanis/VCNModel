@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = 'pbmanis'
 
 import os
@@ -84,7 +85,7 @@ class AnalyzeRun():
             eventually should also include time constant measures,and adaptation ratio
         """
         if verbose:
-            print 'starting analyzeIV'
+            print('starting analyzeIV')
         # print 'tw: ', tw
         # print 'thr: ', thr
         ntraces = np.shape(V)[0]
@@ -108,7 +109,7 @@ class AnalyzeRun():
         dt = t[1]-t[0]
         for j in range(0, ntraces):
             if verbose:
-                print '    analyzing trace: %d' % (j)
+                print('    analyzing trace: %d' % (j))
             ts = tw[0]
             te = tw[1]
             td = tw[2]
@@ -135,12 +136,12 @@ class AnalyzeRun():
             # print 'ssi: ', ssi[0]
             if ssi[0] < 0.0 and (minv[1]-ts) > 5.*dt: # just for hyperpolarizing pulses...
                 if verbose:
-                    print '    fitting trace %d' % j
+                    print('    fitting trace %d' % j)
 
-                    print 't.shape: ', t.shape
-                    print 'V.shape: ', V[j,:].shape
-                    print 'ts, minv: ', ts, minv
-                    print 'ssi[0]: ', ssi[0]
+                    print('t.shape: ', t.shape)
+                    print('V.shape: ', V[j,:].shape)
+                    print('ts, minv: ', ts, minv)
+                    print('ssi[0]: ', ssi[0])
 
                 taus[j], xtfit[j], ytfit[j] = self.single_taufit(t, V[j,:], ts, minv[1])
                 vrmss.append(rvm[0])
@@ -149,15 +150,15 @@ class AnalyzeRun():
                 vmin.append(minv[0]) # and min voltage
                 tmin.append(minv[1]) # and min time
                 if verbose:
-                    print '     calling fit'
+                    print('     calling fit')
                 if (te-minv[1]) > 10.*dt:
                     tauih[j], xihfit[j], yihfit[j] = self.single_taufit(t, V[j,:], minv[1], te) # fit the end of the trace
                 if verbose:
-                    print '     completed fit'
+                    print('     completed fit')
             if verbose:
-                print '   >>> completed analyzing trace %d' % j
+                print('   >>> completed analyzing trace %d' % j)
         if verbose:
-            print 'done with traces'
+            print('done with traces')
         # print 'vss: ', vss
         vss = np.array(vss)  # steady state during current pulse
         vrmss = np.array(vrmss)  # resting potential for hyperpolarizaing pulses only
@@ -175,7 +176,7 @@ class AnalyzeRun():
         else:
             Rinpk = np.nan
         if verbose:
-            print 'building IVResult'
+            print('building IVResult')
         self.IVResult = {'I': ic, 'Vmin': vmin, 'Vss': vss, 'Vrmss': vrmss,
                 'Vm': vm, 'Tmin': np.array(tmin),
                 'Ispike': np.array(ispikes), 'Nspike': np.array(nspikes), 'Tspike': np.array(spk),

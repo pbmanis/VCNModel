@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = 'pbmanis'
 """
 GenerateRun is a class that sets up for a run after the cell has been decorated with channels.
@@ -11,6 +12,7 @@ Methods:
     set up the stimuli, initialize the state of the model, and then run the model, generating a plot
 February 2014, Paul B. Manis UNC Chapel Hill
 """
+
 
 import os
 import numpy as np
@@ -107,13 +109,13 @@ class GenerateRun():
                 self.runInfo.nStim - 1) / self.runInfo.stimFreq + self.runInfo.stimPost + self.runInfo.stimDelay
 
         else:
-            print 'reading spike train'
+            print('reading spike train')
             maxt = 0.
             with open(self.runInfo.inFile, 'r') as csvfile:
                 spks = csv.reader(csvfile, delimiter=',')
                 for i, row in enumerate(spks):
                     if i == 0:  # first line
-                        print row
+                        print(row)
                         maxt = float(row[1]) * 1000
                         reps = int(row[0])
                         continue
@@ -129,7 +131,7 @@ class GenerateRun():
         self.filename=None
 
         if verbose:
-            print 'runinfo initialization done'
+            print('runinfo initialization done')
 
     def mkdir_p(self, path):
         try:
@@ -169,7 +171,7 @@ class GenerateRun():
         generation of stimuli and monitoring of voltages and currents
         """
         if verbose:
-            print '_prepareRun'
+            print('_prepareRun')
         for group in self.hf.sec_groups.keys(): # get morphological components
             if not self.saveAllSections:  # just save soma sections
                 if group.rsplit('[')[0] == 'soma':
@@ -245,13 +247,13 @@ class GenerateRun():
             self.monitor['dendriteV'].record(self.dendriticElectrodeSite(0.5)._ref_v, sec=self.dendriticElectrodeSite)
             self.mons = ['postsynapticV', 'postsynapticI', 'dendriteV' ]
         else:
-            print 'generate_run.py, mode %s  unknown' % self.runInfo.postMode
+            print('generate_run.py, mode %s  unknown' % self.runInfo.postMode)
             return
         self.hf.h.tstop = maxt+self.runInfo.stimDelay
-        print ('PrepareRun: \n   maxt = {:8.2f}'.format(maxt))
-        print ('   delay: {:9.3f} ms\n   duration: {:9.3f} ms'.format(self.runInfo.stimDelay, self.runInfo.stimDur))
-        print ('   tstop: {:9.3f} ms'.format(self.hf.h.tstop))
-        print ("   t:  {:8.2f}\n----------------\n".format(self.hf.h.t))
+        print('PrepareRun: \n   maxt = {:8.2f}'.format(maxt))
+        print('   delay: {:9.3f} ms\n   duration: {:9.3f} ms'.format(self.runInfo.stimDelay, self.runInfo.stimDur))
+        print('   tstop: {:9.3f} ms'.format(self.hf.h.tstop))
+        print("   t:  {:8.2f}\n----------------\n".format(self.hf.h.t))
         self.monitor['time'].record(self.hf.h._ref_t)
         #self.hf.h.topology()
         #pg.show()
@@ -276,13 +278,13 @@ class GenerateRun():
             self.makeFileName(self.runInfo.filename + mstr )
 
         if verbose:
-            print ('genrate_run::doRun: basename is = {:s}'.format(self.basename))
+            print('genrate_run::doRun: basename is = {:s}'.format(self.basename))
         #self.hf.update() # make sure channels are all up to date
         self.results={}
         
         nLevels = len(self.runInfo.stimInj)
         nWorkers = workers
-        print ('doRun: initfile = {:s}'.format(initfile))
+        print('doRun: initfile = {:s}'.format(initfile))
         TASKS = [s for s in range(nLevels)]
         tresults = [None]*len(TASKS)
         runner = [None]*nLevels
@@ -318,7 +320,7 @@ class GenerateRun():
         if save == 'monitor':
             self.saveRuns('monitor')
         if verbose:
-            print ('doRun: ivresult is: {:32}'.format(self.IVResult))
+            print('doRun: ivresult is: {:32}'.format(self.IVResult))
         if self.plotting:
             self.plotFits(1, self.IVResult['taufit'], c='r')
             self.plotFits(1, self.IVResult['ihfit'], c='b')
@@ -346,9 +348,9 @@ class GenerateRun():
         Inputs: flag to put up a test plot....
         """
         if verbose:
-            print '_executeRun'
+            print('_executeRun')
         assert self.run_initialized == True
-        print 'Starting Vm at electrode site: ', self.electrode_site.v
+        print('Starting Vm at electrode site: {:6.2f}'.format(self.electrode_site.v))
         
         # one way
         self.hf.h.t = 0
@@ -360,7 +362,7 @@ class GenerateRun():
         """
         self.hf.h.batch_save() # save nothing
         self.hf.h.batch_run(self.hf.h.tstop, self.hf.h.dt, "v.dat")
-        print 'Finishing Vm: ', self.electrode_site.v
+        print('Finishing Vm: {:6.2f}'.format(self.electrode_site.v))
         if testPlot:
             pg.mkQApp()
             pl = pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))
@@ -382,7 +384,7 @@ class GenerateRun():
                          distanceMap = self.hf.distanceMap,
         )
         if verbose:
-            print '    _executeRun completed'
+            print('    _executeRun completed')
         return results
 
 

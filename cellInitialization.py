@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 """
 cellInitialization provides routines for initializing the membrane potential
 of extended cells.
@@ -6,11 +8,12 @@ finitialize, and should not be run with h.run(). Use fadvance instead, or
 even better, use the "new" h.batch_run() function in hoc.
 
 """
+
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 import numpy as np
 
-def init_model(hf, mode='iclamp', vinit=-67., restore_from_file=False, filename=None, electrode_site=None, reinit=False):
+def init_model(hf, mode='iclamp', vinit=-65., restore_from_file=False, filename=None, electrode_site=None, reinit=False):
     """
     Model initialization procedure to set RMP to the resting RMP of the model cell.
     Does not instantiate recording or stimulating.
@@ -43,7 +46,7 @@ def init_model(hf, mode='iclamp', vinit=-67., restore_from_file=False, filename=
     # 3. allow vm to vary in segments, using existing conductances (may be unstable)
     
     if restore_from_file:
-        restore_initial_condition_state(hf, electrode_site=electrode_site, filename=filename, reinit=reinit)
+        restore_initial_conditions_state(hf, electrode_site=electrode_site, filename=filename, reinit=reinit)
         try:
             hf.h.frecord_init()
         except:
@@ -54,23 +57,23 @@ def init_model(hf, mode='iclamp', vinit=-67., restore_from_file=False, filename=
     #     #hf.cvode.re_init()
     #     hf.h.CVode().active(0)  # turn cvode off (note, in this model it will be off because one of the mechanisms is not compatible with cvode at this time)
     
-    print 'v: ', electrode_site.v, vinit
+    print('v: ', electrode_site.v, vinit)
     hf.h.finitialize(vinit)
 #    hf.h.fcurrent()
     hf.h.t = -1e6
     dtsav = hf.h.dt
-    print 'dtsav: ', dtsav
+    print('dtsav: ', dtsav)
     hf.h.dt = 1e3  # big time steps for slow process
     n = 0
     while hf.h.t < 0:
         n += 1
         hf.h.fadvance()
         if n < 5:
-            print 'v: ', electrode_site.v
-    print 'n: ', n
-    print 'hf.h.dt: ', hf.h.dt
+            print('v: ', electrode_site.v)
+    print('n: ', n)
+    print('hf.h.dt: ', hf.h.dt)
     hf.h.dt = dtsav
-    print 'hf.h.dt: ', hf.h.dt
+    print('hf.h.dt: ', hf.h.dt)
     hf.h.t = 0
     if hf.h.CVode().active():
         hf.h.CVode().re_init()
@@ -81,7 +84,7 @@ def init_model(hf, mode='iclamp', vinit=-67., restore_from_file=False, filename=
         vm = electrode_site.v
     else:
         vm = 0.
-    print 'Initialized with finitialize, starting at %8.2f, ending %8.2f ' % (vinit, vm)
+    print('Initialized with finitialize, starting at %8.2f, ending %8.2f ' % (vinit, vm))
     
     return True
 
@@ -93,10 +96,10 @@ def printCellInfo(cell):
 #                print len(cell.all_sections[st])
 #                print dir(cell.all_sections[st][0])
                 for sg in cell.all_sections[st]:
-                    print 'nseg: ', sg.nseg
+                    print('nseg: ', sg.nseg)
 #                print cell.all_sections[st][0].allseg()  # iteration object over all segments.
             if i < 20:
-                print '%s %d: %d' % (st, i, s.nseg)
+                print('%s %d: %d' % (st, i, s.nseg))
 
 def get_initial_condition_state(cell, tdur=2000., filename=None, electrode_site=None, reinit=False):
     """
@@ -109,37 +112,38 @@ def get_initial_condition_state(cell, tdur=2000., filename=None, electrode_site=
     
     hf = cell.hr
     # first to an initialization to get close
-    print 'get_initial_condition_state\n'
-    print '  starting t = %8.2f' % hf.h.t
+    print('get_initial_condition_state\n')
+    print('  starting t = %8.2f' % hf.h.t)
     cell.cell_initialize()
-    initModel(hf, restore_from_file=False, electrode_site=electrode_site, reinit=reinit)
+    init_model(hf, restore_from_file=False, electrode_site=electrode_site, reinit=reinit)
     hf.h.tstop = tdur
-    print 'running for %8.2f ms' % tdur
+    print('running for %8.2f ms' % tdur)
     hf.h.run()
-    print '  run completed, t = %8.2f' % hf.h.t
+    print('  run completed, t = %8.2f' % hf.h.t)
     if electrode_site is not None:
         vfinal = electrode_site.v
     else:
         vfinal = 0.
-    print '  V = %8.2f' % vfinal
+    print('  V = %8.2f' % vfinal)
     state = hf.h.SaveState()
     stateFile = hf.h.File()
     state.save()
     if filename is None:
         filename = 'neuronstate.dat'
-    print '  writing state to : %s' % filename
+    print('  writing state to : %s' % filename)
     stateFile.wopen(str(filename))
     state.fwrite(stateFile)
     stateFile.close()
 
 
-def restore_initial_condition_state(hf, filename, electrode_site=None, reinit=False):
+def restore_initial_conditions_state(cell, filename, electrode_site=None, reinit=False):
     
+    hf = cell.hr
     hf.h.finitialize()
     stateFile = hf.h.File() # restore state AFTER finitialize
     state = hf.h.SaveState()
     
-    print 'Restored initial conditions from file: %s' % filename
+    print('Restored initial conditions from file: %s' % filename)
     stateFile.ropen(filename)
     state.fread(stateFile)
     stateFile.close()
@@ -157,15 +161,15 @@ def restore_initial_condition_state(hf, filename, electrode_site=None, reinit=Fa
 #                print 'section: %s  vm=%8.3f' % (section.name(), section(0.5).v)
 monitor = {}
 
-def testInitialConditions(hf, electrode_site=None, filename=None):
+def test_initial_conditions(hf, electrode_site=None, filename=None):
     assert electrode_site is not None
     monitor['time'] = hf.hr.h.Vector()
     monitor['time'].record(hf.hr.h._ref_t)
     monitor['Velectrode'] = hf.hr.h.Vector()
-    print 'site: ', electrode_site
+    print('site: ', electrode_site)
     monitor['Velectrode'].record(electrode_site(0.5)._ref_v, sec=electrode_site)
     
-    restore_initial_condition_state(hf, filename=filename, electrode_site=electrode_site)
+    restore_initial_conditions_state(hf, filename=filename, electrode_site=electrode_site)
     hf.hr.h.t = 0.
     hf.hr.h.tstop = 50.
 #    hf.hr.h.run()
@@ -174,8 +178,8 @@ def testInitialConditions(hf, electrode_site=None, filename=None):
     hf.hr.h.batch_save() # save nothing
     hf.hr.h.batch_run(hf.hr.h.tstop, hf.hr.h.dt, "an.dat")
     pg.mkQApp()
-    print '\ntime: ', np.array(monitor['time'])
-    print '\nVelectrode: ', np.array(monitor['Velectrode'])
+    print('\ntime: ', np.array(monitor['time']))
+    print('\nVelectrode: ', np.array(monitor['Velectrode']))
     pl = pg.plot(np.array(monitor['time']), np.array(monitor['Velectrode']))
     pl.setTitle(filename)
     QtGui.QApplication.instance().exec_()
