@@ -28,14 +28,14 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 import pyqtgraph.multiprocess as mproc
 import errno
-
+import signal
 
 
 verbose = False # use this for testing.
 
 
 class GenerateRun():
-    def __init__(self, hf, idnum=0, celltype=None,
+    def __init__(self, cell, idnum=0, celltype=None,
                  electrodeSection=None,
                  dendriticElectrodeSection=None,
                  starttime=None,
@@ -46,8 +46,9 @@ class GenerateRun():
 
         self.run_initialized = False
         self.plotting = plotting
-
-        self.hf = hf # get the reader structure and the hoc pointer object locally
+        #print(dir(cell))
+        self.cell = cell
+        self.hf = cell.hr # get the reader structure and the hoc pointer object locally
         self.basename = 'basenamenotset'
         self.idnum = idnum
         self.startTime = starttime
@@ -288,13 +289,13 @@ class GenerateRun():
         TASKS = [s for s in range(nLevels)]
         tresults = [None]*len(TASKS)
         runner = [None]*nLevels
-        
+        signal.signal(signal.SIGCHLD, signal.SIG_DFL)  # might prevent OSError "no child process"
         # run using pyqtgraph's parallel support
         with mproc.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
             for i, x in tasker:
                 inj = self.runInfo.stimInj[i]
                 self._prepareRun(inj=inj) # build the recording arrays
-                self.run_initialized = cellInit.init_model(self.hf, mode='cc', restore_from_file=restore_from_file, 
+                self.run_initialized = cellInit.init_model(self.cell, mode='cc', restore_from_file=restore_from_file, 
                     filename=initfile)
                 tresults = self._executeRun() # now you can do the run
                 tasker.results[i] = {'r': tresults, 'i': inj}

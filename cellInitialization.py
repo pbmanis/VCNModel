@@ -13,14 +13,14 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 import numpy as np
 
-def init_model(hf, mode='iclamp', vinit=-65., restore_from_file=False, filename=None, electrode_site=None, reinit=False):
+def init_model(cell, mode='iclamp', vinit=-65., restore_from_file=False, filename=None, electrode_site=None, reinit=False):
     """
     Model initialization procedure to set RMP to the resting RMP of the model cell.
     Does not instantiate recording or stimulating.
     
     Params
     ------
-    hf : hoc_reader file object
+    cell : cell, including hoc_reader file object
     mode : str
         mode string ('iclamp', 'vc', 'vclamp'). Default: iclamp
     vinit : float
@@ -34,7 +34,7 @@ def init_model(hf, mode='iclamp', vinit=-65., restore_from_file=False, filename=
     boolean : Success of initialization. Always True, just to indicate we were called.
     
     """
-    
+    hf = cell.hr
     if mode in ['vc', 'vclamp']:
         hf.h.finitialize(vinit)
         return True
@@ -46,7 +46,7 @@ def init_model(hf, mode='iclamp', vinit=-65., restore_from_file=False, filename=
     # 3. allow vm to vary in segments, using existing conductances (may be unstable)
     
     if restore_from_file:
-        restore_initial_conditions_state(hf, electrode_site=electrode_site, filename=filename, reinit=reinit)
+        restore_initial_conditions_state(cell, electrode_site=electrode_site, filename=filename, reinit=reinit)
         try:
             hf.h.frecord_init()
         except:
@@ -109,13 +109,12 @@ def get_initial_condition_state(cell, tdur=2000., filename=None, electrode_site=
     set_d_lambda(cell, freq=2000.)
 #    printCellInfo(cell)
 #    cell.print_all_mechs()
-    
     hf = cell.hr
     # first to an initialization to get close
     print('get_initial_condition_state\n')
     print('  starting t = %8.2f' % hf.h.t)
     cell.cell_initialize()
-    init_model(hf, restore_from_file=False, electrode_site=electrode_site, reinit=reinit)
+    init_model(cell, restore_from_file=False, electrode_site=electrode_site, reinit=reinit)
     hf.h.tstop = tdur
     print('running for %8.2f ms' % tdur)
     hf.h.run()
@@ -161,22 +160,22 @@ def restore_initial_conditions_state(cell, filename, electrode_site=None, reinit
 #                print 'section: %s  vm=%8.3f' % (section.name(), section(0.5).v)
 monitor = {}
 
-def test_initial_conditions(hf, electrode_site=None, filename=None):
+def test_initial_conditions(cell, electrode_site=None, filename=None):
     assert electrode_site is not None
-    monitor['time'] = hf.hr.h.Vector()
-    monitor['time'].record(hf.hr.h._ref_t)
-    monitor['Velectrode'] = hf.hr.h.Vector()
+    monitor['time'] = cell.hr.h.Vector()
+    monitor['time'].record(cell.hr.h._ref_t)
+    monitor['Velectrode'] = cell.hr.h.Vector()
     print('site: ', electrode_site)
     monitor['Velectrode'].record(electrode_site(0.5)._ref_v, sec=electrode_site)
     
-    restore_initial_conditions_state(hf, filename=filename, electrode_site=electrode_site)
-    hf.hr.h.t = 0.
-    hf.hr.h.tstop = 50.
+    restore_initial_conditions_state(cell, filename=filename, electrode_site=electrode_site)
+    cell.hr.h.t = 0.
+    cell.hr.h.tstop = 50.
 #    hf.hr.h.run()
    # while hf.hr.h.t < hf.hr.h.tstop:
    #     hf.hr.h.fadvance()
-    hf.hr.h.batch_save() # save nothing
-    hf.hr.h.batch_run(hf.hr.h.tstop, hf.hr.h.dt, "an.dat")
+    cell.hr.h.batch_save() # save nothing
+    cell.hr.h.batch_run(cell.hr.h.tstop, cell.hr.h.dt, "an.dat")
     pg.mkQApp()
     print('\ntime: ', np.array(monitor['time']))
     print('\nVelectrode: ', np.array(monitor['Velectrode']))
