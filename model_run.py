@@ -145,7 +145,7 @@ class ModelRun():
 
         self.Params['runProtocol'] = self.protocolChoices[2]  # testIV is default because it is fast and should be run often
         self.Params['nReps'] = 1
-        self.Params['run_duration'] = 0.8 # in sec
+        self.Params['run_duration'] = 0.2 # in sec
         self.Params['soundtype'] = 'SAM'  # or 'tonepip'
         self.Params['pip_duration'] = 0.1
         self.Params['pip_start'] = [0.1]
@@ -282,7 +282,10 @@ class ModelRun():
             print 'run_model creating a bushy cell: '
             self.post_cell = cells.Bushy.create(morphology=filename, decorator=ChannelDecorate,
                     species=self.Params['species'], 
-                    modelType=self.Params['model_type'], )
+                    modelType=self.Params['modelType'], )
+            self.postCell.irange = np.arange(-4., 4.1, 1)
+            #print self.postCell.irange
+            #exit()
         elif self.Params['cellType'] in ['tstellate', 'TStellate']:
             print 'run_model creating a t-stellate cell: '
             self.post_cell = cells.TStellate.create(morphology=filename, decorator=ChannelDecorate,
@@ -347,9 +350,12 @@ class ModelRun():
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=self.post_cell.irange,
                              plotting = HAVE_PG and self.plotFlag)
-            cellInit.get_initial_condition_state(self.post_cell.hr, tdur=3000., 
-                filename=ivinitfile, electrode_site=self.electrode_site)
-            print 'Ran to get initial state for %f msec' % self.post_cell.hr.h.t
+#            print dir(self.postCell)
+#            self.postCell.cell_initialize()
+#            self.postCell.cell_initialize()
+            cellInit.getInitialConditionsState(self.postCell, tdur=3000.,
+               filename=ivinitfile, electrodeSite=self.electrodeSite)
+            print 'Ran to get initial state for %f msec' % self.postCell.hr.h.t
             return
 
         if self.Params['runProtocol'] == 'testIV':
@@ -386,7 +392,8 @@ class ModelRun():
         if self.Params['runProtocol'] == 'runIV':
             if verbose:
                 print 'iv_mode'
-            self.iv_run(par_map)
+            cellInit.set_d_lambda(self.postCell, freq=2000.)
+            self.IVRun(parMap)
 
         if showCell:
             self.render = HocViewer(self.post_cell)

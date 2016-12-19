@@ -25,6 +25,7 @@ class Render():
         self.clist = []
 
         for si in self.hf.sections: # self.section_list[s]:
+            print dir(si)
             self.hf.h('access %s' % si)
             sr = self.hf.h.SectionRef()
             n1 = self.hf.h.cas().name()
