@@ -85,7 +85,7 @@ class GenerateRun():
         )
 
         electrodeSection = list(self.hf.sec_groups[self.runInfo.electrodeSection])[0]
-        self.electrodeSite = self.hf.get_section(electrodeSection)
+        self.electrode_site = self.hf.get_section(electrodeSection)
         dend_sections = list(self.hf.sec_groups[self.runInfo.dendriticElectrodeSection])
         # invert the mappint of sections
         # first, just get the dendrite components, making a dendrite submap
@@ -193,11 +193,11 @@ class GenerateRun():
         self.clist = {}  #  color list
 
         electrodeSection = list(self.hf.sec_groups[self.runInfo.electrodeSection])[0]
-        self.electrodeSite = self.hf.get_section(electrodeSection)
+        self.electrode_site = self.hf.get_section(electrodeSection)
         if self.runInfo.postMode in ['vc', 'vclamp']:
             # Note to self (so to speak): the hoc object returned by this call must have a life after
             # the routine exits. Thus, it must be "self." Same for the IC stimulus...
-            self.vcPost = self.hf.h.SEClamp(0.5, sec=self.electrodeSite) #self.hf.sections[electrodeSite])
+            self.vcPost = self.hf.h.SEClamp(0.5, sec=self.electrode_site) #self.hf.sections[electrode_site])
             self.vcPost.dur1 = 2
             self.vcPost.amp1 = self.runInfo.vstimHolding
             self.vcPost.dur2 = 1e9
@@ -216,10 +216,10 @@ class GenerateRun():
             self.stim = stim
             secmd = secmd + self.runInfo.vstimHolding # add holding
             self.monitor['v_stim0'] = self.hf.h.Vector(secmd)
-            self.monitor['v_stim0'].play(self.vcPost._ref_amp2, self.hf.h.dt, 0, sec=self.electrodeSite)
-            self.monitor['postsynapticV'].record(self.electrodeSite(0.5)._ref_v, sec=self.electrodeSite)
+            self.monitor['v_stim0'].play(self.vcPost._ref_amp2, self.hf.h.dt, 0, sec=self.electrode_site)
+            self.monitor['postsynapticV'].record(self.electrode_site(0.5)._ref_v, sec=self.electrode_site)
             self.monitor['dendriteV'].record(self.dendriticElectrodeSite(0.5)._ref_v, sec=self.dendriticElectrodeSite)
-            self.monitor['postsynapticI'].record(self.vcPost._ref_i, sec=self.electrodeSite)
+            self.monitor['postsynapticI'].record(self.vcPost._ref_i, sec=self.electrode_site)
             self.mons = ['postsynapticI', 'v_stim0']
         elif self.runInfo.postMode in ['cc', 'iclamp']:
             stim = {}
@@ -234,14 +234,14 @@ class GenerateRun():
             stim['PT'] = 0.0
             (secmd, maxt, tstims) = cnmodel.makestim.makestim(stim, pulsetype='square', dt=self.hf.h.dt)
             self.stim = stim
-            self.icPost = self.hf.h.iStim(0.5, sec=self.electrodeSite)
+            self.icPost = self.hf.h.iStim(0.5, sec=self.electrode_site)
             self.icPost.delay = 2
             self.icPost.dur = 1e9  # these actually do not matter...
             self.icPost.iMax = 1.0
             self.monitor['i_stim0'] = self.hf.h.Vector(secmd)
-            self.monitor['i_stim0'].play(self.icPost._ref_i, self.hf.h.dt, 0, sec=self.electrodeSite)
-            self.monitor['postsynapticI'].record(self.icPost._ref_i, sec=self.electrodeSite)
-            self.monitor['postsynapticV'].record(self.electrodeSite(0.5)._ref_v, sec=self.electrodeSite)
+            self.monitor['i_stim0'].play(self.icPost._ref_i, self.hf.h.dt, 0, sec=self.electrode_site)
+            self.monitor['postsynapticI'].record(self.icPost._ref_i, sec=self.electrode_site)
+            self.monitor['postsynapticV'].record(self.electrode_site(0.5)._ref_v, sec=self.electrode_site)
             self.monitor['dendriteV'].record(self.dendriticElectrodeSite(0.5)._ref_v, sec=self.dendriticElectrodeSite)
             self.mons = ['postsynapticV', 'postsynapticI', 'dendriteV' ]
         else:
@@ -255,10 +255,10 @@ class GenerateRun():
         self.monitor['time'].record(self.hf.h._ref_t)
         #self.hf.h.topology()
         #pg.show()
-        #self.hf.h('access %s' % self.hf.get_section(self.electrodeSite).name())
+        #self.hf.h('access %s' % self.hf.get_section(self.electrode_site).name())
 
 
-    def doRun(self, filename=None, parMap=None, save=False, restoreFromFile=False, initfile=None, workers=4):
+    def doRun(self, filename=None, parMap=None, save=False, restore_from_file=False, initfile=None, workers=4):
         if verbose:
             print('generat_run::doRun')
         (p, e) = os.path.splitext(filename)  # make sure filename is clean
@@ -292,7 +292,7 @@ class GenerateRun():
             for i, x in tasker:
                 inj = self.runInfo.stimInj[i]
                 self._prepareRun(inj=inj) # build the recording arrays
-                self.run_initialized = cellInit.initModel(self.hf, mode='cc', restoreFromFile=restoreFromFile, 
+                self.run_initialized = cellInit.init_model(self.hf, mode='cc', restore_from_file=restore_from_file, 
                     filename=initfile)
                 tresults = self._executeRun() # now you can do the run
                 tasker.results[i] = {'r': tresults, 'i': inj}
@@ -327,7 +327,7 @@ class GenerateRun():
 
     def testRun(self, title='testing...'):
         self._prepareRun(inj=0.0)
-        self.run_initialized = cellInit.initModel(self.hf, restoreFromFile=True)
+        self.run_initialized = cellInit.init_model(self.hf, restore_from_file=True)
         self.hf.h.t = 0.
         self.hf.h.tstop = 10
         #self.hf.h.run()
@@ -348,7 +348,7 @@ class GenerateRun():
         if verbose:
             print '_executeRun'
         assert self.run_initialized == True
-        print 'Starting Vm at electrode site: ', self.electrodeSite.v
+        print 'Starting Vm at electrode site: ', self.electrode_site.v
         
         # one way
         self.hf.h.t = 0
@@ -360,7 +360,7 @@ class GenerateRun():
         """
         self.hf.h.batch_save() # save nothing
         self.hf.h.batch_run(self.hf.h.tstop, self.hf.h.dt, "v.dat")
-        print 'Finishing Vm: ', self.electrodeSite.v
+        print 'Finishing Vm: ', self.electrode_site.v
         if testPlot:
             pg.mkQApp()
             pl = pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))

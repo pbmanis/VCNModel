@@ -136,8 +136,8 @@ class ModelRun():
         self.Params['infile ']= None
 
         self.Params['cellType'] = self.cellChoices[0]
-        self.Params['model_type'] = self.modelChoices[0]
-        self.Params['SGCmodel_type'] = self.SGCmodelChoices[0]
+        self.Params['modelType'] = self.modelChoices[0]
+        self.Params['SGCmodelType'] = self.SGCmodelChoices[0]
         self.Params['species'] = self.speciesChoices[0]
         self.Params['SRType'] = self.SRChoices[2]
         self.Params['SR'] = self.Params['SRType']  # actually used SR this might be cell-defined, rather than command defined
@@ -283,8 +283,8 @@ class ModelRun():
             self.post_cell = cells.Bushy.create(morphology=filename, decorator=ChannelDecorate,
                     species=self.Params['species'], 
                     modelType=self.Params['modelType'], )
-            self.postCell.irange = np.arange(-4., 4.1, 1)
-            #print self.postCell.irange
+            self.post_cell.irange = np.arange(-4., 4.1, 1)
+            #print self.post_cell.irange
             #exit()
         elif self.Params['cellType'] in ['tstellate', 'TStellate']:
             print 'run_model creating a t-stellate cell: '
@@ -350,12 +350,12 @@ class ModelRun():
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=self.post_cell.irange,
                              plotting = HAVE_PG and self.plotFlag)
-#            print dir(self.postCell)
-#            self.postCell.cell_initialize()
-#            self.postCell.cell_initialize()
-            cellInit.getInitialConditionsState(self.postCell, tdur=3000.,
-               filename=ivinitfile, electrodeSite=self.electrodeSite)
-            print 'Ran to get initial state for %f msec' % self.postCell.hr.h.t
+#            print dir(self.post_cell)
+#            self.post_cell.cell_initialize()
+#            self.post_cell.cell_initialize()
+            cellInit.get_initial_condition_state(self.post_cell, tdur=3000.,
+               filename=ivinitfile, electrodeSite=self.electrode_site)
+            print 'Ran to get initial state for %f msec' % self.post_cell.hr.h.t
             return
 
         if self.Params['runProtocol'] == 'testIV':
@@ -392,8 +392,8 @@ class ModelRun():
         if self.Params['runProtocol'] == 'runIV':
             if verbose:
                 print 'iv_mode'
-            cellInit.set_d_lambda(self.postCell, freq=2000.)
-            self.IVRun(parMap)
+            cellInit.set_d_lambda(self.post_cell, freq=2000.)
+            self.iv_run()
 
         if showCell:
             self.render = HocViewer(self.post_cell)
@@ -421,7 +421,7 @@ class ModelRun():
         if verbose:
             print 'iv_run: calling generateRun'
         self.R = GenerateRun(self.post_cell.hr, idnum=self.idnum, celltype=self.Params['cellType'],
-                             start_time=None,
+                             starttime=None,
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=self.post_cell.irange,
@@ -436,7 +436,7 @@ class ModelRun():
         if self.Params['Parallel'] == False:
             nworkers = 1
         print 'iv_run workers: ', nworkers
-        self.R.do_run(self.Params['infile'], par_map=par_map, save='monitor', restore_from_file=True, initfile=ivinitfile,
+        self.R.doRun(self.Params['infile'], parMap=par_map, save='monitor', restore_from_file=True, initfile=ivinitfile,
             workers=nworkers)
         if verbose:
             print '   do_run completed'

@@ -1,8 +1,8 @@
 """
 cellInitialization provides routines for initializing the membrane potential
-of extended cells. 
+of extended cells.
 Once initialized the cells should be run without doing any further
-finitialize, and should not be run with h.run(). Use fadvance instead, or 
+finitialize, and should not be run with h.run(). Use fadvance instead, or
 even better, use the "new" h.batch_run() function in hoc.
 
 """
@@ -10,7 +10,7 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 import numpy as np
 
-def initModel(hf, mode='iclamp', vinit=-67., restoreFromFile=False, filename=None, electrodeSite=None, reinit=False):
+def init_model(hf, mode='iclamp', vinit=-67., restore_from_file=False, filename=None, electrode_site=None, reinit=False):
     """
     Model initialization procedure to set RMP to the resting RMP of the model cell.
     Does not instantiate recording or stimulating.
@@ -23,7 +23,7 @@ def initModel(hf, mode='iclamp', vinit=-67., restoreFromFile=False, filename=Non
     vinit : float
         initial voltage to start initialization, in mV. Default -65 mV
     restore_from_file : boolean
-        flag to cause model to be restored from previously saved state file. 
+        flag to cause model to be restored from previously saved state file.
         The state file must be from the same model construction that exists at the
         time of the call to init_model.
     Returns
@@ -31,11 +31,11 @@ def initModel(hf, mode='iclamp', vinit=-67., restoreFromFile=False, filename=Non
     boolean : Success of initialization. Always True, just to indicate we were called.
     
     """
-
+    
     if mode in ['vc', 'vclamp']:
         hf.h.finitialize(vinit)
         return True
-
+    
     # otherwise we are in current clamp
     # Options:
     # 1. adjust e_leak so that the rmp in each segment is the same
@@ -43,7 +43,7 @@ def initModel(hf, mode='iclamp', vinit=-67., restoreFromFile=False, filename=Non
     # 3. allow vm to vary in segments, using existing conductances (may be unstable)
     
     if restore_from_file:
-        restore_initial_conditions_state(hf, electrode_site=electrode_site, filename=filename, reinit=reinit)
+        restore_initial_condition_state(hf, electrode_site=electrode_site, filename=filename, reinit=reinit)
         try:
             hf.h.frecord_init()
         except:
@@ -54,7 +54,7 @@ def initModel(hf, mode='iclamp', vinit=-67., restoreFromFile=False, filename=Non
     #     #hf.cvode.re_init()
     #     hf.h.CVode().active(0)  # turn cvode off (note, in this model it will be off because one of the mechanisms is not compatible with cvode at this time)
     
-    print 'v: ', electrodeSite.v, vinit
+    print 'v: ', electrode_site.v, vinit
     hf.h.finitialize(vinit)
 #    hf.h.fcurrent()
     hf.h.t = -1e6
@@ -66,7 +66,7 @@ def initModel(hf, mode='iclamp', vinit=-67., restoreFromFile=False, filename=Non
         n += 1
         hf.h.fadvance()
         if n < 5:
-            print 'v: ', electrodeSite.v
+            print 'v: ', electrode_site.v
     print 'n: ', n
     print 'hf.h.dt: ', hf.h.dt
     hf.h.dt = dtsav
@@ -76,13 +76,13 @@ def initModel(hf, mode='iclamp', vinit=-67., restoreFromFile=False, filename=Non
         hf.h.CVode().re_init()
     hf.h.fcurrent()
     hf.h.frecord_init()
-
-    if electrodeSite is not None:
-        vm = electrodeSite.v
+    
+    if electrode_site is not None:
+        vm = electrode_site.v
     else:
         vm = 0.
     print 'Initialized with finitialize, starting at %8.2f, ending %8.2f ' % (vinit, vm)
-
+    
     return True
 
 
@@ -98,11 +98,11 @@ def printCellInfo(cell):
             if i < 20:
                 print '%s %d: %d' % (st, i, s.nseg)
 
-def getInitialConditionsState(cell, tdur=2000., filename=None, electrodeSite=None, reinit=False):
+def get_initial_condition_state(cell, tdur=2000., filename=None, electrode_site=None, reinit=False):
     """
     Run model for a time, and then save the state
     """
-
+    
     set_d_lambda(cell, freq=2000.)
 #    printCellInfo(cell)
 #    cell.print_all_mechs()
@@ -112,7 +112,7 @@ def getInitialConditionsState(cell, tdur=2000., filename=None, electrodeSite=Non
     print 'get_initial_condition_state\n'
     print '  starting t = %8.2f' % hf.h.t
     cell.cell_initialize()
-    initModel(hf, restoreFromFile=False, electrodeSite=electrodeSite, reinit=reinit)
+    initModel(hf, restore_from_file=False, electrode_site=electrode_site, reinit=reinit)
     hf.h.tstop = tdur
     print 'running for %8.2f ms' % tdur
     hf.h.run()
@@ -133,19 +133,19 @@ def getInitialConditionsState(cell, tdur=2000., filename=None, electrodeSite=Non
     stateFile.close()
 
 
-def restoreInitialConditionsState(hf, filename, electrodeSite=None, reinit=False):
-
+def restore_initial_condition_state(hf, filename, electrode_site=None, reinit=False):
+    
     hf.h.finitialize()
     stateFile = hf.h.File() # restore state AFTER finitialize
     state = hf.h.SaveState()
-
+    
     print 'Restored initial conditions from file: %s' % filename
     stateFile.ropen(filename)
     state.fread(stateFile)
     stateFile.close()
     state.restore(1)
-    if electrodeSite is not None:
-        vm = electrodeSite.v
+    if electrode_site is not None:
+        vm = electrode_site.v
     else:
         vm = hf.h('v')
 #        print 'restored soma v: %8.2f' % vm
@@ -157,15 +157,15 @@ def restoreInitialConditionsState(hf, filename, electrodeSite=None, reinit=False
 #                print 'section: %s  vm=%8.3f' % (section.name(), section(0.5).v)
 monitor = {}
 
-def testInitialConditions(hf, electrodeSite=None, filename=None):
-    assert electrodeSite is not None
+def testInitialConditions(hf, electrode_site=None, filename=None):
+    assert electrode_site is not None
     monitor['time'] = hf.hr.h.Vector()
     monitor['time'].record(hf.hr.h._ref_t)
     monitor['Velectrode'] = hf.hr.h.Vector()
-    print 'site: ', electrodeSite
-    monitor['Velectrode'].record(electrodeSite(0.5)._ref_v, sec=electrodeSite)
-
-    restoreInitialConditionsState(hf, filename=filename, electrodeSite=electrodeSite)
+    print 'site: ', electrode_site
+    monitor['Velectrode'].record(electrode_site(0.5)._ref_v, sec=electrode_site)
+    
+    restore_initial_condition_state(hf, filename=filename, electrode_site=electrode_site)
     hf.hr.h.t = 0.
     hf.hr.h.tstop = 50.
 #    hf.hr.h.run()
@@ -183,14 +183,14 @@ def testInitialConditions(hf, electrodeSite=None, filename=None):
 
 
 def set_d_lambda(cell, freq=100, d_lambda=0.1):
-
+    
     """Sets nseg in each section to an odd value
        so that its segments are no longer than
          d_lambda x the AC length constant
        at frequency freq in that section.
-
+       
        Be sure to specify your own Ra and cm before calling geom_nseg()
-
+       
        To understand why this works,
        and the advantages of using an odd value for nseg,
        see  Hines, M.L. and Carnevale, N.T.
@@ -215,11 +215,11 @@ def set_d_lambda(cell, freq=100, d_lambda=0.1):
 
 def lambda_f(hf, freq, section):
 #     { local i, x1, x2, d1, d2, lam
-    hf.h('access %s' % section.name()) 
+    hf.h('access %s' % section.name())
 #    print 'n3d: ', hf.h.n3d()
     if hf.h.n3d() < 2:
             return 1e5*np.sqrt(section.diam/(4.0*np.pi*freq*section.Ra*section.cm))
-            
+    
     # above was too inaccurate with large variation in 3d diameter
     # so now we use all 3-d points to get a better approximate lambda
     x1 = hf.h.arc3d(0)
