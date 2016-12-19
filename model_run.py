@@ -145,7 +145,7 @@ class ModelRun():
 
         self.Params['runProtocol'] = self.protocolChoices[2]  # testIV is default because it is fast and should be run often
         self.Params['nReps'] = 1
-        self.Params['run_duration'] = 0.8 # in sec
+        self.Params['run_duration'] = 0.2 # in sec
         self.Params['soundtype'] = 'SAM'  # or 'tonepip'
         self.Params['pip_duration'] = 0.1
         self.Params['pip_start'] = [0.1]
@@ -282,6 +282,9 @@ class ModelRun():
             self.postCell = cells.Bushy.create(morphology=filename, decorator=ChannelDecorate,
                     species=self.Params['species'], 
                     modelType=self.Params['modelType'], )
+            self.postCell.irange = np.arange(-4., 4.1, 1)
+            #print self.postCell.irange
+            #exit()
         elif self.Params['cellType'] in ['tstellate', 'TStellate']:
             print 'runModel creating a t-stellate cell: '
             self.postCell = cells.TStellate.create(morphology=filename, decorator=ChannelDecorate,
@@ -340,8 +343,11 @@ class ModelRun():
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=self.postCell.irange,
                              plotting = HAVE_PG and self.plotFlag)
-            cellInit.getInitialConditionsState(self.postCell, tdur=3000., 
-                filename=ivinitfile, electrodeSite=self.electrodeSite)
+#            print dir(self.postCell)
+#            self.postCell.cell_initialize()
+#            self.postCell.cell_initialize()
+            cellInit.getInitialConditionsState(self.postCell, tdur=3000.,
+               filename=ivinitfile, electrodeSite=self.electrodeSite)
             print 'Ran to get initial state for %f msec' % self.postCell.hr.h.t
             return
 
@@ -379,6 +385,7 @@ class ModelRun():
         if self.Params['runProtocol'] == 'runIV':
             if verbose:
                 print 'iv_mode'
+            cellInit.set_d_lambda(self.postCell, freq=2000.)
             self.IVRun(parMap)
 
         if showCell:

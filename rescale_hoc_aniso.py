@@ -8,12 +8,14 @@ import re
 import numpy as np
 import os.path
 
-scaleFactor = np.array([0.110, 0.110, 0.060, 0.110])
-path=''
+sf = 0.02
+minimum_diameter = 0.25
+scaleFactor = np.array([sf, sf, sf, sf])
+path='VCN_Cells/VCN_c18/Morphology/'
 
 def rescale_hoc_aniso(infile=None, outfile='temp.hoc'):
     assert infile is not None
-    path = 'MorphologyFiles/'
+#    path = 'MorphologyFiles/'
     infile = os.path.join(path, infile)
     outfile = os.path.join(path, outfile)
 
@@ -37,6 +39,8 @@ def rescale_hoc_aniso(infile=None, outfile='temp.hoc'):
             nls = (nls)
             line = '\tpt3dadd('
             for i, f in enumerate(nls):
+                if i == 3 and f < minimum_diameter:
+                    f = minimum_diameter
                 line += str(f)
                 if i < nls.shape[0]-1:
                     line  += ', '
@@ -53,5 +57,5 @@ def rescale_hoc_aniso(infile=None, outfile='temp.hoc'):
     outf.close()
     
 if __name__ == '__main__':
-    rescale_hoc_aniso(infile='VCN_c18_final3.hoc', outfile='VCN_c18_final_rescaled.hoc')
+    rescale_hoc_aniso(infile='gbc18_w_axon.hoc', outfile='gbc18_w_axon_rescaled.hoc')
     
