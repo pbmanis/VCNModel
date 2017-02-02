@@ -286,7 +286,7 @@ class ModelRun():
             self.post_cell = cells.Bushy.create(morphology=filename, decorator=ChannelDecorate,
                     species=self.Params['species'],
                     modelType=self.Params['modelType'], )
-            self.post_cell.irange = np.arange(-4., 4.1, 1)
+            self.post_cell.irange = np.arange(-2., 2.1, 0.5)
             #print self.post_cell.irange
             #exit()
         elif self.Params['cellType'] in ['tstellate', 'TStellate']:
@@ -349,7 +349,7 @@ class ModelRun():
                 print ('initIV')
             ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                                 self.initDirectory, self.Params['initIVStateFile'])
-            self.R = GenerateRun(self.post_cell.hr, idnum=self.idnum, celltype=self.Params['cellType'],
+            self.R = GenerateRun(self.post_cell, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
@@ -358,7 +358,7 @@ class ModelRun():
 #            print dir(self.post_cell)
 #            self.post_cell.cell_initialize()
 #            self.post_cell.cell_initialize()
-            cellInit.get_initial_condition_state(self.post_cell, tdur=3000.,
+            cellInit.get_initial_condition_state(self.post_cell, tdur=500.,
                filename=ivinitfile, electrode_site=self.electrode_site)
             print('Ran to get initial state for {:.1f} msec'.format(self.post_cell.hr.h.t))
             return
@@ -445,18 +445,17 @@ class ModelRun():
         if verbose:
             print( '   do_run completed')
         isteps = self.R.IVResult['I']
-        if verbose:
-            print ('iv_run: Results summary: ')
-            for k, i in enumerate(self.R.IVResult['tauih'].keys()):
-                print( '   ih: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['tauih'][i]['tau'].value))
-                print('           dV : %f' % self.R.IVResult['tauih'][i]['a'].value)
-            for k, i in enumerate(self.R.IVResult['taus'].keys()):
-                print('   i: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['taus'][i]['tau'].value))
-                print( '          dV : %f' % (self.R.IVResult['taus'][i]['a'].value))
-            
-            print( '   Nspike, Ispike: ', self.R.IVResult['Nspike'], self.R.IVResult['Ispike'])
-            print('   Rinss: ', self.R.IVResult['Rinss'])
-            print('   Vm: ', np.mean(self.R.IVResult['Vm']))
+        print ('iv_run: Results summary: ')
+        for k, i in enumerate(self.R.IVResult['tauih'].keys()):
+            print( '   ih: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['tauih'][i]['tau'].value))
+            print('           dV : %f' % self.R.IVResult['tauih'][i]['a'].value)
+        for k, i in enumerate(self.R.IVResult['taus'].keys()):
+            print('   i: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['taus'][i]['tau'].value))
+            print( '          dV : %f' % (self.R.IVResult['taus'][i]['a'].value))
+        
+        print('   Nspike, Ispike: ', self.R.IVResult['Nspike'], self.R.IVResult['Ispike'])
+        print('   Rinss: ', self.R.IVResult['Rinss'])
+        print('   Vm: ', np.mean(self.R.IVResult['Vm']))
         if len(self.R.IVResult['taus'].keys()) == 0:
             taum_mean = 0.
             tauih_mean = 0.
@@ -544,7 +543,7 @@ class ModelRun():
             print('getting initial conditions for AN')
             aninitfile = os.path.join(self.baseDirectory, self.cellID,
                                 self.initDirectory, self.Params['initANStateFile'])
-            cellInit.get_initial_condition_state(post_cell, tdur=3000.,
+            cellInit.get_initial_condition_state(post_cell, tdur=500.,
                 filename=aninitfile, electrode_site=self.electrode_site, reinit=self.Params['auto_initialize'])
             cellInit.test_initial_conditions(post_cell, filename=aninitfile,
                 electrode_site=self.electrode_site)
