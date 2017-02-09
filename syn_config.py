@@ -1,4 +1,4 @@
-    # synconfig consists of a list of tuples.
+ls     # synconfig consists of a list of tuples.
     # Each element in the list corresponds to one terminal and all of it's active zones
     # each tuple consists of N sites (calculated from area * average synapses/um2)
     # delay, and SR
