@@ -168,15 +168,65 @@ VCN_c17 = [
     [(16.62), 0., 2, np.nan, np.nan, np.nan, np.nan, 'e' ],
     ]
 
+VCN_c19= [  [ (149.21), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (45.03), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (188.97), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (89.92), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (24.65), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (26.54), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (43.70), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (23.09), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (68.79), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (30.52), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (51.17), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (97.28), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (60.29), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (18.77), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (31.65), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            ]
 
+VCN_c20= [  [ (81.21), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (65.35), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (13.94), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (90.40), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (54.67), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (52.14), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (61.36), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (44.32), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (150.80), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            ]
+
+VCN_c21= [  [ (66.46), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (49.46), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (68.72), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (111.92), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (60.10), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (12.88), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (80.79), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (108.54), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (75.98), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (46.32), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            ]
+
+VCN_c22= [  [ (132.22), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (134.56), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (121.92), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (53.04), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (134.79), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (141.62), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (101.31), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            ]
 
         
-VCN_Inputs = {'VCN_c18': ['bushy', VCN_c18], 'VCN_c07': ['notbushy', VCN_c07],
+VCN_Inputs = {'VCN_c07': ['notbushy', VCN_c07],
         'VCN_c08': ['bushy', VCN_c08], 'VCN_c09': ['bushy', VCN_c09],
         'VCN_c10': ['bushy', VCN_c10], 'VCN_c11': ['bushy', VCN_c11],
         'VCN_c13': ['bushy', VCN_c13],
         'VCN_c14': ['bushy', VCN_c14], 'VCN_c15': ['bushy', VCN_c15],
         'VCN_c16': ['bushy', VCN_c16], 'VCN_c17': ['bushy', VCN_c17],
+        'VCN_c18': ['bushy', VCN_c18], 
+        'VCN_c19': ['bushy', VCN_c19], 'VCN_c20': ['bushy', VCN_c20],
+        'VCN_c21': ['bushy', VCN_c21], 'VCN_c22': ['bushy', VCN_c22],
         }
         
 def makeDict(cell, velocity=3.0):
