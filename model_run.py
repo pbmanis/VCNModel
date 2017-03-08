@@ -136,7 +136,7 @@ class ModelRun():
         
         self.Params['initIVStateFile'] = 'IVneuronState.dat'
         self.Params['initANStateFile'] = 'ANneuronState.dat'
-        self.Params['infile ']= None
+        self.Params['infile']= None
         
         self.Params['cellType'] = self.cellChoices[0]
         self.Params['modelType'] = self.modelChoices[0]
@@ -148,6 +148,8 @@ class ModelRun():
         
         self.Params['runProtocol'] = self.protocolChoices[2]  # testIV is default because it is fast and should be run often
         self.Params['nReps'] = 1
+        self.Params['seed'] = 100 # always the same start - avoids lots of recomutation
+                                  # in production, vary this or set to None for random values
         self.Params['run_duration'] = 0.2 # in sec
         self.Params['soundtype'] = 'SAM'  # or 'tonepip'
         self.Params['pip_duration'] = 0.1
@@ -160,10 +162,11 @@ class ModelRun():
         self.Params['dmod'] = 0 # percent if SAM
         # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
         self.Params['threshold'] = -20
-        self.Params['plotFlag'] = False
+        self.Params['plotFlag'] = True
         self.Params['auto_initialize'] = False
         self.Params['nWorkers'] = 4
         self.Params['Parallel'] = True
+
         self.baseDirectory = 'VCN_Cells'
         self.morphDirectory = 'Morphology'
         self.initDirectory = 'Initialization'
@@ -272,8 +275,11 @@ class ModelRun():
             self.idnum = 9999
         self.cellID = os.path.splitext(self.Params['cell'])[0]
         
+        print (par_map)
         if par_map == {}:
-            self.plotFlag = True
+            self.Params['plotFlag'] = True
+            print('set plotflag true')
+            exit()
         ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                             self.initDirectory, self.Params['initIVStateFile'])
         ivinitdir = os.path.join(self.baseDirectory, self.cellID,
@@ -354,7 +360,7 @@ class ModelRun():
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=self.post_cell.irange,
-                             plotting = HAVE_PG and self.plotFlag)
+                             plotting = self.Params['plotFlag'])
 #            print dir(self.post_cell)
 #            self.post_cell.cell_initialize()
 #            self.post_cell.cell_initialize()
@@ -373,7 +379,7 @@ class ModelRun():
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=self.post_cell.irange,
-                             plotting = HAVE_PG and self.plotFlag, )
+                             plotting = HAVE_PG and self.Params['plotFlag'], )
             cellInit.test_initial_conditions(self.post_cell.hr, filename=ivinitfile,
                 electrode_site=self.electrode_site)
             #self.R.test_run()
@@ -429,7 +435,7 @@ class ModelRun():
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=self.post_cell.irange,
-                             plotting = HAVE_PG and self.plotFlag)
+                             plotting = HAVE_PG and self.Params['plotFlag'])
         ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                                 self.initDirectory, self.Params['initIVStateFile'])
         self.R.runInfo.folder = os.path.join('VCN_Cells', self.cellID, self.simDirectory, 'IV')
@@ -483,8 +489,42 @@ class ModelRun():
         statefile = os.path.join(self.baseDirectory, self.Params['cell'],
                             self.initDirectory, self.Params['initANStateFile'])
         return(os.path.isfile(statefile))
+
+    def compute_seeds(self, nReps, synapseConfig):
+        """
+        Generate the seeds for the AN runs
+        
+        If Params['seed'] is None, we use the randomized seed method - every run is totally
+        independent.
+        If not, then we generate a consequetive sequence of seeds (so it is controlled and
+        reusable) offset by the starting number specified as the seed
+        
+        Parameters
+        ----------
+        nReps: int (no default)
+            Number of repetions of the stimulus that are needed
+        
+        synpaseConfig : list (no default)
+            The length of the synpaseConfig list indicates how many synapses are on the
+            cell, and each synapse is assigned a unique seed.
     
-    def an_run(self, post_cell, verify=False, seed=0, make_an_intial_conditions=False):
+        Returns
+        -------
+        seeds : numpy array 
+            A 2-D numpy array (nReps, len(synapseConfig)) containing the seeds for each run and
+            each synapse.
+        """
+        if self.Params['seed'] is None:  # every run is randomized
+            seeds = np.random.randint(32678, size=(nReps, len(synapseConfig)))    
+        else:
+            seed = self.Params['seed']
+            seeds = np.arange(0, nReps*len(synapseConfig)).reshape((nReps, len(synapseConfig)))
+            seeds = seeds + self.Params['seed']
+        print('AN Seeds: ', seeds)
+
+        return seeds
+        
+    def an_run(self, post_cell, verify=False, make_an_intial_conditions=False):
         """
         Establish AN inputs to soma, and run the model.
         Requires a synapseConfig list of dicts from cell_config.makeDict()
@@ -498,9 +538,6 @@ class ModelRun():
         
         verify : boolean (default: False)
             Flag to control printing of various intermediate results
-        
-        seed : int (default: 0)
-            A random number seed to use when generating AN inputs (not used)
         
         make_ANIntitialConditions : bool (default : False)
             Flag to control whether the initial conditions need to be recomputed and stored.
@@ -549,8 +586,7 @@ class ModelRun():
                 electrode_site=self.electrode_site)
             return
         
-        seeds = np.random.randint(32678, size=(nReps, len(synapseConfig)))
-        print('AN Seeds: ', seeds)
+        seeds = self.compute_seeds(nReps, synapseConfig)
         stimInfo['seeds'] = seeds  # keep the seed values too.
         spikeTimes = {}
         inputSpikeTimes = {}
@@ -567,32 +603,35 @@ class ModelRun():
         tresults = [None]*len(TASKS)
         
         # run using pyqtgraph's parallel support
-        with mproc.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
-            for j, x in tasker:
-                tresults = self.single_an_run(post_cell, j, synapseConfig,
-                    stimInfo, seeds, preCell, self.an_setup_time)
-                tasker.results[j] = tresults
-        # retreive the data
-        for j, N in enumerate(range(nReps)):
-            
-            celltime.append(tresults[j]['time']) # (self.time)
-            spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'],
-                    threshold, t0=0., t1=stimInfo['run_duration']*1000., dt=1.0, mode='peak')
-            inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
-            somaVoltage[N] = np.array(tresults[j]['Vsoma'])
-            dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
-            stimWaveform[N] = np.array(tresults[j]['stim']) # save the stimulus
+        # with mproc.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
+        #     for j, x in tasker:
+        #         tresults = self.single_an_run(post_cell, j, synapseConfig,
+        #             stimInfo, seeds, preCell, self.an_setup_time)
+        #         tasker.results[j] = tresults
+        # # retreive the data
+        # for j, N in enumerate(range(nReps)):
+        #
+        #     celltime.append(tresults[j]['time']) # (self.time)
+        #     spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'],
+        #             threshold, t0=0., t1=stimInfo['run_duration']*1000., dt=1.0, mode='peak')
+        #     inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
+        #     somaVoltage[N] = np.array(tresults[j]['Vsoma'])
+        #     dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
+        #     stimWaveform[N] = np.array(tresults[j]['stim']) # save the stimulus
 
         
-        # for j, N in enumerate(range(nReps)):
-        #     print 'Rep: %d' % N
-        #
-        #     preCell, post_cell = self.single_an_run(hf, j, synapseConfig, stimInfo, seeds, preCell, self.an_setup_time)
-        #
-        #     celltime.append(self.time)
-        #     spikeTimes[N] = pu.findspikes(self.time, self.Vsoma, threshold, t0=0., t1=hf.h.tstop, dt=1.0, mode='peak')
-        #     inputSpikeTimes[N] = [preCell[i]._spiketrain for i in range(len(preCell))]
-        #     somaVoltage[N] = np.array(self.Vsoma)
+        for j, N in enumerate(range(nReps)):
+            print ('Rep: %d' % N)
+
+            tresults[j] = self.single_an_run(post_cell, j, synapseConfig, stimInfo,  seeds, preCell, self.an_setup_time)
+
+            celltime.append(tresults[j]['time'])
+            spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold, 
+                    t0=0., t1=stimInfo['run_duration']*1000., dt=1.0, mode='peak')
+            inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [preCell[i]._spiketrain for i in range(len(preCell))]
+            somaVoltage[N] = np.array(tresults[j]['Vsoma']) # np.array(self.Vsoma)
+            dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
+            stimWaveform[N] = np.array(tresults[j]['stim']) # save the stimulus
         
         total_elapsed_time = time.time() - self.start_time
 #        total_run_time = time.time() - run_time
@@ -605,11 +644,12 @@ class ModelRun():
             'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'stimWaveform': stimWaveform, 'time': np.array(celltime[0])}
         
         self.analysis_filewriter(self.Params['cell'], result, tag='delays')
-        self.plot_an(np.array(celltime[0]), result['somaVoltage'], result['stimInfo'],
-            dendVoltage=result['dendriteVoltage'])
+        if self.Params['plotFlag']:
+            self.plot_an(np.array(celltime[0]), result['somaVoltage'], result['stimInfo'],
+                dendVoltage=result['dendriteVoltage'])
 
     
-    def an_run_singles(self, post_cell, verify=False, seed=None):
+    def an_run_singles(self, post_cell, verify=False):
         """
         Establish AN inputs to soma, and run the model.
         synapseConfig: list of tuples
@@ -625,11 +665,6 @@ class ModelRun():
         
         verify : boolean (default: False)
             Flag to control printing of various intermediate results
-        
-        seed : int (default: None)
-            A random number seed to use when generating AN inputs.
-            Allows different runs with different spike trains, but also
-            to recreate a particular run.
         
         Returns
         -------
@@ -653,11 +688,8 @@ class ModelRun():
 
         
         nSyns = len(synapseConfig)
-        if seed is None:
-            seeds = np.random.randint(32678, size=(nReps, len(synapseConfig)))
-        else:
-            seeds = np.random.randint()
-        print('AN Seeds: ', seeds)
+        seeds = self.compute_seeds(nReps, synapseConfig)
+
         stimInfo['seeds'] = seeds  # keep the seed values too.
         k = 0
         spikeTimes = {}
@@ -724,7 +756,8 @@ class ModelRun():
                 'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'time': np.array(tresults[j]['time'])}
             
             self.analysis_filewriter(self.Params['cell'], result, tag='Syn%03d' % k)
-        self.plot_an(np.array(result['time']), result['somaVoltage'], result['stimInfo'])
+        if self.Params['plotFlag']:
+            self.plot_an(np.array(result['time']), result['somaVoltage'], result['stimInfo'])
     
     def configure_cell(self, thisCell, synapseConfig, celltype, stimInfo):
         """
@@ -842,6 +875,9 @@ class ModelRun():
         stimInfo : dict
             A dictionary whose elements used include SRType (spont rate type), F0 (stimulus frequency)
         
+        seeds : 2d numpy array
+            An array listing the seeds for starting each auditory nerve input spike train
+        
         preCell : list
             A list of the preCell hoc objects attached to the synapses
         
@@ -889,18 +925,18 @@ class ModelRun():
         for i, syn in enumerate(synapseConfig):
             nseed = seeds[j, i]
             
-            if self.Params['SGCmodel_type'] in ['Zilany']:
+            if self.Params['SGCmodelType'] in ['Zilany']:
 #                print 'running with Zilany'
                 preCell[i].set_sound_stim(stim, seed=nseed, simulator='matlab')  # generate spike train, connect to terminal
             
-            elif self.Params['SGCmodel_type'] in ['cochlea']:
+            elif self.Params['SGCmodelType'] in ['cochlea']:
 #                print 'running with cochlea, j=%d' % j
                 wf = self.set_dbspl(stim.generate(), stimInfo['dB'])
                 stim._sound = wf
                 preCell[i].set_sound_stim(stim, seed=nseed, simulator='cochlea')  # generate spike train, connect to terminal
             
             else:
-                raise ValueError('SGC model type type %s not implemented' % self.Params['SGCmodel_type'])
+                raise ValueError('SGC model type type %s not implemented' % self.Params['SGCmodelType'])
             
             ANSpikeTimes.append(preCell[i]._spiketrain)
         an_setup_time += (time.time() - an0_time)
@@ -930,6 +966,8 @@ class ModelRun():
     def plot_an(self, celltime, somaVoltage, stimInfo, dendVoltage=None):
         """
         """
+        if not self.Params['plotFlag']:
+            return
         nReps = stimInfo['nReps']
         threshold = stimInfo['threshold']
         win = pgh.figure(title='AN Inputs')
@@ -959,17 +997,21 @@ class ModelRun():
         if self.Params['inputPattern'] is not None:
             ID += '_%s' % self.Params['inputPattern']
         if stimInfo['soundtype'] in ['SAM', 'sam']:
-            f = open(os.path.join(outPath, 'AN_Result_' + ID + '_%s_N%03d_%03ddB_%06.1f_FM%03.1f_DM%03d_%2s' %
+            ofile = os.path.join(outPath, 'AN_Result_' + ID + '_%s_N%03d_%03ddB_%06.1f_FM%03.1f_DM%03d_%2s' %
                 (tag, stimInfo['nReps'],
                 int(stimInfo['dB']), stimInfo['F0'],
-                stimInfo['fmod'], int(stimInfo['dmod']), stimInfo['SR']) + '.p'), 'w')
+                stimInfo['fmod'], int(stimInfo['dmod']), stimInfo['SR']) + '.p')
+                
+            f = open(ofile, 'w')
         else:
-            f = open(os.path.join(outPath, 'AN_Result_' + ID + '_%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
-                int(stimInfo['dB']), stimInfo['F0'], stimInfo['SR']) + '.p'), 'w')
+            ofile = os.path.join(outPath, 'AN_Result_' + ID + '_%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
+                int(stimInfo['dB']), stimInfo['F0'], stimInfo['SR']) + '.p')
+            f = open(ofile, 'w')
         pickle.dump(result, f)
         f.close()
         print('**** Analysis wrote output file ****\n    {:s}'.format(f))
-    
+        self.ANFilename = ofile
+
     def get_hoc_file(self, hf):
         if hf.file_loaded is False:
             exit()
@@ -1014,11 +1056,11 @@ if __name__ == "__main__":
     parser.add_argument('--model', '-M', dest='model_type', action='store',
                    default='XM13', choices=model.modelChoices,
                    help='Define the model type (default: XM13)')
-    parser.add_argument('--sgcmodel', dest='SGCmodel_type', action='store',
+    parser.add_argument('--sgcmodel', dest='SGCmodelType', action='store',
                    default='Zilany', choices=model.SGCmodelChoices,
                    help='Define the SGC model type (default: Zilany)')
     parser.add_argument('--protocol', '-P', dest='runProtocol', action='store',
-                   default='IV', choices=model.protocolChoices,
+                   default='runIV', choices=model.protocolChoices,
                    help='Protocol to use for simulation (default: IV)')
     parser.add_argument('--hoc', '-H', dest='infile', action='store',
                   default=None,
@@ -1073,10 +1115,10 @@ if __name__ == "__main__":
     for k in args.keys():
         model.Params[k] = args[k]
     print(model.Params['cell'])
-    if model.Params['infile'] == None: # just use the hoc file
+    if model.Params['infile'] == None: # just use the matching hoc file
         model.Params['infile'] = model.Params['cell'] + '.hoc'
     print(json.dumps(model.Params, indent=4))  # pprint doesn't work well with ordered dicts
-    
+
     model.run_model() # then run the model
     if showCell:
         QtGui.QApplication.instance().exec_()
