@@ -291,8 +291,7 @@ class ModelRun():
         print (par_map)
         if par_map == {}:
             self.Params['plotFlag'] = True
-            print('set plotflag true')
-#            exit()
+
         ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                             self.initDirectory, self.Params['initIVStateFile'])
         ivinitdir = os.path.join(self.baseDirectory, self.cellID,
@@ -828,8 +827,8 @@ class ModelRun():
             s.terminal.relsite.Dep_Flag = 0  # turn off depression computation
         
         #  ****** uncomment here to adjust gmax.
-            for p in s.psd.ampa_psd:
-                p.gmax = p.gmax*2.5
+            # for p in s.psd.ampa_psd:
+    #             p.gmax = p.gmax*2.5
             
         
         # checking the gmax for all synapses

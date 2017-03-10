@@ -12,6 +12,8 @@ rc('text', usetex=False)
 import pickle
 from collections import OrderedDict
 
+forcerun = True  # set tru to force a re-run of the simulation
+
 gbcs = [8, 9, 17, 18, 19, 20, 21, 22]
 l1 = 0.08
 l2 = 0.52
@@ -29,7 +31,7 @@ P = PH.Plotter(rcshape=sizer, label=False, figsize=(6, 8), labeloffset=[0.6, 0.]
 #PH.show_figure_grid(P.figure_handle)
 baseDirectory = 'VCN_Cells'
 simDirectory = 'Simulations'
-nrep = 2
+nrep = 50
 SR = 'MS'
 for gbc in gbcs:
     cell = 'VCN_c{0:02d}'.format(gbc)
@@ -37,8 +39,11 @@ for gbc in gbcs:
     andatafile = os.path.join(baseDirectory, cell, simDirectory, 'AN', an_result_file)
     print('an result: ', andatafile)
     print (os.path.isfile(andatafile) )
-    if not os.path.isfile(andatafile): # only run if no evidence we have run this already 
-        call(["python", "all_gbc_AN.py", "%d"%gbc, "%s"%SR])
+    if not os.path.isfile(andatafile) or forcerun: # only run if no evidence we have run this already 
+        if not forcerun:
+            call(["python", "all_gbc_AN.py", "%d"%gbc, "%s"%SR, '%d'%nrep])
+        else:
+            call(["python", "all_gbc_AN.py", "%d"%gbc, "%s"%SR, '%d'%nrep, "forcerun"])
     fh = open(andatafile)
     dx = pickle.load(fh)
     
