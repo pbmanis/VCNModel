@@ -6,7 +6,24 @@ model_run.py
 
 Run a model based on a hoc structure, decorating the structure with ion channels and synapses.
 
-Directory structure:
+Requires:
+Python 2.7.13 (anaconda distribution)
+Neuron7.4 (neuron.yale.edu)
+pyqtgraph (Campagnola, from github)
+neuronvis (Campagnola/Manis, from github)
+cnmodel (Campagnola/Manis, from github)
+vcnmodel parts:
+    channel_decorate
+    generate_run
+    cellInitialization
+    analysis
+
+cochlea # Rudniki python implementation of Zilany model
+thorns  # required for cochlea
+
+
+Expects the following directory structure:
+(example)
 VCN_Cells/   # top level for data
     cell_ID/    # VCN_c18, for example (first argument in call should be this directory name)
         MorphologyFiles/  # location for swc and hoc files
@@ -59,7 +76,7 @@ optional arguments:
   --workers NWORKERS    Number of "workers" for parallel processing (default:
                         4)
 
-ex:
+example:
 Set up initialization:
 python model_run.py VCN_c18 --hoc gbc18_w_axon_rescaled.hoc --protocol initIV --model XM13
 Then run model:
@@ -88,15 +105,12 @@ from cnmodel import cells
 from cnmodel.util import sound
 
 import cochlea
-import thorns
+import thorns  # required for cochlea
 
-import pylibrary.Utility as pu  # access to spike finder routine
-import pyqtgraph.multiprocess as mproc
-
+import pylibrary.Utility as pu  # access to a spike finder routine
 
 try:
     import pyqtgraph as pg
-    #from pyqtgraph.Qt import QtGui
     from PyQt4 import QtCore, QtGui
     import pylibrary.pyqtgraphPlotHelpers as pgh
     HAVE_PG = True
@@ -172,7 +186,6 @@ class ModelRun():
         self.initDirectory = 'Initialization'
         self.simDirectory = 'Simulations'
 
-    
     def print_modelsetup(self):
         """
         Print out all of the parameters in the model
@@ -181,7 +194,6 @@ class ModelRun():
             print('{:18s} = {:12}'.format(p, self.Params[p]))
         print('-----------')
 
-    
     def set_celltype(self, cellType):
         """
         Set the cell Type, as requested. The cell type must be in the cell choices
@@ -201,7 +213,6 @@ class ModelRun():
             exit()
         self.Params['cellType'] = cellType
 
-    
     def set_model_type(self, model_type):
         """
         Set the model Type, as requested. The model type must be in the model choices
@@ -221,16 +232,15 @@ class ModelRun():
             exit()
         self.Params['model_type'] = model_type
 
-    
     def set_spontaneousrate(self, spont_rate_type):
         """
         Set the SR, overriding SR in the cell_config file. The SR type must be in the SR choices
         
         Parameters
         ----------
-        SRType : string
+        spont_rate_type : string
             The SR type that will be used for AN fibers.
-        
+            1 = Low, 2 = medium, 3  = high (following Zilany et al)
         Returns
         -------
             Nothing
@@ -242,6 +252,9 @@ class ModelRun():
         self.Params['SRType'] = spont_rate_type
     
     def set_starttime(self, starttime):
+        """
+        store the start time... 
+        """
         self.Params['StartTime'] = starttime
     
     def mkdir_p(self, path):
@@ -279,7 +292,7 @@ class ModelRun():
         if par_map == {}:
             self.Params['plotFlag'] = True
             print('set plotflag true')
-            exit()
+#            exit()
         ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                             self.initDirectory, self.Params['initIVStateFile'])
         ivinitdir = os.path.join(self.baseDirectory, self.cellID,
@@ -329,9 +342,7 @@ class ModelRun():
         self.electrodeSection = 'soma'
         self.hg = hoc_graphics
         self.get_hoc_file(self.post_cell.hr)
-        #sg = self.post_cell.hr.sec_groups['soma']
-        #self.distances(self.post_cell.get_section(list(sg)[0]).name()) # make distance map from soma
-#        print self.post_cell.hr.distanceMap
+
         try:
             dendritic_electrode = list(self.post_cell.hr.sec_groups['dendrite'])[0]
             self.dendriticelectrode_site = self.post_cell.hr.get_section(dendritic_electrode)
@@ -361,9 +372,6 @@ class ModelRun():
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=self.post_cell.irange,
                              plotting = self.Params['plotFlag'])
-#            print dir(self.post_cell)
-#            self.post_cell.cell_initialize()
-#            self.post_cell.cell_initialize()
             cellInit.get_initial_condition_state(self.post_cell, tdur=500.,
                filename=ivinitfile, electrode_site=self.electrode_site)
             print('Ran to get initial state for {:.1f} msec'.format(self.post_cell.hr.h.t))
@@ -445,7 +453,7 @@ class ModelRun():
         print(self.Params['Parallel'])
         if self.Params['Parallel'] == False:
             nworkers = 1
-        print('iv_run workers: ', nworkers)
+        print('Number of works available on this machine: ', nworkers)
         self.R.doRun(self.Params['infile'], parMap=par_map, save='monitor', restore_from_file=True, initfile=ivinitfile,
             workers=nworkers)
         if verbose:
@@ -603,35 +611,35 @@ class ModelRun():
         tresults = [None]*len(TASKS)
         
         # run using pyqtgraph's parallel support
-        # with mproc.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
-        #     for j, x in tasker:
-        #         tresults = self.single_an_run(post_cell, j, synapseConfig,
-        #             stimInfo, seeds, preCell, self.an_setup_time)
-        #         tasker.results[j] = tresults
-        # # retreive the data
-        # for j, N in enumerate(range(nReps)):
-        #
-        #     celltime.append(tresults[j]['time']) # (self.time)
-        #     spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'],
-        #             threshold, t0=0., t1=stimInfo['run_duration']*1000., dt=1.0, mode='peak')
-        #     inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
-        #     somaVoltage[N] = np.array(tresults[j]['Vsoma'])
-        #     dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
-        #     stimWaveform[N] = np.array(tresults[j]['stim']) # save the stimulus
-
-        
+        with pg.multiprocess.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
+            for j, x in tasker:
+                tresults = self.single_an_run(post_cell, j, synapseConfig,
+                    stimInfo, seeds, preCell, self.an_setup_time)
+                tasker.results[j] = tresults
+        # retreive the data
         for j, N in enumerate(range(nReps)):
-            print ('Rep: %d' % N)
 
-            tresults[j] = self.single_an_run(post_cell, j, synapseConfig, stimInfo,  seeds, preCell, self.an_setup_time)
-
-            celltime.append(tresults[j]['time'])
-            spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold, 
-                    t0=0., t1=stimInfo['run_duration']*1000., dt=1.0, mode='peak')
-            inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [preCell[i]._spiketrain for i in range(len(preCell))]
-            somaVoltage[N] = np.array(tresults[j]['Vsoma']) # np.array(self.Vsoma)
+            celltime.append(tresults[j]['time']) # (self.time)
+            spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'],
+                    threshold, t0=0., t1=stimInfo['run_duration']*1000., dt=1.0, mode='peak')
+            inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
+            somaVoltage[N] = np.array(tresults[j]['Vsoma'])
             dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
             stimWaveform[N] = np.array(tresults[j]['stim']) # save the stimulus
+
+        # Non parallelized version:
+        # for j, N in enumerate(range(nReps)):
+        #     print ('Rep: %d' % N)
+        #
+        #     tresults[j] = self.single_an_run(post_cell, j, synapseConfig, stimInfo,  seeds, preCell, self.an_setup_time)
+        #
+        #     celltime.append(tresults[j]['time'])
+        #     spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold,
+        #             t0=0., t1=stimInfo['run_duration']*1000., dt=1.0, mode='peak')
+        #     inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [preCell[i]._spiketrain for i in range(len(preCell))]
+        #     somaVoltage[N] = np.array(tresults[j]['Vsoma']) # np.array(self.Vsoma)
+        #     dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
+        #     stimWaveform[N] = np.array(tresults[j]['stim']) # save the stimulus
         
         total_elapsed_time = time.time() - self.start_time
 #        total_run_time = time.time() - run_time
@@ -723,7 +731,7 @@ class ModelRun():
                 nWorkers = self.Params['nWorkers']
                 TASKS = [s for s in range(nReps)]
                 # run using pyqtgraph's parallel support
-                with mproc.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
+                with pg.multiprocess.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
                     for j, x in tasker:
                         tresults = self.single_an_run(post_cell, j, synapseConfig,
                             stimInfo, seeds, preCell, self.an_setup_time)
@@ -734,10 +742,7 @@ class ModelRun():
                     tresults[j] = self.single_an_run(post_cell, j, synapseConfig,
                             stimInfo, seeds, preCell, self.an_setup_time)
             for j, N in enumerate(range(nReps)):
-#                print 'Rep: %d' % N
-
 #                preCell, post_cell = self.single_an_run(hf, j, synapseConfig, stimInfo, seeds, preCell)
-                
                 celltime.append(tresults[j]['time']) # (self.time)
                 spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold, t0=0.,
                         t1=stimInfo['run_duration']*1000, dt=1.0, mode='peak')
@@ -807,7 +812,6 @@ class ModelRun():
         # reconfigure syanpses to set the spont rate group
         stimInfo['SR'] = stimInfo['SRType']
         for i, syn in enumerate(synapseConfig):
-            # print 'SYN: ', syn
             if stimInfo['SRType'] is 'fromcell':  # use the one in the table
                 preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=syn['SR']))
                 stimInfo['SR'] = self.srname[syn[2]] # use and report value from table
@@ -819,18 +823,14 @@ class ModelRun():
                     raise ValueError('SR type "%s" not found in Sr type list' % stimInfo['SRType'])
                 
                 preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=srindex))  # override
-            # print 'precell: ', preCell
             synapse.append(preCell[-1].connect(thisCell, pre_opts={'nzones':syn['nSyn'], 'delay':syn['delay2']}))
         for i, s in enumerate(synapse):
             s.terminal.relsite.Dep_Flag = 0  # turn off depression computation
-            #print dir(s.psd.ampa_psd[0])
         
         #  ****** uncomment here to adjust gmax.
-            
             for p in s.psd.ampa_psd:
                 p.gmax = p.gmax*2.5
             
-            #print 'Depression flag for synapse %d = %d ' % (i, s.terminal.relsite.Dep_Flag)
         
         # checking the gmax for all synapses
         # for s in synapse:
@@ -926,11 +926,11 @@ class ModelRun():
             nseed = seeds[j, i]
             
             if self.Params['SGCmodelType'] in ['Zilany']:
-#                print 'running with Zilany'
+#                print 'running with Zilany, matlab'
                 preCell[i].set_sound_stim(stim, seed=nseed, simulator='matlab')  # generate spike train, connect to terminal
             
             elif self.Params['SGCmodelType'] in ['cochlea']:
-#                print 'running with cochlea, j=%d' % j
+#                print 'running with MR cochlea model in python, j=%d' % j
                 wf = self.set_dbspl(stim.generate(), stimInfo['dB'])
                 stim._sound = wf
                 preCell[i].set_sound_stim(stim, seed=nseed, simulator='cochlea')  # generate spike train, connect to terminal
@@ -949,16 +949,12 @@ class ModelRun():
         Vsoma.record(post_cell.soma(0.5)._ref_v, sec=post_cell.soma)
         Vdend.record(dendsite(0.5)._ref_v, sec=dendsite)
         rtime.record(hf.h._ref_t)
-#        print '...running '
         hf.h.finitialize()
         hf.h.tstop = stimInfo['run_duration']*1000.
         hf.h.t = 0.
         hf.h.batch_save() # save nothing
         hf.h.batch_run(hf.h.tstop, hf.h.dt, "an.dat")
-        # old - don't di this! #hf.h.finitialize()
-        # hf.h.run()
         nrn_run_time += (time.time() - nrn_start)
-#        print '...done'
         anresult = {'Vsoma': np.array(Vsoma), 'Vdend': np.array(Vdend), 'time': np.array(rtime), 'ANSpikeTimes': ANSpikeTimes, 'stim': stim}
         return anresult
 
@@ -1016,7 +1012,6 @@ class ModelRun():
         if hf.file_loaded is False:
             exit()
         self.section_list = hf.get_section_prefixes()
-#        print 'section groups: ', self.hf.sec_groups.keys()
         hf.sec_groups.keys()
         if len(hf.sec_groups) > 1: # multiple names, so assign colors to structure type
             self.section_colors = {}
@@ -1071,10 +1066,9 @@ if __name__ == "__main__":
     parser.add_argument('--stimulus', dest='soundtype', action='store',
                    default='tonepip', choices=model.soundChoices,
                    help='Define the stimulus type (default: tonepip)')
-                  
-    
+
     # lowercase options are generally parameter settings:
-    
+
     parser.add_argument('-r', '--reps', type=int, default=1, dest = 'nReps',
         help='# repetitions')
     parser.add_argument('--fmod', type=float, default=20, dest = 'fmod',
