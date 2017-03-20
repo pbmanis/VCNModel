@@ -23,13 +23,13 @@ import pylibrary.PlotHelpers as PH
 from collections import OrderedDict
 
 baseName = 'VCN_Cells'
-cell = 'VCN_c99'
+cell = 'VCN_c08'
 #filename = 'AN_Result_VCN_c08_delays_N050_040dB_4000.0_HS.p'
 #filename = 'AN_Result_VCN_c08_delays_N005_040dB_4000.0_MS.p'
 
 #synfile_template = 'AN_Result_VCN_c18_reparented755V2Syn%03d_N005_040dB_4000.0_ 3.p'
 #synfile_template = 'AN_Result_VCN_c18_reparented755V2_Syn%03d_N002_040dB_4000.0_HS.p'
-synfile_template = 'AN_Result_%s_Syn%03d_N005_040dB_4000.0_HS.p'
+synfile_template = 'AN_Result_%s_Syn%03d_N005_040dB_4000.0_%2s.p'
 
 def readFile(filename):
     f = open(filename, 'r')
@@ -176,7 +176,7 @@ def get_dimensions(n, pref='height'):
     return(inopth, inoptw)
 
 
-def plotSingles(inpath):
+def plotSingles(inpath, SR='HS'):
     nInputs = 6
     nrow, ncol = get_dimensions(nInputs, pref='width')
     fig, ax = plt.subplots(nInputs, 1, figsize=(4,6))
@@ -188,7 +188,7 @@ def plotSingles(inpath):
     # win.resize(300*ncol, 125*nrow)
     # layout = pgh.LayoutMaker(cols=ncol,rows=nrow, win=win, labelEdges=True, ticks='talbot')
     for i in range(nInputs):
-        fname = synfile_template % (cell, i)
+        fname = synfile_template % (cell, i, SR)
         fname = os.path.join(inpath, fname)
         print fname
         spikeTimes, inputSpikeTimes, stimInfo, d = readFile(fname)
@@ -237,6 +237,7 @@ def readIVFile(filename):
     order = np.argsort(arun.IVResult['I'])
     utau = u'\u03C4'
     print(u'   {:^7s} {:^8s} {:^9s}{:^9}'.format('I (nA)', u'\u03C4 (ms)', 'Vss (mV)', 'Vmin (mV)')) 
+    print arun.IVResult
     for k in order[::-1]:
         tf = arun.IVResult['taus'].keys()[k]
         print('  {:6.1f}  {:7.2f} {:9.1f} {:9.1f}'.format(arun.IVResult['I'][k], 
@@ -284,15 +285,23 @@ def plotIV(infile):
     # pgh.show()
 
 
+if len(sys.argv) > 1:
+    analysis = sys.argv[1]
+    SR = 'HS'
+    if len(sys.argv) > 2:
+        SR = sys.argv[2]
+else:
+    exit()
 
-
-#infile = os.path.join(baseName, cell, 'Simulations/AN', filename)
-#plotPSTH(infile)
-infile = os.path.join(baseName, cell, 'Simulations/IV', '%s' % cell + '.p')
-#plotPSTH(infile)
-plotIV(infile)
-#inpath = os.path.join(baseName, cell, 'Simulations/AN')
-#plotSingles(inpath)
+if analysis == 'psth':
+    infile = os.path.join(baseName, cell, 'Simulations/AN', filename)
+    plotPSTH(infile)
+elif analysis == 'iv':
+    infile = os.path.join(baseName, cell, 'Simulations/IV', '%s' % cell + '.p')
+    plotIV(infile)
+elif analysis == 'singles':
+    inpath = os.path.join(baseName, cell, 'Simulations/AN')
+    plotSingles(inpath, SR)
 plt.show()
 
 
