@@ -12,7 +12,7 @@ rc('text', usetex=False)
 import pickle
 from collections import OrderedDict
 
-forcerun = True  # set tru to force a re-run of the simulation
+forcerun = False  # set true to force a re-run of the simulation
 
 gbcs = [8, 9, 17, 18, 19, 20, 21, 22]
 l1 = 0.08
@@ -33,22 +33,30 @@ baseDirectory = 'VCN_Cells'
 simDirectory = 'Simulations'
 nrep = 50
 SR = 'MS'
+testflag = False
+print("all_gbcs_AN")
 for gbc in gbcs:
+    print()
+    print ('='*32)
     cell = 'VCN_c{0:02d}'.format(gbc)
     an_result_file = 'AN_Result_VCN_c{0:02d}_delays_N{1:03d}_040dB_4000.0_{2:2s}.p'.format(gbc, nrep, SR)
     andatafile = os.path.join(baseDirectory, cell, simDirectory, 'AN', an_result_file)
-    print('an result: ', andatafile)
+    print('  an result file: {0:s}'.format(andatafile))
     print (os.path.isfile(andatafile) )
     if not os.path.isfile(andatafile) or forcerun: # only run if no evidence we have run this already 
-        if not forcerun:
-            call(["python", "all_gbc_AN.py", "%d"%gbc, "%s"%SR, '%d'%nrep])
-        else:
-            call(["python", "all_gbc_AN.py", "%d"%gbc, "%s"%SR, '%d'%nrep, "forcerun"])
-    fh = open(andatafile)
-    dx = pickle.load(fh)
-    
-    for k in dx['somaVoltage'].keys():
-        P.axdict[cell].plot(dx['time'], dx['somaVoltage'][k], linewidth=1.0)
-    P.axdict[cell].set_xlim(0., 250.)
-
+        cmdlist = ["python", "all_gbc_AN.py", "%d"%gbc, "%s"%SR, '%d'%nrep]
+        if testflag:
+            cmdlist.append('test')
+        if forcerun:
+            cmdlist.append('forcerun')
+        print cmdlist
+        call(cmdlist)
+    try:
+        with open(andatafile, 'r') as fh:
+            dx = pickle.load(fh)
+            for k in dx['somaVoltage'].keys():
+                P.axdict[cell].plot(dx['time'], dx['somaVoltage'][k], linewidth=1.0)
+            P.axdict[cell].set_xlim(0., 250.)
+    except IOError:
+            print('  Failed to find result file {0:s}'.format(andatafile))
 mpl.show()

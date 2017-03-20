@@ -176,12 +176,12 @@ def test_initial_conditions(cell, electrode_site=None, filename=None):
    #     hf.hr.h.fadvance()
     cell.hr.h.batch_save() # save nothing
     cell.hr.h.batch_run(cell.hr.h.tstop, cell.hr.h.dt, "an.dat")
-    pg.mkQApp()
     print('\ntime: ', np.array(monitor['time']))
     print('\nVelectrode: ', np.array(monitor['Velectrode']))
-    pl = pg.plot(np.array(monitor['time']), np.array(monitor['Velectrode']))
-    pl.setTitle(filename)
-    QtGui.QApplication.instance().exec_()
+    # pg.mkQApp()
+    # pl = pg.plot(np.array(monitor['time']), np.array(monitor['Velectrode']))
+    # pl.setTitle(filename)
+    # QtGui.QApplication.instance().exec_()
 
 
 

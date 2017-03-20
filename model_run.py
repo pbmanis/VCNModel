@@ -76,7 +76,7 @@ optional arguments:
   --workers NWORKERS    Number of "workers" for parallel processing (default:
                         4)
 
-example:
+Example:
 Set up initialization:
 python model_run.py VCN_c18 --hoc gbc18_w_axon_rescaled.hoc --protocol initIV --model XM13
 Then run model:
@@ -347,9 +347,9 @@ class ModelRun():
             self.dendriticelectrode_site = self.post_cell.hr.get_section(dendritic_electrode)
             self.dendriticElectrodeSection = 'dendrite'
         except:
-            dendriticElectrode = list(self.post_cell.hr.sec_groups['soma'])[0]
+            dendritic_electrode = list(self.post_cell.hr.sec_groups['soma'])[0]
             self.dendriticelectrode_site = self.post_cell.hr.get_section(dendritic_electrode)
-            self.dendriticElectrodeSection = 'dendrite'
+            self.dendriticElectrodeSection = 'soma'
         
         if verbose:
             print('par_map in run_model: ', par_map)
@@ -536,7 +536,9 @@ class ModelRun():
         Establish AN inputs to soma, and run the model.
         Requires a synapseConfig list of dicts from cell_config.makeDict()
         each list element represents an AN fiber (SGC cell) with:
-            (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high])
+            (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high], 
+                    type (e or i), segment and segment location)
+                    Note if segment is None, then the synapse is assigned to the soma.
         
         Parameters
         ----------
@@ -610,35 +612,39 @@ class ModelRun():
         tresults = [None]*len(TASKS)
         
         # run using pyqtgraph's parallel support
-        with pg.multiprocess.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
-            for j, x in tasker:
-                tresults = self.single_an_run(post_cell, j, synapseConfig,
-                    stimInfo, seeds, preCell, self.an_setup_time)
-                tasker.results[j] = tresults
-        # retreive the data
-        for j, N in enumerate(range(nReps)):
+        if self.Params['Parallel']:
+            with pg.multiprocess.Parallelize(enumerate(TASKS), results=tresults,
+                workers=nWorkers) as tasker:
+                for j, x in tasker:
+                    tresults = self.single_an_run(post_cell, j, synapseConfig,
+                        stimInfo, seeds, preCell, self.an_setup_time)
+                    tasker.results[j] = tresults
+            # retreive the data
+            for j, N in enumerate(range(nReps)):
 
-            celltime.append(tresults[j]['time']) # (self.time)
-            spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'],
-                    threshold, t0=0., t1=stimInfo['run_duration']*1000., dt=1.0, mode='peak')
-            inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
-            somaVoltage[N] = np.array(tresults[j]['Vsoma'])
-            dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
-            stimWaveform[N] = np.array(tresults[j]['stim']) # save the stimulus
+                celltime.append(tresults[j]['time']) # (self.time)
+                spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'],
+                        threshold, t0=0., t1=stimInfo['run_duration']*1000., dt=1.0, mode='peak')
+                inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
+                somaVoltage[N] = np.array(tresults[j]['Vsoma'])
+                dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
+                stimWaveform[N] = np.array(tresults[j]['stim']) # save the stimulus
 
-        # Non parallelized version:
-        # for j, N in enumerate(range(nReps)):
-        #     print ('Rep: %d' % N)
-        #
-        #     tresults[j] = self.single_an_run(post_cell, j, synapseConfig, stimInfo,  seeds, preCell, self.an_setup_time)
-        #
-        #     celltime.append(tresults[j]['time'])
-        #     spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold,
-        #             t0=0., t1=stimInfo['run_duration']*1000., dt=1.0, mode='peak')
-        #     inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [preCell[i]._spiketrain for i in range(len(preCell))]
-        #     somaVoltage[N] = np.array(tresults[j]['Vsoma']) # np.array(self.Vsoma)
-        #     dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
-        #     stimWaveform[N] = np.array(tresults[j]['stim']) # save the stimulus
+        else:
+            # Non parallelized version:
+            for j, N in enumerate(range(nReps)):
+                print ('Rep: %d' % N)
+
+                tresults[j] = self.single_an_run(post_cell, j, synapseConfig, 
+                        stimInfo,  seeds, preCell, self.an_setup_time)
+
+                celltime.append(tresults[j]['time'])
+                spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold,
+                        t0=0., t1=stimInfo['run_duration']*1000., dt=1.0, mode='peak')
+                inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [preCell[i]._spiketrain for i in range(len(preCell))]
+                somaVoltage[N] = np.array(tresults[j]['Vsoma']) # np.array(self.Vsoma)
+                dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
+                stimWaveform[N] = np.array(tresults[j]['stim']) # save the stimulus
         
         total_elapsed_time = time.time() - self.start_time
 #        total_run_time = time.time() - run_time
@@ -894,7 +900,15 @@ class ModelRun():
         hf = post_cell.hr
         filename = os.path.join(self.baseDirectory, self.cellID,
                     self.initDirectory, self.Params['initANStateFile'])
-        cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=filename)
+        try:
+            cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=filename)
+        except:
+            self.an_run(post_cell, make_an_intial_conditions=True)
+            try:
+                cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=filename)
+            except:
+                raise ValueError('Failed initialization for cell: ', self.cellID)
+
         # make independent inputs for each synapse
         ANSpikeTimes = []
         an0_time = time.time()
@@ -943,10 +957,13 @@ class ModelRun():
         Vsoma = hf.h.Vector()
         Vdend = hf.h.Vector()
         rtime = hf.h.Vector()
-        dendsite = post_cell.all_sections['dendrite'][-1]
-        
+        if 'dendrite' in post_cell.all_sections and len(post_cell.all_sections['dendrite']) > 0:
+            dendsite = post_cell.all_sections['dendrite'][-1]
+            Vdend.record(dendsite(0.5)._ref_v, sec=dendsite)
+        else:
+            dendsite = None
+            
         Vsoma.record(post_cell.soma(0.5)._ref_v, sec=post_cell.soma)
-        Vdend.record(dendsite(0.5)._ref_v, sec=dendsite)
         rtime.record(hf.h._ref_t)
         hf.h.finitialize()
         hf.h.tstop = stimInfo['run_duration']*1000.
@@ -954,6 +971,8 @@ class ModelRun():
         hf.h.batch_save() # save nothing
         hf.h.batch_run(hf.h.tstop, hf.h.dt, "an.dat")
         nrn_run_time += (time.time() - nrn_start)
+        if dendsite == None:
+            Vdend = np.zeros_like(Vsoma)
         anresult = {'Vsoma': np.array(Vsoma), 'Vdend': np.array(Vdend), 'time': np.array(rtime), 'ANSpikeTimes': ANSpikeTimes, 'stim': stim}
         return anresult
 
@@ -969,7 +988,8 @@ class ModelRun():
         layout = pgh.LayoutMaker(cols=1,rows=2, win=win, labelEdges=True, ticks='talbot')
         for j, N in enumerate(range(len(somaVoltage))):
             layout.plot(0, celltime, somaVoltage[N], pen=pg.mkPen(pg.intColor(N, nReps)))
-            layout.plot(0, [np.min(celltime), np.max(celltime)], [threshold, threshold], pen=pg.mkPen((0.5, 0.5, 0.5), width=0.5))
+            layout.plot(0, [np.min(celltime), np.max(celltime)], [threshold, threshold],
+                 pen=pg.mkPen((0.5, 0.5, 0.5), width=0.5))
             dvdt = np.diff(somaVoltage[N])
             layout.plot(1, celltime[:-1], dvdt, pen=pg.mkPen(pg.intColor(N, nReps)))
             layout.getPlot(0).setXLink(layout.getPlot(1))

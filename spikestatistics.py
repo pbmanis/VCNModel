@@ -58,8 +58,10 @@ def correlogram(T1, T2, width=20 * ms, bin=1 * ms, T=None):
     H, _ = histogram(l, bins=arange(2 * n + 1) * bin - n * bin) #, new = True)
 
     # Divide by time to get rate
-    if T is None:
+    if T is None and len(T1) > 0:
         T = max(T1[-1], T2[-1]) - min(T1[0], T2[0])
+    if len(T1) == 0: # handle empty spike train
+        T = 0
     # Windowing function (triangle)
     W = zeros(2 * n)
     W[:n] = T - bin * arange(n - 1, -1, -1)

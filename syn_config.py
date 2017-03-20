@@ -150,6 +150,7 @@ VCN_c22= [  [ (132.22), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
 VCN_Inputs = {'VCN_c07': VCN_c07, 'VCN_c08': VCN_c08,
               'VCN_c09': VCN_c09, 'VCN_c17': VCN_c17,
               'VCN_c18': VCN_c18, 'VCN_c19': VCN_c19,
+              'VCN_c20': VCN_c20,
               'VCN_c21': VCN_c21, 'VCN_c22': VCN_c22
     }
         
