@@ -50,7 +50,7 @@ optional arguments:
   -h, --help            show this help message and exit
   --type {Bushy,TStellate,DStellate}, -T {Bushy,TStellate,DStellate}
                         Define the cell type (default: Bushy)
-  --model {XM13,RM03,XM13PasDend,Calyx,MNTB,L23Pyr}, -M {XM13,RM03,XM13PasDend,Calyx,MNTB,L23Pyr}
+  --model {XM13,mGBC,RM03,XM13PasDend,Calyx,MNTB,L23Pyr}, -M {XM13,mGBC,RM03,XM13PasDend,Calyx,MNTB,L23Pyr}
                         Define the model type (default: XM13)
   --sgcmodel {Zilany, cochlea}, -M {Zilany, cochlea}
   --protocol {initIV,testIV,runIV,initAN,runANPSTH,runANSingles}, -P {initIV,testIV,runIV,initAN,runANPSTH,runANSingles}
@@ -135,7 +135,7 @@ class ModelRun():
         
         # use v2 files for model with rescaled soma
         self.cellChoices = ['Bushy', 'TStellate', 'DStellate']
-        self.modelChoices = ['XM13', 'RM03', 'XM13PasDend', 'Calyx', 'MNTB', 'L23Pyr']
+        self.modelChoices = ['XM13', 'RM03', 'mGBC', 'XM13PasDend', 'Calyx', 'MNTB', 'L23Pyr']
         self.SGCmodelChoices = ['Zilany', 'cochlea']  # cochlea is python model of Zilany data, no matlab, JIT computation
         self.cmmrModeChoices = ['CM', 'CD', 'REF']  # comodulated, codeviant, reference
         self.SRChoices = ['LS', 'MS', 'HS', 'fromcell']  # AN SR groups (assigned across all inputs)
@@ -177,7 +177,7 @@ class ModelRun():
         self.Params['dmod'] = 0 # percent if SAM
         # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
         self.Params['threshold'] = -20
-        self.Params['plotFlag'] = True
+        self.Params['plotFlag'] = False
         self.Params['auto_initialize'] = False
         self.Params['nWorkers'] = 4
         self.Params['Parallel'] = True
