@@ -100,6 +100,7 @@ VCN_c99 = [  # VCN_c09 without any dendrites
     [(302.55), 0., 2, np.nan, np.nan, np.nan, np.nan, 'e', 'soma' ],
     [(168.63), 0., 2, np.nan, np.nan, np.nan, np.nan, 'e', 'soma' ],
     [(143.97), 0., 2, np.nan, np.nan, np.nan, np.nan, 'e', 'soma' ],
+    [(89.05), 0., 2, np.nan, np.nan, np.nan, np.nan, 'e', 'soma' ],
     [(78.81), 0., 2, np.nan, np.nan, np.nan, np.nan, 'e', 'soma' ],
     [(53.46), 0., 2, np.nan, np.nan, np.nan, np.nan, 'e', 'soma' ],
     [(53.10), 0., 2, np.nan, np.nan, np.nan, np.nan, 'e', 'soma' ],
