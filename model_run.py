@@ -304,7 +304,7 @@ class ModelRun():
             print ('run_model creating a bushy cell: ')
             self.post_cell = cells.Bushy.create(morphology=filename, decorator=ChannelDecorate,
                     species=self.Params['species'],
-                    modelType=self.Params['modelType'], )
+                    modelType=self.Params['model_type'], )
             self.post_cell.irange = np.arange(-2., 2.1, 0.5)
             #print self.post_cell.irange
             #exit()
@@ -325,7 +325,7 @@ class ModelRun():
         # print 'post_cell: ', dir(self.post_cell)
        #  print 'post_cell hr: ', dir(self.post_cell.hr)
         
-#        self.post_cell.hr.h.celsius = 38.  # this is set by prepareRun in generateRun. Only place it should be changed
+        self.post_cell.hr.h.celsius = 38.  # this is set by prepareRun in generateRun. Only place it should be changed
         self.post_cell.hr.h.Ra = 150.
         print('Ra = {:8.1f}'.format(self.post_cell.hr.h.Ra))
         print('Temp = {:8.1f} degC '.format(self.post_cell.hr.h.celsius))

@@ -362,6 +362,7 @@ class GenerateRun():
         # self.hf.h.run()  # calls finitialize, causes offset
         """
         self.hf.h.batch_save() # save nothing
+        print ('Temperature in run at start: {:6.1f}'.format(self.hf.h.celsius))
         self.hf.h.batch_run(self.hf.h.tstop, self.hf.h.dt, "v.dat")
         print('Finishing Vm: {:6.2f}'.format(self.electrode_site.v))
         if testPlot:
