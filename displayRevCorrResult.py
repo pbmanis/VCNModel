@@ -20,7 +20,7 @@ from cycler import cycler
 import random
 from matplotlib import rc
 rc('text', usetex=False)
-
+import seaborn
 #plt.style.use('seaborn-muted')
 
 
@@ -45,7 +45,7 @@ def plot_revcorr(p, ax):
     h = open(os.path.join(basepath, fn[p]))
     d[p] = pickle.load(h)
     h.close()
-
+    seaborn.set_style('ticks')
     syninfo = SC.VCN_Inputs['VCN_{0:3s}'.format(p)]
 
 #    print ('# cells: ', d[p].keys())
@@ -85,14 +85,15 @@ def plot_revcorr(p, ax):
         color = plt.cm.viridis(norm(sites, isite))
         ax.plot(tx, C[0:nc/2], color=color, label=('Input {0:2d} N={1:3d}'.format(isite, int(sites[isite]))))
     #plt.legend()    
-    PH.nice_plot(ax, spines=['left', 'bottom'], position=0)
+#    PH.nice_plot(ax, spines=['left', 'bottom'], position=0)
+    seaborn.despine(ax=ax)
     PH.adjust_spines(ax, distance=0)
 #    ax.set_ylim(0, 0.20)
     ax.set_ylabel('R', fontsize=10)
     ax.set_xlabel('T (ms)', fontsize=10)
     
     ax.set_title('VCN_{0:3s} [{1:d}-{2:d}] Amax={3:.1f}'.format(p, int(np.min(sites)), int(np.max(sites)), amax), y=0.9, x=0.02,
-        horizontalalignment='left', fontsize=9)
+        horizontalalignment='left', fontsize=8)
 
 
 def plot_SAC():
@@ -210,7 +211,7 @@ def plot_SAC():
 
 if __name__ == '__main__':
     gbcs = [8, 9, 17, 18, 19, 20, 21, 22]
-    SR = 'HS'
+    SR = 'MS'
     fn = {}
     for g in gbcs:
         fn['c{0:02d}'.format(g)] = 'AN_Result_VCN_c{0:02d}_delays_N050_040dB_4000.0_{1:2s}.p'.format(g, SR)
@@ -220,7 +221,7 @@ if __name__ == '__main__':
     print ('patterns: ', patterns)
     p = 'c19'
     fig, ax = plt.subplots(2, 4, figsize=(10,6))
-    fig.figure
+    fig.suptitle('Reverse Correlations, AN types={0:2s}'.format(SR))
     r = 0
     c = -1
     for i, g in enumerate(gbcs):

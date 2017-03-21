@@ -21,15 +21,19 @@ import matplotlib.gridspec as gridspec
 import numpy as np
 import pylibrary.PlotHelpers as PH
 from collections import OrderedDict
+import seaborn
+from matplotlib import rc
+rc('text', usetex=False)
+import cell_config as CFG
 
 baseName = 'VCN_Cells'
-cell = 'VCN_c08'
+cell = 'VCN_c99'
 #filename = 'AN_Result_VCN_c08_delays_N050_040dB_4000.0_HS.p'
-#filename = 'AN_Result_VCN_c08_delays_N005_040dB_4000.0_MS.p'
+filename = 'AN_Result_%s_delays_N050_040dB_4000.0_HS.p' % cell
 
 #synfile_template = 'AN_Result_VCN_c18_reparented755V2Syn%03d_N005_040dB_4000.0_ 3.p'
 #synfile_template = 'AN_Result_VCN_c18_reparented755V2_Syn%03d_N002_040dB_4000.0_HS.p'
-synfile_template = 'AN_Result_%s_Syn%03d_N005_040dB_4000.0_%2s.p'
+synfile_template = 'AN_Result_%s_Syn%03d_N010_040dB_4000.0_%2s.p'
 
 def readFile(filename):
     f = open(filename, 'r')
@@ -140,7 +144,7 @@ def plot1(spikeTimes, inputSpikeTimes, stimInfo):
     layout.getPlot(0).addItem(curveSecS)
     
     layout.getPlot(0).setLabel('left', 'spikes/sec (1 msec bins)')
-    layout.getPlot(0).setTitle('VCN Cell 18')
+    layout.getPlot(0).setTitle('%s' % cell)
 
     pgh.show()
 
@@ -177,9 +181,11 @@ def get_dimensions(n, pref='height'):
 
 
 def plotSingles(inpath, SR='HS'):
+    seaborn.set_style('ticks')
     nInputs = 6
     nrow, ncol = get_dimensions(nInputs, pref='width')
-    fig, ax = plt.subplots(nInputs, 1, figsize=(4,6))
+    fig, ax = plt.subplots(nInputs, 1, figsize=(4.75,6))
+    fig.suptitle('{0:s}  SR: {1:s}'.format(cell, SR))
     # gs = gridspec.GridSpec(nrow, ncol)
     # ax = OrderedDict()
     # for i, g in enumerate(gs):
@@ -187,6 +193,7 @@ def plotSingles(inpath, SR='HS'):
     # win = pgh.figure(title='AN Inputs')
     # win.resize(300*ncol, 125*nrow)
     # layout = pgh.LayoutMaker(cols=ncol,rows=nrow, win=win, labelEdges=True, ticks='talbot')
+    sites, celltype = CFG.makeDict(cell)
     for i in range(nInputs):
         fname = synfile_template % (cell, i, SR)
         fname = os.path.join(inpath, fname)
@@ -195,6 +202,8 @@ def plotSingles(inpath, SR='HS'):
         nReps = stimInfo['nReps']
         # print 'nreps: ', nReps
         pl = ax[i]
+        pl.set_title('Input {0:d}: N sites: {1:d}'.format(i+1, sites[i]['nSyn']), fontsize=8, x=0.05, y=0.92,
+            horizontalalignment = 'left', verticalalignment='top')
 #        PH.nice_plot(pl)
         sv = d['somaVoltage']
         tm = d['time']
@@ -204,17 +213,26 @@ def plotSingles(inpath, SR='HS'):
             # print 'j: ', j
             # print tm.shape
             # print sv[j].shape
-            pl.plot(tm-100., sv[j])
+            pl.plot(tm-100., sv[j], linewidth=0.8)
            # print dir(pl)
             pl.set_ylabel('mV')
-            pl.set_ylim(-65., 25.)
+            pl.set_ylim(-65., 0.)
             pl.set_xlim(-50., 100.)
+#            PH.nice_plot(pl)
 #            pl.plot(tm, sv[j], pen=pg.mkPen(pg.intColor(j, nReps), width=1.0))
 #            pl.setLabel('left', 'mV')
 #            pl.setYRange(-65, -5)
             # PH.do_talbotTicks(pl, ndec=0)
             #PH.do_talbotTicks(pl, ndec=0)
+        if pl != ax[-1]:
+            pl.set_xticklabels([])
+        else:
+            plt.setp(pl.get_xticklabels(), fontsize=9)
+            pl.set_xlabel('ms')
+        plt.setp(pl.get_yticklabels(), fontsize=9)
 #    pgh.show()
+#    plt.tight_layout()
+    seaborn.despine(fig)
     plt.draw()
     plt.show()
 
@@ -224,7 +242,7 @@ def readIVFile(filename):
     d = pickle.load(f)
     f.close()
     tr = {}
-    print d.keys()
+#    print d.keys()
     for i in range(len(d['Results'])):
        dr = d['Results'][i]
        k = dr.keys()[0]
@@ -237,7 +255,7 @@ def readIVFile(filename):
     order = np.argsort(arun.IVResult['I'])
     utau = u'\u03C4'
     print(u'   {:^7s} {:^8s} {:^9s}{:^9}'.format('I (nA)', u'\u03C4 (ms)', 'Vss (mV)', 'Vmin (mV)')) 
-    print arun.IVResult
+#    print arun.IVResult
     for k in order[::-1]:
         tf = arun.IVResult['taus'].keys()[k]
         print('  {:6.1f}  {:7.2f} {:9.1f} {:9.1f}'.format(arun.IVResult['I'][k], 
@@ -253,7 +271,16 @@ def plotIV(infile):
     # layout.gridLayout.setRowStretchFactor(0, 12)
     # layout.gridLayout.setRowStretchFactor(1, 1)
 
-    fig, ax = plt.subplots(2, 1, figsize=(6, 4))
+    # you don't have to use an ordered dict for this, I just prefer it when debugging
+    sizer = OrderedDict([('A', [0.2, 0.6, 0.3, 0.5]), ('B', [0.2, 0.6, 0.1, 0.15])
+            # ('C1', [0.72, 0.25, 0.65, 0.3]), ('C2', [0.72, 0.25, 0.5, 0.1]),
+            # ('D', [0.08, 0.25, 0.1, 0.3]), ('E', [0.40, 0.25, 0.1, 0.3]), ('F', [0.72, 0.25, 0.1, 0.3]),
+    ])  # dict elements are [left, width, bottom, height] for the axes in the plot.
+    gr = [(a, a+1, 0, 1) for a in range(0, len(sizer.keys()))]   # just generate subplots - shape does not matter
+    axmap = OrderedDict(zip(sizer.keys(), gr))
+    P = PH.Plotter((len(sizer.keys()), 1), axmap=axmap, label=True, figsize=(6., 4.))
+#    PH.show_figure_grid(P.figure_handle)
+    P.resize(sizer)  # perform positioning magic
     ivr, d, tr = readIVFile(infile)
     mons = d['runInfo']['electrodeSection']
     # blueline = pg.mkPen('b')
@@ -261,20 +288,23 @@ def plotIV(infile):
     # redline = pg.mkPen('r')
     taufit = ivr['taufit']
     for k, i in enumerate(d['runInfo']['stimInj']):
-        ax[0].plot(tr[i]['monitor']['time'], tr[i]['monitor']['postsynapticV'], 'k-')
-        ax[1].plot(tr[i]['monitor']['time'], tr[i]['monitor']['postsynapticI'], 'b-')
+        P.axdict['A'].plot(tr[i]['monitor']['time'], tr[i]['monitor']['postsynapticV'], 'k-', linewidth=0.75)
+        P.axdict['B'].plot(tr[i]['monitor']['time'], tr[i]['monitor']['postsynapticI'], 'b-', linewidth=0.75)
         # layout.getPlot((0,0)).plot(tr[i]['monitor']['time'], tr[i]['monitor']['postsynapticV'], pen=blkline)
         # layout.getPlot((1,0)).plot(tr[i]['monitor']['time'], tr[i]['monitor']['postsynapticI'], pen=blueline)
           #plot_run(infile, tr[i], init=False)
     for k in taufit[0].keys():
-        ax[0].plot(taufit[0][k], taufit[1][k], 'r-')
+        P.axdict['A'].plot(taufit[0][k], taufit[1][k], 'r-')
  #        layout.getPlot((0,0)).plot(taufit[0][k], taufit[1][k], pen=redline)
-    ax[0].set_xlim(0, 200.)
-    ax[0].set_xlabel('T (ms)')
-    ax[1].set_xlim(0., 200.)
-    ax[1].set_xlabel('T (ms)')
-    PH.nice_plot(ax[0])
-    PH.nice_plot(ax[1])
+    P.axdict['A'].set_xlim(0, 150.)
+#    P.axdict['A'].set_xlabel('T (ms)')
+    P.axdict['A'].set_ylabel('V (mV)')
+    P.axdict['A'].set_xticklabels([])
+    
+    P.axdict['B'].set_xlim(0., 150.)
+    P.axdict['B'].set_xlabel('T (ms)')
+    P.axdict['B'].set_ylabel('I (nA)')
+    #PH.nice_plot(P.axdict)
     # layout.getPlot((0,0)).setXRange(0, 200.)
     # layout.getPlot((0,0)).setLabels(left='V (mV)', bottom='T (ms)')
     # layout.getPlot((1,0)).setXRange(0, 200.)
@@ -287,7 +317,7 @@ def plotIV(infile):
 
 if len(sys.argv) > 1:
     analysis = sys.argv[1]
-    SR = 'HS'
+    SR = 'MS'
     if len(sys.argv) > 2:
         SR = sys.argv[2]
 else:

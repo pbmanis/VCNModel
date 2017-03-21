@@ -116,7 +116,7 @@ def get_initial_condition_state(cell, tdur=2000., filename=None, electrode_site=
     cell.cell_initialize()
     init_model(cell, restore_from_file=False, electrode_site=electrode_site, reinit=reinit)
     hf.h.tstop = tdur
-    print('running for %8.2f ms' % tdur)
+    print('running for %8.2f ms at %4.1f' % (tdur, hf.h.celsius))
     hf.h.run()
     print('  run completed, t = %8.2f' % hf.h.t)
     if electrode_site is not None:

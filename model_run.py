@@ -325,7 +325,7 @@ class ModelRun():
         # print 'post_cell: ', dir(self.post_cell)
        #  print 'post_cell hr: ', dir(self.post_cell.hr)
         
-        self.post_cell.hr.h.celsius = 38.
+#        self.post_cell.hr.h.celsius = 38.  # this is set by prepareRun in generateRun. Only place it should be changed
         self.post_cell.hr.h.Ra = 150.
         print('Ra = {:8.1f}'.format(self.post_cell.hr.h.Ra))
         print('Temp = {:8.1f} degC '.format(self.post_cell.hr.h.celsius))
@@ -453,7 +453,7 @@ class ModelRun():
         print(self.Params['Parallel'])
         if self.Params['Parallel'] == False:
             nworkers = 1
-        print('Number of works available on this machine: ', nworkers)
+        print('Number of workers available on this machine: ', nworkers)
         self.R.doRun(self.Params['infile'], parMap=par_map, save='monitor', restore_from_file=True, initfile=ivinitfile,
             workers=nworkers)
         if verbose:
