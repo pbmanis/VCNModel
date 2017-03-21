@@ -176,7 +176,7 @@ class ModelRun():
         self.Params['fmod'] = 20 # hz, modulation if SAM
         self.Params['dmod'] = 0 # percent if SAM
         # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
-        self.Params['threshold'] = -20
+        self.Params['threshold'] = -35
         self.Params['plotFlag'] = False
         self.Params['auto_initialize'] = False
         self.Params['nWorkers'] = 4
@@ -324,7 +324,7 @@ class ModelRun():
         
         # print 'post_cell: ', dir(self.post_cell)
        #  print 'post_cell hr: ', dir(self.post_cell.hr)
-        
+
         self.post_cell.hr.h.celsius = 38.  # this is set by prepareRun in generateRun. Only place it should be changed
         self.post_cell.hr.h.Ra = 150.
         print('Ra = {:8.1f}'.format(self.post_cell.hr.h.Ra))
