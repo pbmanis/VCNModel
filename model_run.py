@@ -148,6 +148,7 @@ class ModelRun():
         self.cellID = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
         self.Params = OrderedDict()
         
+        self.Params['AMPAScale'] = 1.0 # Use the default scale for AMPAR conductances
         self.Params['initIVStateFile'] = 'IVneuronState.dat'
         self.Params['initANStateFile'] = 'ANneuronState.dat'
         self.Params['infile']= None
@@ -654,7 +655,8 @@ class ModelRun():
         print("Total Neuron Run Time = %{:8.2f} min ({:8.0f}s)".format(self.nrn_run_time/60., self.nrn_run_time))
         
         result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes,
-            'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'stimWaveform': stimWaveform, 'time': np.array(celltime[0])}
+            'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'stimWaveform': stimWaveform,
+            'time': np.array(celltime[0])}
         
         self.analysis_filewriter(self.Params['cell'], result, tag='delays')
         if self.Params['plotFlag']:
@@ -828,7 +830,8 @@ class ModelRun():
                     raise ValueError('SR type "%s" not found in Sr type list' % stimInfo['SRType'])
                 
                 preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=srindex))  # override
-            synapse.append(preCell[-1].connect(thisCell, pre_opts={'nzones':syn['nSyn'], 'delay':syn['delay2']}))
+            synapse.append(preCell[-1].connect(thisCell, pre_opts={'nzones':syn['nSyn'], 'delay':syn['delay2'],
+                post_opts={'AMPAScale': self.Params['AMPAScale']}}))
         for i, s in enumerate(synapse):
             s.terminal.relsite.Dep_Flag = 0  # turn off depression computation
         
@@ -1004,7 +1007,7 @@ class ModelRun():
         requiredKeys = ['stimInfo', 'spikeTimes', 'inputSpikeTimes', 'somaVoltage', 'time']
         for rk in requiredKeys:
             assert rk in k
-        
+        result['Params'] = self.Params  # include all the parameters of the run too
         stimInfo = result['stimInfo']
         outPath = os.path.join('VCN_Cells', self.cellID, self.simDirectory, 'AN')
         self.mkdir_p(outPath) # confirm that output path exists
@@ -1087,7 +1090,8 @@ if __name__ == "__main__":
                    help='Define the stimulus type (default: tonepip)')
 
     # lowercase options are generally parameter settings:
-
+    parser.add_argument('-a', '--AMPAScale', type=float, default=1.0, dest='AMPAScale',
+        help='Set AMPAR conductance scale factor (default 1.0)')
     parser.add_argument('-r', '--reps', type=int, default=1, dest = 'nReps',
         help='# repetitions')
     parser.add_argument('--fmod', type=float, default=20, dest = 'fmod',
