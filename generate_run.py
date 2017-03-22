@@ -302,9 +302,10 @@ class GenerateRun():
         
 #        self.results = results
         self.results={}
-        print ('tresults: ', tresults)
+#        print ('tresults: ', tresults)
 #        exit()
         for i in range(nLevels):
+#            print('level: ', i, '  tresults[i]["i"]: ', tresults[i]['i'])
             self.results[tresults[i]['i']] = tresults[i]['r']
         for k, i in enumerate(self.runInfo.stimInj):
             if self.plotting:
@@ -317,7 +318,7 @@ class GenerateRun():
             print ('doRun, calling IV')
         self.arun = ar.AnalyzeRun(self.results) # create an instance of the class with the data
         self.arun.IV()  # compute the IV on the data
-        self.IVResult =self.arun.IVResult
+        self.IVResult = self.arun.IVResult
         if verbose:
             print ('doRun, back from IV')
         if save == 'monitor':

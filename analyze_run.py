@@ -66,7 +66,7 @@ class AnalyzeRun():
                 self.t = msite['time'][0:vlen]
             self.V[j,:] = msite[self.somasite[0]]
             self.I[j,:] = msite[self.somasite[1]]
-        self.thr = -10.0  # mV
+        self.thr = -30.0  # mV
 
     def clean_spiketimes(self, spikeTimes, mindT=0.7):
         """
@@ -130,9 +130,10 @@ class AnalyzeRun():
             te = tw[1]
             td = tw[2]
             ssv  = pu.measure('mean', t, V[j,:], te-td, te)
-            # print 'te, td, ', te, td
-            # print 't min/max: ', np.min(t), np.max(t)
+            # print ('te, td, ', te, td)
+            # print ('t min/max: ', np.min(t), np.max(t))
             ssi  = pu.measure('mean', t, I[j,:], te-td, te)
+            # print('ssi: ssv ', j, ssi, ssv)
             rvm  = pu.measure('mean', t, V[j,:], 0.0, ts-1.0)
             minv = pu.measure('min', t, V[j,:], ts, te)
             spk[j] = pu.findspikes(t, V[j,:], thr, t0=ts, t1=te, dt=1.0, mode='peak')
