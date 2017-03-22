@@ -302,8 +302,8 @@ class GenerateRun():
         
 #        self.results = results
         self.results={}
-        for i in range(len(tasker.results)):
-            self.results[tasker.results[i]['i']] = tasker.results[i]['r']
+        for i in range(len(tresults)):
+            self.results[tresults[i]['i']] = tresults[i]['r']
         for k, i in enumerate(self.runInfo.stimInj):
             if self.plotting:
                 if k == 0:

@@ -5,7 +5,7 @@ import sys
 import os.path
 import pickle
 #import neuronvis.sim_result as sr
-
+import argparse
 import pylibrary.Utility as pu  # access to spike finder routine
 
 import time
@@ -27,15 +27,28 @@ rc('text', usetex=False)
 import cell_config as CFG
 
 baseName = 'VCN_Cells'
-cell = 'VCN_c99'
-#filename = 'AN_Result_VCN_c08_delays_N050_040dB_4000.0_HS.p'
-filename = 'AN_Result_%s_delays_N050_040dB_4000.0_HS.p' % cell
 
-#synfile_template = 'AN_Result_VCN_c18_reparented755V2Syn%03d_N005_040dB_4000.0_ 3.p'
-#synfile_template = 'AN_Result_VCN_c18_reparented755V2_Syn%03d_N002_040dB_4000.0_HS.p'
-synfile_template = 'AN_Result_%s_Syn%03d_N010_040dB_4000.0_%2s.p'
+filename_template = 'AN_Result_{0:s}_delays_N{1:03d}_040dB_4000.0_{2:2s}.p'
 
-def readFile(filename):
+synfile_template = 'AN_Result_{0:s}_Syn{1:03d}_N{2:03d}_040dB_4000.0_{3:2s}.p'
+
+def clean_spiketimes(spikeTimes, mindT=0.7):
+    """
+    Clean up spike time array, removing all less than mindT
+    spikeTimes is a 1-D list or array
+    mindT is difference in time, same units as spikeTimes
+    If 1 or 0 spikes in array, just return the array
+    """
+    if len(spikeTimes) > 1:
+        dst = np.diff(spikeTimes)
+        st = np.array(spikeTimes[0])  # get first spike
+        sok = np.where(dst > mindT)
+        st = np.append(st, [spikeTimes[s+1] for s in sok])
+        # print st
+        spikeTimes = st
+    return spikeTimes
+
+def readFile(filename, cmd):
     f = open(filename, 'r')
     d = pickle.load(f)
     f.close()
@@ -47,9 +60,24 @@ def readFile(filename):
         stimInfo = d['stimInfo']
         spikeTimes = d['spikeTimes']
         inputSpikeTimes = d['inputSpikeTimes']
-
+    if cmd['respike']:
+        spiketimes = {}
+        for k in d['somaVoltage'].keys():
+            spikeTimes[k] = pu.findspikes(d['time'], d['somaVoltage'][k], cmd['threshold'])
+            spikeTimes[k] = clean_spiketimes(spikeTimes[k], 0.7)
     return(spikeTimes, inputSpikeTimes, stimInfo, d)
 
+#def findspikes(x, v, thresh, t0=None, t1= None, dt=1.0, mode='schmitt', interpolate=False, debug=False):
+    """ findspikes identifies the times of action potential in the trace v, with the
+    times in t. An action potential is simply timed at the first point that exceeds
+    the threshold... or is the peak. 
+    4/1/11 - added peak mode
+    if mode is none or schmitt, we work as in the past.
+    if mode is peak, we return the time of the peak of the AP instead
+    7/15/11 - added interpolation flag
+    if True, the returned time is interpolated, based on a spline fit
+    if False, the returned time is just taken as the data time. 
+    """
 
 def ANfspike(spikes, stime, nReps):
     nANF = len(spikes[0])
@@ -78,9 +106,10 @@ def getFirstSpikes(spikes, stime, nReps):
     sl2 = np.full(nReps, np.nan)
     for r in range(nReps):
         rs = np.where(spikes[r] > stime)[0]  # get spike times post stimulus onset
+        print (spikes[r])
         if len(spikes[r]) > 0 and len(rs) > 0:
             sl1[r] = spikes[r][rs[0]]
-        if len(spikes[r]) > 1 and len(rs) > 0:
+        if len(spikes[r]) > 1 and len(rs) > 1:
             sl2[r] = spikes[r][rs[1]]  # second spikes
     return(sl1, sl2)    
 
@@ -149,8 +178,8 @@ def plot1(spikeTimes, inputSpikeTimes, stimInfo):
     pgh.show()
 
 
-def plotPSTH(infile):
-    spikeTimes, inputSpikeTimes, stimInfo, d = readFile(infile)
+def plotPSTH(infile, cmd):
+    spikeTimes, inputSpikeTimes, stimInfo, d = readFile(infile, cmd)
     nReps = stimInfo['nReps']
     starttime = 1000.*stimInfo['pip_start'][0]
     stimdur = stimInfo['pip_duration']
@@ -180,58 +209,58 @@ def get_dimensions(n, pref='height'):
     return(inopth, inoptw)
 
 
-def plotSingles(inpath, SR='HS'):
+def plotSingles(inpath, cmd):
     seaborn.set_style('ticks')
-    nInputs = 6
+    sites, celltype = CFG.makeDict(cmd['cell'])
+    nInputs = len(sites)
+    print ('cell: ', cmd['cell'], ' nInputs: ', nInputs)
     nrow, ncol = get_dimensions(nInputs, pref='width')
     fig, ax = plt.subplots(nInputs, 1, figsize=(4.75,6))
-    fig.suptitle('{0:s}  SR: {1:s}'.format(cell, SR))
-    # gs = gridspec.GridSpec(nrow, ncol)
-    # ax = OrderedDict()
-    # for i, g in enumerate(gs):
-    #     ax[i] = plt.Subplot(fig, g)
-    # win = pgh.figure(title='AN Inputs')
-    # win.resize(300*ncol, 125*nrow)
-    # layout = pgh.LayoutMaker(cols=ncol,rows=nrow, win=win, labelEdges=True, ticks='talbot')
-    sites, celltype = CFG.makeDict(cell)
+    fig.suptitle('{0:s}  SR: {1:s}'.format(cmd['cell'], cmd['SR']))
+    vmax = -50.
     for i in range(nInputs):
-        fname = synfile_template % (cell, i, SR)
+        fname = synfile_template.format(cmds['cell'], i, cmds['nReps'], cmds['SR'])
         fname = os.path.join(inpath, fname)
         print fname
-        spikeTimes, inputSpikeTimes, stimInfo, d = readFile(fname)
+        try:
+            spikeTimes, inputSpikeTimes, stimInfo, d = readFile(fname, cmd)
+        except:
+            print('Missing: ', fname)
+            continue
+        if cmd['respike']:
+            spiketimes = {}
+            for k in d['somaVoltage'].keys():
+                dt = d['time'][1]-d['time'][0]
+                spikeTimes[k] = pu.findspikes(d['time'], d['somaVoltage'][k], thresh=cmd['threshold'])
+                spikeTimes[k] = clean_spiketimes(spikeTimes[k])
         nReps = stimInfo['nReps']
-        # print 'nreps: ', nReps
         pl = ax[i]
         pl.set_title('Input {0:d}: N sites: {1:d}'.format(i+1, sites[i]['nSyn']), fontsize=8, x=0.05, y=0.92,
             horizontalalignment = 'left', verticalalignment='top')
-#        PH.nice_plot(pl)
         sv = d['somaVoltage']
         tm = d['time']
-        # print sv
-        # print tm
         for j in range(nReps):
-            # print 'j: ', j
-            # print tm.shape
-            # print sv[j].shape
-            pl.plot(tm-100., sv[j], linewidth=0.8)
-           # print dir(pl)
+            m = np.max(sv[k])
+            if m > vmax:
+                vmax = m
+        for j in range(nReps):
+            pv = pl.plot(tm-100., sv[j], linewidth=0.8)
+            pl.vlines(spikeTimes[j]-100., -j*2+vmax, -j*2-2+vmax,
+                color=pv[0].get_c(), linewidth=1.5)  # spike marker same color as trace
             pl.set_ylabel('mV')
-            pl.set_ylim(-65., 0.)
+            pl.set_ylim(-65., vmax)
             pl.set_xlim(-50., 100.)
-#            PH.nice_plot(pl)
-#            pl.plot(tm, sv[j], pen=pg.mkPen(pg.intColor(j, nReps), width=1.0))
-#            pl.setLabel('left', 'mV')
-#            pl.setYRange(-65, -5)
-            # PH.do_talbotTicks(pl, ndec=0)
-            #PH.do_talbotTicks(pl, ndec=0)
         if pl != ax[-1]:
             pl.set_xticklabels([])
         else:
             plt.setp(pl.get_xticklabels(), fontsize=9)
             pl.set_xlabel('ms')
         plt.setp(pl.get_yticklabels(), fontsize=9)
-#    pgh.show()
-#    plt.tight_layout()
+
+    for i in range(nInputs): # rescale all plots the same
+            ax[i].set_ylim(-65., vmax+cmd['nReps']*3)
+
+
     seaborn.despine(fig)
     plt.draw()
     plt.show()
@@ -242,7 +271,6 @@ def readIVFile(filename):
     d = pickle.load(f)
     f.close()
     tr = {}
-#    print d.keys()
     for i in range(len(d['Results'])):
        dr = d['Results'][i]
        k = dr.keys()[0]
@@ -264,13 +292,7 @@ def readIVFile(filename):
 
 
     
-def plotIV(infile):
-    # win = pgh.figure(title='AN Inputs')
-    # win.resize(600, 400)
-    # layout = pgh.LayoutMaker(cols=1,rows=2, win=win, labelEdges=True, ticks='talbot')
-    # layout.gridLayout.setRowStretchFactor(0, 12)
-    # layout.gridLayout.setRowStretchFactor(1, 1)
-
+def plotIV(infile, plottau=False):
     # you don't have to use an ordered dict for this, I just prefer it when debugging
     sizer = OrderedDict([('A', [0.2, 0.6, 0.3, 0.5]), ('B', [0.2, 0.6, 0.1, 0.15])
             # ('C1', [0.72, 0.25, 0.65, 0.3]), ('C2', [0.72, 0.25, 0.5, 0.1]),
@@ -281,57 +303,57 @@ def plotIV(infile):
     P = PH.Plotter((len(sizer.keys()), 1), axmap=axmap, label=True, figsize=(6., 4.))
 #    PH.show_figure_grid(P.figure_handle)
     P.resize(sizer)  # perform positioning magic
+    P.figure_handle.suptitle(cell)
     ivr, d, tr = readIVFile(infile)
     mons = d['runInfo']['electrodeSection']
-    # blueline = pg.mkPen('b')
-    # blkline = pg.mkPen('k')
-    # redline = pg.mkPen('r')
     taufit = ivr['taufit']
     for k, i in enumerate(d['runInfo']['stimInj']):
         P.axdict['A'].plot(tr[i]['monitor']['time'], tr[i]['monitor']['postsynapticV'], 'k-', linewidth=0.75)
         P.axdict['B'].plot(tr[i]['monitor']['time'], tr[i]['monitor']['postsynapticI'], 'b-', linewidth=0.75)
-        # layout.getPlot((0,0)).plot(tr[i]['monitor']['time'], tr[i]['monitor']['postsynapticV'], pen=blkline)
-        # layout.getPlot((1,0)).plot(tr[i]['monitor']['time'], tr[i]['monitor']['postsynapticI'], pen=blueline)
-          #plot_run(infile, tr[i], init=False)
-    for k in taufit[0].keys():
-        P.axdict['A'].plot(taufit[0][k], taufit[1][k], 'r-')
- #        layout.getPlot((0,0)).plot(taufit[0][k], taufit[1][k], pen=redline)
+    if plottau:
+        for k in taufit[0].keys():
+            P.axdict['A'].plot(taufit[0][k], taufit[1][k], 'r-')
     P.axdict['A'].set_xlim(0, 150.)
-#    P.axdict['A'].set_xlabel('T (ms)')
     P.axdict['A'].set_ylabel('V (mV)')
     P.axdict['A'].set_xticklabels([])
     
     P.axdict['B'].set_xlim(0., 150.)
     P.axdict['B'].set_xlabel('T (ms)')
     P.axdict['B'].set_ylabel('I (nA)')
-    #PH.nice_plot(P.axdict)
-    # layout.getPlot((0,0)).setXRange(0, 200.)
-    # layout.getPlot((0,0)).setLabels(left='V (mV)', bottom='T (ms)')
-    # layout.getPlot((1,0)).setXRange(0, 200.)
-    # layout.getPlot((0,0)).setLabels(left='I (nA)', bottom='T (ms)')
-    # layout.getPlot((0,0)).setTitle(infile)
-    #    cplts.plotFit(1, ivr['taufit'][0], ivr['taufit'][1],  c='r')
-#    cplts.plotFit(1, ivr['ihfit'][0], ivr['ihfit'][1],  c='b')
-    # pgh.show()
 
 
-if len(sys.argv) > 1:
-    analysis = sys.argv[1]
-    SR = 'MS'
-    if len(sys.argv) > 2:
-        SR = sys.argv[2]
-else:
-    exit()
+def parse_cmdline():
+    parser = argparse.ArgumentParser(description='Analyze protocos from a reconstructed model cell')
+    parser.add_argument(dest='cell', action='store',
+               default=None,
+               help='Select the cell (no default)')
+    parser.add_argument('--analysis', '-a', dest='analysis', action='store',
+               default='iv', choices=['psth', 'iv', 'singles'],
+               help = 'Specify an analysis')
+    parser.add_argument('-r', '--reps', type=int, default=1, dest='nReps',
+               help='# repetitions in file (filename)')
+    parser.add_argument('-t', '--threshold', type=float, default=-20.0, action='store',
+               dest='threshold',
+               help='# Spike threshold for recalculating spikes (mV). Negative numbers must be quoted with a leading space: " -30."')
+    parser.add_argument('--SR', dest='SR', default=None,
+               choices=['LS', 'MS', 'HS'], help='Select SR group (default is None)')
+    parser.add_argument('--respike', action='store_true', default=False, dest='respike',
+               help='recompute spikes from Vm waveforms (default: False)')
+    args = vars(parser.parse_args())
+    return args
 
-if analysis == 'psth':
-    infile = os.path.join(baseName, cell, 'Simulations/AN', filename)
-    plotPSTH(infile)
-elif analysis == 'iv':
-    infile = os.path.join(baseName, cell, 'Simulations/IV', '%s' % cell + '.p')
+
+cmds = parse_cmdline()
+
+if cmds['analysis'] == 'psth':
+    infile = os.path.join(baseName, cmds['cell'], 'Simulations/AN', filename_template.format(cmds['cell'], cmds['nReps'], cmds['SR']))
+    plotPSTH(infile, cmds['respike'])
+elif cmds['analysis'] == 'iv':
+    infile = os.path.join(baseName, cmds['cell'], 'Simulations/IV', '%s' % cmds['cell'] + '.p')
     plotIV(infile)
-elif analysis == 'singles':
-    inpath = os.path.join(baseName, cell, 'Simulations/AN')
-    plotSingles(inpath, SR)
+elif cmds['analysis'] == 'singles':
+    inpath = os.path.join(baseName, cmds['cell'], 'Simulations/AN')
+    plotSingles(inpath, cmds)
 plt.show()
 
 

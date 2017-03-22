@@ -289,9 +289,9 @@ class ModelRun():
             self.idnum = 9999
         self.cellID = os.path.splitext(self.Params['cell'])[0]
         
-        print (par_map)
-        if par_map == {}:
-            self.Params['plotFlag'] = True
+#        print (par_map)
+        # if par_map == {}:
+        #     self.Params['plotFlag'] = True
 
         ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                             self.initDirectory, self.Params['initIVStateFile'])
@@ -626,6 +626,7 @@ class ModelRun():
                 celltime.append(tresults[j]['time']) # (self.time)
                 spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'],
                         threshold, t0=0., t1=stimInfo['run_duration']*1000., dt=1.0, mode='peak')
+                spikeTimes[N] = self.clean_spiketimes(spikeTimes[N])
                 inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
                 somaVoltage[N] = np.array(tresults[j]['Vsoma'])
                 dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
@@ -642,6 +643,7 @@ class ModelRun():
                 celltime.append(tresults[j]['time'])
                 spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold,
                         t0=0., t1=stimInfo['run_duration']*1000., dt=1.0, mode='peak')
+                spikeTimes[N] = self.clean_spiketimes(spikeTimes[N])
                 inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [preCell[i]._spiketrain for i in range(len(preCell))]
                 somaVoltage[N] = np.array(tresults[j]['Vsoma']) # np.array(self.Vsoma)
                 dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
@@ -753,6 +755,7 @@ class ModelRun():
                 celltime.append(tresults[j]['time']) # (self.time)
                 spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold, t0=0.,
                         t1=stimInfo['run_duration']*1000, dt=1.0, mode='peak')
+                spikeTimes[N] = self.clean_spiketimes(spikeTimes[N])
                 inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
                 somaVoltage[N] = np.array(tresults[j]['Vsoma'])
                 dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
@@ -979,6 +982,21 @@ class ModelRun():
         anresult = {'Vsoma': np.array(Vsoma), 'Vdend': np.array(Vdend), 'time': np.array(rtime), 'ANSpikeTimes': ANSpikeTimes, 'stim': stim}
         return anresult
 
+    def clean_spiketimes(self, spikeTimes, mindT=0.7):
+        """
+        Clean up spike time array, removing all less than mindT
+        spikeTimes is a 1-D list or array
+        mindT is difference in time, same units as spikeTimes
+        If 1 or 0 spikes in array, just return the array
+        """
+        if len(spikeTimes) > 1:
+            dst = np.diff(spikeTimes)
+            st = np.array(spikeTimes[0])  # get first spike
+            sok = np.where(dst > mindT)
+            st = np.append(st, [spikeTimes[s+1] for s in sok])
+            # print st
+            spikeTimes = st
+        return spikeTimes
     
     def plot_an(self, celltime, somaVoltage, stimInfo, dendVoltage=None):
         """
@@ -1027,7 +1045,7 @@ class ModelRun():
             f = open(ofile, 'w')
         pickle.dump(result, f)
         f.close()
-        print('**** Analysis wrote output file ****\n    {:s}'.format(f))
+        print('**** Analysis wrote output file ****\n    {:s}'.format(ofile))
         self.ANFilename = ofile
 
     def get_hoc_file(self, hf):

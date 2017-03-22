@@ -68,6 +68,22 @@ class AnalyzeRun():
             self.I[j,:] = msite[self.somasite[1]]
         self.thr = -10.0  # mV
 
+    def clean_spiketimes(self, spikeTimes, mindT=0.7):
+        """
+        Clean up spike time array, removing all less than mindT
+        spikeTimes is a 1-D list or array
+        mindT is difference in time, same units as spikeTimes
+        If 1 or 0 spikes in array, just return the array
+        """
+        if len(spikeTimes) > 1:
+            dst = np.diff(spikeTimes)
+            st = np.array(spikeTimes[0])  # get first spike
+            sok = np.where(dst > mindT)
+            st = np.append(st, [spikeTimes[s+1] for s in sok])
+            # print st
+            spikeTimes = st
+        return spikeTimes
+
     def analyzeIV(self, t, V, I, tw, thr):
         """ analyze a set of voltage records (IV), with spike threshold
             tw is a list of [tdelay, tdur, tssw], where tdelay is the delay to
@@ -120,6 +136,7 @@ class AnalyzeRun():
             rvm  = pu.measure('mean', t, V[j,:], 0.0, ts-1.0)
             minv = pu.measure('min', t, V[j,:], ts, te)
             spk[j] = pu.findspikes(t, V[j,:], thr, t0=ts, t1=te, dt=1.0, mode='peak')
+            spk[j] = self.clean_spiketimes(spk[j])
             nspikes.append(spk[j].shape[0]) # build spike count list
             ispikes.append(ssi[0])  # currents at which spikes were detected
             if nspikes[-1] >= 1:  # get FSL

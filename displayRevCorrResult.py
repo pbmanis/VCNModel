@@ -13,9 +13,10 @@ import sac_campagnola as SAC
 import os.path
 import pycircstat as PCS
 import pylibrary.PlotHelpers as PH
+import pylibrary.Utility as pu
 import spikestatistics as SPKS
 import cell_config as SC
-
+from collections import OrderedDict
 from cycler import cycler
 import random
 from matplotlib import rc
@@ -37,9 +38,23 @@ def norm(p, n):
 # fn[pattern_list[2]] = 'AN_Result_VCN_c18_VCN_c09_delays_N020_040dB_4000.0_MS.p'
 # fn[pattern_list[3]] = 'AN_Result_VCN_c18_delays_N020_040dB_4000.0_FM10.0_DM000_MS.p'
 
+def clean_spiketimes(spikeTimes, mindT=0.7):
+    """
+    Clean up spike time array, removing all less than mindT
+    spikeTimes is a 1-D list or array
+    mindT is difference in time, same units as spikeTimes
+    If 1 or 0 spikes in array, just return the array
+    """
+    if len(spikeTimes) > 1:
+        dst = np.diff(spikeTimes)
+        st = np.array(spikeTimes[0])  # get first spike
+        sok = np.where(dst > mindT)
+        st = np.append(st, [spikeTimes[s+1] for s in sok])
+        # print st
+        spikeTimes = st
+    return spikeTimes
 
-
-def plot_revcorr(p, ax):
+def plot_revcorr(p, ax, respike=False):
     d={}
     basepath = 'VCN_Cells/VCN_{0:3s}/Simulations/AN'.format(p)
     h = open(os.path.join(basepath, fn[p]))
@@ -49,7 +64,23 @@ def plot_revcorr(p, ax):
     syninfo = SC.VCN_Inputs['VCN_{0:3s}'.format(p)]
 
 #    print ('# cells: ', d[p].keys())
-    st = d[p]['spikeTimes']
+    if not respike:
+        st = d[p]['spikeTimes']
+    else:
+        st = {}
+        dt = (d[p]['time'][1]-d[p]['time'][0])
+        for k in d[p]['somaVoltage'].keys():
+            st[k] = pu.findspikes(d[p]['time'], d[p]['somaVoltage'][k], -20, dt=dt, mode='peak')
+            st[k] = clean_spiketimes(st[k])
+#    print (st[0])
+    ndet1 = 0
+    for n in st:
+        ndet1 = ndet1 + len(st[n])   
+    ndet0 = 0
+    for n in d[p]['spikeTimes']:
+        ndet0 = ndet0 + len(d[p]['spikeTimes'][n])
+        
+    print('Detected %d and %d spikes', ndet0, ndet1)
     an = d[p]['inputSpikeTimes']
     print('cell: ', p)
     print ('syninfo: ', syninfo)
@@ -74,7 +105,7 @@ def plot_revcorr(p, ax):
     for isite in range(ninputs):  # for each ANF input (get from those on first trial)
         nt = 0
         for trial in range(len(st)):  # sum across trials
-            print ('trials; ', trial, len(st), len(an), isite, len(an[trial]))
+#            print ('trials; ', trial, len(st), len(an), isite, len(an[trial]))
             ann = an[trial][isite]
             if trial == 0:
                 C = SPKS.correlogram(st[trial], ann, width=width, bin=binw, T=None)
@@ -210,7 +241,8 @@ def plot_SAC():
     plt.show()
 
 if __name__ == '__main__':
-    gbcs = [8, 9, 17, 18, 19, 20, 21, 22]
+    gbcs = [  8,     9,   17,   18,    19, 20, 21, 22]
+    thrs = [-20.,  -30., -35., -25.,                 ]
     SR = 'MS'
     fn = {}
     for g in gbcs:
@@ -219,20 +251,44 @@ if __name__ == '__main__':
 
     patterns = fn.keys()
     print ('patterns: ', patterns)
-    p = 'c19'
-    fig, ax = plt.subplots(2, 4, figsize=(10,6))
-    fig.suptitle('Reverse Correlations, AN types={0:2s}'.format(SR))
-    r = 0
-    c = -1
-    for i, g in enumerate(gbcs):
-        if i == 4:
-            r += 1
-            c = 0
-        else:
-            c = c + 1
-#        print('i, r,c: ', i, r, c)
-        p = 'c{0:02d}'.format(g)
-        plot_revcorr(p, ax[r,c])
+    p = 'c09'
+    # fig, ax = plt.subplots(2, 4, figsize=(10,6))
+    lmar = 0.1
+    rmar = -0.01
+    tmar = 0.04
+    hspace = 0.04
+    vspace = 0.1
+    ncols = 4
+    nrows = len(gbcs)/ncols
+    gwid = (1.0-lmar-rmar)/ncols - hspace
+    wid = gwid-hspace
+    ght = (1.0-2*tmar)/nrows
+    ht = ght - vspace
+    yp = np.linspace(tmar, 1.0-tmar-ght, nrows)[::-1]
+    lp = np.linspace(lmar, 1.0-lmar-gwid, ncols)
+    plots  = ['rcorr']
+    sizer = OrderedDict([])
+    k = 0
+    
+    for ir, r in enumerate(range(nrows)):
+        for ic, c in enumerate(range(ncols)):
+            pname = ('VCN_c{0:02d}'.format(gbcs[k]))
+            sizer[pname] = [lp[ic], wid, yp[ir], ht]
+            k = k + 1
+    # sizer = OrderedDict([('VCN_c08', [l1, wid, yp[0], ht]), ('VCN_c09', [l1, wid, yp[1], ht]),
+    #         ('VCN_c17', [l1, wid, yp[2], ht]), ('VCN_c18', [l1, wid, yp[3], ht]),
+    #         ('VCN_c19', [l2, wid, yp[0], ht]), ('VCN_c20', [l2, wid, yp[1], ht]),
+    #         ('VCN_c21', [l2, wid, yp[2], ht]), ('VCN_c22', [l2, wid, yp[3], ht]),
+    # ])  # dict elements are [left, width, bottom, height] for the axes in the plot.
+    gr = [(a, a+1, 0, 1) for a in range(0, len(sizer.keys()))]   # just generate subplots - shape does not matter
+    axmap = OrderedDict(zip(sizer.keys(), gr))
+    P = PH.Plotter(rcshape=sizer, label=False, figsize=(10 , 6))
+    P.figure_handle.suptitle('Reverse Correlations, AN types={0:2s}'.format(SR))
+    for l in P.axlabels:
+        l.set_text(' ')
+    for i, g in enumerate(sizer.keys()):
+        p = g[4:]
+        plot_revcorr(p, P.axdict[g], respike=True)
     plt.show()
     exit()
     
