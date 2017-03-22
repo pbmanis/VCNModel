@@ -297,8 +297,8 @@ class GenerateRun():
                 self._prepareRun(inj=inj) # build the recording arrays
                 self.run_initialized = cellInit.init_model(self.cell, mode='cc', restore_from_file=restore_from_file, 
                     filename=initfile)
-                tresults = self._executeRun() # now you can do the run
-                tasker.results[i] = {'r': tresults, 'i': inj}
+                tr = {'r': self._executeRun(), 'i': inj} # now you can do the run
+                tasker.results[i] = tr
         
 #        self.results = results
         self.results={}
