@@ -303,7 +303,7 @@ class GenerateRun():
 #        self.results = results
         self.results={}
         print ('tresults: ', tresults)
-        exit()
+#        exit()
         for i in range(nLevels):
             self.results[tresults[i]['i']] = tresults[i]['r']
         for k, i in enumerate(self.runInfo.stimInj):
