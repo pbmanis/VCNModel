@@ -302,7 +302,7 @@ class GenerateRun():
         
 #        self.results = results
         self.results={}
-        for i in range(len(nlevels)):
+        for i in range(nlevels):
             self.results[tresults[i]['i']] = tresults[i]['r']
         for k, i in enumerate(self.runInfo.stimInj):
             if self.plotting:
