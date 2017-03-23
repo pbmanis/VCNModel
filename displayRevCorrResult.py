@@ -54,7 +54,7 @@ def clean_spiketimes(spikeTimes, mindT=0.7):
         spikeTimes = st
     return spikeTimes
 
-def plot_revcorr(p, ax, respike=False):
+def plot_revcorr(p, ax, respike=False, thr=-20.):
     d={}
     basepath = 'VCN_Cells/VCN_{0:3s}/Simulations/AN'.format(p)
     h = open(os.path.join(basepath, fn[p]))
@@ -70,7 +70,7 @@ def plot_revcorr(p, ax, respike=False):
         st = {}
         dt = (d[p]['time'][1]-d[p]['time'][0])
         for k in d[p]['somaVoltage'].keys():
-            st[k] = pu.findspikes(d[p]['time'], d[p]['somaVoltage'][k], -20, dt=dt, mode='peak')
+            st[k] = pu.findspikes(d[p]['time'], d[p]['somaVoltage'][k], thr, dt=dt, mode='peak')
             st[k] = clean_spiketimes(st[k])
 #    print (st[0])
     ndet1 = 0
@@ -101,7 +101,7 @@ def plot_revcorr(p, ax, respike=False):
             amax = area
         sites[isite] = int(np.around(area*SC.synperum2))
         
-    
+    print('ninputs: ', ninputs)
     for isite in range(ninputs):  # for each ANF input (get from those on first trial)
         nt = 0
         for trial in range(len(st)):  # sum across trials
@@ -117,15 +117,16 @@ def plot_revcorr(p, ax, respike=False):
         ax.plot(tx, C[0:nc/2], color=color, label=('Input {0:2d} N={1:3d}'.format(isite, int(sites[isite]))))
     #plt.legend()    
 #    PH.nice_plot(ax, spines=['left', 'bottom'], position=0)
+    print('finished inputs')
     seaborn.despine(ax=ax)
     PH.adjust_spines(ax, distance=0)
 #    ax.set_ylim(0, 0.20)
     ax.set_ylabel('R', fontsize=10)
     ax.set_xlabel('T (ms)', fontsize=10)
     
-    ax.set_title('VCN_{0:3s} [{1:d}-{2:d}] Amax={3:.1f}'.format(p, int(np.min(sites)), int(np.max(sites)), amax), y=0.9, x=0.02,
+    ax.set_title('VCN_{0:3s} [{1:d}-{2:d}] Amax={3:.1f}'.format(
+        p, int(np.min(sites)), int(np.max(sites)), amax), y=0.9, x=0.02,
         horizontalalignment='left', fontsize=8)
-
 
 def plot_SAC():
     #fig, ax = plt.subplots(len(pattern_list)+1, 3)
@@ -242,7 +243,7 @@ def plot_SAC():
 
 if __name__ == '__main__':
     gbcs = [  8,     9,   17,   18,    19, 20, 21, 22]
-    thrs = [-20.,  -30., -35., -25.,                 ]
+    thrs = [-32.,  -30., -35., -25.,   -30., -30., -30., -30.]
     SR = 'MS'
     fn = {}
     for g in gbcs:
@@ -288,7 +289,7 @@ if __name__ == '__main__':
         l.set_text(' ')
     for i, g in enumerate(sizer.keys()):
         p = g[4:]
-        plot_revcorr(p, P.axdict[g], respike=True)
+        plot_revcorr(p, P.axdict[g], respike=True, thr=thrs[i])
     plt.show()
     exit()
     

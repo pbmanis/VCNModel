@@ -41,7 +41,7 @@ VCN_c08 = [ [(66.26), 0., 2., 11.1, np.nan, 16.1, np.nan, 'e'],
             ]
 
 VCN_c09= [  [ (53.46), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
-            [ (78.81), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [ (78.81), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],  #partially on hillock
             [ (168.63), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
             [ (302.55), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
             [ (143.97), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],

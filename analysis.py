@@ -60,6 +60,7 @@ def readFile(filename, cmd):
         stimInfo = d['stimInfo']
         spikeTimes = d['spikeTimes']
         inputSpikeTimes = d['inputSpikeTimes']
+    print 'cmd: ', cmd
     if cmd['respike']:
         spiketimes = {}
         for k in d['somaVoltage'].keys():
@@ -126,7 +127,7 @@ def CNfspike(spikes, stime, nReps):
     return(sl1, sl2)
 
 
-def plot1(spikeTimes, inputSpikeTimes, stimInfo):
+def plot1(spikeTimes, inputSpikeTimes, stimInfo, cmd):
     win = pgh.figure(title='AN Inputs')
     layout = pgh.LayoutMaker(cols=1,rows=2, win=win, labelEdges=True, ticks='talbot')
     # flatten spike times
@@ -173,7 +174,7 @@ def plot1(spikeTimes, inputSpikeTimes, stimInfo):
     layout.getPlot(0).addItem(curveSecS)
     
     layout.getPlot(0).setLabel('left', 'spikes/sec (1 msec bins)')
-    layout.getPlot(0).setTitle('%s' % cell)
+    layout.getPlot(0).setTitle('%s' % cmd['cell'])
 
     pgh.show()
 
@@ -187,7 +188,7 @@ def plotPSTH(infile, cmd):
     ANfspike(inputSpikeTimes, starttime, nReps)
     print 'CN: '
     CNfspike(spikeTimes, starttime, nReps)
-    plot1(spikeTimes, inputSpikeTimes, stimInfo)
+    plot1(spikeTimes, inputSpikeTimes, stimInfo, cmd)
 
 
 def get_dimensions(n, pref='height'):
@@ -347,7 +348,7 @@ cmds = parse_cmdline()
 
 if cmds['analysis'] == 'psth':
     infile = os.path.join(baseName, cmds['cell'], 'Simulations/AN', filename_template.format(cmds['cell'], cmds['nReps'], cmds['SR']))
-    plotPSTH(infile, cmds['respike'])
+    plotPSTH(infile, cmds)
 elif cmds['analysis'] == 'iv':
     infile = os.path.join(baseName, cmds['cell'], 'Simulations/IV', '%s' % cmds['cell'] + '.p')
     plotIV(infile)
