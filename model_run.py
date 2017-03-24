@@ -838,7 +838,7 @@ class ModelRun():
                 
                 preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=srindex))  # override
             synapse.append(preCell[-1].connect(thisCell, pre_opts={'nzones':syn['nSyn'], 'delay':syn['delay2']},
-                post_opts={'AMPAScale': self.Params['AMPAScale']}))
+                post_opts={'AMPAScale': self.Params['AMPAScale'], 'postlocation': syn['postlocation']}))
         for i, s in enumerate(synapse):
             s.terminal.relsite.Dep_Flag = 0  # turn off depression computation
         
