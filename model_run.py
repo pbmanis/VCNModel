@@ -707,8 +707,7 @@ class ModelRun():
         
         preCell, synapse, self.electrode_site = self.configure_cell(post_cell, synapseConfig, celltype, stimInfo)
 
-        
-        nSyns = len(synapseConfig)
+        nSyns = len(preCell)
         seeds = self.compute_seeds(nReps, synapseConfig)
 
         stimInfo['seeds'] = seeds  # keep the seed values too.
@@ -723,7 +722,7 @@ class ModelRun():
         self.nrn_run_time = 0.0
         self.an_setup_time = 0.
         # get the gMax's
-        gMax = np.zeros(nSyns)
+        gMax = np.zeros(len(synapse))
         for i, s in enumerate(synapse):
             for p in s.psd.ampa_psd:
                 gMax[i] = p.gmax
@@ -837,11 +836,13 @@ class ModelRun():
                     raise ValueError('SR type "%s" not found in Sr type list' % stimInfo['SRType'])
                 
                 preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=srindex))  # override
-            synapse.append(preCell[-1].connect(thisCell, pre_opts={'nzones':syn['nSyn'], 'delay':syn['delay2']},
-                post_opts={'AMPAScale': self.Params['AMPAScale'], 'postlocation': syn['postlocation']}))
+            for pl in syn['postlocations']:
+                postsite = syn['postlocations'][pl]
+                # note that we split the number of zones between multiple sites
+                synapse.append(preCell[-1].connect(thisCell, pre_opts={'nzones':int(syn['nSyn']*postsite[2]), 'delay':syn['delay2']},
+                    post_opts={'AMPAScale': self.Params['AMPAScale'], 'postsite': postsite[0:2]}))
         for i, s in enumerate(synapse):
             s.terminal.relsite.Dep_Flag = 0  # turn off depression computation
-        
         #  ****** uncomment here to adjust gmax.
             # for p in s.psd.ampa_psd:
     #             p.gmax = p.gmax*2.5

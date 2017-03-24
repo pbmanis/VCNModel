@@ -213,7 +213,11 @@ def get_dimensions(n, pref='height'):
 def plotSingles(inpath, cmd):
     seaborn.set_style('ticks')
     sites, celltype = CFG.makeDict(cmd['cell'])
-    nInputs = len(sites)
+#    print sites
+    nInputs = 0
+    for s in sites:
+        nInputs += len(s['postlocations'].keys())
+    #nInputs = len(sites)
     print ('cell: ', cmd['cell'], ' nInputs: ', nInputs)
     nrow, ncol = get_dimensions(nInputs, pref='width')
     fig, ax = plt.subplots(nInputs, 1, figsize=(4.75,6))
@@ -241,7 +245,7 @@ def plotSingles(inpath, cmd):
         sv = d['somaVoltage']
         tm = d['time']
         for j in range(nReps):
-            m = np.max(sv[k])
+            m = np.max(sv[j])
             if m > vmax:
                 vmax = m
         for j in range(nReps):
