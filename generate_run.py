@@ -16,6 +16,7 @@ February 2014, Paul B. Manis UNC Chapel Hill
 
 import os
 import numpy as np
+from collections import OrderedDict
 import cnmodel.makestim
 from pylibrary.Params import Params
 import calyxPlots as cp
@@ -301,7 +302,7 @@ class GenerateRun():
                 tasker.results[i] = tr
         
 #        self.results = results
-        self.results={}
+        self.results = OrderedDict()
 #        print ('tresults: ', tresults)
 #        exit()
         for i in range(nLevels):
@@ -331,13 +332,15 @@ class GenerateRun():
             self.cplts.show()
 
 
-    def testRun(self, title='testing...'):
+    def testRun(self, title='testing...', initfile=None):
+        if initfile is None:
+            raise ValueError('generate_run:testRun needs initfile name')
         self._prepareRun(inj=0.0)
-        self.run_initialized = cellInit.init_model(self.hf, restore_from_file=True)
+        self.run_initialized = cellInit.init_model(self.cell, filename=initfile, restore_from_file=True)
         self.hf.h.t = 0.
         self.hf.h.tstop = 10
         #self.hf.h.run()
-        self._executeRun()
+        self._executeRun(testPlot=True)
         pg.mkQApp()
         pl = pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))
         pl.setTitle(title)
@@ -368,6 +371,8 @@ class GenerateRun():
         print ('Temperature in run at start: {:6.1f}'.format(self.hf.h.celsius))
         self.hf.h.batch_run(self.hf.h.tstop, self.hf.h.dt, "v.dat")
         print('Finishing Vm: {:6.2f}'.format(self.electrode_site.v))
+        self.monitor['time'] = np.array(self.monitor['time'])
+        self.monitor['time'][0] = 0.
         if testPlot:
             pg.mkQApp()
             pl = pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))

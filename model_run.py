@@ -97,12 +97,12 @@ import json
 
 from neuronvis.hoc_viewer import HocViewer
 import neuronvis.hoc_graphics as hoc_graphics
-from channel_decorate import ChannelDecorate
 from generate_run import GenerateRun
 import cellInitialization as cellInit
 
 from cnmodel import cells
 from cnmodel.util import sound
+from cnmodel.decorator import Decorator
 
 import cochlea
 import thorns  # required for cochlea
@@ -125,9 +125,7 @@ import numpy as np
 import cell_config
 
 verbose = False
-showCell = False
-
-
+showCell = True
 
 
 class ModelRun():
@@ -139,11 +137,12 @@ class ModelRun():
         self.SGCmodelChoices = ['Zilany', 'cochlea']  # cochlea is python model of Zilany data, no matlab, JIT computation
         self.cmmrModeChoices = ['CM', 'CD', 'REF']  # comodulated, codeviant, reference
         self.SRChoices = ['LS', 'MS', 'HS', 'fromcell']  # AN SR groups (assigned across all inputs)
-        self.protocolChoices = ['initIV', 'testIV', 'runIV', 'initAN', 'runANPSTH', 'runANSingles']
+        self.protocolChoices = ['initIV', 'testIV', 'runIV', 'initAN', 'runANPSTH', 'runANIO', 'runANSingles', 'runANOmitOne']
         self.soundChoices = ['tonepip', 'noise', 'stationaryNoise', 'SAM', 'CMMR']
         self.speciesChoices = ['mouse', 'guineapig']
 
-        
+        self.cellmap = {'bushy': cells.bushy, 'tstellate': cells.tstellate, 'dstellate': cells.dstellate}
+#        self.protocolmap = {'initIV': self.}
         self.srname = ['**', 'LS', 'MS', 'HS']  # runs 1-3, not starting at 0
         self.cellID = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
         self.Params = OrderedDict()
@@ -289,10 +288,7 @@ class ModelRun():
             self.idnum = 9999
         self.cellID = os.path.splitext(self.Params['cell'])[0]
         
-#        print (par_map)
-        # if par_map == {}:
-        #     self.Params['plotFlag'] = True
-
+        # Set up initialization and filenames
         ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                             self.initDirectory, self.Params['initIVStateFile'])
         ivinitdir = os.path.join(self.baseDirectory, self.cellID,
@@ -300,31 +296,28 @@ class ModelRun():
         self.mkdir_p(ivinitdir) # confirm existence of that file
         filename = os.path.join(self.baseDirectory, self.cellID, self.morphDirectory, self.Params['infile'])
         
+        # instantiate cells
         if self.Params['cellType'] in ['Bushy', 'bushy']:
             print ('run_model creating a bushy cell: ')
-            self.post_cell = cells.Bushy.create(morphology=filename, decorator=ChannelDecorate,
+            self.post_cell = cells.Bushy.create(morphology=filename, decorator=Decorator,
                     species=self.Params['species'],
                     modelType=self.Params['model_type'], )
-            self.post_cell.irange = np.arange(-2., 2.1, 0.5)
-            #print self.post_cell.irange
-            #exit()
+#            self.post_cell.irange = np.arange(-2., 2.1, 0.5)  # reset current injection range.
         elif self.Params['cellType'] in ['tstellate', 'TStellate']:
             print ('run_model creating a t-stellate cell: ')
-            self.post_cell = cells.TStellate.create(morphology=filename, decorator=ChannelDecorate,
+            self.post_cell = cells.TStellate.create(morphology=filename, decorator=Decorator,
                     species=self.Params['species'],
                     modelType=self.Params['model_type'], )
         elif self.Params['cellType'] in ['dstellate', 'DStellate']:
             print ('run_model creating a D-stellate cell: ')
-            self.post_cell = cells.DStellate.create(morphology=filename, decorator=ChannelDecorate,
+            self.post_cell = cells.DStellate.create(morphology=filename, decorator=Decorator,
                     species=self.Params['species'],
                     modelType=self.Params['model_type'], )
         else:
             raise ValueError("cell type {:s} not implemented".format(self.Params['cellType']))
                       
         
-        # print 'post_cell: ', dir(self.post_cell)
-       #  print 'post_cell hr: ', dir(self.post_cell.hr)
-
+        # Set up run parameters
         self.post_cell.hr.h.celsius = 38.  # this is set by prepareRun in generateRun. Only place it should be changed
         self.post_cell.hr.h.Ra = 150.
         print('Ra = {:8.1f}'.format(self.post_cell.hr.h.Ra))
@@ -382,15 +375,15 @@ class ModelRun():
                 print( 'test_init')
             ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                                 self.initDirectory, self.Params['initIVStateFile'])
-            self.R = GenerateRun(self.post_cell.hr, idnum=self.idnum, celltype=self.Params['cellType'],
+            self.R = GenerateRun(self.post_cell, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=self.post_cell.irange,
                              plotting = HAVE_PG and self.Params['plotFlag'], )
-            cellInit.test_initial_conditions(self.post_cell.hr, filename=ivinitfile,
+            cellInit.test_initial_conditions(self.post_cell, filename=ivinitfile,
                 electrode_site=self.electrode_site)
-            #self.R.test_run()
+            self.R.testRun(initfile=ivinitfile)
             return  # that is ALL, never make init and then keep running.
         
         if self.Params['runProtocol'] == 'runANPSTH':
@@ -407,16 +400,23 @@ class ModelRun():
             if verbose:
                 print ('ANSingles')
             self.an_run_singles(self.post_cell)
+            
+        if self.Params['runProtocol'] == 'runANOmitOne':
+            if verbose:
+                print ('ANOmitOne')
+            self.an_run_singles(self.post_cell, exclude=True)
         
         if self.Params['runProtocol'] == 'runIV':
             if verbose:
                 print ('iv_mode')
             self.iv_run()
         
-        if showCell:
-            self.render = HocViewer(self.post_cell)
-            cylinder=self.render.draw_cylinders()
-            cylinder.set_group_colors(self.section_colors, alpha=0.8, mechanism=['nav11', 'gbar'])
+        # if showCell:
+        #     print (dir(self.post_cell))
+        #     self.render = HocViewer(self.post_cell.hr)
+        #     cylinder=self.render.draw_cylinders()
+        #     cylinder.set_group_colors(self.section_colors, alpha=0.8, mechanism=['nav11', 'gbar'])
+        #     pg.show()
 
     
     def iv_run(self, par_map={}):
@@ -450,21 +450,16 @@ class ModelRun():
         if verbose:
             print ('iv_run: calling do_run')
         nworkers = self.Params['nWorkers']
-        print(self.Params['Parallel'])
+#        print(self.Params['Parallel'])
         if self.Params['Parallel'] == False:
             nworkers = 1
-        print('Number of workers available on this machine: ', nworkers)
+#        print('Number of workers available on this machine: ', nworkers)
         self.R.doRun(self.Params['infile'], parMap=par_map, save='monitor', restore_from_file=True, initfile=ivinitfile,
             workers=nworkers)
         if verbose:
             print( '   do_run completed')
         isteps = self.R.IVResult['I']
-        print ('iv_run: Results summary: ')
-        print (self.R.IVResult['tauih'])
         for k, i in enumerate(self.R.IVResult['tauih'].keys()):
-            
-            
-            
             print( '   ih: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['tauih'][i]['tau'].value))
             print('           dV : %f' % self.R.IVResult['tauih'][i]['a'].value)
         for k, i in enumerate(self.R.IVResult['taus'].keys()):
@@ -670,7 +665,7 @@ class ModelRun():
                 dendVoltage=result['dendriteVoltage'])
 
     
-    def an_run_singles(self, post_cell, verify=False):
+    def an_run_singles(self, post_cell, exclude=False, verify=False):
         """
         Establish AN inputs to soma, and run the model.
         synapseConfig: list of tuples
@@ -678,14 +673,21 @@ class ModelRun():
             (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high])
         This routine is special - it runs nReps for each synapse, turning off all of the other synapses
         by setting the synaptic conductance to 0 (to avoid upsetting initialization)
+        if the "Exclude" flag is set, it turns OFF each synapse, leaving the others running.
+        The output file either says "Syn", or "ExclSyn" 
         
         Parameters
         ----------
-        hf : hoc_reader object
+        post_cell : cnmodel cell object
             Access to neuron and file information
+        
+        exclude : boolean (default: False)
+            Set false to do one synapse at a time.
+            Set true to do all BUT one synapse at a time.
         
         verify : boolean (default: False)
             Flag to control printing of various intermediate results
+        
         
         Returns
         -------
@@ -730,12 +732,22 @@ class ModelRun():
         
         for k in range(nSyns):
             # only enable gsyn on the selected input
-            for i, s in enumerate(synapse):
-                for p in s.psd.ampa_psd:
-                    if i != k:
-                        p.gmax = 0.  # disable all
-                    else:
-                        p.gmax = gMax[i]  # except the shosen one
+            if exclude:
+                tagname = 'ExcludeSyn%03d'
+                for i, s in enumerate(synapse):
+                    for p in s.psd.ampa_psd:
+                        if i == k:
+                            p.gmax = 0.  # disable the one
+                        else:
+                            p.gmax = gMax[i]  # leaving the others set
+            else:
+                tagname = 'Syn%03d'
+                for i, s in enumerate(synapse):
+                    for p in s.psd.ampa_psd:
+                        if i != k:
+                            p.gmax = 0.  # disable all
+                        else:
+                            p.gmax = gMax[i]  # except the shosen one
             
             tresults = [None]*nReps
             
@@ -773,7 +785,7 @@ class ModelRun():
             result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes,
                 'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'time': np.array(tresults[j]['time'])}
             
-            self.analysis_filewriter(self.Params['cell'], result, tag='Syn%03d' % k)
+            self.analysis_filewriter(self.Params['cell'], result, tag=tagname % k)
         if self.Params['plotFlag']:
             self.plot_an(np.array(result['time']), result['somaVoltage'], result['stimInfo'])
     
@@ -1160,8 +1172,8 @@ if __name__ == "__main__":
     print(json.dumps(model.Params, indent=4))  # pprint doesn't work well with ordered dicts
 
     model.run_model() # then run the model
-    if showCell:
-        QtGui.QApplication.instance().exec_()
+    # if showCell:
+    #     QtGui.QApplication.instance().exec_()
     try:
         exit()
     except:

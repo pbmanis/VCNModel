@@ -44,7 +44,7 @@ def init_model(cell, mode='iclamp', vinit=-65., restore_from_file=False, filenam
     # 1. adjust e_leak so that the rmp in each segment is the same
     # 2. use ic_constant to inject current in each segment to set rmp
     # 3. allow vm to vary in segments, using existing conductances (may be unstable)
-    
+    print(filename)
     if restore_from_file:
         restore_initial_conditions_state(cell, electrode_site=electrode_site, filename=filename, reinit=reinit)
         try:

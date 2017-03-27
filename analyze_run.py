@@ -59,9 +59,9 @@ class AnalyzeRun():
         self.I = np.zeros((self.nRun, vlen))
         for j,i in enumerate(res.keys()):  # each result key is a current level...
             try:
-                msite = res[self.injs[0]].monitor
+                msite = res[self.injs[j]].monitor
             except:
-                msite = res[self.injs[0]]['monitor']
+                msite = res[self.injs[j]]['monitor']
             if j == 0:
                 self.t = msite['time'][0:vlen]
             self.V[j,:] = msite[self.somasite[0]]
@@ -102,87 +102,74 @@ class AnalyzeRun():
         """
         if verbose:
             print('starting analyzeIV')
-        # print 'tw: ', tw
-        # print 'thr: ', thr
+        self.thr = thr
         ntraces = np.shape(V)[0]
-        vss     = []
-        vmin    = []
-        vrmss    = []
-        vm      = []
-        ic       = []
-        nspikes = []
-        ispikes = []
-        tmin = []
+        vss = np.empty(ntraces)
+        vmin = np.zeros(ntraces)
+        vrmss = np.zeros(ntraces)
+        vm = np.zeros(ntraces)
+        ic = np.zeros(ntraces)
+        nspikes = np.zeros(ntraces)
+        ispikes = np.zeros(ntraces)
+        t_minv = np.zeros(ntraces)
         fsl = []
         fisi = []
-        spk={}
-        taus={}
+        spk = {}
+        taus = {}
         tauih = {}
         xtfit = {}
         ytfit = {}
         xihfit = {}
         yihfit = {}
         dt = t[1]-t[0]
+        tss = [int((tw[1]-tw[2])/dt), int(tw[1]/dt)]
+        ts = tw[0]
+        te = tw[1]
+        td = tw[2]
         for j in range(0, ntraces):
             if verbose:
                 print('    analyzing trace: %d' % (j))
-            ts = tw[0]
-            te = tw[1]
-            td = tw[2]
-            ssv  = pu.measure('mean', t, V[j,:], te-td, te)
-            # print ('te, td, ', te, td)
-            # print ('t min/max: ', np.min(t), np.max(t))
-            ssi  = pu.measure('mean', t, I[j,:], te-td, te)
-            # print('ssi: ssv ', j, ssi, ssv)
-            rvm  = pu.measure('mean', t, V[j,:], 0.0, ts-1.0)
-            minv = pu.measure('min', t, V[j,:], ts, te)
-            spk[j] = pu.findspikes(t, V[j,:], thr, t0=ts, t1=te, dt=1.0, mode='peak')
+            vss[j] = np.mean(V[j,tss[0]:tss[1]])
+            ic[j] = np.mean(I[j,tss[0]:tss[1]])
+            vm[j] = np.mean(V[j, 0:int((ts-1.0)/dt)])
+            mv = np.argmin(V[j,int(ts/dt):int(te/dt)])
+            t_minv[j] = t[mv]  # time of minimum
+            vmin[j] = V[j, mv]  # value of minimum
+            spk[j] = pu.findspikes(t, V[j,:], self.thr, t0=ts, t1=te, dt=1.0, mode='peak')
             spk[j] = self.clean_spiketimes(spk[j])
-            nspikes.append(spk[j].shape[0]) # build spike count list
-            ispikes.append(ssi[0])  # currents at which spikes were detected
-            if nspikes[-1] >= 1:  # get FSL
+            nspikes[j] = spk[j].shape[0] # build spike count list
+            ispikes[j] = ic[j]  # currents at which spikes were detected
+            if nspikes[j] >= 1:  # get FSL
                 fsl.append(spk[j][0])
             else:
                 fsl.append(None)
-            if nspikes[-1] >= 2:  # get first interspike interval
+            if nspikes[j] >= 2:  # get first interspike interval
                 fisi.append(spk[1]-spk[j][0])
             else:
                 fisi.append(None)
-            vm.append(rvm[0])  # rmp
 
             # fit the hyperpolarizing responses for Rin and "sag"
             # print 'ssi: ', ssi[0]
-            if ssi[0] < 0.0 and (minv[1]-ts) > 5.*dt: # just for hyperpolarizing pulses...
+            if ic[j] < 0.0 and (t_minv[j]-ts) > 5.*dt: # just for hyperpolarizing pulses...
                 if verbose:
                     print('    fitting trace %d' % j)
 
                     print('t.shape: ', t.shape)
                     print('V.shape: ', V[j,:].shape)
-                    print('ts, minv: ', ts, minv)
-                    print('ssi[0]: ', ssi[0])
+                    print('ts, vmin: ', ts, vmin)
+                    print('ic[j]: ', ic[j])
 
-                taus[j], xtfit[j], ytfit[j] = self.single_taufit(t, V[j,:], ts, minv[1])
-                vrmss.append(rvm[0])
-                ic.append(ssi[0])
-                vss.append(ssv[0]) # get steady state voltage
-                vmin.append(minv[0]) # and min voltage
-                tmin.append(minv[1]) # and min time
+                taus[j], xtfit[j], ytfit[j] = self.single_taufit(t, V[j,:], ts, t_minv[j])
                 if verbose:
                     print('     calling fit')
-                if (te-minv[1]) > 10.*dt:
-                    tauih[j], xihfit[j], yihfit[j] = self.single_taufit(t, V[j,:], minv[1], te) # fit the end of the trace
+                if (te-t_minv[j]) > 10.*dt:
+                    tauih[j], xihfit[j], yihfit[j] = self.single_taufit(t, V[j,:], t_minv[j], te) # fit the end of the trace
                 if verbose:
                     print('     completed fit')
             if verbose:
                 print('   >>> completed analyzing trace %d' % j)
         if verbose:
             print('done with traces')
-        # print 'vss: ', vss
-        vss = np.array(vss)  # steady state during current pulse
-        vrmss = np.array(vrmss)  # resting potential for hyperpolarizaing pulses only
-        ic = np.array(ic)  # injected current
-        vmin = np.array(vmin)  # min voltage, hyperpolarizing only
-        tmin = np.array(tmin)  # time of min with hyp (used for Ih fitting)
         RinIVss = (vss - vrmss)/ic  # measure steady-state input resistance
         RinIVpk = (vmin - vrmss)/ic  # measure "peak" input resistance
         if len(RinIVss) > 0:
@@ -196,7 +183,7 @@ class AnalyzeRun():
         if verbose:
             print('building IVResult')
         self.IVResult = {'I': ic, 'Vmin': vmin, 'Vss': vss, 'Vrmss': vrmss,
-                'Vm': vm, 'Tmin': np.array(tmin),
+                'Vm': vm, 'Tmin': np.array(t_minv),
                 'Ispike': np.array(ispikes), 'Nspike': np.array(nspikes), 'Tspike': np.array(spk),
                 'FSL': np.array(fsl), 'FISI': np.array(fisi), 'taus': taus, 'tauih': tauih,
                 'Rinss': Rinss, 'Rinpk': Rinpk,
@@ -245,11 +232,8 @@ class AnalyzeRun():
 
         (cx, cy) = pu.clipdata(y, x, t0, t1, minFlag = False)
         cx -= t0   # fitting is reference to zero time
-        # print 'p: ', p
-        # print 'cx, cy: ', cx, cy
         try:
             mi = lmfit.minimize(self.expfit, p, args=(cx, cy))
-            mi.leastsq()
             yfit = self.expfit(mi.params, cx)
             cx += t0  # restore absolute time
 
