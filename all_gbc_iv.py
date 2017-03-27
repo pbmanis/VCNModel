@@ -20,7 +20,7 @@ l2 = 0.52
 wid = 0.4
 ht = 0.18
 yp = [0.8, 0.55, 0.3, 0.05]
-sizer = OrderedDict([('VCN_c08', [l1, wid, yp[0], ht]), ('VCN_c09', [l1, wid, yp[1], ht]),
+sizer = OrderedDict([('VCN_c99', [l1, wid, yp[0], ht]), ('VCN_c09', [l1, wid, yp[1], ht]),
         ('VCN_c17', [l1, wid, yp[2], ht]), ('VCN_c18', [l1, wid, yp[3], ht]), 
         ('VCN_c19', [l2, wid, yp[0], ht]), ('VCN_c20', [l2, wid, yp[1], ht]), 
         ('VCN_c21', [l2, wid, yp[2], ht]), ('VCN_c22', [l2, wid, yp[3], ht]),
@@ -32,7 +32,7 @@ P = PH.Plotter(rcshape=sizer, label=False, figsize=(6, 8), labeloffset=[0.6, 0.]
 
 M = mrun.ModelRun() # create an instance
 
-gbc_nos = [8, 9, 17, 18, 19, 20, 21, 22]
+gbc_nos = [99, 9, 17, 18, 19, 20, 21, 22]
 
 # create paths to the simulation runs to check for existing IV initialization
 ivinitfile = os.path.join(M.initDirectory, 'IVneuronState.dat')
@@ -65,12 +65,14 @@ for n in gbc_nos:
     fh = open(ivdatafile)
     df = pickle.load(fh)
     r = df['Results'][0]
+    print  (df['Results'])
     for trial in range(len(df['Results'])):
         ds = df['Results'][trial]
         k0 = df['Results'][trial].keys()[0]
         dx = ds[k0]['monitor']
         P.axdict[cell].plot(dx['time'], dx['postsynapticV'], linewidth=1.0)
         P.axdict[cell].set_xlim(0., 150.)
+        P.axdict[cell].set_ylim(-200., 50.)
 
 mpl.show()
 

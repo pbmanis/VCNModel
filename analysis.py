@@ -31,6 +31,8 @@ baseName = 'VCN_Cells'
 filename_template = 'AN_Result_{0:s}_delays_N{1:03d}_040dB_4000.0_{2:2s}.p'
 
 synfile_template = 'AN_Result_{0:s}_Syn{1:03d}_N{2:03d}_040dB_4000.0_{3:2s}.p'
+excsynfile_template = 'AN_Result_{0:s}_ExcludeSyn{1:03d}_N{2:03d}_040dB_4000.0_{3:2s}.p'
+synIOfile_template = 'AN_Result_{0:s}_SynIO{1:03d}_N{2:03d}_040dB_4000.0_{3:2s}.p'
 
 def clean_spiketimes(spikeTimes, mindT=0.7):
     """
@@ -223,8 +225,17 @@ def plotSingles(inpath, cmd):
     fig, ax = plt.subplots(nInputs, 1, figsize=(4.75,6))
     fig.suptitle('{0:s}  SR: {1:s}'.format(cmd['cell'], cmd['SR']))
     vmax = -50.
+    template = synfile_template
+    tmin = -100.
+    trange = [-50., 100.]
+    if cmd['analysis'] == 'omit':
+        template = excsynfile_template
+    if cmd['analysis'] == 'io':
+        template = synIOfile_template
+        tmin = 0.
+        trange = [0., 50.]
     for i in range(nInputs):
-        fname = synfile_template.format(cmds['cell'], i, cmds['nReps'], cmds['SR'])
+        fname = template.format(cmds['cell'], i, cmds['nReps'], cmds['SR'])
         fname = os.path.join(inpath, fname)
         print fname
         try:
@@ -249,12 +260,12 @@ def plotSingles(inpath, cmd):
             if m > vmax:
                 vmax = m
         for j in range(nReps):
-            pv = pl.plot(tm-100., sv[j], linewidth=0.8)
-            pl.vlines(spikeTimes[j]-100., -j*2+vmax, -j*2-2+vmax,
+            pv = pl.plot(tm-tmin, sv[j], linewidth=0.8)
+            pl.vlines(spikeTimes[j]-tmin, -j*2+vmax, -j*2-2+vmax,
                 color=pv[0].get_c(), linewidth=1.5)  # spike marker same color as trace
             pl.set_ylabel('mV')
             pl.set_ylim(-65., vmax)
-            pl.set_xlim(-50., 100.)
+            pl.set_xlim(trange[0], trange[1])
         if pl != ax[-1]:
             pl.set_xticklabels([])
         else:
@@ -333,7 +344,7 @@ def parse_cmdline():
                default=None,
                help='Select the cell (no default)')
     parser.add_argument('--analysis', '-a', dest='analysis', action='store',
-               default='iv', choices=['psth', 'iv', 'singles'],
+               default='iv', choices=['psth', 'iv', 'singles', 'omit', 'io'],
                help = 'Specify an analysis')
     parser.add_argument('-r', '--reps', type=int, default=1, dest='nReps',
                help='# repetitions in file (filename)')
@@ -356,7 +367,7 @@ if cmds['analysis'] == 'psth':
 elif cmds['analysis'] == 'iv':
     infile = os.path.join(baseName, cmds['cell'], 'Simulations/IV', '%s' % cmds['cell'] + '.p')
     plotIV(infile)
-elif cmds['analysis'] == 'singles':
+elif cmds['analysis'] in ['singles', 'omit', 'io']:
     inpath = os.path.join(baseName, cmds['cell'], 'Simulations/AN')
     plotSingles(inpath, cmds)
 plt.show()

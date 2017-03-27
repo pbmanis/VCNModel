@@ -395,22 +395,27 @@ class ModelRun():
             if verbose:
                 print ('Init AN')
             self.an_run(self.post_cell, make_an_intial_conditions=True)
-        
+
+        if self.Params['runProtocol'] == 'runANIO':
+            if verbose:
+                print ('Run AN IO')
+            self.an_run_IO(self.post_cell)
+
         if self.Params['runProtocol'] == 'runANSingles':
             if verbose:
                 print ('ANSingles')
             self.an_run_singles(self.post_cell)
-            
+
         if self.Params['runProtocol'] == 'runANOmitOne':
             if verbose:
                 print ('ANOmitOne')
             self.an_run_singles(self.post_cell, exclude=True)
-        
+
         if self.Params['runProtocol'] == 'runIV':
             if verbose:
                 print ('iv_mode')
             self.iv_run()
-        
+
         # if showCell:
         #     print (dir(self.post_cell))
         #     self.render = HocViewer(self.post_cell.hr)
@@ -728,7 +733,6 @@ class ModelRun():
         for i, s in enumerate(synapse):
             for p in s.psd.ampa_psd:
                 gMax[i] = p.gmax
-        print('synapse gMax: ', gMax)
         
         for k in range(nSyns):
             # only enable gsyn on the selected input
@@ -748,6 +752,8 @@ class ModelRun():
                             p.gmax = 0.  # disable all
                         else:
                             p.gmax = gMax[i]  # except the shosen one
+            print('Syn #: %d, synapse gMax: ' % k, gMax)
+            print('tag: ', tagname)
             
             tresults = [None]*nReps
             
@@ -788,7 +794,196 @@ class ModelRun():
             self.analysis_filewriter(self.Params['cell'], result, tag=tagname % k)
         if self.Params['plotFlag']:
             self.plot_an(np.array(result['time']), result['somaVoltage'], result['stimInfo'])
-    
+
+    def an_run_IO(self, post_cell):
+        """
+        Establish AN inputs to soma, and run the model adjusting gmax over the reps from 0.5 to 4x.
+        synapseConfig: list of tuples
+            each tuple represents an AN fiber (SGC cell) with:
+            (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high])
+        This routine runs a series of nReps for each synapse, turning off all of the other synapses.
+        and varying the synaptic conductance to 0 (to avoid upsetting initialization)
+        The output file either says "SynIO" 
+        
+        Parameters
+        ----------
+        post_cell : cnmodel cell object
+            Access to neuron and file information
+        
+        exclude : boolean (default: False)
+            Set false to do one synapse at a time.
+            Set true to do all BUT one synapse at a time.
+        
+        verify : boolean (default: False)
+            Flag to control printing of various intermediate results
+        
+        
+        Returns
+        -------
+            Nothing
+        
+        """
+        
+        self.start_time = time.time()
+        synapseConfig, celltype = cell_config.makeDict(self.cellID)
+        nReps = self.Params['nReps']
+        threshold = self.Params['threshold'] # spike threshold, mV
+        
+        stimInfo = self.Params
+        preCell, synapse, self.electrode_site = self.configure_cell(post_cell, synapseConfig, celltype, stimInfo)
+
+        nSyns = len(preCell)
+        k = 0
+        spikeTimes = {}
+        inputSpikeTimes = {}
+        somaVoltage = {}
+        dendriteVoltage = {}
+        celltime = []
+        parallel = self.Params['Parallel']
+        self.setup_time = time.time() - self.start_time
+        self.nrn_run_time = 0.0
+        self.an_setup_time = 0.
+        # get the gMax's
+        gMax = np.zeros(len(synapse))
+        for i, s in enumerate(synapse):
+            for p in s.psd.ampa_psd:
+                gMax[i] = p.gmax
+        
+        for k in range(nSyns):
+            # only enable gsyn on the selected input
+            tagname = 'SynIO%03d'
+            
+            tresults = [None]*nReps
+            
+            if parallel and self.Params['nWorkers'] > 1:
+                nWorkers = self.Params['nWorkers']
+                TASKS = [s for s in range(nReps)]
+                # run using pyqtgraph's parallel support
+                with pg.multiprocess.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
+                    for j, x in tasker:
+                        for i, s in enumerate(synapse):
+                            for p in s.psd.ampa_psd:
+                                if i != k:
+                                    p.gmax = 0.  # disable all others
+                                else:
+                                    p.gmax = 4*j*gMax[i]/nReps  # except the shosen one
+                        tresults = self.single_an_run_fixed(post_cell, j, synapseConfig,
+                            stimInfo, preCell, self.an_setup_time)
+                        tasker.results[j] = tresults
+                # retreive the data
+            else:  # easier to debug
+                for j, N in enumerate(range(nReps)):
+                    for i, s in enumerate(synapse):
+                        for p in s.psd.ampa_psd:
+                            if i != k:
+                                p.gmax = 0.  # disable all others
+                            else:
+                                p.gmax = 4*j*gMax[i]/nReps  # except the shosen one
+                    tresults[j] = self.single_an_run_fixed(post_cell, j, synapseConfig,
+                            stimInfo, preCell, self.an_setup_time)
+            for j, N in enumerate(range(nReps)):
+#                preCell, post_cell = self.single_an_run(hf, j, synapseConfig, stimInfo, seeds, preCell)
+                celltime.append(tresults[j]['time']) # (self.time)
+                spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold, t0=0.,
+                        t1=stimInfo['run_duration']*1000, dt=1.0, mode='peak')
+                spikeTimes[N] = self.clean_spiketimes(spikeTimes[N])
+                inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
+                somaVoltage[N] = np.array(tresults[j]['Vsoma'])
+                dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
+            
+            total_elapsed_time = time.time() - self.start_time
+    #        total_run_time = time.time() - run_time
+            print("Total Elapsed Time = {:8.2f} min ({:8.0f}s)".format(total_elapsed_time/60., total_elapsed_time))
+            print("Total Setup Time = {:8.2f}min ({:8.0f}s)".format(self.setup_time/60., self.setup_time))
+            print("Total AN Calculation Time = {:8.2f} min ({:8.0f}s)".format(self.an_setup_time/60., self.an_setup_time))
+            print("Total Neuron Run Time = {:8.2f} min ({:8.0f}s)".format(self.nrn_run_time/60., self.nrn_run_time))
+            
+            result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes,
+                'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'time': np.array(tresults[j]['time'])}
+            
+            self.analysis_filewriter(self.Params['cell'], result, tag=tagname % k)
+        if self.Params['plotFlag']:
+            self.plot_an(np.array(result['time']), result['somaVoltage'], result['stimInfo'])
+
+    def single_an_run_fixed(self, post_cell, j, synapseConfig, stimInfo, preCell, an_setup_time):
+        """
+        Perform a single run with all AN input on the target cell turned off except for input j.
+        
+        Parameters
+        ----------
+        hf : hoc_reader object
+            Access to neuron and file information
+        
+        j : int
+            The input that will be active in this run
+        
+        synapseConfig : dict
+            A dictionary with information about the synapse configuration to use.
+        
+        stimInfo : dict
+            A dictionary whose elements include the stimulus delay
+        
+        preCell : list
+            A list of the preCell hoc objects attached to the synapses
+        
+        post_cell : cells object
+            The target cell
+        
+        Returns
+        -------
+        anresult : dict
+            A dictionary containing 'Vsoma', 'Vdend', 'time', and the 'ANSpikeTimes'
+        
+        """
+        hf = post_cell.hr
+        filename = os.path.join(self.baseDirectory, self.cellID,
+                    self.initDirectory, self.Params['initANStateFile'])
+        try:
+            cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=filename)
+        except:
+            self.an_run(post_cell, make_an_intial_conditions=True)
+            try:
+                cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=filename)
+            except:
+                raise ValueError('Failed initialization for cell: ', self.cellID)
+
+        # make independent inputs for each synapse
+        ANSpikeTimes = []
+        an0_time = time.time()
+        nrn_run_time = 0.
+        stim={}
+        #
+        # Generate stimuli - they are always the same for every synaptic input, so just generate once
+        #
+        for i in range(len(preCell)):
+            preCell[i].set_spiketrain([10.])
+            ANSpikeTimes.append(preCell[i]._spiketrain)
+        
+        an_setup_time += (time.time() - an0_time)
+        nrn_start = time.time()
+        Vsoma = hf.h.Vector()
+        Vdend = hf.h.Vector()
+        rtime = hf.h.Vector()
+        if 'dendrite' in post_cell.all_sections and len(post_cell.all_sections['dendrite']) > 0:
+            dendsite = post_cell.all_sections['dendrite'][-1]
+            Vdend.record(dendsite(0.5)._ref_v, sec=dendsite)
+        else:
+            dendsite = None
+            
+        Vsoma.record(post_cell.soma(0.5)._ref_v, sec=post_cell.soma)
+        rtime.record(hf.h._ref_t)
+        hf.h.finitialize()
+        hf.h.tstop = 50.
+        hf.h.t = 0.
+        hf.h.batch_save() # save nothing
+        hf.h.batch_run(hf.h.tstop, hf.h.dt, "an.dat")
+        nrn_run_time += (time.time() - nrn_start)
+        if dendsite == None:
+            Vdend = np.zeros_like(Vsoma)
+        anresult = {'Vsoma': np.array(Vsoma), 'Vdend': np.array(Vdend), 'time': np.array(rtime), 'ANSpikeTimes': ANSpikeTimes, 'stim': stim}
+        return anresult
+
+
     def configure_cell(self, thisCell, synapseConfig, celltype, stimInfo):
         """
         Configure the cell. This routine builds the cell in Neuron, adds presynaptic inputs
