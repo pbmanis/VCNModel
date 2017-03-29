@@ -848,11 +848,10 @@ class ModelRun():
         for i, s in enumerate(synapse):
             for p in s.psd.ampa_psd:
                 gMax[i] = p.gmax
-        
         for k in range(nSyns):
             # only enable gsyn on the selected input
             tagname = 'SynIO%03d'
-            
+            gmaxs = np.zeros(nReps)
             tresults = [None]*nReps
             
             if parallel and self.Params['nWorkers'] > 1:
@@ -866,7 +865,7 @@ class ModelRun():
                                 if i != k:
                                     p.gmax = 0.  # disable all others
                                 else:
-                                    p.gmax = 4*j*gMax[i]/nReps  # except the shosen one
+                                    p.gmax = 4.0*(j+1)*gMax[i]/float(nReps+1)  # except the shosen one
                         tresults = self.single_an_run_fixed(post_cell, j, synapseConfig,
                             stimInfo, preCell, self.an_setup_time)
                         tasker.results[j] = tresults
@@ -878,9 +877,10 @@ class ModelRun():
                             if i != k:
                                 p.gmax = 0.  # disable all others
                             else:
-                                p.gmax = 4*j*gMax[i]/nReps  # except the shosen one
+                                p.gmax = 4.0*float(j+1)*gMax[i]/float(nReps+1)  # except the shosen one
                     tresults[j] = self.single_an_run_fixed(post_cell, j, synapseConfig,
                             stimInfo, preCell, self.an_setup_time)
+            gmaxs = [4.0*float(j+1)*gMax[0]/float(nReps+1) for j in range(nReps)]
             for j, N in enumerate(range(nReps)):
 #                preCell, post_cell = self.single_an_run(hf, j, synapseConfig, stimInfo, seeds, preCell)
                 celltime.append(tresults[j]['time']) # (self.time)
@@ -890,7 +890,7 @@ class ModelRun():
                 inputSpikeTimes[N] = tresults[j]['ANSpikeTimes'] # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
                 somaVoltage[N] = np.array(tresults[j]['Vsoma'])
                 dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
-            
+            stimInfo['gSyns'] = gmaxs
             total_elapsed_time = time.time() - self.start_time
     #        total_run_time = time.time() - run_time
             print("Total Elapsed Time = {:8.2f} min ({:8.0f}s)".format(total_elapsed_time/60., total_elapsed_time))
@@ -956,7 +956,7 @@ class ModelRun():
         # Generate stimuli - they are always the same for every synaptic input, so just generate once
         #
         for i in range(len(preCell)):
-            preCell[i].set_spiketrain([10.])
+            preCell[i].set_spiketrain([10., 20., 30., 40., 50.])
             ANSpikeTimes.append(preCell[i]._spiketrain)
         
         an_setup_time += (time.time() - an0_time)

@@ -34,6 +34,8 @@ synfile_template = 'AN_Result_{0:s}_Syn{1:03d}_N{2:03d}_040dB_4000.0_{3:2s}.p'
 excsynfile_template = 'AN_Result_{0:s}_ExcludeSyn{1:03d}_N{2:03d}_040dB_4000.0_{3:2s}.p'
 synIOfile_template = 'AN_Result_{0:s}_SynIO{1:03d}_N{2:03d}_040dB_4000.0_{3:2s}.p'
 
+all_cells = ['09', '09h', '09nd', '17',   '18',    '19', '20', '21', '22']
+
 def clean_spiketimes(spikeTimes, mindT=0.7):
     """
     Clean up spike time array, removing all less than mindT
@@ -62,7 +64,7 @@ def readFile(filename, cmd):
         stimInfo = d['stimInfo']
         spikeTimes = d['spikeTimes']
         inputSpikeTimes = d['inputSpikeTimes']
-    print 'cmd: ', cmd
+#    print 'cmd: ', cmd
     if cmd['respike']:
         spiketimes = {}
         for k in d['somaVoltage'].keys():
@@ -109,12 +111,13 @@ def getFirstSpikes(spikes, stime, nReps):
     sl2 = np.full(nReps, np.nan)
     for r in range(nReps):
         rs = np.where(spikes[r] > stime)[0]  # get spike times post stimulus onset
-        print (spikes[r])
         if len(spikes[r]) > 0 and len(rs) > 0:
             sl1[r] = spikes[r][rs[0]]
         if len(spikes[r]) > 1 and len(rs) > 1:
             sl2[r] = spikes[r][rs[1]]  # second spikes
-    return(sl1, sl2)    
+    sl1 = sl1[~np.isnan(sl1)]  # in case of no spikes at all
+    sl2 = sl2[~np.isnan(sl2)]  # in case of no second spikes
+    return(sl1, sl2)
 
 def CNfspike(spikes, stime, nReps):
     # print spikes
@@ -157,19 +160,19 @@ def plot1(spikeTimes, inputSpikeTimes, stimInfo, cmd):
         sr = 'HS'
     layout.getPlot(1).setTitle('AN (1 fiber: %.1f kHz, %ddb SPL, %sR, %d Reps)' % 
             (stimInfo['F0']/1000., stimInfo['dB'], sr, stimInfo['nReps']))
-    (CNpsth, CNbins) = np.histogram(spt, bins=np.linspace(0., 250., 250), density=False)
+    (CNpsth, CNbins) = np.histogram(spt, bins=np.linspace(0., 250., 251), density=False)
     CNrate = (CNpsth*1e3)/nReps    
     curve = pg.PlotCurveItem(CNbins, CNrate, stepMode=True, fillLevel=0, brush=(0, 0, 255, 255))
     layout.getPlot(0).addItem(curve)
 
     (sl1, sl2) = getFirstSpikes(spikeTimes, stime, nReps)  # get first and secons in respond to stimulus only
-    (CNpsthFS, CNbinsFS) = np.histogram(sl1, bins=np.linspace(0., 250., 250), density=False)
+    (CNpsthFS, CNbinsFS) = np.histogram(sl1, bins=np.linspace(0., 250., 251), density=False)
     CNrateFS = (CNpsthFS*1e3)/nReps
     curveFS = pg.PlotCurveItem(CNbinsFS, CNrateFS, stepMode=True, fillLevel=0,
         brush=(255, 0, 0, 255), pen=None)
     layout.getPlot(0).addItem(curveFS)
 
-    (CNpsthSecS, CNbinsSecS) = np.histogram(sl2, bins=np.linspace(0., 250., 250), density=False)
+    (CNpsthSecS, CNbinsSecS) = np.histogram(sl2, bins=np.linspace(0., 250., 251), density=False)
     CNrateSecS = (CNpsthSecS*1e3)/nReps
     curveSecS = pg.PlotCurveItem(CNbinsSecS, CNrateSecS, stepMode=True, fillLevel=0,
         brush=(255, 0, 255, 255), pen=None)
@@ -211,7 +214,62 @@ def get_dimensions(n, pref='height'):
             
     return(inopth, inoptw)
 
+def plotIO(cmd):  # plots ALL IO's in one place
+    l1 = 0.11
+    l2 = 0.58
+    wid = 0.37
+    ht = 0.13
+    yp = [0.81, 0.62, 0.43, 0.24, 0.05]
+    sizer = OrderedDict([('VCN_c09', [l1, wid, yp[0], ht]), ('VCN_c17', [l2, wid, yp[0], ht]),
+                         ('VCN_c09h', [l1, wid, yp[1], ht]), ('VCN_c18', [l2, wid, yp[1], ht]),
+                         ('VCN_c09nd', [l1, wid, yp[2], ht]), ('VCN_c19', [l2, wid, yp[2], ht]), 
+                         ('VCN_c08', [l1, wid, yp[3], ht]), ('VCN_c20', [l2, wid, yp[3], ht]), 
+                         ('VCN_c21', [l1, wid, yp[4], ht]), ('VCN_c22', [l2, wid, yp[4], ht]),
+    ])  # dict elements are [left, width, bottom, height] for the axes in the plot.
+    gr = [(a, a+1, 0, 1) for a in range(0, 8)]   # just generate subplots - shape does not matter
+    axmap = OrderedDict(zip(sizer.keys(), gr))
+    P = PH.Plotter(rcshape=sizer, label=False, figsize=(5, 8), labeloffset=[0.6, 0.])
+    seaborn.set_style('ticks')
+    for ic, cn in enumerate(all_cells):
+        cell = 'VCN_c{0:s}'.format(cn)
+        inpath = os.path.join(baseName, cell, 'Simulations/AN')
+        sites, celltype = CFG.makeDict(cell)
+    #    print sites
+        nInputs = 0
+        for s in sites:
+            nInputs += len(s['postlocations'].keys())
+        print ('cell: ', cell, ' nInputs: ', nInputs)
+        vmax = -50.
 
+        template = synIOfile_template
+        tmin = 0.
+        trange = [0., 50.]
+        for i in range(nInputs):
+            fname = template.format(cell, i, cmds['nReps'], cmds['SR'])
+            fname = os.path.join(inpath, fname)
+            print fname
+            try:
+                spikeTimes, inputSpikeTimes, stimInfo, d = readFile(fname, cmd)
+            except:
+                print('Missing: ', fname)
+                continue
+            sv = d['somaVoltage']
+            tm = d['time']
+            plt.setp(P.axdict[cell].get_yticklabels(), fontsize=6)
+            iof = np.zeros(len(sv.keys()))
+            iofdv = np.zeros(len(sv.keys()))
+            for k in sv.keys():
+                iof[k] = np.max(sv[k])
+                #iofdv[k] = np.max(np.diff(sv[k])/np.mean(np.diff(tm)))
+            P.axdict[cell].plot(np.array(stimInfo['gSyns'])/1000., iof, 'o-', markersize=3, linewidth=0.6)
+        # P.axdict[cell].set_title(cell, y=0.9, x=0.02,
+        #         horizontalalignment='left', fontsize=6)
+        P.axdict[cell].tick_params(direction='in', length=5., width=1., labelsize=6)
+        P.axdict[cell].set_xlabel('g', fontsize=9)
+        P.axdict[cell].set_ylabel('V (mV)', fontsize=9)
+    seaborn.despine(P.figure_handle)
+    plt.savefig('ANIO_all.pdf')
+            
 def plotSingles(inpath, cmd):
     seaborn.set_style('ticks')
     sites, celltype = CFG.makeDict(cmd['cell'])
@@ -228,12 +286,17 @@ def plotSingles(inpath, cmd):
     template = synfile_template
     tmin = -100.
     trange = [-50., 100.]
+
     if cmd['analysis'] == 'omit':
         template = excsynfile_template
-    if cmd['analysis'] == 'io':
-        template = synIOfile_template
-        tmin = 0.
-        trange = [0., 50.]
+    # if cmd['analysis'] == 'io':
+    #     template = synIOfile_template
+    #     tmin = 0.
+    #     trange = [0., 50.]
+    #     fig2, ax2 = plt.subplots(2, 2, figsize=(4.75,6))
+    #     fig2.suptitle('{0:s}  SR: {1:s}'.format(cmd['cell'], cmd['SR']))
+    #     axr = ax2.ravel()
+        
     for i in range(nInputs):
         fname = template.format(cmds['cell'], i, cmds['nReps'], cmds['SR'])
         fname = os.path.join(inpath, fname)
@@ -243,6 +306,7 @@ def plotSingles(inpath, cmd):
         except:
             print('Missing: ', fname)
             continue
+        print ('stiminfo: ', stimInfo)
         if cmd['respike']:
             spiketimes = {}
             for k in d['somaVoltage'].keys():
@@ -271,15 +335,25 @@ def plotSingles(inpath, cmd):
         else:
             plt.setp(pl.get_xticklabels(), fontsize=9)
             pl.set_xlabel('ms')
-        plt.setp(pl.get_yticklabels(), fontsize=9)
-
+        # if cmd['analysis'] == 'io':
+        #     plt.setp(pl.get_yticklabels(), fontsize=9)
+        #     iof = np.zeros(len(sv.keys()))
+        #     iofdv = np.zeros(len(sv.keys()))
+        #     for k in sv.keys():
+        #         iof[k] = np.max(sv[k])
+        #         iofdv[k] = np.max(np.diff(sv[k])/np.mean(np.diff(tm)))
+        #     axr[0].plot(stimInfo['gSyns'], iof, 'o-', markersize=4)
+        #     axr[1].plot(stimInfo['gSyns'], iofdv, 's-', markersize=4)
+           # axr.set_title('Input {0:d}: N sites: {1:d}'.format(i+1, sites[i]['nSyn']), fontsize=8, x=0.05, y=0.92,
+        #        horizontalalignment = 'left', verticalalignment='top')
+        
     for i in range(nInputs): # rescale all plots the same
-            ax[i].set_ylim(-65., vmax+cmd['nReps']*3)
-
-
+        ax[i].set_ylim(-65., vmax+cmd['nReps']*3)
+    axr[0].set_ylim(-65., vmax)
+    
     seaborn.despine(fig)
-    plt.draw()
-    plt.show()
+#    seaborn.despine(fig2)
+
 
 def readIVFile(filename):
     print 'Reading IV results file: %s', filename
@@ -343,7 +417,7 @@ def parse_cmdline():
     parser.add_argument(dest='cell', action='store',
                default=None,
                help='Select the cell (no default)')
-    parser.add_argument('--analysis', '-a', dest='analysis', action='store',
+    parser.add_argument('-a', '--analysis', dest='analysis', action='store',
                default='iv', choices=['psth', 'iv', 'singles', 'omit', 'io'],
                help = 'Specify an analysis')
     parser.add_argument('-r', '--reps', type=int, default=1, dest='nReps',
@@ -351,7 +425,7 @@ def parse_cmdline():
     parser.add_argument('-t', '--threshold', type=float, default=-20.0, action='store',
                dest='threshold',
                help='# Spike threshold for recalculating spikes (mV). Negative numbers must be quoted with a leading space: " -30."')
-    parser.add_argument('--SR', dest='SR', default=None,
+    parser.add_argument('-s', '--SR', dest='SR', default=None,
                choices=['LS', 'MS', 'HS'], help='Select SR group (default is None)')
     parser.add_argument('--respike', action='store_true', default=False, dest='respike',
                help='recompute spikes from Vm waveforms (default: False)')
@@ -367,7 +441,9 @@ if cmds['analysis'] == 'psth':
 elif cmds['analysis'] == 'iv':
     infile = os.path.join(baseName, cmds['cell'], 'Simulations/IV', '%s' % cmds['cell'] + '.p')
     plotIV(infile)
-elif cmds['analysis'] in ['singles', 'omit', 'io']:
+elif cmds['analysis'] in ['io']:
+    plotIO(cmds)
+elif cmds['analysis'] in ['singles', 'omit']:
     inpath = os.path.join(baseName, cmds['cell'], 'Simulations/AN')
     plotSingles(inpath, cmds)
 plt.show()
