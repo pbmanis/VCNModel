@@ -148,7 +148,7 @@ def spike_triggered_average(spikes,stimulus,max_interval,dt,onset=None,display=F
             print 'sta: spike #',ispike,' out of :',nspikes
         if spike>onset:
             spike = int(spike/dt) 
-            print stimulus[spike-sta_length:spike].shape
+            #print stimulus[spike-sta_length:spike].shape
             spike_triggered_ensemble[ispike,:] = stimulus[spike-sta_length:spike]
             ispike +=1
             
@@ -162,26 +162,34 @@ def total_correlation(T1, T2, width=20 * ms, T=None):
     T is the total duration (optional).
     The result is a real (typically in [0,1]):
     total_correlation(T1,T2)=int(CCVF(T1,T2))/rate(T1)
+    
+    Modified: width has neg and pos parts. 
     '''
     if (T1==[]) or (T2==[]): # empty spike train
         return NaN
     # Remove units
-    width = float(width)
+    twidth = sum(width)
+    if len(width) > 1:
+        nwidth = width[0]
+        pwidth = width[1]
+    else:
+        nwidth = pwidth = twidth
     T1 = array(T1)
     T2 = array(T2)
     # Divide by time to get rate
-    if T is None:
+    if T is None and len(T1) > 0:
         T = max(T1[-1], T2[-1]) - min(T1[0], T2[0])
     i = 0
     j = 0
     x = 0
     for t in T1:
-        while i < len(T2) and T2[i] < t - width: # other possibility use searchsorted
+        while i < len(T2) and T2[i] < t - nwidth: # other possibility use searchsorted
             i += 1
-        while j < len(T2) and T2[j] < t + width:
+        while j < len(T2) and T2[j] < t + pwidth:
             j += 1
         x += sum(1. / (T - abs(T2[i:j] - t))) # counts coincidences with windowing (probabilities)
-    return float(x / firing_rate(T1)) - float(firing_rate(T2) * 2 * width)
+#    return float(x / firing_rate(T1)) - float(firing_rate(T2) *2  * twidth)
+    return float(x / firing_rate(T1)) - float(firing_rate(T2) * twidth)
 
 def sort_spikes(spikes):
     """

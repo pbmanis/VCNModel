@@ -41,39 +41,6 @@ synperum2 = 0.65 # average density of synapses, synapses per micron sequared
 #             ]
 
 # based on new data 12/17/2016, from Spirou (table in Final7_Somatic_Input_ASAs.ods)
-VCN_c18 = [ 
-    
-            [(249.94), 0., 2, np.nan, np.nan, 49.2, 1.222, 'AN', {'soma': [0, 0.5, 1.0]} ],
-            [(155.8), 0., 2, 82.7, 1.417, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}], 
-            [(115.99),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            [(98.37), 0., 2, 22.4 , 1.416, 90.3, 0.924, 'AN', {'soma': [0, 0.5, 1.0]}],
-            [(64.3),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            [(63.27),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            [(61.3), 0., 2, 67.3 , 1.309, 62.1, 0.717,  'AN', {'soma': [0, 0.5, 1.0]}],
-            [(34.03),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            [(32.49),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            [(26.14),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(19.77),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],  # George says not to consider these yet - are of unknown origin
-            # [(19.72),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(17.08),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(16.71),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(15.66),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(14.74),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(13.45),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(12.71),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(7.11),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(6.86),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(6.82),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(6.71),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(6.55),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(5.74),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(5.41),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(5.38),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(5.02),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(3.59),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(1.08),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            # [(0.87),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
-            ]
 
 # George says cell 7 is not a GBC
 VCN_c07 = [ [(15.08), 0., 2., np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
@@ -104,11 +71,21 @@ VCN_c09 = [
             [(143.97), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
             [(89.05), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
             [(78.81), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
-            [(53.46), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 0.4], 'hillock': [210, 0.5, 0.6]}],
+            [(53.46), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1]} ],
             [(53.10), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
             ]
 
-VCN_c99 = [  # VCN_c09 without any dendrites
+VCN_c09_h = [  # input 6 split on hillock
+            [(302.55), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(168.63), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(143.97), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(89.05), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(78.81), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(53.46), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 0.0], 'hillock': [210, 0.5, 1]}],
+            [(53.10), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
+            ]
+
+VCN_c09_nd = [  # VCN_c09 without any dendrites
             [(302.55), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
             [(168.63), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
             [(143.97), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
@@ -192,6 +169,39 @@ VCN_c17 = [
             [(16.62), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
             ]
 
+VCN_c18 = [ 
+            [(249.94), 0., 2, np.nan, np.nan, 49.2, 1.222, 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(155.8), 0., 2, 82.7, 1.417, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}], 
+            [(115.99),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            [(98.37), 0., 2, 22.4 , 1.416, 90.3, 0.924, 'AN', {'soma': [0, 0.5, 1.0]}],
+            [(64.3),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            [(63.27),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            [(61.3), 0., 2, 67.3 , 1.309, 62.1, 0.717,  'AN', {'soma': [0, 0.5, 1.0]}],
+            [(34.03),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            [(32.49),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            [(26.14),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(19.77),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],  # George says not to consider these yet - are of unknown origin
+            # [(19.72),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(17.08),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(16.71),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(15.66),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(14.74),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(13.45),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(12.71),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(7.11),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(6.86),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(6.82),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(6.71),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(6.55),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(5.74),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(5.41),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(5.38),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(5.02),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(3.59),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(1.08),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            # [(0.87),  0., 2, np.nan, np.nan, 1,  1, 'AN', {'soma': [0, 0.5, 1.0]}],
+            ]
+
 VCN_c19= [  [ (188.97), 0., 2., np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
             [ (149.21), 0., 2., np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
             [ (97.28), 0., 2., np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
@@ -246,8 +256,8 @@ VCN_c22= [
 
         
 VCN_Inputs = {'VCN_c07': ['notbushy', VCN_c07],
-        'VCN_c08': ['bushy', VCN_c08], 'VCN_c09': ['bushy', VCN_c09],
-        'VCN_c99': ['bushy', VCN_c99],
+        'VCN_c08': ['bushy', VCN_c08],
+        'VCN_c09': ['bushy', VCN_c09], 'VCN_c09h': ['bushy', VCN_c09_h], 'VCN_c09nd': ['bushy', VCN_c09_nd],  # variants
         'VCN_c10': ['bushy', VCN_c10], 'VCN_c11': ['bushy', VCN_c11],
         'VCN_c13': ['bushy', VCN_c13],
         'VCN_c14': ['bushy', VCN_c14], 'VCN_c15': ['bushy', VCN_c15],
@@ -260,55 +270,6 @@ VCN_Inputs = {'VCN_c07': ['notbushy', VCN_c07],
 # convert the table for a given cell to the dictionary used by model_run to decroate
 # cell with synapses.
 
-    # def make_psd(self, terminal, psd_type, **kwds):
-    #     """
-    #     Connect a presynaptic terminal to one or more post sections
-    #     at specified locations, with the fraction
-    #     of the "standard" conductance determined by gbar.
-    #     The default condition is to try to pass the default unit test (loc=0.5, gbar=1.0)
-    #
-    #     Parameters
-    #     ----------
-    #     terminal : Presynaptic terminal (NEURON object)
-    #
-    #     psd_type : the type of psd to insert: simple or multi-site
-    #
-    #     the kwds dict might have an argument "postlocation", which is a dictionary that specifies
-    #     the postsynaptic section types, each associated with a dictionary that defines connections
-    #     Three examples:
-    #     1. {'soma': [0, 0.5, 1.0]}  means soma, neuron section[0], is connected in the middle (0.5) with
-    #         the full standard conductance
-    #     2. {'soma': {0: [0.5, 0.4]}, 'hillock': {210: [0.5, 0.6]}} means that the presynaptic object drives
-    #         two postsynaptic sites, one at the middle of the soma, with 40% of the conducantance, and one
-    #         at the middle of the hillock, in section[210], with 60% of the conductance.
-    #         The definition is slighly redundant, but by having the name of the section in the dict
-    #         it is more user friendly and allows some verification of function. The section number
-    #         is derived from the Neuron list of sections, and is what is actually used.
-    #     3. {'soma': {0: [0.5, 0.4]}, 'dendrite': {65: [0.5, 0.2], 85: [0.5, 0.2], 95: [0.5, 0.2]}}
-    #         This distributes an input across 4 sections, one at the soma (40%), and 20% at each of the
-    #         middle of the specified dendritic segments.
-    #     """
-    #
-    #     pre_sec = terminal.section
-    #     pre_cell = terminal.cell
-    #     if 'postlocation' in kwds:  # use a defined location instead of the default
-    #         postlocation = kwds['postlocation']
-    #         for posttype in postlocation.keys():  # for each target type
-    #             sectioninfo = postlocation[posttype] # get the section info for the first entry
-    #             sectionnos = sectioninfo.keys() # get the section numbers to add synapses to
-    #             for sectionno in sectionnos:  # for each section in that target type
-    #                 loc = sectioninfo[sectionno][0]  # where on the section?
-    #                 gbar = sectioninfo[sectionno][1]
-    #                 uname = 'sections[%d]' % sectionno  # make a name to look up the neuron section object
-    #                 post_sec = self.hr.get_section(uname)  # here it is
-    #                 self.make_one_psd(post_sec, terminal, psd_type, loc=loc, gbar=gbar)
-    #         # self.list_sections()
-    #         # print 'post_sec: ', post_sec.name()  # checks...
-    #     else:
-    #         post_sec = self.soma
-    #         loc = 0.5
-    #         self.make_one_psd(post_sec, terminal, psd_type)
-        
 def makeDict(cell, velocity=3.0):
     assert cell in VCN_Inputs
     indata = VCN_Inputs[cell][1]

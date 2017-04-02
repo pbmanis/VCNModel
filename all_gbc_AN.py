@@ -9,12 +9,12 @@ from __future__ import print_function
 import os
 import sys
 
-
+valid_gbcs = ['08', '09', '17', '18', '19', '20', '21', '22']
 forcerun = False
 testflag = False
 print('sys argv: ', sys.argv)
 if len(sys.argv) > 1:
-    gbc_no = int(sys.argv[1])
+    gbc_name = sys.argv[1]
     SR = sys.argv[2]
     if SR not in ['LS', 'MS', 'HS']:
         raise ValueError('SR must be one of [LS, MS or HS]')
@@ -28,27 +28,27 @@ if len(sys.argv) > 1:
     if 'test' in sys.argv[1:]:
         testflag = True
     
-    if gbc_no not in [8, 9, 17, 18, 19, 20, 21, 22]:
+    if gbc_name not in valid_gbcs:
         raise ValueError('GBC %d not implemented' % gbc_no)
-    gbc_nos = [gbc_no] # [8, 9, 17, 18, 19, 20, 21, 22]
+    gbc_nos = [gbc_name] # [8, 9, 17, 18, 19, 20, 21, 22]
 else:  # defaults
-    gbc_nos = [8, 9, 17, 18, 19, 20, 21, 22]
+    gbc_nos = valid_gbcs
     SR = 'MS'
     nrep = 2
 
 print('-'*32)
 print('   all_gbc_AN: entry parameters')
-print('      gbc#: ', gbc_no)
+print('      gbc#: ', gbc_nos)
 print('      SR: ', SR)
 print('      nrep: ', nrep)
 print('      forcerun: ', forcerun)
 print('      testflag: ', testflag)
-anresultfilenames = []
+anresultfilenames = {}
 for i, n in enumerate(gbc_nos):
-    anresultfilenames.append('AN_Result_VCN_c{0:02d}_delays_N{1:03d}_040dB_4000.0_{2:2s}.p'.format(n, nrep, SR))
+    anresultfilenames[n] = 'AN_Result_VCN_c{0:s}_delays_N{1:03d}_040dB_4000.0_{2:2s}.p'.format(n, nrep, SR)
 print('   anresult files:')
-for i in range(len(gbc_nos)):
-    print('      ', anresultfilenames[i])
+for n in gbc_nos:
+    print('      ', anresultfilenames[n])
 print('-'*32)
 if testflag:
     exit()
@@ -58,7 +58,7 @@ seeds = [100]*len(gbc_nos)  # use all the same seeds
 # create paths to the simulation runs to check for existing IV initialization
 
 for i, n in enumerate(gbc_nos):
-    cell = 'VCN_c{0:02d}'.format(n)
+    cell = 'VCN_c{0:s}'.format(n)
     if i == 0:
         import model_run as mrun
     else:
