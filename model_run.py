@@ -156,8 +156,9 @@ class ModelRun():
         self.Params['modelType'] = self.modelChoices[0]
         self.Params['SGCmodelType'] = self.SGCmodelChoices[0]
         self.Params['species'] = self.speciesChoices[0]
+        # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
         self.Params['SRType'] = self.SRChoices[2]
-        self.Params['SR'] = self.Params['SRType']  # actually used SR this might be cell-defined, rather than command defined
+        self.Params['SR'] = self.Params['SRType']  # actually used SR: this might be cell-defined, rather than entirely specified from the command line
         self.Params['inputPattern'] = None # ID of cellinput pattern (same as cellID): for substitute input patterns.
         
         self.Params['runProtocol'] = self.protocolChoices[2]  # testIV is default because it is fast and should be run often
@@ -174,7 +175,6 @@ class ModelRun():
         self.Params['RF'] = 2.5e-3
         self.Params['fmod'] = 20 # hz, modulation if SAM
         self.Params['dmod'] = 0 # percent if SAM
-        # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
         self.Params['threshold'] = -35
         self.Params['plotFlag'] = False
         self.Params['auto_initialize'] = False

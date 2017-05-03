@@ -216,15 +216,17 @@ def get_dimensions(n, pref='height'):
 
 def plotIO(cmd):  # plots ALL IO's in one place
     l1 = 0.11
-    l2 = 0.58
-    wid = 0.37
+    l2 = 0.41
+    l3 = 0.71
+    wid = 0.25
     ht = 0.13
     yp = [0.81, 0.62, 0.43, 0.24, 0.05]
     sizer = OrderedDict([('VCN_c09', [l1, wid, yp[0], ht]), ('VCN_c17', [l2, wid, yp[0], ht]),
                          ('VCN_c09h', [l1, wid, yp[1], ht]), ('VCN_c18', [l2, wid, yp[1], ht]),
                          ('VCN_c09nd', [l1, wid, yp[2], ht]), ('VCN_c19', [l2, wid, yp[2], ht]), 
-                         ('VCN_c08', [l1, wid, yp[3], ht]), ('VCN_c20', [l2, wid, yp[3], ht]), 
-                         ('VCN_c21', [l1, wid, yp[4], ht]), ('VCN_c22', [l2, wid, yp[4], ht]),
+                         #('VCN_c08', [l1, wid, yp[3], ht]), 
+                         ('VCN_c20', [l3, wid, yp[0], ht]), 
+                         ('VCN_c21', [l3, wid, yp[1], ht]), ('VCN_c22', [l3, wid, yp[2], ht]),
     ])  # dict elements are [left, width, bottom, height] for the axes in the plot.
     gr = [(a, a+1, 0, 1) for a in range(0, 8)]   # just generate subplots - shape does not matter
     axmap = OrderedDict(zip(sizer.keys(), gr))
@@ -413,7 +415,7 @@ def plotIV(infile, plottau=False):
 
 
 def parse_cmdline():
-    parser = argparse.ArgumentParser(description='Analyze protocos from a reconstructed model cell')
+    parser = argparse.ArgumentParser(description='Analyze protocols from a reconstructed model cell')
     parser.add_argument(dest='cell', action='store',
                default=None,
                help='Select the cell (no default)')
