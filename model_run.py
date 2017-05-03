@@ -299,20 +299,21 @@ class ModelRun():
         # instantiate cells
         if self.Params['cellType'] in ['Bushy', 'bushy']:
             print ('run_model creating a bushy cell: ')
+            print (self.Params.keys())
             self.post_cell = cells.Bushy.create(morphology=filename, decorator=Decorator,
                     species=self.Params['species'],
-                    modelType=self.Params['model_type'], )
+                    modelType=self.Params['modelType'])
 #            self.post_cell.irange = np.arange(-2., 2.1, 0.5)  # reset current injection range.
         elif self.Params['cellType'] in ['tstellate', 'TStellate']:
             print ('run_model creating a t-stellate cell: ')
             self.post_cell = cells.TStellate.create(morphology=filename, decorator=Decorator,
                     species=self.Params['species'],
-                    modelType=self.Params['model_type'], )
+                    modelType=self.Params['modelType'], )
         elif self.Params['cellType'] in ['dstellate', 'DStellate']:
             print ('run_model creating a D-stellate cell: ')
             self.post_cell = cells.DStellate.create(morphology=filename, decorator=Decorator,
                     species=self.Params['species'],
-                    modelType=self.Params['model_type'], )
+                    modelType=self.Params['modelType'], )
         else:
             raise ValueError("cell type {:s} not implemented".format(self.Params['cellType']))
                       
