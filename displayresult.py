@@ -1,34 +1,46 @@
 """
 displayresult shows the results of a model_run. Just enter the filename in the fn field
 """
-
+import sys
+import os
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 import pickle
 from cnmodel.util import sound
 import sac_campagnola as SAC
-import os.path
 import pycircstat as PCS
 import pylibrary.PlotHelpers as PH
 
-pattern_list = ['c18', 'c08', 'c09', 'no']
-patterns =  pattern_list #[0] # ['no']
-fn = {}
-fn[pattern_list[0]] = 'AN_Result_VCN_c18_delays_N020_040dB_4000.0_MS.p'
-fn[pattern_list[1]] = 'AN_Result_VCN_c18_VCN_c08_delays_N020_040dB_4000.0_MS.p'
-fn[pattern_list[2]] = 'AN_Result_VCN_c18_VCN_c09_delays_N020_040dB_4000.0_MS.p'
-fn[pattern_list[3]] = 'AN_Result_VCN_c18_delays_N020_040dB_4000.0_FM10.0_DM000_MS.p'
+findfiles = False
 
-# patterns = ['c18']
-# fn = {'c18':'AN_Result_VCN_c18_VCN_c18_delays_N002_040dB_4000.0_FM20.0_DM000_MS.p'}
-basepath = 'VCN_Cells/VCN_c18/Simulations/AN'
+if sys.argv[1] not in ['find']:
+    patterns = sys.argv[1:]
+    patterns = ['c%02d' % int(p) for p in patterns]
+else:
+    print 'searching'
+    patterns = ['c%02d' % i for i in [8, 9, 17, 18, 19, 20, 21, 22]]
+    findfiles = True
+fn = {}
+bp = {}
+for p in patterns:
+    fn[p] = 'AN_Result_VCN_{0:s}_delays_N020_040dB_4000.0_FM50.0_DM100_MS.p'.format(p)
+    bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/AN'.format(p)
 
 d = {}
 
+if findfiles:
+    for p in patterns:
+        try:
+            h = open(os.path.join(bp[p], fn[p]))
+            print '       found %s' % p
+            h.close()
+        except:
+            print 'did not find file for %s' % p
+    exit(1)
 
 
-#fig, ax = plt.subplots(len(pattern_list)+1, 3)
+#fig, ax = plt.subplots(len(patterns)+1, 3)
 fig = plt.figure()
 
 gs_outer = gridspec.GridSpec(4, 1)  # 4 rows, one column
@@ -52,12 +64,12 @@ for i, outer in enumerate(gs_outer):
         PH.nice_plot(a)
     PH.noaxes(ax1, 'x')
 
-fig.tight_layout()
+#fig.tight_layout()
 # plt.show()
 # exit()
 
 for p in patterns:
-    h = open(os.path.join(basepath, fn[p]))
+    h = open(os.path.join(bp[p], fn[p]))
     d[p] = pickle.load(h)
     h.close()
 
@@ -69,11 +81,25 @@ sacht = 2.5
 sacmax = 100
 phaseht = 15
 
+f, ax2 = plt.subplots(111)
+
+dt = 0.1
 #print d['spikeTimes']
 for j, pattern in enumerate(patterns):
-    w = d[patterns[j]]['stimWaveform'][0][0].generate()
-    t = d[patterns[j]]['stimWaveform'][0][0].time
-    ax[j][1].plot(t, w)  # stimulus underneath
+    print d[pattern].keys()
+    print len(d[pattern]['somaVoltage'].keys())
+    print d[pattern]['time']
+    for i in d[pattern]['somaVoltage'].keys():
+        v = d[pattern]['somaVoltage'][i]
+        print v
+        ax2[0].plot(d[pattern]['time'], v)
+    plt.show()
+    exit()
+#    print np.array(d[patterns[j]]['stimWaveform'][0])
+#    w = d[patterns[j]]['stimWaveform'][0]
+#    t = np.linspace(0., len(d[patterns[j]]['stimWaveform'][0])*dt, len(d[patterns[j]]['stimWaveform'][0])) 
+#    ax[j][1].plot(t, w)  # stimulus underneath
+
     for i, st in enumerate(d[pattern]['spikeTimes'].keys()):
         ax[j][0].plot(d[pattern]['spikeTimes'][st]/1000., i*np.ones(len( d[pattern]['spikeTimes'][st])), 'o', markersize=2.5, color='b')
         inputs = len(d[pattern]['inputSpikeTimes'][st])
@@ -83,8 +109,8 @@ for j, pattern in enumerate(patterns):
         #     ax[0,].plot(t, y, 'o', markersize=2.5, color='r')
 #for i, st in enumerate(d['ref']['somaVoltage'].keys()):
 #    ax[2,].plot(d['ref']['time'], d['ref']['somaVoltage'][st], color='k')
-    ax[j][0].set_xlim((0, 0.8))
-    ax[j][1].set_xlim((0, 0.8))
+    ax[j][0].set_xlim((0, 0.2))
+    ax[j][1].set_xlim((0, 0.2))
 
 
 sac = SAC.SAC()
@@ -125,12 +151,12 @@ for j, pattern in enumerate(patterns):
     print 'rayleigh: p=%f  z=%f (p > 0.05 means data is uniformly distributed)' % (p, z)
     ax[j][2].bar(bins[:-1], yh)
     ax[j][2].set_xlim((-sacmax, sacmax))
-    ax[j][2].set_ylim((0, sacht))
+#    ax[j][2].set_ylim((0, sacht))
     phasebinnum = 101
     phasebins = np.linspace(-0.5, 0.5, num=phasebinnum)
     thhist, thbins = np.histogram(th/np.pi, bins=phasebins, density=False)
     ax[j][3].bar(thbins[:-1]+0.5, thhist, width=1.0/phasebinnum)
-    ax[j][3].set_ylim((0, phaseht))
+#    ax[j][3].set_ylim((0, phaseht))
 
     if j == 0:
         continue

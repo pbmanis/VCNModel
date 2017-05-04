@@ -150,7 +150,7 @@ class ModelRun():
         self.Params['AMPAScale'] = 1.0 # Use the default scale for AMPAR conductances
         self.Params['initIVStateFile'] = 'IVneuronState.dat'
         self.Params['initANStateFile'] = 'ANneuronState.dat'
-        self.Params['infile']= None
+        self.Params['hocfile']= None
         
         self.Params['cellType'] = self.cellChoices[0]
         self.Params['modelType'] = self.modelChoices[0]
@@ -294,7 +294,7 @@ class ModelRun():
         ivinitdir = os.path.join(self.baseDirectory, self.cellID,
                             self.initDirectory)
         self.mkdir_p(ivinitdir) # confirm existence of that file
-        filename = os.path.join(self.baseDirectory, self.cellID, self.morphDirectory, self.Params['infile'])
+        filename = os.path.join(self.baseDirectory, self.cellID, self.morphDirectory, self.Params['hocfile'])
         
         # instantiate cells
         if self.Params['cellType'] in ['Bushy', 'bushy']:
@@ -460,7 +460,7 @@ class ModelRun():
         if self.Params['Parallel'] == False:
             nworkers = 1
 #        print('Number of workers available on this machine: ', nworkers)
-        self.R.doRun(self.Params['infile'], parMap=par_map, save='monitor', restore_from_file=True, initfile=ivinitfile,
+        self.R.doRun(self.Params['hocfile'], parMap=par_map, save='monitor', restore_from_file=True, initfile=ivinitfile,
             workers=nworkers)
         if verbose:
             print( '   do_run completed')
@@ -582,7 +582,7 @@ class ModelRun():
         threshold = self.Params['threshold'] # spike threshold, mV
         
         stimInfo = self.Params
-        # {'Morphology': self.Params['infile'], 'synapseConfig': synapseConfig,
+        # {'Morphology': self.Params['hocfile'], 'synapseConfig': synapseConfig,
         #             'runDur': self.run_duration, 'pip_dur': self.Params['pip_duration'], 'pip_start': self.Params['pip_start'],
         #             'run_duration': self.run_duration,
         #             'Fs': self.Fs, 'F0': self.f0, 'dB': self.dB, 'RF': self.RF, 'SR': self.SR,
@@ -707,7 +707,7 @@ class ModelRun():
         threshold = self.Params['threshold'] # spike threshold, mV
         
         stimInfo = self.Params
-        # {'Morphology': self.Params['infile'], 'synapseConfig': synapseConfig,
+        # {'Morphology': self.Params['hocfile'], 'synapseConfig': synapseConfig,
         #             'runDur': self.run_duration, 'pip_dur': self.Params['pip_duration'], 'pip_start': self.Params['pip_start'],
         #             'run_duration': self.run_duration,
         #             'Fs': self.Fs, 'F0': self.f0, 'dB': self.dB, 'RF': self.RF, 'SR': self.SR,
@@ -1310,7 +1310,7 @@ if __name__ == "__main__":
     parser.add_argument('--protocol', '-P', dest='runProtocol', action='store',
                    default='runIV', choices=model.protocolChoices,
                    help='Protocol to use for simulation (default: IV)')
-    parser.add_argument('--hoc', '-H', dest='infile', action='store',
+    parser.add_argument('--hoc', '-H', dest='hocfile', action='store',
                   default=None,
                   help='hoc file to use for simulation (default is the selected "cell".hoc)')
     parser.add_argument('--inputpattern', dest='inputPattern', action='store',
@@ -1363,8 +1363,8 @@ if __name__ == "__main__":
     for k in args.keys():
         model.Params[k] = args[k]
     print(model.Params['cell'])
-    if model.Params['infile'] == None: # just use the matching hoc file
-        model.Params['infile'] = model.Params['cell'] + '.hoc'
+    if model.Params['hocfile'] == None: # just use the matching hoc file
+        model.Params['hocfile'] = model.Params['cell'] + '.hoc'
     print(json.dumps(model.Params, indent=4))  # pprint doesn't work well with ordered dicts
 
     model.run_model() # then run the model
