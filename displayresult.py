@@ -29,6 +29,7 @@ for p in patterns:
 
 d = {}
 
+# simply look for files
 if findfiles:
     for p in patterns:
         try:
@@ -81,20 +82,14 @@ sacht = 2.5
 sacmax = 100
 phaseht = 15
 
-f, ax2 = plt.subplots(111)
+f, ax2 = plt.subplots(1)
 
 dt = 0.1
-#print d['spikeTimes']
 for j, pattern in enumerate(patterns):
-    print d[pattern].keys()
-    print len(d[pattern]['somaVoltage'].keys())
-    print d[pattern]['time']
     for i in d[pattern]['somaVoltage'].keys():
         v = d[pattern]['somaVoltage'][i]
-        print v
-        ax2[0].plot(d[pattern]['time'], v)
+        ax2.plot(d[pattern]['time'], v)
     plt.show()
-    exit()
 #    print np.array(d[patterns[j]]['stimWaveform'][0])
 #    w = d[patterns[j]]['stimWaveform'][0]
 #    t = np.linspace(0., len(d[patterns[j]]['stimWaveform'][0])*dt, len(d[patterns[j]]['stimWaveform'][0])) 
@@ -109,8 +104,8 @@ for j, pattern in enumerate(patterns):
         #     ax[0,].plot(t, y, 'o', markersize=2.5, color='r')
 #for i, st in enumerate(d['ref']['somaVoltage'].keys()):
 #    ax[2,].plot(d['ref']['time'], d['ref']['somaVoltage'][st], color='k')
-    ax[j][0].set_xlim((0, 0.2))
-    ax[j][1].set_xlim((0, 0.2))
+    ax[j][0].set_xlim((0, 0.25))
+    ax[j][1].set_xlim((0, 0.25))
 
 
 sac = SAC.SAC()
