@@ -23,7 +23,7 @@ default_modeltype = 'XM13'
 if len(sys.argv) > 1:
     modeltype = sys.argv[1]
 else:
-    modeltype = defaultmodeltype
+    modeltype = default_modeltype
 
 print('Model type: {:s}'.format(modeltype))
 
@@ -34,7 +34,7 @@ wid = 0.38
 ht = 0.18
 yp = [0.8, 0.55, 0.3, 0.05]
 lpos = [0.5, 0.95]
-sizer = OrderedDict([#('VCNc09nd', {'pos': [l1, wid, yp[0], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
+sizer = OrderedDict([('VCNc09nd', {'pos': [l1, wid, yp[0], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc09',  {'pos': [l1, wid, yp[1], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc17',  {'pos': [l1, wid, yp[2], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc18',  {'pos': [l1, wid, yp[3], ht], 'labelpos': lpos, 'ylabel': 'mV'}), 
@@ -49,14 +49,14 @@ P = PH.Plotter(rcshape=sizer, label=False, figsize=(6, 8), labeloffset=[0.6, 0.]
 #PH.show_figure_grid(P.figure_handle)
 
 M = mrun.ModelRun() # create an instance
-gbc_names = ['09nd', '09', '17', '18', '19', '20', '21', '22']
+gbc_names = ['09', '09nd', '17', '18', '19', '20', '21', '22']
 
 # create paths to the simulation runs to check for existing IV initialization
 ivinitfile = os.path.join(M.initDirectory, 'IVneuronState_{:s}.dat'.format(modeltype))
 
 for n in gbc_names:
-    cell = 'VCN_c{0:s}_{1:s}'.format(n, modeltype)
-    cell_ax = 'VCNc{0:s}_{1:s}'.format(n, modeltype)
+    cell = 'VCN_c{0:s}'.format(n)
+    cell_ax = 'VCNc{0:s}'.format(n)
     initf = os.path.join(M.baseDirectory, cell, ivinitfile)
     print ('\nRunning Cell {0:s}: '.format(cell))
     M.Params['cell'] = cell
