@@ -148,8 +148,8 @@ class ModelRun():
         self.Params = OrderedDict()
         
         self.Params['AMPAScale'] = 1.0 # Use the default scale for AMPAR conductances
-        self.Params['initIVStateFile'] = 'IVneuronState.dat'
-        self.Params['initANStateFile'] = 'ANneuronState.dat'
+        self.Params['initIVStateFile'] = 'IVneuronState_%s.dat'
+        self.Params['initANStateFile'] = 'ANneuronState_%s.dat'
         self.Params['hocfile']= None
         
         self.Params['cellType'] = self.cellChoices[0]
@@ -230,7 +230,7 @@ class ModelRun():
         if model_type not in self.modelChoices:
             print('Model type must be one of: {:s}. Got: {:s}'.format(', '.join(self.modelChoices), model_type))
             exit()
-        self.Params['model_type'] = model_type
+        self.Params['modelType'] = model_type
 
     def set_spontaneousrate(self, spont_rate_type):
         """
@@ -287,13 +287,18 @@ class ModelRun():
         else:
             self.idnum = 9999
         self.cellID = os.path.splitext(self.Params['cell'])[0]
+        self.Params['initIVStateFile'] = 'IVneuronState_%s.dat' % self.Params['modelType']
+        self.Params['initANStateFile'] = 'ANneuronState_%s.dat' % self.Params['modelType']
         
         # Set up initialization and filenames
         ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                             self.initDirectory, self.Params['initIVStateFile'])
         ivinitdir = os.path.join(self.baseDirectory, self.cellID,
                             self.initDirectory)
+        print (ivinitfile)
         self.mkdir_p(ivinitdir) # confirm existence of that file
+        print (self.morphDirectory)
+        print (self.Params['hocfile'])
         filename = os.path.join(self.baseDirectory, self.cellID, self.morphDirectory, self.Params['hocfile'])
         
         # instantiate cells
@@ -1301,7 +1306,7 @@ if __name__ == "__main__":
     parser.add_argument('--type', '-T', dest='cellType', action='store',
                    default='Bushy', choices=model.cellChoices,
                    help='Define the cell type (default: Bushy)')
-    parser.add_argument('--model', '-M', dest='model_type', action='store',
+    parser.add_argument('--model', '-M', dest='modelType', action='store',
                    default='XM13', choices=model.modelChoices,
                    help='Define the model type (default: XM13)')
     parser.add_argument('--sgcmodel', dest='SGCmodelType', action='store',
@@ -1367,6 +1372,7 @@ if __name__ == "__main__":
         model.Params['hocfile'] = model.Params['cell'] + '.hoc'
     print(json.dumps(model.Params, indent=4))  # pprint doesn't work well with ordered dicts
 
+    
     model.run_model() # then run the model
     # if showCell:
     #     QtGui.QApplication.instance().exec_()
