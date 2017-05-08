@@ -16,8 +16,9 @@ February 2014, Paul B. Manis UNC Chapel Hill
 
 import os
 import numpy as np
+import copy
 from collections import OrderedDict
-import cnmodel.makestim
+from cnmodel.util.stim import make_pulse # makestim
 from pylibrary.Params import Params
 import calyxPlots as cp
 import analyze_run as ar
@@ -216,7 +217,8 @@ class GenerateRun():
             stim['dur'] = self.runInfo.vstimDur
             stim['amp'] = self.runInfo.vstimInj
             stim['PT'] = 0.0
-            (secmd, maxt, tstims) = cnmodel.makestim.makestim(stim, pulsetype='square', dt=self.hf.h.dt)
+            stim['dt'] = self.hf.h.dt
+            (secmd, maxt, tstims) = make_pulse(stim)
             self.stim = stim
             secmd = secmd + self.runInfo.vstimHolding # add holding
             self.monitor['v_stim0'] = self.hf.h.Vector(secmd)
@@ -236,7 +238,8 @@ class GenerateRun():
             else:
                 stim['amp'] = self.runInfo.stimInj[0]
             stim['PT'] = 0.0
-            (secmd, maxt, tstims) = cnmodel.makestim.makestim(stim, pulsetype='square', dt=self.hf.h.dt)
+            stim['dt'] = self.hf.h.dt
+            (secmd, maxt, tstims) = make_pulse(stim) # cnmodel.makestim.makestim(stim, pulsetype='square', dt=self.hf.h.dt)
             self.stim = stim
             self.icPost = self.hf.h.iStim(0.5, sec=self.electrode_site)
             self.icPost.delay = 2
@@ -296,7 +299,7 @@ class GenerateRun():
             for i, x in tasker:
                 inj = self.runInfo.stimInj[i]
                 self._prepareRun(inj=inj) # build the recording arrays
-                self.run_initialized = cellInit.init_model(self.cell, mode='cc', restore_from_file=restore_from_file, 
+                self.run_initialized = cellInit.init_model(self.cell, mode='iclamp', restore_from_file=restore_from_file, 
                     filename=initfile)
                 tr = {'r': self._executeRun(), 'i': inj} # now you can do the run
                 tasker.results[i] = tr
@@ -403,11 +406,13 @@ class GenerateRun():
         Save the result of a single run to disk. Results must be a Param structure, which we turn into
          a dictionary...
         """
-        fn = self.basename +  '.p'
+        fn = ('{0:s}_{1:s}.p'.format(self.basename, self.cell.status['modelType']))
         pfout = open(fn, 'wb')
+        mp = copy.deepcopy(self.cell.status)
+        del mp['decorator']
         pickle.dump({'basename': self.basename,
                      'runInfo': self.runInfo.todict(),
-                     'modelPars': [],
+                     'modelPars': mp,
                      'Results': results.todict(),
                      'IVResults': self.IVResult},
                      pfout)
@@ -420,11 +425,13 @@ class GenerateRun():
         each element of which is a Param structure, which we then turn into
         a dictionary...
         """
-        fn = self.basename + '.p'
+        fn = ('{0:s}_{1:s}.p'.format(self.basename, self.cell.status['modelType']))
         pfout = open(fn, 'wb')
+        mp = copy.deepcopy(self.cell.status)
+        del mp['decorator']
         pickle.dump({'basename': self.basename,
                      'runInfo': self.runInfo.todict(),
-                     'modelPars': [],
+                     'modelPars': mp,
                      'Results': [{k:x.todict()} for k,x in self.results.iteritems()]}, pfout)
                      
         pfout.close()
