@@ -89,7 +89,7 @@ for j, pattern in enumerate(patterns):
     for i in d[pattern]['somaVoltage'].keys():
         v = d[pattern]['somaVoltage'][i]
         ax2.plot(d[pattern]['time'], v)
-    plt.show()
+#    plt.show()
 #    print np.array(d[patterns[j]]['stimWaveform'][0])
 #    w = d[patterns[j]]['stimWaveform'][0]
 #    t = np.linspace(0., len(d[patterns[j]]['stimWaveform'][0])*dt, len(d[patterns[j]]['stimWaveform'][0])) 
@@ -104,8 +104,8 @@ for j, pattern in enumerate(patterns):
         #     ax[0,].plot(t, y, 'o', markersize=2.5, color='r')
 #for i, st in enumerate(d['ref']['somaVoltage'].keys()):
 #    ax[2,].plot(d['ref']['time'], d['ref']['somaVoltage'][st], color='k')
-    ax[j][0].set_xlim((0, 0.25))
-    ax[j][1].set_xlim((0, 0.25))
+#    ax[j][0].set_xlim((0, 0.25))
+#    ax[j][1].set_xlim((0, 0.25))
 
 
 sac = SAC.SAC()
