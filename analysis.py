@@ -121,7 +121,7 @@ def getFirstSpikes(spikes, stime, nReps):
 
 def CNfspike(spikes, stime, nReps):
     # print spikes
-    print 'stime: ', stime
+    #print 'stime: ', stime
     sl1, sl2 = getFirstSpikes(spikes, stime, nReps)
 
     print 'Cochlear Nucleus Bushy Cell: '
@@ -189,13 +189,39 @@ def plotPSTH(infile, cmd):
     nReps = stimInfo['nReps']
     starttime = 1000.*stimInfo['pip_start'][0]
     stimdur = stimInfo['pip_duration']
-    print 'AN: '
+    #print 'AN: '
     ANfspike(inputSpikeTimes, starttime, nReps)
-    print 'CN: '
+    #print 'CN: '
     CNfspike(spikeTimes, starttime, nReps)
     plot1(spikeTimes, inputSpikeTimes, stimInfo, cmd)
 
-
+def plotVm(infile, cmd):
+    spikeTimes, inputSpikeTimes, stimInfo, d = readFile(infile, cmd)
+    nReps = stimInfo['nReps']
+    starttime = 1000.*stimInfo['pip_start'][0]
+    stimdur = stimInfo['pip_duration']
+    #print 'AN: '
+    ANfspike(inputSpikeTimes, starttime, nReps)
+    fig, ax = plt.subplots(2, sharex=True)
+    spiketimes = {}
+    for k in d['somaVoltage'].keys():
+        spikeTimes[k] = pu.findspikes(d['time'], d['somaVoltage'][k], cmd['threshold'])
+        spikeTimes[k] = clean_spiketimes(spikeTimes[k], 0.7)
+        ax[0].plot(d['time'], d['somaVoltage'][k])
+    ANFs = [0]
+    anf = []
+    for r in range(nReps):
+        for n in range(len(ANFs)):
+            anf.extend(inputSpikeTimes[r][ANFs[n]])  # pick the ANF
+    #print stimInfo
+    srGroups = ['', 'LS', 'MS', 'HS']
+    (anpsth, anbins) = np.histogram(anf, bins=np.linspace(0., 250., 250), density=False)
+    anrate = (anpsth*1e3)/nReps  # convert spikes/msec/50 trials to spikes/sec per trial in each bin
+    ax[1].step(anbins[:-1], anpsth, where='pre')
+    
+    
+    
+    
 def get_dimensions(n, pref='height'):
     nopt = np.sqrt(n)
     inoptw = int(nopt)
@@ -308,7 +334,7 @@ def plotSingles(inpath, cmd):
         except:
             print('Missing: ', fname)
             continue
-        print ('stiminfo: ', stimInfo)
+        #print ('stiminfo: ', stimInfo)
         if cmd['respike']:
             spiketimes = {}
             for k in d['somaVoltage'].keys():
@@ -351,7 +377,7 @@ def plotSingles(inpath, cmd):
         
     for i in range(nInputs): # rescale all plots the same
         ax[i].set_ylim(-65., vmax+cmd['nReps']*3)
-    axr[0].set_ylim(-65., vmax)
+    ax[0].set_ylim(-65., vmax)
     
     seaborn.despine(fig)
 #    seaborn.despine(fig2)
@@ -420,7 +446,7 @@ def parse_cmdline():
                default=None,
                help='Select the cell (no default)')
     parser.add_argument('-a', '--analysis', dest='analysis', action='store',
-               default='iv', choices=['psth', 'iv', 'singles', 'omit', 'io'],
+               default='iv', choices=['psth', 'iv', 'singles', 'omit', 'io', 'voltage'],
                help = 'Specify an analysis')
     parser.add_argument('-r', '--reps', type=int, default=1, dest='nReps',
                help='# repetitions in file (filename)')
@@ -440,6 +466,10 @@ cmds = parse_cmdline()
 if cmds['analysis'] == 'psth':
     infile = os.path.join(baseName, cmds['cell'], 'Simulations/AN', filename_template.format(cmds['cell'], cmds['nReps'], cmds['SR']))
     plotPSTH(infile, cmds)
+if cmds['analysis'] == 'voltage':
+    infile = os.path.join(baseName, cmds['cell'], 'Simulations/AN', filename_template.format(cmds['cell'], cmds['nReps'], cmds['SR']))
+    plotVm(infile, cmds)
+
 elif cmds['analysis'] == 'iv':
     infile = os.path.join(baseName, cmds['cell'], 'Simulations/IV', '%s' % cmds['cell'] + '.p')
     plotIV(infile)
