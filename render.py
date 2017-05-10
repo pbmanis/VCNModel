@@ -1,10 +1,22 @@
 __author__ = 'pbmanis'
 
+import sys
+import os
 import pyqtgraph as pg
+from cnmodel import cells
+from cnmodel.decorator import Decorator
+from neuronvis import HocViewer
+
 
 class Render():
     def __init__(self, hf):
         self.hf = hf
+        self.section_colors={'axon': 'r', 'hillock': 'r', 'initialsegment': 'orange',
+             'unmyelinatedaxon': 'yellow', 'myelinatedaxon': 'white', 'dendrite': 'white',
+             'soma': 'blue',
+            # terminals (calyx of Held):
+             'heminode': 'g', 'stalk':'y', 'branch': 'b', 'neck': 'brown',
+            'swelling': 'magenta', 'tip': 'powderblue', 'parentaxon': 'orange', 'synapse': 'k'}
 
     def get_hoc_file(self, infile):
         if self.hf.file_loaded is False:
@@ -18,8 +30,10 @@ class Render():
             for i, s in enumerate(self.hf.sec_groups.keys()):
                 self.section_colors[s] = self.hg.get_color_map(i)
         else: # single section name, assign colors to SectionList types:
-            self.section_colors={'axon': 'r', 'heminode': 'g', 'stalk':'y', 'branch': 'b', 'neck': 'brown',
-                'swelling': 'magenta', 'tip': 'powderblue', 'parentaxon': 'orange', 'synapse': 'k'}
+            self.section_colors={'axon': 'r', 'hillock': 'r', 'initialsegment': 'orange',
+             'unmyelinatedaxon': 'yellow', 'myelinatedaxon': 'white', 'dendrite': 'white',
+            'heminode': 'g', 'stalk':'y', 'branch': 'b', 'neck': 'brown',
+            'swelling': 'magenta', 'tip': 'powderblue', 'parentaxon': 'orange', 'synapse': 'k'}
 
         (v, e) = self.hf.get_geometry()
         self.clist = []
@@ -36,28 +50,40 @@ class Render():
             else:
                 self.clist.append([n1, None])
 
-    def render(self, mech):
-        pg.mkQApp()
-        render = HocViewer(self.hf)
+    def render(self, mech, rendertype='cylinder'):
+        render = HocViewer(self.hf.hr.h)
 
-        type = 'line'
-        if type == 'line':
+        if rendertype == 'line':
             line = render.draw_graph()
-            line.set_group_colors(self.section_colors, alpha=0.35)
-        if type == 'surface':
-            surface = render.draw_surface(resolution = 1.0)
-            surface.set_group_colors(self.section_colors, alpha=0.35)
-        elif type == 'cylinder':
-            cylinder=render.draw_cylinders()
-            cylinder.set_group_colors(self.section_colors, alpha=0.35)
-        elif type == 'volume':
-            volume = render.draw_volume(resolution = 1.0, max_size=1e9)
+            line.set_group_colors(self.section_colors, mechanism=mech)
+        if rendertype == 'surface':
+            surface = render.draw_surface()
+            #surface.set_group_colors(self.section_colors, alpha=0.35)
+            surface.set_group_colors(self.section_colors, mechanism=mech)
+        elif rendertype == 'cylinder':
+            cylinder = render.draw_cylinders()
+            print 'setting cylinder colors for mech'
+            cylinder.set_group_colors(self.section_colors,  mechanism=mech)
+            print 'done coloring'
+        elif rendertype == 'volume':
+#            volume = render.draw_volume(resolution = 1.0, max_size=1e9)
+            volume = render.draw_volume()
             #volume.set_group_colors(section_colors, alpha=0.35)
 
-    #        render.hr.read_hoc_section_lists(self.section_colors.keys())
-        #surface = render.draw_surface()
-        # cylinder = render.draw_cylinders()
-        # cylinder.set_group_colors(self.section_colors, alpha=0.35, mechanism=mech)
-        # line = render.draw_graph()
-       # surface.set_group_colors(self.section_colors, alpha=0.35)
-       # surface.set_group_colors(self.section_colors, alpha=0.35, mechanism=mech)
+
+
+if __name__ == '__main__':
+    
+    pg.mkQApp()
+    fn = sys.argv[1]
+    filename = os.path.join('VCN_Cells', fn, 'Morphology', fn+'.hoc')
+    post_cell = cells.Bushy.create(morphology=filename, decorator=Decorator,
+            species='mouse',
+            modelType='XM13')
+    R = Render(post_cell)
+    R.render(['nav11', 'gbar'], rendertype = 'surface')
+    pg.show()
+    pg.Qt.QtGui.QApplication.exec_()
+    
+    
+    
