@@ -62,27 +62,25 @@ class Render():
             surface.set_group_colors(self.section_colors, mechanism=mech)
         elif rendertype == 'cylinder':
             cylinder = render.draw_cylinders()
-            print 'setting cylinder colors for mech'
             cylinder.set_group_colors(self.section_colors,  mechanism=mech)
-            print 'done coloring'
         elif rendertype == 'volume':
 #            volume = render.draw_volume(resolution = 1.0, max_size=1e9)
             volume = render.draw_volume()
-            #volume.set_group_colors(section_colors, alpha=0.35)
+            volume.set_group_colors(self.section_colors, mechanism=mech, alpha=0.35)
 
 
 
 if __name__ == '__main__':
     
-    pg.mkQApp()
+#    pg.mkQApp()
     fn = sys.argv[1]
     filename = os.path.join('VCN_Cells', fn, 'Morphology', fn+'.hoc')
     post_cell = cells.Bushy.create(morphology=filename, decorator=Decorator,
             species='mouse',
-            modelType='XM13')
+            modelType='mGBC')
     R = Render(post_cell)
-    R.render(['nav11', 'gbar'], rendertype = 'surface')
-    pg.show()
+    R.render(['jsrna', 'gbar'], rendertype = 'cylinder')
+#    pg.show()
     pg.Qt.QtGui.QApplication.exec_()
     
     
