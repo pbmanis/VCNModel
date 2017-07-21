@@ -193,6 +193,7 @@ class GenerateRun():
         for var in ['time', 'postsynapticV', 'dendriteV', 'postsynapticI', 'i_stim0', 'v_stim0']: # get standard stuff
             self.monitor[var] = self.hf.h.Vector()
 
+        self.runInfo.celsius = self.cell.status['temperature']
         self.hf.h.celsius = self.runInfo.celsius
 
         self.clist = {}  #  color list
@@ -287,7 +288,9 @@ class GenerateRun():
         #self.hf.update() # make sure channels are all up to date
         self.results={}
         
-        nLevels = len(self.runInfo.stimInj)
+        s = self.runInfo.stimInj['pulse']
+        ipulses = np.arange(s[0], s[1], s[2])
+        nLevels = len(ipulses)
         nWorkers = workers
         print('doRun: initfile = {:s}'.format(initfile))
         TASKS = [s for s in range(nLevels)]
@@ -297,7 +300,7 @@ class GenerateRun():
         # run using pyqtgraph's parallel support
         with mproc.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
             for i, x in tasker:
-                inj = self.runInfo.stimInj[i]
+                inj = ipulses[i]
                 self._prepareRun(inj=inj) # build the recording arrays
                 self.run_initialized = cellInit.init_model(self.cell, mode='iclamp', restore_from_file=restore_from_file, 
                     filename=initfile)

@@ -3,6 +3,7 @@ from __future__ import print_function
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 import numpy as np
+import cnmodel.util as CU
 
 """
 cellInitialization provides routines for initializing the membrane potential
@@ -66,19 +67,20 @@ def init_model(cell, mode='iclamp', vinit=-65., restore_from_file=False, filenam
     #     #hf.cvode.re_init()
     #     hf.h.CVode().active(0)  # turn cvode off (note, in this model it will be off because one of the mechanisms is not compatible with cvode at this time)
     
+    CU.custom_init(v_init=vinit)
     # perform initialization by going back in time and adjusting 
-    hf.h.finitialize(vinit)
-    hf.h.t = -1e6
-    dtsav = hf.h.dt
-    hf.h.dt = 1e3  # big time steps for slow process
-    while hf.h.t < 0:
-        hf.h.fadvance()
-    hf.h.dt = dtsav
-    hf.h.t = 0
-    if hf.h.CVode().active():
-        hf.h.CVode().re_init()
-    hf.h.fcurrent()
-    hf.h.frecord_init()
+    # hf.h.finitialize(vinit)
+    # hf.h.t = -1e6
+    # dtsav = hf.h.dt
+    # hf.h.dt = 1e3  # big time steps for slow process
+    # while hf.h.t < 0:
+    #     hf.h.fadvance()
+    # hf.h.dt = dtsav
+    # hf.h.t = 0
+    # if hf.h.CVode().active():
+    #     hf.h.CVode().re_init()
+    # hf.h.fcurrent()
+    # hf.h.frecord_init()
     
     if electrode_site is not None:
         vm = electrode_site.v

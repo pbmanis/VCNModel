@@ -304,7 +304,7 @@ class ModelRun():
         # instantiate cells
         if self.Params['cellType'] in ['Bushy', 'bushy']:
             print ('run_model creating a bushy cell: ')
-            print (self.Params.keys())
+#            print (self.Params.keys())
             self.post_cell = cells.Bushy.create(morphology=filename, decorator=Decorator,
                     species=self.Params['species'],
                     modelType=self.Params['modelType'])
@@ -324,7 +324,8 @@ class ModelRun():
                       
         
         # Set up run parameters
-        self.post_cell.hr.h.celsius = 38.  # this is set by prepareRun in generateRun. Only place it should be changed
+        print ('requested temp: ', self.post_cell.status['temperature'])
+        self.post_cell.hr.h.celsius = self.post_cell.status['temperature']  # this is set by prepareRun in generateRun. Only place it should be changed
         self.post_cell.hr.h.Ra = 150.
         print('Ra = {:8.1f}'.format(self.post_cell.hr.h.Ra))
         print('Temp = {:8.1f} degC '.format(self.post_cell.hr.h.celsius))
@@ -369,7 +370,7 @@ class ModelRun():
                              starttime=None,
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
-                             iRange=self.post_cell.irange,
+                             iRange=self.post_cell.i_test_range,
                              plotting = self.Params['plotFlag'])
             cellInit.get_initial_condition_state(self.post_cell, tdur=500.,
                filename=ivinitfile, electrode_site=self.electrode_site)
@@ -453,7 +454,7 @@ class ModelRun():
                              starttime=None,
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
-                             iRange=self.post_cell.irange,
+                             iRange=self.post_cell.i_test_range,
                              plotting = HAVE_PG and self.Params['plotFlag'])
         ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                                 self.initDirectory, self.Params['initIVStateFile'])
@@ -470,12 +471,13 @@ class ModelRun():
         if verbose:
             print( '   do_run completed')
         isteps = self.R.IVResult['I']
-        for k, i in enumerate(self.R.IVResult['tauih'].keys()):
-            print( '   ih: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['tauih'][i]['tau'].value))
-            print('           dV : %f' % self.R.IVResult['tauih'][i]['a'].value)
-        for k, i in enumerate(self.R.IVResult['taus'].keys()):
-            print('   i: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['taus'][i]['tau'].value))
-            print( '          dV : %f' % (self.R.IVResult['taus'][i]['a'].value))
+        if verbose:
+            for k, i in enumerate(self.R.IVResult['tauih'].keys()):
+                print( '   ih: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['tauih'][i]['tau'].value))
+                print('           dV : %f' % self.R.IVResult['tauih'][i]['a'].value)
+            for k, i in enumerate(self.R.IVResult['taus'].keys()):
+                print('   i: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['taus'][i]['tau'].value))
+                print( '          dV : %f' % (self.R.IVResult['taus'][i]['a'].value))
         
         print('   Nspike, Ispike: ', self.R.IVResult['Nspike'], self.R.IVResult['Ispike'])
         print('   Rinss: ', self.R.IVResult['Rinss'])

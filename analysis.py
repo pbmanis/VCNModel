@@ -401,8 +401,12 @@ def readIVFile(filename):
     order = np.argsort(arun.IVResult['I'])
     utau = u'\u03C4'
     print(u'   {:^7s} {:^8s} {:^9s}{:^9}'.format('I (nA)', u'\u03C4 (ms)', 'Vss (mV)', 'Vmin (mV)')) 
-#    print arun.IVResult
+    # print arun.IVResult['taus'].keys()
+    # print 'order: ', order
     for k in order[::-1]:
+#        print ('k: ', k)
+        if k >= len(arun.IVResult['taus'].keys()):
+            continue
         tf = arun.IVResult['taus'].keys()[k]
         print('  {:6.1f}  {:7.2f} {:9.1f} {:9.1f}'.format(arun.IVResult['I'][k], 
             arun.IVResult['taus'][tf]['tau'].value,  arun.IVResult['Vss'][k], arun.IVResult['Vmin'][k]))
@@ -410,9 +414,15 @@ def readIVFile(filename):
 
 
     
-def plotIV(infile, plottau=False):
+def plotIV(cell, infile, plottau=False):
     # you don't have to use an ordered dict for this, I just prefer it when debugging
-    sizer = OrderedDict([('A', [0.2, 0.6, 0.3, 0.5]), ('B', [0.2, 0.6, 0.1, 0.15])
+        # sizer = {'A': {'pos': [0.08, 0.22, 0.50, 0.4], 'labelpos': (x,y), 'noaxes': True}, 'B1': {'pos': [0.40, 0.25, 0.60, 0.3], 'labelpos': (x,y)},
+        #          'B2': {'pos': [0.40, 0.25, 0.5, 0.1],, 'labelpos': (x,y), 'noaxes': False},
+        #         'C1': {'pos': [0.72, 0.25, 0.60, 0.3], 'labelpos': (x,y)}, 'C2': {'pos': [0.72, 0.25, 0.5, 0.1], 'labelpos': (x,y)},
+        #         'D': {'pos': [0.08, 0.25, 0.1, 0.3], 'labelpos': (x,y)},
+        #         'E': {'pos': [0.40, 0.25, 0.1, 0.3], 'labelpos': (x,y)}, 'F': {'pos': [0.72, 0.25, 0.1, 0.3],, 'labelpos': (x,y)}
+        #
+    sizer = OrderedDict([('A', {'pos': [0.2, 0.6, 0.3, 0.5]}), ('B', {'pos': [0.2, 0.6, 0.1, 0.15]})
             # ('C1', [0.72, 0.25, 0.65, 0.3]), ('C2', [0.72, 0.25, 0.5, 0.1]),
             # ('D', [0.08, 0.25, 0.1, 0.3]), ('E', [0.40, 0.25, 0.1, 0.3]), ('F', [0.72, 0.25, 0.1, 0.3]),
     ])  # dict elements are [left, width, bottom, height] for the axes in the plot.
@@ -423,11 +433,14 @@ def plotIV(infile, plottau=False):
     P.resize(sizer)  # perform positioning magic
     P.figure_handle.suptitle(cell)
     ivr, d, tr = readIVFile(infile)
-    mons = d['runInfo']['electrodeSection']
+    mon1 = d['runInfo']['electrodeSection']
+    mon2 = d['runInfo']['dendriticElectrodeSection']
+    # print mon1
+    # print mon2
     taufit = ivr['taufit']
-    for k, i in enumerate(d['runInfo']['stimInj']):
-        P.axdict['A'].plot(tr[i]['monitor']['time'], tr[i]['monitor']['postsynapticV'], 'k-', linewidth=0.75)
-        P.axdict['B'].plot(tr[i]['monitor']['time'], tr[i]['monitor']['postsynapticI'], 'b-', linewidth=0.75)
+    for i, k in enumerate(tr.keys()):
+        P.axdict['A'].plot(tr[k]['monitor']['time'], tr[k]['monitor']['postsynapticV'], 'k-', linewidth=0.75)
+        P.axdict['B'].plot(tr[k]['monitor']['time'], tr[k]['monitor']['postsynapticI'], 'b-', linewidth=0.75)
     if plottau:
         for k in taufit[0].keys():
             P.axdict['A'].plot(taufit[0][k], taufit[1][k], 'r-')
@@ -457,6 +470,8 @@ def parse_cmdline():
                choices=['LS', 'MS', 'HS'], help='Select SR group (default is None)')
     parser.add_argument('--respike', action='store_true', default=False, dest='respike',
                help='recompute spikes from Vm waveforms (default: False)')
+    parser.add_argument('-m', '--model', action='store', default='', dest='model',
+               help='recompute spikes from Vm waveforms (default: False)')
     args = vars(parser.parse_args())
     return args
 
@@ -471,8 +486,12 @@ if cmds['analysis'] == 'voltage':
     plotVm(infile, cmds)
 
 elif cmds['analysis'] == 'iv':
-    infile = os.path.join(baseName, cmds['cell'], 'Simulations/IV', '%s' % cmds['cell'] + '.p')
-    plotIV(infile)
+    if cmds['model'] == '':
+        fn = cmds['cell'] + '.p'
+    else:
+        fn = cmds['cell'] + '_' + cmds['model'] + '.p'
+    infile = os.path.join(baseName, cmds['cell'], 'Simulations/IV', '%s' % fn)
+    plotIV(cmds['cell'], infile)
 elif cmds['analysis'] in ['io']:
     plotIO(cmds)
 elif cmds['analysis'] in ['singles', 'omit']:

@@ -50,24 +50,24 @@ class Render():
             else:
                 self.clist.append([n1, None])
 
-    def render(self, mech, rendertype='cylinder'):
+    def render(self, mech, rendertype='cylinder', colormap='magma'):
         render = HocViewer(self.hf.hr.h)
 
         if rendertype == 'line':
-            line = render.draw_graph()
-            line.set_group_colors(self.section_colors, mechanism=mech)
+            g = render.draw_graph()
+            g.set_group_colors(self.section_colors, mechanism=mech, colormap=colormap)
         if rendertype == 'surface':
-            surface = render.draw_surface()
+            g = render.draw_surface()
             #surface.set_group_colors(self.section_colors, alpha=0.35)
-            surface.set_group_colors(self.section_colors, mechanism=mech)
+            g.set_group_colors(self.section_colors, mechanism=mech, colormap=colormap)
         elif rendertype == 'cylinder':
-            cylinder = render.draw_cylinders()
-            cylinder.set_group_colors(self.section_colors,  mechanism=mech)
+            g = render.draw_cylinders()
+            g.set_group_colors(self.section_colors,  mechanism=mech, colormap=colormap)
         elif rendertype == 'volume':
 #            volume = render.draw_volume(resolution = 1.0, max_size=1e9)
-            volume = render.draw_volume()
-            volume.set_group_colors(self.section_colors, mechanism=mech, alpha=0.35)
-
+            g = render.draw_volume()
+            g.set_group_colors(self.section_colors, mechanism=mech, alpha=0.35, colormap=colormap)
+        return g 
 
 
 if __name__ == '__main__':
@@ -79,7 +79,7 @@ if __name__ == '__main__':
             species='mouse',
             modelType='mGBC')
     R = Render(post_cell)
-    R.render(['jsrna', 'gbar'], rendertype = 'cylinder')
+    g = R.render(['jsrna', 'gbar'], rendertype = 'surface')
 #    pg.show()
     pg.Qt.QtGui.QApplication.exec_()
     
