@@ -406,6 +406,7 @@ def readIVFile(filename):
     for k in order[::-1]:
 #        print ('k: ', k)
         if k >= len(arun.IVResult['taus'].keys()):
+            print('No tau data')
             continue
         tf = arun.IVResult['taus'].keys()[k]
         print('  {:6.1f}  {:7.2f} {:9.1f} {:9.1f}'.format(arun.IVResult['I'][k], 
@@ -447,11 +448,14 @@ def plotIV(cell, infile, plottau=False):
     P.axdict['A'].set_xlim(0, 150.)
     P.axdict['A'].set_ylabel('V (mV)')
     P.axdict['A'].set_xticklabels([])
+    PH.calbar(P.axdict['A'], calbar=[125., -120., 25., 25.], unitNames={'x': 'ms', 'y': 'mV'})
+#    def calbar(axl, calbar=None, axesoff=True, orient='left', unitNames=None, fontsize=11, weight='normal', font='Arial'):
     
     P.axdict['B'].set_xlim(0., 150.)
     P.axdict['B'].set_xlabel('T (ms)')
     P.axdict['B'].set_ylabel('I (nA)')
-
+    PH.calbar(P.axdict['B'], calbar=[125., 0.1, 25., 0.5], unitNames={'x': 'ms', 'y': 'nA'})
+    
 
 def parse_cmdline():
     parser = argparse.ArgumentParser(description='Analyze protocols from a reconstructed model cell')

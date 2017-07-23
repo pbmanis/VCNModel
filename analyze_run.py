@@ -7,7 +7,6 @@ import numpy as np
 import pylibrary.Utility as pu
 import lmfit
 import matplotlib.pylab as PL
-from pylibrary.Params import Params
 
 verbose = False
 
@@ -29,7 +28,6 @@ class AnalyzeRun():
         # return
         self.analyzeIV(self.t, self.V, self.I, self.tw, self.thr)
 
-
     def parseStim(self, res):
         """
         parse the stimulus informaiton in the results dictionary.
@@ -42,7 +40,7 @@ class AnalyzeRun():
         self.delay = site['delay']
         self.duration = site['dur']
         self.tw = [self.delay, self.duration, 10.]
-
+        print( 'analyze_run.py: self.tw = ', self.tw)
 
     def parseResults(self, res):
         """
@@ -86,6 +84,7 @@ class AnalyzeRun():
 
     def analyzeIV(self, t, V, I, tw, thr):
         """ analyze a set of voltage records (IV), with spike threshold
+            
             tw is a list of [tdelay, tdur, tssw], where tdelay is the delay to
             the start of the step, tdur is the duration of the step, and tssw is
             the duration of the steady-state window prior to the end of the
@@ -170,14 +169,18 @@ class AnalyzeRun():
                 print('   >>> completed analyzing trace %d' % j)
         if verbose:
             print('done with traces')
-        RinIVss = (vss - vrmss)/ic  # measure steady-state input resistance
-        RinIVpk = (vmin - vrmss)/ic  # measure "peak" input resistance
-        if len(RinIVss) > 0:
-            Rinss = np.max(RinIVss)  # extract max
+        
+        RinIVss = (vss - vm)/ic  # measure steady-state input resistance
+        RinIVpk = (vmin - vm)/ic  # measure "peak" input resistance
+        icn, = np.where(ic < -1e-3)
+        # print('ss rin: ', RinIVss[icn])
+        # print('ic rin: ', ic[icn])
+        if len(RinIVss[icn]) > 0:
+            Rinss = np.max(RinIVss[icn])  # extract max
         else:
             Rinss = np.nan
-        if len(RinIVpk) > 0:
-            Rinpk = np.max(RinIVpk)  # extract max
+        if len(RinIVpk[icn]) > 0:
+            Rinpk = np.max(RinIVpk[icn])  # extract max
         else:
             Rinpk = np.nan
         if verbose:
