@@ -45,17 +45,17 @@ print('      forcerun: ', forcerun)
 print('      testflag: ', testflag)
 anresultfilenames = {}
 for i, n in enumerate(gbc_nos):
-    anresultfilenames[n] = 'AN_Result_VCN_c{0:s}_delays_N{1:03d}_040dB_4000.0_{2:2s}.p'.format(n, nrep, SR)
+    anresultfilenames[i] = 'AN_Result_VCN_c{0:s}_delays_N{1:03d}_040dB_4000.0_{2:2s}.p'.format(n, nrep, SR)
 print('   anresult files:')
-for n in gbc_nos:
-    print('      ', anresultfilenames[n])
+for i, n in enumerate(gbc_nos):
+    print('      ', n, anresultfilenames[i])
 print('-'*32)
 if testflag:
     exit()
 
 seeds = [100]*len(gbc_nos)  # use all the same seeds
 
-# create paths to the simulation runs to check for existing IV initialization
+# create paths to the simulation runs to check for existing AN initialization
 
 for i, n in enumerate(gbc_nos):
     cell = 'VCN_c{0:s}'.format(n)
@@ -68,7 +68,7 @@ for i, n in enumerate(gbc_nos):
     initf = os.path.join(M.baseDirectory, cell, ivinitfile)
     print ('\nRunning Cell {0:s}: '.format(cell))
     M.Params['cell'] = cell
-    M.Params['infile'] = M.Params['cell'] + '.hoc'    
+    M.Params['hocfile'] = M.Params['cell'] + '.hoc'    
     if not os.path.isfile(initf):
         print('creating new init file for cell, did not find {:s}'.format(initf))
         M.Params['runProtocol'] = 'initAN'
@@ -86,7 +86,8 @@ for i, n in enumerate(gbc_nos):
         print ('Creating AN datafile: {:s}\n'.format(andatafile))
         M = mrun.ModelRun() # create a new instance for each cell
         M.Params['cell'] = cell
-        M.Params['infile'] = M.Params['cell'] + '.hoc'    
+        M.Params['hocfile'] = M.Params['cell'] + '.hoc'    
+        M.Params['modelType'] = 'mGBC'
         M.Params['runProtocol'] = 'runANPSTH'
         M.Params['SGCmodelType'] = 'cochlea'
         M.Params['soundtype'] = 'tonepip'
