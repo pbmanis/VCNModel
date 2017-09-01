@@ -138,12 +138,13 @@ def get_initial_condition_state(cell, tdur=2000., filename=None, electrode_site=
         Nothing
     """
     
-    set_d_lambda(cell, freq=freq)
+#    set_d_lambda(cell, freq=freq)
+    cell.set_d_lambda()
+    cell.cell_initialize()
     hf = cell.hr
     # first to an initialization to get close
     print('get_initial_condition_state\n')
     print('  starting t = %8.2f' % hf.h.t)
-    cell.cell_initialize()
     init_model(cell, restore_from_file=False, electrode_site=electrode_site, reinit=reinit)
     hf.h.tstop = tdur
     print('running for %8.2f ms at %4.1f' % (tdur, hf.h.celsius))
@@ -249,76 +250,76 @@ def test_initial_conditions(cell, electrode_site=None, filename=None):
     # QtGui.QApplication.instance().exec_()
 
 
-def set_d_lambda(cell, freq=100, d_lambda=0.1):
-    """ Sets nseg in each section to an odd value
-        so that its segments are no longer than
-        d_lambda x the AC length constant
-        at frequency freq in that section.
-
-        Be sure to specify your own Ra and cm _before_ calling geom_nseg()
-
-        To understand why this works,
-        and the advantages of using an odd value for nseg,
-        see  Hines, M.L. and Carnevale, N.T.
-        NEURON: a tool for neuroscientists.
-        The Neuroscientist 7:123-135, 2001.
-
-        This routine is a python adaptation of the hoc file.
-        Some of the original code is included and commented
-
-    Parameters
-    ----------
-    cell : CNModel cell instance (required)
-    freq : float, Hz (default: 100.)
-        frequency to use to set d_lambda.
-    d_lambda : float (default: 0.1)
-        initial value for d_lambda
-    
-    Returns
-    -------
-        Nothing
-
-    Note that the routine dynamically modifies nseg for every section inspected.
-
-    """
-
-# the defaults are reasonable values for most models
-# freq = 100      # Hz, frequency at which AC length constant will be computed
-# d_lambda = 0.1
-    hf = cell.hr
-#    forall { nseg = int((L/(d_lambda()*lambda_f(freq))+0.9)/2)*2 + 1  }
-    for st in cell.all_sections.keys():
-        for i, section in enumerate(cell.all_sections[st]):
-            nseg  = int((section.L/(d_lambda*lambda_f(hf, freq, section))+0.9)/2)*2 + 1
-            if nseg < 3:
-                nseg = 3 # ensure at least 3 segments per section...
-            section.nseg = nseg
-#            print '%s nseg=%d' % (section.name(), section.nseg)
-
-def lambda_f(hf, freq, section):
-#     { local i, x1, x2, d1, d2, lam
-    hf.h('access %s' % section.name())
-#    print 'n3d: ', hf.h.n3d()
-    if hf.h.n3d() < 2:
-            return 1e5*np.sqrt(section.diam/(4.0*np.pi*freq*section.Ra*section.cm))
-    
-    # above was too inaccurate with large variation in 3d diameter
-    # so now we use all 3-d points to get a better approximate lambda
-    x1 = hf.h.arc3d(0)
-    d1 = hf.h.diam3d(0)
-#    print 'x1, d1: ', x1, d1
-    lam = 0
-    for i in range(int(hf.h.n3d())-1):
-            x2 = hf.h.arc3d(i)
-            d2 = hf.h.diam3d(i)
-#            print 'x2, d2: ', x2, d2
-            lam = lam + ((x2 - x1)/np.sqrt(d1 + d2))
-            x1 = x2
-            d1 = d2
-    #  length of the section in units of lambda
-    lam = lam * np.sqrt(2.0) * 1e-5*np.sqrt(4.0*np.pi*freq*section.Ra*section.cm)
-#    print lam, section.Ra, section.cm, section.L
-    return section.L/lam
+# def set_d_lambda(cell, freq=100, d_lambda=0.1):
+#     """ Sets nseg in each section to an odd value
+#         so that its segments are no longer than
+#         d_lambda x the AC length constant
+#         at frequency freq in that section.
+#
+#         Be sure to specify your own Ra and cm _before_ calling geom_nseg()
+#
+#         To understand why this works,
+#         and the advantages of using an odd value for nseg,
+#         see  Hines, M.L. and Carnevale, N.T.
+#         NEURON: a tool for neuroscientists.
+#         The Neuroscientist 7:123-135, 2001.
+#
+#         This routine is a python adaptation of the hoc file.
+#         Some of the original code is included and commented
+#
+#     Parameters
+#     ----------
+#     cell : CNModel cell instance (required)
+#     freq : float, Hz (default: 100.)
+#         frequency to use to set d_lambda.
+#     d_lambda : float (default: 0.1)
+#         initial value for d_lambda
+#
+#     Returns
+#     -------
+#         Nothing
+#
+#     Note that the routine dynamically modifies nseg for every section inspected.
+#
+#     """
+#
+# # the defaults are reasonable values for most models
+# # freq = 100      # Hz, frequency at which AC length constant will be computed
+# # d_lambda = 0.1
+#     hf = cell.hr
+# #    forall { nseg = int((L/(d_lambda()*lambda_f(freq))+0.9)/2)*2 + 1  }
+#     for st in cell.all_sections.keys():
+#         for i, section in enumerate(cell.all_sections[st]):
+#             nseg  = int((section.L/(d_lambda*lambda_f(hf, freq, section))+0.9)/2)*2 + 1
+#             if nseg < 3:
+#                 nseg = 3 # ensure at least 3 segments per section...
+#             section.nseg = nseg
+# #            print '%s nseg=%d' % (section.name(), section.nseg)
+#
+# def lambda_f(hf, freq, section):
+# #     { local i, x1, x2, d1, d2, lam
+#     hf.h('access %s' % section.name())
+# #    print 'n3d: ', hf.h.n3d()
+#     if hf.h.n3d() < 2:
+#             return 1e5*np.sqrt(section.diam/(4.0*np.pi*freq*section.Ra*section.cm))
+#
+#     # above was too inaccurate with large variation in 3d diameter
+#     # so now we use all 3-d points to get a better approximate lambda
+#     x1 = hf.h.arc3d(0)
+#     d1 = hf.h.diam3d(0)
+# #    print 'x1, d1: ', x1, d1
+#     lam = 0.
+#     for i in range(int(hf.h.n3d())-1):
+#             x2 = hf.h.arc3d(i)
+#             d2 = hf.h.diam3d(i)
+# #            print 'x2, d2: ', x2, d2
+#             lam = lam + ((x2 - x1)/np.sqrt(d1 + d2))
+#             x1 = x2
+#             d1 = d2
+#     #  length of the section in units of lambda
+#     lam = lam * np.sqrt(2.0) * 1e-5*np.sqrt(4.0*np.pi*freq*section.Ra*section.cm)
+# #    print lam, section.Ra, section.cm, section.L
+#     return section.L/lam
 
 
 
