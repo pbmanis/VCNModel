@@ -50,6 +50,25 @@ VCN_c09= [  [ (53.46), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
             [ (18.40), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
             ]
 
+VCN_c11 = [ [(94.02), 0., 2., , 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [(263.75), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [(87.25), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [(181.60), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [(236.42), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [(41.69), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [(49.85), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            ]
+
+VCN_c14 = [ [(309.83), 0., 2., , 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [(121.64), 0., 2., , 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [(150.36), 0., 2., , 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [(19.74), 0., 2., , 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [(70.32), 0., 2., , 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [(80.39), 0., 2., , 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [(83.04), 0., 2., , 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            [(30.87), 0., 2., , 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
+            ]
+
 VCN_c17= [  [ (149.80), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
             [ (173.82), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
             [ (82.66), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
@@ -148,7 +167,8 @@ VCN_c22= [  [ (132.22), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],
             ]
         
 VCN_Inputs = {'VCN_c07': VCN_c07, 'VCN_c08': VCN_c08,
-              'VCN_c09': VCN_c09, 'VCN_c17': VCN_c17,
+              'VCN_c09': VCN_c09, 'VCN_c11': VCN_c11, 
+              'VCN_c14': VCN_c14, 'VCN_c17': VCN_c17,
               'VCN_c18': VCN_c18, 'VCN_c19': VCN_c19,
               'VCN_c20': VCN_c20,
               'VCN_c21': VCN_c21, 'VCN_c22': VCN_c22
