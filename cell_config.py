@@ -41,9 +41,14 @@ synperum2 = 0.65 # average density of synapses, synapses per micron sequared
 #             ]
 
 # LM test cell from Luke Campagnola (mouse, CBA): Simple 3 input, 100 each (no exp. data on inputs)
-LC_bushy = [ [(100./synperum2), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
-             [(100./synperum2), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
-             [(100./synperum2), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
+LC_bushy = [ [(50./synperum2), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
+             [(50./synperum2), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
+             [(50./synperum2), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
+        ]
+# LM test cell from Luke Campagnola (mouse, CBA): Simple 3 input, 100 each (no exp. data on inputs)
+LC_neuromantic_scaled = [ [(50./synperum2), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
+             [(50./synperum2), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
+             [(50./synperum2), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
         ]
 
 # based on new data 12/17/2016, from Spirou (table in Final7_Somatic_Input_ASAs.ods)
@@ -263,6 +268,7 @@ VCN_c22= [
         
 VCN_Inputs = {'VCN_c07': ['notbushy', VCN_c07],
         'LC_bushy': ['bushy', LC_bushy], 
+        'LC_neuromantic_scaled': ['bushy', LC_bushy], 
         'VCN_c08': ['bushy', VCN_c08],
         'VCN_c09': ['bushy', VCN_c09], 'VCN_c09h': ['bushy', VCN_c09_h], 'VCN_c09nd': ['bushy', VCN_c09_nd],  # variants
         'VCN_c10': ['bushy', VCN_c10], 'VCN_c11': ['bushy', VCN_c11],
