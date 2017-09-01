@@ -295,10 +295,11 @@ class ModelRun():
                             self.initDirectory, self.Params['initIVStateFile'])
         ivinitdir = os.path.join(self.baseDirectory, self.cellID,
                             self.initDirectory)
-        print (ivinitfile)
+        print ('iv init file: ', ivinitfile)
         self.mkdir_p(ivinitdir) # confirm existence of that file
-        print (self.morphDirectory)
-        print (self.Params['hocfile'])
+        print ('morphology directory: ', self.morphDirectory)
+        print ('hocfile: ', self.Params['hocfile'])
+        print ('base directory: ', self.baseDirectory)
         filename = os.path.join(self.baseDirectory, self.cellID, self.morphDirectory, self.Params['hocfile'])
         
         # instantiate cells
