@@ -22,6 +22,10 @@ x86_64/
 # old mechanisms
 mechanisms_old/
 
+# links to other packages
+cnmodel
+neuronvis
+
 # Distribution / packaging
 .Python
 build/
