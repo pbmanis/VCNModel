@@ -12,7 +12,7 @@ class Render():
     def __init__(self, hf):
         self.hf = hf
         self.section_colors={'axon': 'r', 'hillock': 'r', 'initialsegment': 'orange',
-             'unmyelinatedaxon': 'yellow', 'myelinatedaxon': 'white', 'dendrite': 'white',
+             'unmyelinatedaxon': 'yellow', 'myelinatedaxon': 'white', 'dendrite': 'green',
              'soma': 'blue',
             # terminals (calyx of Held):
              'heminode': 'g', 'stalk':'y', 'branch': 'b', 'neck': 'brown',
@@ -25,21 +25,21 @@ class Render():
             return()
         self.section_list = self.hf.get_section_prefixes()
         self.hf.sec_groups.keys()
-        if len(self.hf.sec_groups) > 1: # multiple names, so assign colors to structure type
-            self.section_colors = {}
-            for i, s in enumerate(self.hf.sec_groups.keys()):
-                self.section_colors[s] = self.hg.get_color_map(i)
-        else: # single section name, assign colors to SectionList types:
-            self.section_colors={'axon': 'r', 'hillock': 'r', 'initialsegment': 'orange',
-             'unmyelinatedaxon': 'yellow', 'myelinatedaxon': 'white', 'dendrite': 'white',
-            'heminode': 'g', 'stalk':'y', 'branch': 'b', 'neck': 'brown',
-            'swelling': 'magenta', 'tip': 'powderblue', 'parentaxon': 'orange', 'synapse': 'k'}
+        # if len(self.hf.sec_groups) > 5: # multiple names, so assign colors to structure type
+        #     self.section_colors = {}
+        #     for i, s in enumerate(self.hf.sec_groups.keys()):
+        #         self.section_colors[s] = self.hg.get_color_map(i)
+        # else: # single section name, assign colors to SectionList types:
+        #     self.section_colors={'axon': 'r', 'hillock': 'r', 'initialsegment': 'orange',
+        #      'unmyelinatedaxon': 'yellow', 'myelinatedaxon': 'white', 'dendrite': 'white',
+        #     'heminode': 'g', 'stalk':'y', 'branch': 'b', 'neck': 'brown',
+        #     'swelling': 'magenta', 'tip': 'powderblue', 'parentaxon': 'orange', 'synapse': 'k'}
 
         (v, e) = self.hf.get_geometry()
         self.clist = []
 
         for si in self.hf.sections: # self.section_list[s]:
-            print dir(si)
+            #print dir(si)
             self.hf.h('access %s' % si)
             sr = self.hf.h.SectionRef()
             n1 = self.hf.h.cas().name()

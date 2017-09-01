@@ -5,9 +5,9 @@ proc celldef() {
 create hillock[1], initialsegment[1], axon[1], soma[1], dendrite[100]
 
 proc topol() { local i
+  connect soma(0), hillock(0)
   connect initialsegment(0), hillock(1)
   connect axon(0), initialsegment(1)
-  connect soma(0), hillock(0)
   connect dendrite(0), soma(1)
   for i = 1, 7 connect dendrite[i](0), dendrite[i-1](1)
   for i = 8, 9 connect dendrite[i](0), dendrite[i-8](1)
