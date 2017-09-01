@@ -143,7 +143,7 @@ class ModelRun():
 
         self.cellmap = {'bushy': cells.bushy, 'tstellate': cells.tstellate, 'dstellate': cells.dstellate}
 #        self.protocolmap = {'initIV': self.}
-        self.srname = ['**', 'LS', 'MS', 'HS']  # runs 1-3, not starting at 0
+        self.srname = ['LS', 'MS', 'HS']  # runs 0-2, not starting at 0
         self.cellID = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
         self.Params = OrderedDict()
         
@@ -165,13 +165,13 @@ class ModelRun():
         self.Params['nReps'] = 1
         self.Params['seed'] = 100 # always the same start - avoids lots of recomutation
                                   # in production, vary this or set to None for random values
-        self.Params['run_duration'] = 0.2 # in sec
+        self.Params['run_duration'] = 0.25 # in sec
         self.Params['soundtype'] = 'SAM'  # or 'tonepip'
         self.Params['pip_duration'] = 0.1
         self.Params['pip_start'] = [0.1]
         self.Params['Fs'] = 100e3
-        self.Params['F0'] = 4000.
-        self.Params['dB'] = 40.
+        self.Params['F0'] = 16000.
+        self.Params['dB'] = 30.
         self.Params['RF'] = 2.5e-3
         self.Params['fmod'] = 20 # hz, modulation if SAM
         self.Params['dmod'] = 0 # percent if SAM
@@ -356,7 +356,7 @@ class ModelRun():
             print('par_map in run_model: ', par_map)
             self.post_cell.hr.h.topology()
        
-        cellInit.set_d_lambda(self.post_cell, freq=2000.)
+        self.post_cell.set_d_lambda(freq=2000.)
         
         # handle the following protocols:
         # ['initIV', 'initAN', 'runIV', 'runANPSTH', 'runANSingles']
@@ -1055,25 +1055,10 @@ class ModelRun():
                 postsite = syn['postlocations'][pl]
                 # note that we split the number of zones between multiple sites
                 synapse.append(preCell[-1].connect(thisCell, pre_opts={'nzones':int(syn['nSyn']*postsite[2]), 'delay':syn['delay2']},
-                    post_opts={'AMPAScale': self.Params['AMPAScale'], 'postsite': postsite[0:2]}))
+                    post_opts={'postsec': pl, 'postsite': postsite[0:2]}))
         for i, s in enumerate(synapse):
             s.terminal.relsite.Dep_Flag = 0  # turn off depression computation
-        #  ****** uncomment here to adjust gmax.
-            # for p in s.psd.ampa_psd:
-    #             p.gmax = p.gmax*2.5
-            
-        
-        # checking the gmax for all synapses
-        # for s in synapse:
-        #     psds = s.psd.ampa_psd
-        #     for p in psds:
-        #         #print p.gmax
-        #         p.gmax = p.gmax
-        # for s in synapse:
-        #     psds = s.psd.ampa_psd
-        #     for p in psds:
-        #         #print p.gmax
-        #         pass
+
         electrodeSection = list(thisCell.hr.sec_groups['soma'])[0]
         electrode_site = thisCell.hr.get_section(electrodeSection)
         return (preCell, synapse, electrode_site)
