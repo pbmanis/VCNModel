@@ -13,14 +13,23 @@ __pycache__/
 *.bak
 *.ppt
 *.pptx
+*.svg
+*.ai
+*.tif
+
 # also ignore pickled file datasets
 *.p
+
+# hoc files from neuron (directory's worth)
+NeuronHocFiles
 
 # Compiled neuron files
 x86_64/
 
 # old mechanisms
 mechanisms_old/
+ANFiles/
+MorphologyFiles/ # top level
 
 # links to other packages
 cnmodel
