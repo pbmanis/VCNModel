@@ -1,28 +1,3 @@
-# intermediate data files
-*.p
-*.dat
-
-# NEURON stuff
-*.o
-*.la
-*.lai
-*.inc
-*.lo
-*.c
-*.mod
-
-# linked directories
-
-cnmodel
-neuronvis
-x86_64/special
-
-# specific directories
-VCN_Cells/VCN_c18/Initialization/IVneuronState.dat
-
-
-# genral python gitignore files
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -30,10 +5,25 @@ __pycache__/
 
 # C extensions
 *.so
+*.o
+
+# pdfs, pngs, bak, ppt, pptx
+*.pdf
+*.png
+*.bak
+*.ppt
+*.pptx
+# also ignore pickled file datasets
+*.p
+
+# Compiled neuron files
+x86_64/
+
+# old mechanisms
+mechanisms_old/
 
 # Distribution / packaging
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -68,7 +58,7 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
-*,cover
+*.cover
 .hypothesis/
 
 # Translations
@@ -101,17 +91,25 @@ target/
 # celery beat schedule file
 celerybeat-schedule
 
-# dotenv
-.env
+# SageMath parsed files
+*.sage.py
 
-# virtualenv
+# Environments
+.env
 .venv
+env/
 venv/
 ENV/
 
 # Spyder project settings
 .spyderproject
+.spyproject
 
 # Rope project settings
 .ropeproject
 
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
