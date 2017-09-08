@@ -30,7 +30,7 @@ class AnalyzeRun():
 
     def parseStim(self, res):
         """
-        parse the stimulus informaiton in the results dictionary.
+        parse the stimulus information in the results dictionary.
         We only need to look at the first element to get the delay and duration
         """
         try:
