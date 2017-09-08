@@ -95,7 +95,7 @@ from collections import OrderedDict
 import pprint
 import json
 
-from neuronvis.hoc_viewer import HocViewer
+# from neuronvis.hoc_viewer import HocViewer
 import neuronvis.hoc_graphics as hoc_graphics
 from generate_run import GenerateRun
 import cellInitialization as cellInit
@@ -104,14 +104,14 @@ from cnmodel import cells
 from cnmodel.util import sound
 from cnmodel.decorator import Decorator
 
-import cochlea
-import thorns  # required for cochlea
+#import cochlea
+#import thorns  # required for cochlea
 
 import pylibrary.Utility as pu  # access to a spike finder routine
 
 try:
     import pyqtgraph as pg
-    from PyQt4 import QtCore, QtGui
+    from PyQt4 import QtCore
     import pylibrary.pyqtgraphPlotHelpers as pgh
     HAVE_PG = True
 except:
@@ -134,7 +134,7 @@ class ModelRun():
         # use v2 files for model with rescaled soma
         self.cellChoices = ['Bushy', 'TStellate', 'DStellate']
         self.modelChoices = ['XM13', 'RM03', 'mGBC', 'XM13PasDend', 'Calyx', 'MNTB', 'L23Pyr']
-        self.SGCmodelChoices = ['Zilany', 'cochlea']  # cochlea is python model of Zilany data, no matlab, JIT computation
+        self.SGCmodelChoices = ['Zilany', 'cochlea']  # cochlea is python model of Zilany data, no matlab, JIT computation; Zilany model creates matlab instance for every run.
         self.cmmrModeChoices = ['CM', 'CD', 'REF']  # comodulated, codeviant, reference
         self.SRChoices = ['LS', 'MS', 'HS', 'fromcell']  # AN SR groups (assigned across all inputs)
         self.protocolChoices = ['initIV', 'testIV', 'runIV', 'initAN', 'runANPSTH', 'runANIO', 'runANSingles', 'runANOmitOne']
@@ -538,9 +538,9 @@ class ModelRun():
         if self.Params['seed'] is None:  # every run is randomized
             seeds = np.random.randint(32678, size=(nReps, len(synapseConfig)))    
         else:
-            seed = self.Params['seed']
+            startingseed = self.Params['seed']
             seeds = np.arange(0, nReps*len(synapseConfig)).reshape((nReps, len(synapseConfig)))
-            seeds = seeds + self.Params['seed']
+            seeds = seeds + startingseed
         print('AN Seeds: ', seeds)
 
         return seeds
@@ -761,8 +761,8 @@ class ModelRun():
                             p.gmax = 0.  # disable all
                         else:
                             p.gmax = gMax[i]  # except the shosen one
-            print('Syn #: %d, synapse gMax: ' % k, gMax)
-            print('tag: ', tagname)
+            print('Syn #: %d, synapse gMax: ' % (k, gMax))
+            print('tag: %s' % (tagname % k))
             
             tresults = [None]*nReps
             
@@ -1334,7 +1334,7 @@ if __name__ == "__main__":
         help=('Specify SR type (from: %s)' % model.SRChoices))
     parser.add_argument('--sequence', type=str, default='[1,2,5]', dest = 'sequence',
             help=('Specify a sequence for the primary run parameters'))
-    parser.add_argument('--plot',  action="store_true", default=False, dest = 'showPlot',
+    parser.add_argument('--plot',  action="store_true", default=False, dest = 'plotFlag',
             help='Plot results as they are generated - requires user intervention... ')
     parser.add_argument('--workers', type=int,  default=4, dest = 'nWorkers',
             help='Number of "workers" for parallel processing (default: 4)')
