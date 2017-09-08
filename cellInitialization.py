@@ -138,8 +138,8 @@ def get_initial_condition_state(cell, tdur=2000., filename=None, electrode_site=
         Nothing
     """
     
-#    set_d_lambda(cell, freq=freq)
-    cell.set_d_lambda()
+#    set_d_lambda(cell, freq=freq)  # use the default inits...
+ #   cell.set_d_lambda()
     cell.cell_initialize()
     hf = cell.hr
     # first to an initialization to get close
@@ -185,6 +185,7 @@ def restore_initial_conditions_state(cell, filename, electrode_site=None, reinit
     -------
         Nothing
     """
+    print('restoring from file: {:s}'.format(filename))
     hf = cell.hr
     hf.h.finitialize()
     stateFile = hf.h.File() # restore state AFTER finitialize
@@ -242,6 +243,7 @@ def test_initial_conditions(cell, electrode_site=None, filename=None):
    #     hf.hr.h.fadvance()
     cell.hr.h.batch_save() # save nothing
     cell.hr.h.batch_run(cell.hr.h.tstop, cell.hr.h.dt, "an.dat")
+    print('Filename: %s'.format(filename))
     print('\ntime: ', np.array(monitor['time']))
     print('\nVelectrode: ', np.array(monitor['Velectrode']))
     # pg.mkQApp()
