@@ -50,7 +50,7 @@ class Render():
             else:
                 self.clist.append([n1, None])
 
-    def render(self, mech, rendertype='cylinder', colormap='magma'):
+    def render(self, mech, rendertype='cylinder', colormap='viridis'): #'magma'):
         render = HocViewer(self.hf.hr.h)
 
         if rendertype == 'line':
@@ -78,8 +78,9 @@ if __name__ == '__main__':
     post_cell = cells.Bushy.create(morphology=filename, decorator=Decorator,
             species='mouse',
             modelType='mGBC')
+    post_cell.set_distances()
     R = Render(post_cell)
-    g = R.render(['jsrna', 'gbar'], rendertype = 'surface')
+    g = R.render(['klt', 'gbar'], rendertype = 'surface')
 #    pg.show()
     pg.Qt.QtGui.QApplication.exec_()
     

@@ -1,5 +1,11 @@
 """
 displayresult shows the results of a model_run. Just enter the filename in the fn field
+
+runtype defines IV or AN
+modeltype is needed to pull the correct model data
+for example:
+dispalyresult.py 14  should show the IV for 14 for the model in modeltype
+
 """
 import sys
 import os
@@ -13,7 +19,8 @@ import pycircstat as PCS
 import pylibrary.PlotHelpers as PH
 
 findfiles = False
-
+modeltype = 'XM13'
+runtype = 'IV'
 if sys.argv[1] not in ['find']:
     patterns = sys.argv[1:]
     patterns = ['c%02d' % int(p) for p in patterns]
@@ -24,8 +31,12 @@ else:
 fn = {}
 bp = {}
 for p in patterns:
-    fn[p] = 'AN_Result_VCN_{0:s}_delays_N020_040dB_4000.0_FM50.0_DM100_MS.p'.format(p)
-    bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/AN'.format(p)
+    if runtype is not 'IV':
+        fn[p] = 'AN_Result_VCN_{0:s}_delays_N020_040dB_4000.0_FM50.0_DM100_MS.p'.format(p)
+        bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/AN'.format(p)
+    else:
+        fn[p] = 'VCN_{0:s}_{1:s}.p'.format(p, modeltype)
+        bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/IV'.format(p)
 
 d = {}
 
@@ -40,8 +51,31 @@ if findfiles:
             print 'did not find file for %s' % p
     exit(1)
 
+if runtype == 'IV':
+    fig, ax = plt.subplots(2,1)
+    a = ax.ravel()
+    d = {}
+    for p in patterns:
+        h = open(os.path.join(bp[p], fn[p]))
+        d[p] = pickle.load(h)
+        h.close()
+    dt = 0.1
+    print ('pattern: ', patterns)
+    for j, pattern in enumerate(patterns):
+        for k in range(len(d[pattern]['Results'])):
+            k0 = d[pattern]['Results'][k]
+            rkey = k0.keys()[0]
+            v = k0[rkey]['monitor']['postsynapticV']
+            a[0].plot(k0[rkey]['monitor']['time'], v)
+            inj = k0[rkey]['monitor']['postsynapticI']
+            a[1].plot(k0[rkey]['monitor']['time'], inj)
+            
 
-#fig, ax = plt.subplots(len(patterns)+1, 3)
+
+    plt.show()
+    exit(0)
+    #fig, ax = plt.subplots(len(patterns)+1, 3)
+
 fig = plt.figure()
 
 gs_outer = gridspec.GridSpec(4, 1)  # 4 rows, one column
