@@ -5,8 +5,9 @@ import os
 import pickle
 import numpy as np
 import pylibrary.Utility as pu
-import lmfit
 import matplotlib.pylab as PL
+from lmfit import Model
+from lmfit.models import ExponentialModel
 
 verbose = False
 
@@ -125,15 +126,16 @@ class AnalyzeRun():
         ts = tw[0]
         te = tw[1]
         td = tw[2]
+        print('tw: ', tw)
         for j in range(0, ntraces):
             if verbose:
                 print('    analyzing trace: %d' % (j))
             vss[j] = np.mean(V[j,tss[0]:tss[1]])
             ic[j] = np.mean(I[j,tss[0]:tss[1]])
             vm[j] = np.mean(V[j, 0:int((ts-1.0)/dt)])
-            mv = np.argmin(V[j,int(ts/dt):int(te/dt)])
-            t_minv[j] = t[mv]  # time of minimum
-            vmin[j] = V[j, mv]  # value of minimum
+            mv = np.argmin(V[j,int(ts/dt):int((ts+te)/dt)])
+            t_minv[j] = t[mv+int(ts/dt)]  # time of minimum
+            vmin[j] = V[j, mv+int(ts/dt)]  # value of minimum
             spk[j] = pu.findspikes(t, V[j,:], self.thr, t0=ts, t1=te, dt=1.0, mode='peak')
             spk[j] = self.clean_spiketimes(spk[j])
             nspikes[j] = spk[j].shape[0] # build spike count list
@@ -162,7 +164,7 @@ class AnalyzeRun():
                 if verbose:
                     print('     calling fit')
                 if (te-t_minv[j]) > 10.*dt:
-                    tauih[j], xihfit[j], yihfit[j] = self.single_taufit(t, V[j,:], t_minv[j], te) # fit the end of the trace
+                    tauih[j], xihfit[j], yihfit[j] = self.single_taufit(t, V[j,:], t_minv[j], te+ts) # fit the end of the trace
                 if verbose:
                     print('     completed fit')
             if verbose:
@@ -208,53 +210,71 @@ class AnalyzeRun():
         pickle.dump({'IVResult': self.IVResult}, pfout)
         pfout.close()
 
-    def expfit(self, p, x, y=None, C=None, sumsq=False, weights=None):
-        """
-        single exponential time constant with LM algorithm (using lmfit.py)
-        'DC', 'a1', 'v1', 'k1', 'a2', 'v2', 'k2'
-        """
-        yd = p['dc'].value + (p['a'].value * np.exp(-x/p['tau'].value))
-        if y is None:
-            return yd
-        else:
-            if sumsq is True:
-                return np.sqrt(np.sum((y - yd) ** 2))
-            else:
-                return y - yd
+    # def expfit(self, p, x, y=None, C=None, sumsq=False, weights=None):
+    #     """
+    #     single exponential time constant with LM algorithm (using lmfit.py)
+    #     'DC', 'a1', 'v1', 'k1', 'a2', 'v2', 'k2'
+    #     """
+    #     yd = p['dc'].value + (p['a'].value * np.exp(-x/p['tau'].value))
+    #     if y is None:
+    #         return yd
+    #     else:
+    #         if sumsq is True:
+    #             return np.sqrt(np.sum((y - yd) ** 2))
+    #         else:
+    #             return y - yd
 
     def single_taufit(self, x, y, t0, t1, dc = True, fixedDC = -60., verbose=False):
-        plot = False  # use to check if this is working.
-        p = lmfit.Parameters()
-        if dc is True:
-            p.add('dc', value = -60., min = -10., max = -150., vary=True)
-        else:
-            p.add('dc', value = fixedDC, vary=False)
-
-        p.add('a', value = -10., min= -100., max = 100.)
-        p.add('tau', value = 25., min = 0.2, max = 100.)
-
         (cx, cy) = pu.clipdata(y, x, t0, t1, minFlag = False)
-        cx -= t0   # fitting is reference to zero time
+        expmodel = ExponentialModel() #, prefix='', missing=None, name=None, **kwargs)
+        expmodel.set_param_hint('decay', min=0.1, max=50.0)
+        cye = np.mean(cy[-5:])
+        print ('cye: ', cye)
         try:
-            mi = lmfit.minimize(self.expfit, p, args=(cx, cy))
-            yfit = self.expfit(mi.params, cx)
-            cx += t0  # restore absolute time
-
-            # print 'sorted all data points'
-            # for i, v in enumerate(xst):
-            #     print '%7.2f\t%7.2f' % (v, yst[i])
-            # print '---------------------------'
-
-            if plot:
-                PL.figure(314)
-                PL.plot(x, y, 'k-')
-                PL.plot(cx, yfit, 'r--')
-                PL.show()
-
-            fitpars = mi.params
-
-            return fitpars, cx, yfit
+            result = expmodel.fit(cy-cye, x=cx-t0, amplitude=0., decay=10.)
+            print(result.fit_report())
+            rbv = result.best_values
+            print ('rbv: ', rbv)
+            fitr = {'a': 0, 'tau': 5., 'dc': 0.}
+            fitr['a'] = rbv['amplitude']
+            fitr['tau'] = rbv['decay']
+            return result.best_values, cx, result.best_fit+cye
         except:
             return None, None, None
+
+
+        # plot = False  # use to check if this is working.
+        # p = lmfit.Parameters()
+        # if dc is True:
+        #     p.add('dc', value = -60., min = -10., max = -150., vary=True)
+        # else:
+        #     p.add('dc', value = fixedDC, vary=False)
+        #
+        # p.add('a', value = -10., min= -100., max = 100.)
+        # p.add('tau', value = 25., min = 0.2, max = 100.)
+        #
+        # (cx, cy) = pu.clipdata(y, x, t0, t1, minFlag = False)
+        # cx -= t0   # fitting is reference to zero time
+        # try:
+        #     mi = lmfit.minimize(self.expfit, p, args=(cx, cy))
+        #     yfit = self.expfit(mi.params, cx)
+        #     cx += t0  # restore absolute time
+        #
+        #     # print 'sorted all data points'
+        #     # for i, v in enumerate(xst):
+        #     #     print '%7.2f\t%7.2f' % (v, yst[i])
+        #     # print '---------------------------'
+        #
+        #     if plot:
+        #         PL.figure(314)
+        #         PL.plot(x, y, 'k-')
+        #         PL.plot(cx, yfit, 'r--')
+        #         PL.show()
+        #
+        #     fitpars = mi.params
+        #
+        #     return fitpars, cx, yfit
+        # except:
+        #     return None, None, None
 
 

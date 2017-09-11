@@ -29,13 +29,13 @@ import cell_config as CFG
 baseName = 'VCN_Cells'
 modeltype = 'RM03'
 modeltype = 'XM13'
-modeltype = 'mGBC'
+#modeltype = 'mGBC'
 
 filename_template = 'AN_Result_{0:s}_delays_N{1:03d}_030dB_16000.0_{2:2s}.p'
 
-synfile_template = 'AN_Result_{0:s}_Syn{1:03d}_{2:4s}_N{3:03d}_030dB_16000.0_{4:2s}.p'
-excsynfile_template = 'AN_Result_{0:s}_ExcludeSyn{1:03d}_N{2:03d}_030dB_4000.0_{3:2s}.p'
-synIOfile_template = 'AN_Result_{0:s}_SynIO{1:03d}_{2:4s}_N{3:03d}_030dB_16000.0_{4:2s}.p'
+synfile_template = 'AN_Result_{0:s}_{1:4s}_Syn{2:03d}_N{3:03d}_030dB_16000.0_{4:2s}.p'
+excsynfile_template = 'AN_Result_{0:s}_{1:4s}_ExcludeSyn{2:03d}_N{3:03d}_030dB_4000.0_{3:2s}.p'
+synIOfile_template = 'AN_Result_{0:s}_{1:4s}_SynIO{2:03d}_N{3:03d}_030dB_16000.0_{4:2s}.p'
 
 all_cells = ['09', '09h', '09nd', '17',   '18',    '19', '20', '21', '22']
 
@@ -279,7 +279,7 @@ def plotIO(cmd):  # plots ALL IO's in one place
         tmin = 0.
         trange = [0., 50.]
         for i in range(nInputs):
-            fname = template.format(cell, i, modeltype, cmds['nReps'], cmds['SR'])
+            fname = template.format(cell, modeltype, i, cmds['nReps'], cmds['SR'])
             fname = os.path.join(inpath, fname)
             print fname
             try:
@@ -335,7 +335,7 @@ def plotSingles(inpath, cmd):
     #     axr = ax2.ravel()
         
     for i in range(nInputs):
-        fname = template.format(cmds['cell'], i, modeltype, cmds['nReps'], cmds['SR'])
+        fname = template.format(cmds['cell'], modeltype, i, cmds['nReps'], cmds['SR'])
         fname = os.path.join(inpath, fname)
         print fname
         try:

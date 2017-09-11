@@ -24,7 +24,7 @@ import pylibrary.PlotHelpers as PH
 findfiles = False
 modeltype = 'mGBC'
 #modeltype = 'XM13'
-modeltype = 'RM03'
+#modeltype = 'RM03'
 runtype = 'AN'
 if sys.argv[1] in ['AN', 'an', 'IO']:
     runtype  = 'AN'
@@ -45,7 +45,7 @@ bp = {}
 print patterns
 for p in patterns:
     if runtype in ['AN'] and arg not in ['IO']:
-        fn[p] = 'AN_Result_VCN_{0:s}_{1:s}_delays_N020_040dB_4000.0_FM50.0_DM100_MS.p'.format(p)
+        fn[p] = 'AN_Result_VCN_{0:s}_{1:s}_delays_N020_040dB_4000.0_FM50.0_DM100_MS.p'.format(p, modeltype)
         fn[p] = 'AN_Result_VCN_{0:s}_{1:s}_Syn{2:03d}_N001_030dB_16000.0_MS.p'.format(p, modeltype, synno)
         bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/AN'.format(p)
     elif runtype in ['AN'] and arg in ['IO']:

@@ -1246,15 +1246,16 @@ class ModelRun():
         if self.Params['inputPattern'] is not None:
             ID += '_%s' % self.Params['inputPattern']
         if stimInfo['soundtype'] in ['SAM', 'sam']:
-            ofile = os.path.join(outPath, 'AN_Result_' + ID + '_%s_N%03d_%03ddB_%06.1f_FM%03.1f_DM%03d_%2s' %
-                (tag, stimInfo['nReps'],
+            ofile = os.path.join(outPath, 'AN_Result_' + ID + '_%s_%s_N%03d_%03ddB_%06.1f_FM%03.1f_DM%03d_%2s' %
+                (tag, self.Params['modelType'], stimInfo['nReps'],
                 int(stimInfo['dB']), stimInfo['F0'],
                 stimInfo['fmod'], int(stimInfo['dmod']), stimInfo['SR']) + '.p')
                 
             f = open(ofile, 'w')
         else:
-            ofile = os.path.join(outPath, 'AN_Result_' + ID + '_%s_%s_N%03d_%03ddB_%06.1f_%2s' % (tag,
-                 self.Params['modelType'], stimInfo['nReps'],
+            ofile = os.path.join(outPath, 'AN_Result_' + ID + '_%s_%s_N%03d_%03ddB_%06.1f_%2s' % (
+                self.Params['modelType'], tag,
+                 stimInfo['nReps'],
                 int(stimInfo['dB']), stimInfo['F0'], stimInfo['SR']) + '.p')
             f = open(ofile, 'w')
         pickle.dump(result, f)
