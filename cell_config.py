@@ -121,11 +121,16 @@ VCN_c10 = [
             [(42.41), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
             ]
 
-VCN_c11 = [
-            [(114.10), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
-            [(61.70), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
-            [(55.88), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
+VCN_c11 = [ [(94.02), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e', 'AN', {'soma': [0, 0.5, 1.0]}],
+            [(263.75), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e' 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(87.25), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e' 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(181.60), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e' 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(236.42), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e' 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(41.69), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e' 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(49.85), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e' 'AN', {'soma': [0, 0.5, 1.0]} ],
             ]
+
+
 
 VCN_c13 = [
             [(226.54), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
@@ -138,13 +143,14 @@ VCN_c13 = [
             [(31.99), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
             ]
 
-VCN_c14 = [
-            [(242.50), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
-            [(128.20), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
-            [(104.90), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
-            [(89.10), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
-            [(61.90), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
-            [(6.90), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]} ],
+VCN_c14 = [ [(309.83), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e' 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(121.64), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e' 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(150.36), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e' 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(19.74), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e' 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(70.32), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e' 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(80.39), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e' 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(83.04), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e' 'AN', {'soma': [0, 0.5, 1.0]} ],
+            [(30.87), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e' 'AN', {'soma': [0, 0.5, 1.0]} ],
             ]
 
 VCN_c15 = [

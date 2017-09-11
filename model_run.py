@@ -124,7 +124,6 @@ import numpy as np
 
 import cell_config
 
-verbose = False
 showCell = True
 
 
@@ -156,6 +155,8 @@ class ModelRun():
         self.Params['modelType'] = self.modelChoices[0]
         self.Params['SGCmodelType'] = self.SGCmodelChoices[0]
         self.Params['species'] = self.speciesChoices[0]
+        self.Params['Ra'] = 150.  # ohm.cm
+        self.Params['lambdaFreq'] = 2000.  # Hz for segment number
         # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
         self.Params['SRType'] = self.SRChoices[2]
         self.Params['SR'] = self.Params['SRType']  # actually used SR: this might be cell-defined, rather than entirely specified from the command line
@@ -180,6 +181,7 @@ class ModelRun():
         self.Params['auto_initialize'] = False
         self.Params['nWorkers'] = 4
         self.Params['Parallel'] = True
+        self.Params['verbose'] = False
 
         self.baseDirectory = 'VCN_Cells'
         self.morphDirectory = 'Morphology'
@@ -280,7 +282,7 @@ class ModelRun():
             Nothing
         
         """
-        if verbose:
+        if self.Params['verbose']:
             print ('run_model entry')
         if 'id' in par_map.keys():
             self.idnum = par_map['id']
@@ -295,28 +297,28 @@ class ModelRun():
                             self.initDirectory, self.Params['initIVStateFile'])
         ivinitdir = os.path.join(self.baseDirectory, self.cellID,
                             self.initDirectory)
-        print ('iv init file: ', ivinitfile)
+        print ('Initialization file: ', ivinitfile)
         self.mkdir_p(ivinitdir) # confirm existence of that file
-        print ('morphology directory: ', self.morphDirectory)
-        print ('hocfile: ', self.Params['hocfile'])
-        print ('base directory: ', self.baseDirectory)
+        print ('Morphology directory: ', self.morphDirectory)
+        print ('Hoc (structure) file: ', self.Params['hocfile'])
+        print ('Base directory: ', self.baseDirectory)
         filename = os.path.join(self.baseDirectory, self.cellID, self.morphDirectory, self.Params['hocfile'])
         
         # instantiate cells
         if self.Params['cellType'] in ['Bushy', 'bushy']:
-            print ('run_model creating a bushy cell: ')
+            print ('Creating a bushy cell (run_model) ')
 #            print (self.Params.keys())
             self.post_cell = cells.Bushy.create(morphology=filename, decorator=Decorator,
                     species=self.Params['species'],
                     modelType=self.Params['modelType'])
 #            self.post_cell.irange = np.arange(-2., 2.1, 0.5)  # reset current injection range.
         elif self.Params['cellType'] in ['tstellate', 'TStellate']:
-            print ('run_model creating a t-stellate cell: ')
+            print ('Creating a t-stellate cell (run_model) ')
             self.post_cell = cells.TStellate.create(morphology=filename, decorator=Decorator,
                     species=self.Params['species'],
                     modelType=self.Params['modelType'], )
         elif self.Params['cellType'] in ['dstellate', 'DStellate']:
-            print ('run_model creating a D-stellate cell: ')
+            print ('Creating a D-stellate cell (run_model)')
             self.post_cell = cells.DStellate.create(morphology=filename, decorator=Decorator,
                     species=self.Params['species'],
                     modelType=self.Params['modelType'], )
@@ -325,17 +327,17 @@ class ModelRun():
                       
         
         # Set up run parameters
-        print ('requested temp: ', self.post_cell.status['temperature'])
+        print ('Requested temperature (deg C): ', self.post_cell.status['temperature'])
         self.post_cell.hr.h.celsius = self.post_cell.status['temperature']  # this is set by prepareRun in generateRun. Only place it should be changed
-        self.post_cell.hr.h.Ra = 150.
-        print('Ra = {:8.1f}'.format(self.post_cell.hr.h.Ra))
-        print('Temp = {:8.1f} degC '.format(self.post_cell.hr.h.celsius))
+        self.post_cell.hr.h.Ra = self.Params['Ra']
+        print('Ra (ohm.cm) = {:8.1f}'.format(self.post_cell.hr.h.Ra))
+        print('Specified Temperature = {:8.1f} degC '.format(self.post_cell.hr.h.celsius))
         for group in self.post_cell.hr.sec_groups.keys():
             g = self.post_cell.hr.sec_groups[group]
             for section in list(g):
                 self.post_cell.hr.get_section(section).Ra = self.post_cell.hr.h.Ra
-                if verbose:
-                    print('section: ', section)
+                if self.Params['verbose']:
+                    print('Section: ', section)
                     print('Ra: ', self.post_cell.hr.get_section(section).Ra)
         
         electrode_section = list(self.post_cell.hr.sec_groups['soma'])[0]
@@ -353,18 +355,18 @@ class ModelRun():
             self.dendriticelectrode_site = self.post_cell.hr.get_section(dendritic_electrode)
             self.dendriticElectrodeSection = 'soma'
         
-        if verbose:
-            print('par_map in run_model: ', par_map)
+        if self.Params['verbose']:
+            print('Listing par_map (run_model): ', par_map)
             self.post_cell.hr.h.topology()
        
-        self.post_cell.set_d_lambda(freq=2000.)
+        self.post_cell.set_d_lambda(freq=self.Params['lambdaFreq'])
         
         # handle the following protocols:
         # ['initIV', 'initAN', 'runIV', 'runANPSTH', 'runANSingles']
         
         if self.Params['runProtocol'] == 'initIV':
-            if verbose:
-                print ('initIV')
+            if self.Params['verbose']:
+                print ('run_model: protocol is initIV')
             ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                                 self.initDirectory, self.Params['initIVStateFile'])
             self.R = GenerateRun(self.post_cell, idnum=self.idnum, celltype=self.Params['cellType'],
@@ -379,7 +381,7 @@ class ModelRun():
             return
         
         if self.Params['runProtocol'] == 'testIV':
-            if verbose:
+            if self.Params['verbose']:
                 print( 'test_init')
             ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                                 self.initDirectory, self.Params['initIVStateFile'])
@@ -395,33 +397,33 @@ class ModelRun():
             return  # that is ALL, never make init and then keep running.
         
         if self.Params['runProtocol'] == 'runANPSTH':
-            if verbose:
+            if self.Params['verbose']:
                 print ('ANPSTH')
             self.an_run(self.post_cell)
         
         if self.Params['runProtocol'] == 'initAN':
-            if verbose:
+            if self.Params['verbose']:
                 print ('Init AN')
             self.an_run(self.post_cell, make_an_intial_conditions=True)
 
         if self.Params['runProtocol'] == 'runANIO':
-            if verbose:
+            if self.Params['verbose']:
                 print ('Run AN IO')
             self.an_run_IO(self.post_cell)
 
         if self.Params['runProtocol'] == 'runANSingles':
-            if verbose:
+            if self.Params['verbose']:
                 print ('ANSingles')
             self.an_run_singles(self.post_cell)
 
         if self.Params['runProtocol'] == 'runANOmitOne':
-            if verbose:
+            if self.Params['verbose']:
                 print ('ANOmitOne')
             self.an_run_singles(self.post_cell, exclude=True)
 
         if self.Params['runProtocol'] == 'runIV':
-            if verbose:
-                print ('iv_mode')
+            if self.Params['verbose']:
+                print ('Run IV')
             self.iv_run()
 
         # if showCell:
@@ -448,19 +450,24 @@ class ModelRun():
                 time constant, and spike times
         
         """
-        print ('iv_run: iv_run begins')
-        if verbose:
-            print ('iv_run: calling generateRun')
+        print ('iv_run: starting')
+        if self.Params['verbose']:
+            print ('iv_run: calling generateRun', self.post_cell.i_test_range)
+        # parse i_test_range and pass it here
+        if isinstance(self.post_cell.i_test_range, dict):
+            iinjValues = self.post_cell.i_test_range
+        else:
+            iinjValues = {'pulse': self.post_cell.i_test_range}
         self.R = GenerateRun(self.post_cell, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
-                             iRange=self.post_cell.i_test_range,
+                             iRange=iinjValues,
                              plotting = HAVE_PG and self.Params['plotFlag'])
         ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                                 self.initDirectory, self.Params['initIVStateFile'])
         self.R.runInfo.folder = os.path.join('VCN_Cells', self.cellID, self.simDirectory, 'IV')
-        if verbose:
+        if self.Params['verbose']:
             print ('iv_run: calling do_run')
         nworkers = self.Params['nWorkers']
 #        print(self.Params['Parallel'])
@@ -469,10 +476,10 @@ class ModelRun():
 #        print('Number of workers available on this machine: ', nworkers)
         self.R.doRun(self.Params['hocfile'], parMap=par_map, save='monitor', restore_from_file=True, initfile=ivinitfile,
             workers=nworkers)
-        if verbose:
-            print( '   do_run completed')
+        if self.Params['verbose']:
+            print( '   iv_run: do_run completed')
         isteps = self.R.IVResult['I']
-        if verbose:
+        if self.Params['verbose']:
             for k, i in enumerate(self.R.IVResult['tauih'].keys()):
                 print( '   ih: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['tauih'][i]['tau'].value))
                 print('           dV : %f' % self.R.IVResult['tauih'][i]['a'].value)
@@ -503,10 +510,10 @@ class ModelRun():
         return self.IVSummary
     
     def check_for_an_statefile(self):
-        print('state file: ', self.Params['initANStateFile'])
-        print('cellid: ', self.Params['cell'])
-        print('base: ', self.baseDirectory)
-        print('init: ', self.initDirectory)
+        print('State file name: ', self.Params['initANStateFile'])
+        print('Cell: ', self.Params['cell'])
+        print('Base Directory: ', self.baseDirectory)
+        print('Initialization Directory: ', self.initDirectory)
         statefile = os.path.join(self.baseDirectory, self.Params['cell'],
                             self.initDirectory, self.Params['initANStateFile'])
         return(os.path.isfile(statefile))
@@ -761,7 +768,7 @@ class ModelRun():
                             p.gmax = 0.  # disable all
                         else:
                             p.gmax = gMax[i]  # except the shosen one
-            print('Syn #: %d, synapse gMax: ' % (k, gMax))
+            print('Syn #%d   synapse gMax: %f ' % (k, gMax[k]))
             print('tag: %s' % (tagname % k))
             
             tresults = [None]*nReps
@@ -809,10 +816,10 @@ class ModelRun():
         Establish AN inputs to soma, and run the model adjusting gmax over the reps from 0.5 to 4x.
         synapseConfig: list of tuples
             each tuple represents an AN fiber (SGC cell) with:
-            (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high])
+            (N sites, delay (ms), and spont rate group [1=low, 2=medium, 3=high])
         This routine runs a series of nReps for each synapse, turning off all of the other synapses.
         and varying the synaptic conductance to 0 (to avoid upsetting initialization)
-        The output file either says "SynIO" 
+        The output file either says "SynIO" or  
         
         Parameters
         ----------
@@ -886,7 +893,7 @@ class ModelRun():
                             if i != k:
                                 p.gmax = 0.  # disable all others
                             else:
-                                p.gmax = 4.0*float(j+1)*gMax[i]/float(nReps+1)  # except the shosen one
+                                p.gmax = 4.0*float(j+1)*gMax[i]/float(nReps+1)  # except the chosen one
                     tresults[j] = self.single_an_run_fixed(post_cell, j, synapseConfig,
                             stimInfo, preCell, self.an_setup_time)
             gmaxs = [4.0*float(j+1)*gMax[0]/float(nReps+1) for j in range(nReps)]
@@ -1052,6 +1059,8 @@ class ModelRun():
                     raise ValueError('SR type "%s" not found in Sr type list' % stimInfo['SRType'])
                 
                 preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=srindex))  # override
+            if self.Params['verbose']:
+                print('SRtype, srindex: ', stimInfo['SRType'], srindex)
             for pl in syn['postlocations']:
                 postsite = syn['postlocations'][pl]
                 # note that we split the number of zones between multiple sites
@@ -1109,11 +1118,11 @@ class ModelRun():
             A dictionary containing 'Vsoma', 'Vdend', 'time', and the 'ANSpikeTimes'
         
         """
-        hf = post_cell.hr
         filename = os.path.join(self.baseDirectory, self.cellID,
                     self.initDirectory, self.Params['initANStateFile'])
         try:
-            cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=filename)
+            cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=filename,
+                autoinit=self.Params['auto_initialize'])
         except:
             self.an_run(post_cell, make_an_intial_conditions=True)
             try:
@@ -1151,11 +1160,9 @@ class ModelRun():
             nseed = seeds[j, i]
             
             if self.Params['SGCmodelType'] in ['Zilany']:
-#                print 'running with Zilany, matlab'
                 preCell[i].set_sound_stim(stim, seed=nseed, simulator='matlab')  # generate spike train, connect to terminal
             
             elif self.Params['SGCmodelType'] in ['cochlea']:
-#                print 'running with MR cochlea model in python, j=%d' % j
                 wf = self.set_dbspl(stim.generate(), stimInfo['dB'])
                 stim._sound = wf
                 preCell[i].set_sound_stim(stim, seed=nseed, simulator='cochlea')  # generate spike train, connect to terminal
@@ -1166,9 +1173,9 @@ class ModelRun():
             ANSpikeTimes.append(preCell[i]._spiketrain)
         an_setup_time += (time.time() - an0_time)
         nrn_start = time.time()
-        Vsoma = hf.h.Vector()
-        Vdend = hf.h.Vector()
-        rtime = hf.h.Vector()
+        Vsoma = post_cell.hr.h.Vector()
+        Vdend = post_cell.hr.h.Vector()
+        rtime = post_cell.hr.h.Vector()
         if 'dendrite' in post_cell.all_sections and len(post_cell.all_sections['dendrite']) > 0:
             dendsite = post_cell.all_sections['dendrite'][-1]
             Vdend.record(dendsite(0.5)._ref_v, sec=dendsite)
@@ -1176,12 +1183,12 @@ class ModelRun():
             dendsite = None
             
         Vsoma.record(post_cell.soma(0.5)._ref_v, sec=post_cell.soma)
-        rtime.record(hf.h._ref_t)
-        hf.h.finitialize()
-        hf.h.tstop = stimInfo['run_duration']*1000.
-        hf.h.t = 0.
-        hf.h.batch_save() # save nothing
-        hf.h.batch_run(hf.h.tstop, hf.h.dt, "an.dat")
+        rtime.record(post_cell.hr.h._ref_t)
+        post_cell.hr.h.finitialize()
+        post_cell.hr.h.tstop = stimInfo['run_duration']*1000.
+        post_cell.hr.h.t = 0.
+        post_cell.hr.h.batch_save() # save nothing
+        post_cell.hr.h.batch_run(post_cell.hr.h.tstop, post_cell.hr.h.dt, "an.dat")
         nrn_run_time += (time.time() - nrn_start)
         if dendsite == None:
             Vdend = np.zeros_like(Vsoma)
@@ -1246,7 +1253,8 @@ class ModelRun():
                 
             f = open(ofile, 'w')
         else:
-            ofile = os.path.join(outPath, 'AN_Result_' + ID + '_%s_N%03d_%03ddB_%06.1f_%2s' % (tag, stimInfo['nReps'],
+            ofile = os.path.join(outPath, 'AN_Result_' + ID + '_%s_%s_N%03d_%03ddB_%06.1f_%2s' % (tag,
+                 self.Params['modelType'], stimInfo['nReps'],
                 int(stimInfo['dB']), stimInfo['F0'], stimInfo['SR']) + '.p')
             f = open(ofile, 'w')
         pickle.dump(result, f)
@@ -1340,8 +1348,10 @@ if __name__ == "__main__":
             help='Number of "workers" for parallel processing (default: 4)')
     parser.add_argument('--noparallel', action='store_false', default=True, dest='Parallel',
             help='Use parallel or not (default: True)')
-    parser.add_argument('--auto-intialize', action="store_true", default=False, dest='auto_initialize',
+    parser.add_argument('--auto', action="store_true", default=False, dest='auto_initialize',
             help='Force auto initialization if reading the state fails in initialization')
+    parser.add_argument('--verbose', action="store_true", default=False, dest='verbose',
+            help='Print out extra stuff for debugging')
 
     
     # parser.add_argument('-p', '--print', action="store_true", default=False, dest = 'print_info',

@@ -27,12 +27,15 @@ rc('text', usetex=False)
 import cell_config as CFG
 
 baseName = 'VCN_Cells'
+modeltype = 'RM03'
+modeltype = 'XM13'
+modeltype = 'mGBC'
 
-filename_template = 'AN_Result_{0:s}_delays_N{1:03d}_040dB_4000.0_{2:2s}.p'
+filename_template = 'AN_Result_{0:s}_delays_N{1:03d}_030dB_16000.0_{2:2s}.p'
 
-synfile_template = 'AN_Result_{0:s}_Syn{1:03d}_N{2:03d}_040dB_4000.0_{3:2s}.p'
-excsynfile_template = 'AN_Result_{0:s}_ExcludeSyn{1:03d}_N{2:03d}_040dB_4000.0_{3:2s}.p'
-synIOfile_template = 'AN_Result_{0:s}_SynIO{1:03d}_N{2:03d}_040dB_4000.0_{3:2s}.p'
+synfile_template = 'AN_Result_{0:s}_Syn{1:03d}_{2:4s}_N{3:03d}_030dB_16000.0_{4:2s}.p'
+excsynfile_template = 'AN_Result_{0:s}_ExcludeSyn{1:03d}_N{2:03d}_030dB_4000.0_{3:2s}.p'
+synIOfile_template = 'AN_Result_{0:s}_SynIO{1:03d}_{2:4s}_N{3:03d}_030dB_16000.0_{4:2s}.p'
 
 all_cells = ['09', '09h', '09nd', '17',   '18',    '19', '20', '21', '22']
 
@@ -220,8 +223,6 @@ def plotVm(infile, cmd):
     ax[1].step(anbins[:-1], anpsth, where='pre')
     
     
-    
-    
 def get_dimensions(n, pref='height'):
     nopt = np.sqrt(n)
     inoptw = int(nopt)
@@ -240,6 +241,7 @@ def get_dimensions(n, pref='height'):
             
     return(inopth, inoptw)
 
+
 def plotIO(cmd):  # plots ALL IO's in one place
     l1 = 0.11
     l2 = 0.41
@@ -247,12 +249,16 @@ def plotIO(cmd):  # plots ALL IO's in one place
     wid = 0.25
     ht = 0.13
     yp = [0.81, 0.62, 0.43, 0.24, 0.05]
-    sizer = OrderedDict([('VCN_c09', [l1, wid, yp[0], ht]), ('VCN_c17', [l2, wid, yp[0], ht]),
-                         ('VCN_c09h', [l1, wid, yp[1], ht]), ('VCN_c18', [l2, wid, yp[1], ht]),
-                         ('VCN_c09nd', [l1, wid, yp[2], ht]), ('VCN_c19', [l2, wid, yp[2], ht]), 
-                         #('VCN_c08', [l1, wid, yp[3], ht]), 
-                         ('VCN_c20', [l3, wid, yp[0], ht]), 
-                         ('VCN_c21', [l3, wid, yp[1], ht]), ('VCN_c22', [l3, wid, yp[2], ht]),
+    sizer = OrderedDict([('VCN_c09', {'pos': [l1, wid, yp[0], ht]}),
+                         ('VCN_c17', {'pos': [l2, wid, yp[0], ht]}),
+                         ('VCN_c09h', {'pos': [l1, wid, yp[1], ht]}),
+                         ('VCN_c18', {'pos': [l2, wid, yp[1], ht]}),
+                         ('VCN_c09nd', {'pos': [l1, wid, yp[2], ht]}),
+                         ('VCN_c19', {'pos': [l2, wid, yp[2], ht]}), 
+                         #('VCN_c08', {'pos': [l1, wid, yp[3], ht]}), 
+                         ('VCN_c20', {'pos': [l3, wid, yp[0], ht]}), 
+                         ('VCN_c21', {'pos': [l3, wid, yp[1], ht]}),
+                         ('VCN_c22', {'pos': [l3, wid, yp[2], ht]}),
     ])  # dict elements are [left, width, bottom, height] for the axes in the plot.
     gr = [(a, a+1, 0, 1) for a in range(0, 8)]   # just generate subplots - shape does not matter
     axmap = OrderedDict(zip(sizer.keys(), gr))
@@ -273,7 +279,7 @@ def plotIO(cmd):  # plots ALL IO's in one place
         tmin = 0.
         trange = [0., 50.]
         for i in range(nInputs):
-            fname = template.format(cell, i, cmds['nReps'], cmds['SR'])
+            fname = template.format(cell, i, modeltype, cmds['nReps'], cmds['SR'])
             fname = os.path.join(inpath, fname)
             print fname
             try:
@@ -289,6 +295,7 @@ def plotIO(cmd):  # plots ALL IO's in one place
             for k in sv.keys():
                 iof[k] = np.max(sv[k])
                 #iofdv[k] = np.max(np.diff(sv[k])/np.mean(np.diff(tm)))
+            print('stiminfo: ', stimInfo['gSyns'])
             P.axdict[cell].plot(np.array(stimInfo['gSyns'])/1000., iof, 'o-', markersize=3, linewidth=0.6)
         # P.axdict[cell].set_title(cell, y=0.9, x=0.02,
         #         horizontalalignment='left', fontsize=6)
@@ -297,9 +304,11 @@ def plotIO(cmd):  # plots ALL IO's in one place
         P.axdict[cell].set_ylabel('V (mV)', fontsize=9)
     seaborn.despine(P.figure_handle)
     plt.savefig('ANIO_all.pdf')
-            
+
+
 def plotSingles(inpath, cmd):
     seaborn.set_style('ticks')
+    print cmd['cell']
     sites, celltype = CFG.makeDict(cmd['cell'])
 #    print sites
     nInputs = 0
@@ -326,7 +335,7 @@ def plotSingles(inpath, cmd):
     #     axr = ax2.ravel()
         
     for i in range(nInputs):
-        fname = template.format(cmds['cell'], i, cmds['nReps'], cmds['SR'])
+        fname = template.format(cmds['cell'], i, modeltype, cmds['nReps'], cmds['SR'])
         fname = os.path.join(inpath, fname)
         print fname
         try:
@@ -351,13 +360,15 @@ def plotSingles(inpath, cmd):
             m = np.max(sv[j])
             if m > vmax:
                 vmax = m
+        print('tmin, minsv, maxsv', tmin, np.min(sv[j]), np.max(sv[j]))
         for j in range(nReps):
-            pv = pl.plot(tm-tmin, sv[j], linewidth=0.8)
-            pl.vlines(spikeTimes[j]-tmin, -j*2+vmax, -j*2-2+vmax,
-                color=pv[0].get_c(), linewidth=1.5)  # spike marker same color as trace
+            print('Rep, tmin, minsv, maxsv', j, tmin, np.min(sv[j]), np.max(sv[j]), tm.shape, sv[j].shape)
+            pv = pl.plot(tm-tmin, sv[j], 'k-', linewidth=0.8)
+         #   pl.vlines(spikeTimes[j]-tmin, -j*2+vmax, -j*2-2+vmax,
+         #       color=pv[0].get_c(), linewidth=1.5)  # spike marker same color as trace
             pl.set_ylabel('mV')
-            pl.set_ylim(-65., vmax)
-            pl.set_xlim(trange[0], trange[1])
+           # pl.set_ylim(-65., vmax)
+          #  pl.set_xlim(trange[0], trange[1])
         if pl != ax[-1]:
             pl.set_xticklabels([])
         else:
@@ -416,13 +427,7 @@ def readIVFile(filename):
 
     
 def plotIV(cell, infile, plottau=False):
-    # you don't have to use an ordered dict for this, I just prefer it when debugging
-        # sizer = {'A': {'pos': [0.08, 0.22, 0.50, 0.4], 'labelpos': (x,y), 'noaxes': True}, 'B1': {'pos': [0.40, 0.25, 0.60, 0.3], 'labelpos': (x,y)},
-        #          'B2': {'pos': [0.40, 0.25, 0.5, 0.1],, 'labelpos': (x,y), 'noaxes': False},
-        #         'C1': {'pos': [0.72, 0.25, 0.60, 0.3], 'labelpos': (x,y)}, 'C2': {'pos': [0.72, 0.25, 0.5, 0.1], 'labelpos': (x,y)},
-        #         'D': {'pos': [0.08, 0.25, 0.1, 0.3], 'labelpos': (x,y)},
-        #         'E': {'pos': [0.40, 0.25, 0.1, 0.3], 'labelpos': (x,y)}, 'F': {'pos': [0.72, 0.25, 0.1, 0.3],, 'labelpos': (x,y)}
-        #
+
     sizer = OrderedDict([('A', {'pos': [0.2, 0.6, 0.3, 0.5]}), ('B', {'pos': [0.2, 0.6, 0.1, 0.15]})
             # ('C1', [0.72, 0.25, 0.65, 0.3]), ('C2', [0.72, 0.25, 0.5, 0.1]),
             # ('D', [0.08, 0.25, 0.1, 0.3]), ('E', [0.40, 0.25, 0.1, 0.3]), ('F', [0.72, 0.25, 0.1, 0.3]),
@@ -480,28 +485,33 @@ def parse_cmdline():
     return args
 
 
-cmds = parse_cmdline()
 
-if cmds['analysis'] == 'psth':
-    infile = os.path.join(baseName, cmds['cell'], 'Simulations/AN', filename_template.format(cmds['cell'], cmds['nReps'], cmds['SR']))
-    plotPSTH(infile, cmds)
-if cmds['analysis'] == 'voltage':
-    infile = os.path.join(baseName, cmds['cell'], 'Simulations/AN', filename_template.format(cmds['cell'], cmds['nReps'], cmds['SR']))
-    plotVm(infile, cmds)
+if __name__ == '__main__':
+    
+    cmds = parse_cmdline()
 
-elif cmds['analysis'] == 'iv':
-    if cmds['model'] == '':
-        fn = cmds['cell'] + '.p'
-    else:
-        fn = cmds['cell'] + '_' + cmds['model'] + '.p'
-    infile = os.path.join(baseName, cmds['cell'], 'Simulations/IV', '%s' % fn)
-    plotIV(cmds['cell'], infile)
-elif cmds['analysis'] in ['io']:
-    plotIO(cmds)
-elif cmds['analysis'] in ['singles', 'omit']:
-    inpath = os.path.join(baseName, cmds['cell'], 'Simulations/AN')
-    plotSingles(inpath, cmds)
-plt.show()
+    if cmds['analysis'] == 'psth':
+        infile = os.path.join(baseName, cmds['cell'], 'Simulations/AN', 
+            filename_template.format(cmds['cell'], modeltype, cmds['nReps'], cmds['SR']))
+        plotPSTH(infile, cmds)
+    if cmds['analysis'] == 'voltage':
+        infile = os.path.join(baseName, cmds['cell'], 'Simulations/AN',
+            filename_template.format(cmds['cell'], modeltype, cmds['nReps'], cmds['SR']))
+        plotVm(infile, cmds)
+
+    elif cmds['analysis'] == 'iv':
+        if cmds['model'] == '':
+            fn = cmds['cell'] + '.p'
+        else:
+            fn = cmds['cell'] + '_' + cmds['model'] + '.p'
+        infile = os.path.join(baseName, cmds['cell'], 'Simulations/IV', '%s' % fn)
+        plotIV(cmds['cell'], infile)
+    elif cmds['analysis'] in ['io']:
+        plotIO(cmds)
+    elif cmds['analysis'] in ['singles', 'omit']:
+        inpath = os.path.join(baseName, cmds['cell'], 'Simulations/AN')
+        plotSingles(inpath, cmds)
+    plt.show()
 
 
 

@@ -6,6 +6,9 @@ modeltype is needed to pull the correct model data
 for example:
 dispalyresult.py 14  should show the IV for 14 for the model in modeltype
 
+AN_Result_VCN_c09_Syn006_N001_030dB_16000.0_MS.p
+
+
 """
 import sys
 import os
@@ -13,28 +16,43 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 import pickle
-from cnmodel.util import sound
+#from cnmodel.util import sound
 import sac_campagnola as SAC
 import pycircstat as PCS
 import pylibrary.PlotHelpers as PH
 
 findfiles = False
-modeltype = 'XM13'
-runtype = 'IV'
-if sys.argv[1] not in ['find']:
-    patterns = sys.argv[1:]
+modeltype = 'mGBC'
+#modeltype = 'XM13'
+modeltype = 'RM03'
+runtype = 'AN'
+if sys.argv[1] in ['AN', 'an', 'IO']:
+    runtype  = 'AN'
+if sys.argv[1] in ['IV', 'iv']:
+    runtype  = 'IV'
+arg = sys.argv[1]    
+if sys.argv[1] not in ['find', 'singles', 'IO']:
+    patterns = sys.argv[2:]
     patterns = ['c%02d' % int(p) for p in patterns]
 else:
-    print 'searching'
-    patterns = ['c%02d' % i for i in [8, 9, 17, 18, 19, 20, 21, 22]]
-    findfiles = True
+    patterns = ['c%02d' % int(sys.argv[2])] #i for i in [8, 9, 17, 18, 19, 20, 21, 22]]
+    findfiles = False
+synno = 0
+if len(sys.argv) > 3:
+    synno = int(sys.argv[3])
 fn = {}
 bp = {}
+print patterns
 for p in patterns:
-    if runtype is not 'IV':
-        fn[p] = 'AN_Result_VCN_{0:s}_delays_N020_040dB_4000.0_FM50.0_DM100_MS.p'.format(p)
+    if runtype in ['AN'] and arg not in ['IO']:
+        fn[p] = 'AN_Result_VCN_{0:s}_{1:s}_delays_N020_040dB_4000.0_FM50.0_DM100_MS.p'.format(p)
+        fn[p] = 'AN_Result_VCN_{0:s}_{1:s}_Syn{2:03d}_N001_030dB_16000.0_MS.p'.format(p, modeltype, synno)
         bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/AN'.format(p)
-    else:
+    elif runtype in ['AN'] and arg in ['IO']:
+        fn[p] = 'AN_Result_VCN_{0:s}_{1:s}_SynIO{2:03d}_N001_030dB_16000.0_MS.p'.format(p, modeltype, synno)
+        bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/AN'.format(p)
+        
+    elif runtype in ['IV']:
         fn[p] = 'VCN_{0:s}_{1:s}.p'.format(p, modeltype)
         bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/IV'.format(p)
 

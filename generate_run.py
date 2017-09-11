@@ -237,7 +237,7 @@ class GenerateRun():
             if inj is not None:
                 stim['amp'] = inj
             else:
-                stim['amp'] = self.runInfo.stimInj[0]
+                stim['amp'] = self.runInfo.stimInj['pulse'][0]
             stim['PT'] = 0.0
             stim['dt'] = self.hf.h.dt
             (secmd, maxt, tstims) = make_pulse(stim) # cnmodel.makestim.makestim(stim, pulsetype='square', dt=self.hf.h.dt)
@@ -314,7 +314,7 @@ class GenerateRun():
         for i in range(nLevels):
 #            print('level: ', i, '  tresults[i]["i"]: ', tresults[i]['i'])
             self.results[tresults[i]['i']] = tresults[i]['r']
-        for k, i in enumerate(self.runInfo.stimInj):
+        for k, i in enumerate(ipulses):
             if self.plotting:
                 if k == 0:
                     self.mons = self.results[i].monitor.keys()
