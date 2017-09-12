@@ -64,9 +64,9 @@ for n in gbc_names:
     cell = 'VCN_c{0:s}'.format(n)
     cell_ax = 'VCNc{0:s}'.format(n)
     initf = os.path.join(M.baseDirectory, cell, ivinitfile)
-    print ('\nRunning Cell {0:s}: '.format(cell))
+    print ('\nRetrieving data for cell {0:s}'.format(cell))
     M.Params['cell'] = cell
-    print ('cell, params cell: ', cell, M.Params)
+#    print ('cell, params cell: ', cell, M.Params)
     M.Params['modelType'] = modeltype
     M.Params['hocfile'] = M.Params['cell'] + '.hoc'
     if M.Params['hocfile'] == None: # just use the matching hoc file

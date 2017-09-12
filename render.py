@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 __author__ = 'pbmanis'
 
 import sys
@@ -79,7 +81,7 @@ if __name__ == '__main__':
             modelType='mGBC')
     #post_cell.distances()
     R = Render(post_cell)
-    g = R.render(['klt', 'gbar'], rendertype = 'surface')
+    g = R.render(['jsrna', 'gbar'], rendertype = 'cylinder')
 #    pg.show()
     pg.Qt.QtGui.QApplication.exec_()
     

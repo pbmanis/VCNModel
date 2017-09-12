@@ -481,11 +481,11 @@ class ModelRun():
         isteps = self.R.IVResult['I']
         if self.Params['verbose']:
             for k, i in enumerate(self.R.IVResult['tauih'].keys()):
-                print( '   ih: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['tauih'][i]['tau'].value))
-                print('           dV : %f' % self.R.IVResult['tauih'][i]['a'].value)
+                print( '   ih: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['tauih'][i]['tau']))
+                print('           dV : %f' % self.R.IVResult['tauih'][i]['a'])
             for k, i in enumerate(self.R.IVResult['taus'].keys()):
-                print('   i: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['taus'][i]['tau'].value))
-                print( '          dV : %f' % (self.R.IVResult['taus'][i]['a'].value))
+                print('   i: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['taus'][i]['tau']))
+                print( '          dV : %f' % (self.R.IVResult['taus'][i]['a']))
         
         print('   Nspike, Ispike: ', self.R.IVResult['Nspike'], self.R.IVResult['Ispike'])
         print('   Rinss: ', self.R.IVResult['Rinss'])
@@ -494,9 +494,9 @@ class ModelRun():
             taum_mean = 0.
             tauih_mean = 0.
         else:
-            taum_mean = np.mean([self.R.IVResult['taus'][i]['tau'].value for k, i in
+            taum_mean = np.mean([self.R.IVResult['taus'][i]['tau'] for k, i in
                 enumerate(self.R.IVResult['taus'].keys())])
-            tauih_mean = np.mean([self.R.IVResult['tauih'][i]['tau'].value for k, i in
+            tauih_mean = np.mean([self.R.IVResult['tauih'][i]['tau'] for k, i in
                 enumerate(self.R.IVResult['tauih'].keys())])
         # construct dictionary for return results:
         self.IVSummary = {'basefile': self.R.basename,
