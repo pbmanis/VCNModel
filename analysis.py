@@ -1,15 +1,14 @@
-
-
+from __future__ import print_function
+"""
+Provides analysis and display for several formats of model_run results
+"""
 
 import sys
 import os.path
 import pickle
-#import neuronvis.sim_result as sr
 import argparse
 import pylibrary.Utility as pu  # access to spike finder routine
-
 import time
-
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 import pylibrary.pyqtgraphPlotHelpers as pgh
@@ -25,37 +24,44 @@ import seaborn
 from matplotlib import rc
 rc('text', usetex=False)
 import cell_config as CFG
+import analyze_run
+
+AR = analyze_run()  # create an instance
+
 
 baseName = 'VCN_Cells'
 modeltype = 'RM03'
 modeltype = 'XM13'
 #modeltype = 'mGBC'
 
+# define file name templates for different kinds of data sets
 filename_template = 'AN_Result_{0:s}_delays_N{1:03d}_030dB_16000.0_{2:2s}.p'
-
 synfile_template = 'AN_Result_{0:s}_{1:4s}_Syn{2:03d}_N{3:03d}_030dB_16000.0_{4:2s}.p'
 excsynfile_template = 'AN_Result_{0:s}_{1:4s}_ExcludeSyn{2:03d}_N{3:03d}_030dB_4000.0_{3:2s}.p'
 synIOfile_template = 'AN_Result_{0:s}_{1:4s}_SynIO{2:03d}_N{3:03d}_030dB_16000.0_{4:2s}.p'
 
+# list of cells that we know about
 all_cells = ['09', '09h', '09nd', '17',   '18',    '19', '20', '21', '22']
 
-def clean_spiketimes(spikeTimes, mindT=0.7):
-    """
-    Clean up spike time array, removing all less than mindT
-    spikeTimes is a 1-D list or array
-    mindT is difference in time, same units as spikeTimes
-    If 1 or 0 spikes in array, just return the array
-    """
-    if len(spikeTimes) > 1:
-        dst = np.diff(spikeTimes)
-        st = np.array(spikeTimes[0])  # get first spike
-        sok = np.where(dst > mindT)
-        st = np.append(st, [spikeTimes[s+1] for s in sok])
-        # print st
-        spikeTimes = st
-    return spikeTimes
 
 def readFile(filename, cmd):
+    """
+    Read the result file and extract and return relevant arrays
+    
+    Parameters
+    ----------
+    filename : str 
+        name of result file to read
+    
+    cmd : dict
+        commands - here we look for "respike", which forces a reanalysis of spike
+        times
+    
+    Returns
+    -------
+    tuple
+        (spikeTimes, inputSpikeTimes, stimulus information, and the raw loaded dataset)
+    """
     f = open(filename, 'r')
     d = pickle.load(f)
     f.close()
@@ -72,20 +78,9 @@ def readFile(filename, cmd):
         spiketimes = {}
         for k in d['somaVoltage'].keys():
             spikeTimes[k] = pu.findspikes(d['time'], d['somaVoltage'][k], cmd['threshold'])
-            spikeTimes[k] = clean_spiketimes(spikeTimes[k], 0.7)
+            spikeTimes[k] = AR.clean_spiketimes(spikeTimes[k], 0.7)
     return(spikeTimes, inputSpikeTimes, stimInfo, d)
 
-#def findspikes(x, v, thresh, t0=None, t1= None, dt=1.0, mode='schmitt', interpolate=False, debug=False):
-    """ findspikes identifies the times of action potential in the trace v, with the
-    times in t. An action potential is simply timed at the first point that exceeds
-    the threshold... or is the peak. 
-    4/1/11 - added peak mode
-    if mode is none or schmitt, we work as in the past.
-    if mode is peak, we return the time of the peak of the AP instead
-    7/15/11 - added interpolation flag
-    if True, the returned time is interpolated, based on a spline fit
-    if False, the returned time is just taken as the data time. 
-    """
 
 def ANfspike(spikes, stime, nReps):
     nANF = len(spikes[0])
@@ -109,6 +104,7 @@ def ANfspike(spikes, stime, nReps):
     print '   mean Second spike latency: %8.3f ms stdev: %8.3f  (N=%3d)' % (np.nanmean(sl2), np.nanstd(sl2),
         np.count_nonzero(~np.isnan(sl2)))
 
+
 def getFirstSpikes(spikes, stime, nReps):
     sl1 = np.full(nReps, np.nan)
     sl2 = np.full(nReps, np.nan)
@@ -121,6 +117,7 @@ def getFirstSpikes(spikes, stime, nReps):
     sl1 = sl1[~np.isnan(sl1)]  # in case of no spikes at all
     sl2 = sl2[~np.isnan(sl2)]  # in case of no second spikes
     return(sl1, sl2)
+
 
 def CNfspike(spikes, stime, nReps):
     # print spikes
@@ -135,7 +132,7 @@ def CNfspike(spikes, stime, nReps):
     return(sl1, sl2)
 
 
-def plot1(spikeTimes, inputSpikeTimes, stimInfo, cmd):
+def plotPSTHs(spikeTimes, inputSpikeTimes, stimInfo, cmd):
     win = pgh.figure(title='AN Inputs')
     layout = pgh.LayoutMaker(cols=1,rows=2, win=win, labelEdges=True, ticks='talbot')
     # flatten spike times
@@ -196,7 +193,8 @@ def plotPSTH(infile, cmd):
     ANfspike(inputSpikeTimes, starttime, nReps)
     #print 'CN: '
     CNfspike(spikeTimes, starttime, nReps)
-    plot1(spikeTimes, inputSpikeTimes, stimInfo, cmd)
+    plotPSTHs(spikeTimes, inputSpikeTimes, stimInfo, cmd)
+
 
 def plotVm(infile, cmd):
     spikeTimes, inputSpikeTimes, stimInfo, d = readFile(infile, cmd)
@@ -209,7 +207,7 @@ def plotVm(infile, cmd):
     spiketimes = {}
     for k in d['somaVoltage'].keys():
         spikeTimes[k] = pu.findspikes(d['time'], d['somaVoltage'][k], cmd['threshold'])
-        spikeTimes[k] = clean_spiketimes(spikeTimes[k], 0.7)
+        spikeTimes[k] = AR.clean_spiketimes(spikeTimes[k], 0.7)
         ax[0].plot(d['time'], d['somaVoltage'][k])
     ANFs = [0]
     anf = []
@@ -224,6 +222,10 @@ def plotVm(infile, cmd):
     
     
 def get_dimensions(n, pref='height'):
+    """
+    Determine optimal rows and columns
+    for a multiple panel plot
+    """
     nopt = np.sqrt(n)
     inoptw = int(nopt)
     inopth = int(nopt)
@@ -268,7 +270,6 @@ def plotIO(cmd):  # plots ALL IO's in one place
         cell = 'VCN_c{0:s}'.format(cn)
         inpath = os.path.join(baseName, cell, 'Simulations/AN')
         sites, celltype = CFG.makeDict(cell)
-    #    print sites
         nInputs = 0
         for s in sites:
             nInputs += len(s['postlocations'].keys())
@@ -349,7 +350,7 @@ def plotSingles(inpath, cmd):
             for k in d['somaVoltage'].keys():
                 dt = d['time'][1]-d['time'][0]
                 spikeTimes[k] = pu.findspikes(d['time'], d['somaVoltage'][k], thresh=cmd['threshold'])
-                spikeTimes[k] = clean_spiketimes(spikeTimes[k])
+                spikeTimes[k] = AR.clean_spiketimes(spikeTimes[k])
         nReps = stimInfo['nReps']
         pl = ax[i]
         pl.set_title('Input {0:d}: N sites: {1:d}'.format(i+1, sites[i]['nSyn']), fontsize=8, x=0.05, y=0.92,
@@ -425,13 +426,10 @@ def readIVFile(filename):
     return(arun.IVResult, d, tr)
 
 
-    
 def plotIV(cell, infile, plottau=False):
 
     sizer = OrderedDict([('A', {'pos': [0.2, 0.6, 0.3, 0.5]}), ('B', {'pos': [0.2, 0.6, 0.1, 0.15]})
-            # ('C1', [0.72, 0.25, 0.65, 0.3]), ('C2', [0.72, 0.25, 0.5, 0.1]),
-            # ('D', [0.08, 0.25, 0.1, 0.3]), ('E', [0.40, 0.25, 0.1, 0.3]), ('F', [0.72, 0.25, 0.1, 0.3]),
-    ])  # dict elements are [left, width, bottom, height] for the axes in the plot.
+                        ])  # dict elements are [left, width, bottom, height] for the axes in the plot.
     gr = [(a, a+1, 0, 1) for a in range(0, len(sizer.keys()))]   # just generate subplots - shape does not matter
     axmap = OrderedDict(zip(sizer.keys(), gr))
     P = PH.Plotter((len(sizer.keys()), 1), axmap=axmap, label=True, figsize=(6., 4.))
