@@ -35,7 +35,7 @@ ymargin = 0.05
 numrows = 5
 ht = (1. - 2*(ymargin))/numrows
 yp = np.arange(0.05, numrows*ht, ht)
-yp = np.flip(yp, 0)
+yp = np.flipud(yp)
 print ('yp:', yp)
 lpos = [0.5, 0.95]
 sizer = OrderedDict([('VCNc09nd', {'pos': [l1, wid, yp[0], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
