@@ -21,7 +21,7 @@ from collections import OrderedDict
 from cnmodel.util.stim import make_pulse # makestim
 from NoiseTrainingGen import generator
 from pylibrary.Params import Params
-import calyxPlots as cp
+import IVPlots as IVP
 import analyze_run as ar
 import cellInitialization as cellInit
 import time
@@ -513,10 +513,10 @@ class GenerateRun():
 
     def plotRun(self, results, init=True, show=False):
         if init:
-            self.cplts = cp.CalyxPlots(title=self.filename)
-        self.cplts.plotResults(results.todict(), self.runInfo.todict(), somasite=self.mons)
+            self.ivplts = IVP.IVPlots(title=self.filename)
+        self.ivplts.plotResults(results.todict(), self.runInfo.todict(), somasite=self.mons)
         if show:
-            self.cplts.show()
+            self.ivplts.show()
 
     def plotFits(self, panel, x, c='g'):
-        self.cplts.plotFit(panel, x[0], x[1], c)
+        self.ivplts.plotFit(panel, x[0], x[1], c)
