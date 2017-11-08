@@ -40,7 +40,22 @@ VCN_Cells/   # top level for data
             IV/  # results from IV simulations
             AN/  # results from AN simulations
 
-Usage:
+
+usage: model_run.py [-h] [--type {Bushy,TStellate,DStellate}]
+                    [--model {XM13,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}]
+                    [--sgcmodel {Zilany,cochlea}]
+                    [--protocol {initIV,testIV,runIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}]
+                    [--hoc HOCFILE] [--inputpattern INPUTPATTERN]
+                    [--stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}]
+                    [-d DB] [-f F0] [-r NREPS] [-S {LS,MS,HS,fromcell}]
+                    [--fmod FMOD] [--depth DMOD] [--S2M SIGNALTOMASKER]
+                    [--cmmrmode {CM,CD,REF}] [-a AMPASCALE] [--allmodes]
+                    [--sequence SEQUENCE] [--plot] [--workers NWORKERS]
+                    [--noparallel] [--auto] [--verbose] [--gifi GIF_I0]
+                    [--gifsigma GIF_SIGMA] [--giffmod GIF_FMOD]
+                    [--giftau GIF_TAU] [--gifdur GIF_DUR]
+                    cell
+
 Simulate activity in a reconstructed model cell
 
 positional arguments:
@@ -50,31 +65,50 @@ optional arguments:
   -h, --help            show this help message and exit
   --type {Bushy,TStellate,DStellate}, -T {Bushy,TStellate,DStellate}
                         Define the cell type (default: Bushy)
-  --model {XM13,mGBC,RM03,XM13PasDend,Calyx,MNTB,L23Pyr}, -M {XM13,mGBC,RM03,XM13PasDend,Calyx,MNTB,L23Pyr}
+  --model {XM13,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}, -M {XM13,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}
                         Define the model type (default: XM13)
-  --sgcmodel {Zilany, cochlea}, -M {Zilany, cochlea}
-  --protocol {initIV,testIV,runIV,initAN,runANPSTH,runANSingles}, -P {initIV,testIV,runIV,initAN,runANPSTH,runANSingles}
+  --sgcmodel {Zilany,cochlea}
+                        Define the SGC model type (default: Zilany)
+  --protocol {initIV,testIV,runIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}, -P {initIV,testIV,runIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}
                         Protocol to use for simulation (default: IV)
-  --inputpattern        Cell ID to use for input pattern if substituting inputs
-  --hoc INFILE, -H INFILE
+  --hoc HOCFILE, -H HOCFILE
                         hoc file to use for simulation (default is the
                         selected "cell".hoc)
+  --inputpattern INPUTPATTERN
+                        cell input pattern to use (substitute) from
+                        cell_config.py
+  --stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}
+                        Define the stimulus type (default: tonepip)
+  -d DB, --dB DB        Set sound intensity dB SPL (default 30)
+  -f F0, --frequency F0
+                        Set tone frequency, Hz (default 4000)
   -r NREPS, --reps NREPS
                         # repetitions
-  --modf MODFREQ        Set SAM modulation frequency
-  --moddepth MODDEPTH   Set SAM modulation depth (in percent)
+  -S {LS,MS,HS,fromcell}, --SRType {LS,MS,HS,fromcell}
+                        Specify SR type (from: ['LS', 'MS', 'HS', 'fromcell'])
+  --fmod FMOD           Set SAM modulation frequency
+  --depth DMOD          Set SAM modulation depth (in percent)
   --S2M SIGNALTOMASKER  Signal to Masker ratio (dB)
   --cmmrmode {CM,CD,REF}
                         Specify mode (from: ['CM', 'CD', 'REF'])
+  -a AMPASCALE, --AMPAScale AMPASCALE
+                        Set AMPAR conductance scale factor (default 1.0)
   --allmodes            Force run of all modes (CMR, CMD, REF) for stimulus
                         configuration.
-  -S {LS,MS,HS,fromcell}, --SRType {LS,MS,HS,fromcell}
-                        Specify SR type (from: ['LS', 'MS', 'HS', 'fromcell'])
   --sequence SEQUENCE   Specify a sequence for the primary run parameters
   --plot                Plot results as they are generated - requires user
                         intervention...
   --workers NWORKERS    Number of "workers" for parallel processing (default:
                         4)
+  --noparallel          Use parallel or not (default: True)
+  --auto                Force auto initialization if reading the state fails
+                        in initialization
+  --verbose             Print out extra stuff for debugging
+  --gifi GIF_I0         Set Noise for GIF current level (default 0 nA)
+  --gifsigma GIF_SIGMA  Set Noise for GIF variance (default 0.2 nA)
+  --giffmod GIF_FMOD    Set Noise for GIF fmod (default 0.2 Hz)
+  --giftau GIF_TAU      Set Noise for GIF tau (default 0.3 ms)
+  --gifdur GIF_DUR      Set Noise for GIF duration (default 10 s)
 
 Example:
 Set up initialization:
@@ -94,17 +128,17 @@ import argparse
 from collections import OrderedDict
 import pprint
 import json
+import numpy as np
 
 # from neuronvis.hoc_viewer import HocViewer
+
+import cell_config
 import neuronvis.hoc_graphics as hoc_graphics
 from generate_run import GenerateRun
 import cellInitialization as cellInit
 from cnmodel import cells
 from cnmodel.util import sound
 from cnmodel.decorator import Decorator
-
-#import cochlea
-#import thorns  # required for cochlea
 
 import pylibrary.Utility as pu  # access to a spike finder routine
 
@@ -116,12 +150,6 @@ try:
 except:
 	HAVE_PG = False
 
-# if HAVE_PG:
-#     import render
-
-import numpy as np
-
-import cell_config
 
 showCell = True
 
@@ -140,7 +168,6 @@ class ModelRun():
         self.speciesChoices = ['mouse', 'guineapig']
 
         self.cellmap = {'bushy': cells.bushy, 'tstellate': cells.tstellate, 'dstellate': cells.dstellate}
-#        self.protocolmap = {'initIV': self.}
         self.srname = ['LS', 'MS', 'HS']  # runs 0-2, not starting at 0
         self.cellID = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
         self.Params = OrderedDict()
@@ -314,11 +341,9 @@ class ModelRun():
         # instantiate cells
         if self.Params['cellType'] in ['Bushy', 'bushy']:
             print ('Creating a bushy cell (run_model) ')
-#            print (self.Params.keys())
             self.post_cell = cells.Bushy.create(morphology=filename, decorator=Decorator,
                     species=self.Params['species'],
                     modelType=self.Params['modelType'])
-#            self.post_cell.irange = np.arange(-2., 2.1, 0.5)  # reset current injection range.
         elif self.Params['cellType'] in ['tstellate', 'TStellate']:
             print ('Creating a t-stellate cell (run_model) ')
             self.post_cell = cells.TStellate.create(morphology=filename, decorator=Decorator,
@@ -332,7 +357,6 @@ class ModelRun():
         else:
             raise ValueError("cell type {:s} not implemented".format(self.Params['cellType']))
                       
-        
         # Set up run parameters
         print ('Requested temperature (deg C): ', self.post_cell.status['temperature'])
         self.post_cell.hr.h.celsius = self.post_cell.status['temperature']  # this is set by prepareRun in generateRun. Only place it should be changed
@@ -369,7 +393,7 @@ class ModelRun():
         self.post_cell.set_d_lambda(freq=self.Params['lambdaFreq'])
         
         # handle the following protocols:
-        # ['initIV', 'initAN', 'runIV', 'runANPSTH', 'runANSingles']
+        # ['initIV', 'initAN', 'runIV', 'runANPSTH', 'runANSingles', 'gifnoise']
         
         if self.Params['runProtocol'] == 'initIV':
             if self.Params['verbose']:
@@ -519,7 +543,6 @@ class ModelRun():
                           'taum': taum_mean, 'tauih': tauih_mean,
                           'spikes': {'i': self.R.IVResult['Ispike'], 'n': self.R.IVResult['Nspike']},
                           }
-#        print 'model_run::run_model::iv_run write summary for file set = ', self.R.basename
         return self.IVSummary
     
     def noise_run(self, par_map={}):
@@ -630,7 +653,6 @@ class ModelRun():
         -------
             Nothing
 
-        
         """
         if self.Params['inputPattern'] is not None:
             fromdict = self.Params['inputPattern']
@@ -651,17 +673,11 @@ class ModelRun():
         threshold = self.Params['threshold'] # spike threshold, mV
         
         stimInfo = self.Params
-        # {'Morphology': self.Params['hocfile'], 'synapseConfig': synapseConfig,
-        #             'runDur': self.run_duration, 'pip_dur': self.Params['pip_duration'], 'pip_start': self.Params['pip_start'],
-        #             'run_duration': self.run_duration,
-        #             'Fs': self.Fs, 'F0': self.f0, 'dB': self.dB, 'RF': self.RF, 'SR': self.SR,
-        #             'cellType': self.Params['cellType'], 'model_type': self.Params['model_type'], 'nReps': nReps, 'threshold': threshold}
-        
         preCell, synapse, self.electrode_site = self.configure_cell(post_cell, synapseConfig, celltype, stimInfo)
         
         # see if we need to save the cell state now.
         if make_an_intial_conditions:
-            print('getting initial conditions for AN')
+#            print('getting initial conditions for AN')
             aninitfile = os.path.join(self.baseDirectory, self.cellID,
                                 self.initDirectory, self.Params['initANStateFile'])
             cellInit.get_initial_condition_state(post_cell, tdur=500.,
@@ -707,7 +723,7 @@ class ModelRun():
                 stimWaveform[N] = np.array(tresults[j]['stim']) # save the stimulus
 
         else:
-            # Non parallelized version:
+            # Non parallelized version (with --noparallel flag - useful for debugging):
             for j, N in enumerate(range(nReps)):
                 print ('Rep: %d' % N)
 
@@ -739,7 +755,7 @@ class ModelRun():
             self.plot_an(np.array(celltime[0]), result['somaVoltage'], result['stimInfo'],
                 dendVoltage=result['dendriteVoltage'])
 
-    
+
     def an_run_singles(self, post_cell, exclude=False, verify=False):
         """
         Establish AN inputs to soma, and run the model.
@@ -776,12 +792,6 @@ class ModelRun():
         threshold = self.Params['threshold'] # spike threshold, mV
         
         stimInfo = self.Params
-        # {'Morphology': self.Params['hocfile'], 'synapseConfig': synapseConfig,
-        #             'runDur': self.run_duration, 'pip_dur': self.Params['pip_duration'], 'pip_start': self.Params['pip_start'],
-        #             'run_duration': self.run_duration,
-        #             'Fs': self.Fs, 'F0': self.f0, 'dB': self.dB, 'RF': self.RF, 'SR': self.SR,
-        #             'cellType': self.Params['cellType'], 'model_type': self.Params['model_type'], 'nReps': nReps, 'threshold': threshold}
-        
         preCell, synapse, self.electrode_site = self.configure_cell(post_cell, synapseConfig, celltype, stimInfo)
 
         nSyns = len(preCell)
@@ -842,7 +852,6 @@ class ModelRun():
                     tresults[j] = self.single_an_run(post_cell, j, synapseConfig,
                             stimInfo, seeds, preCell, self.an_setup_time)
             for j, N in enumerate(range(nReps)):
-#                preCell, post_cell = self.single_an_run(hf, j, synapseConfig, stimInfo, seeds, preCell)
                 celltime.append(tresults[j]['time']) # (self.time)
                 spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold, t0=0.,
                         t1=stimInfo['run_duration']*1000, dt=1.0, mode='peak')
@@ -952,7 +961,6 @@ class ModelRun():
                             stimInfo, preCell, self.an_setup_time)
             gmaxs = [4.0*float(j+1)*gMax[0]/float(nReps+1) for j in range(nReps)]
             for j, N in enumerate(range(nReps)):
-#                preCell, post_cell = self.single_an_run(hf, j, synapseConfig, stimInfo, seeds, preCell)
                 celltime.append(tresults[j]['time']) # (self.time)
                 spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold, t0=0.,
                         t1=stimInfo['run_duration']*1000, dt=1.0, mode='peak')
@@ -1092,11 +1100,8 @@ class ModelRun():
         debug = False
         if debug:
             print('hf.sec_groups : ', thisCell.sec_groups.keys())
-        #self.createCell(hf, celltype, self.Params['model_type'], self.Params['species'])
         if debug:
             print(thisCell.print_all_mechs())
-
-        
         preCell = []
         synapse = []
         # reconfigure syanpses to set the spont rate group
@@ -1127,16 +1132,15 @@ class ModelRun():
         electrode_site = thisCell.hr.get_section(electrodeSection)
         return (preCell, synapse, electrode_site)
     
+
     def set_dbspl(self, signal, dbspl):
         """Scale the level of `signal` to the given dB_SPL."""
         p0 = 20e-6
         rms = np.sqrt(np.sum(signal**2) / signal.size)
-        
         scaled = signal * 10**(dbspl / 20.0) * p0 / rms
-        
         return scaled
 
-    
+
     def single_an_run(self, post_cell, j, synapseConfig, stimInfo, seeds, preCell, an_setup_time):
         """
         Perform a single run with all AN input on the target cell turned off except for input j.
@@ -1212,19 +1216,16 @@ class ModelRun():
         
         for i, syn in enumerate(synapseConfig):
             nseed = seeds[j, i]
-            
             if self.Params['SGCmodelType'] in ['Zilany']:
                 preCell[i].set_sound_stim(stim, seed=nseed, simulator='matlab')  # generate spike train, connect to terminal
-            
             elif self.Params['SGCmodelType'] in ['cochlea']:
                 wf = self.set_dbspl(stim.generate(), stimInfo['dB'])
                 stim._sound = wf
                 preCell[i].set_sound_stim(stim, seed=nseed, simulator='cochlea')  # generate spike train, connect to terminal
-            
             else:
                 raise ValueError('SGC model type type %s not implemented' % self.Params['SGCmodelType'])
-            
             ANSpikeTimes.append(preCell[i]._spiketrain)
+
         an_setup_time += (time.time() - an0_time)
         nrn_start = time.time()
         Vsoma = post_cell.hr.h.Vector()
@@ -1261,12 +1262,28 @@ class ModelRun():
             st = np.array(spikeTimes[0])  # get first spike
             sok = np.where(dst > mindT)
             st = np.append(st, [spikeTimes[s+1] for s in sok])
-            # print st
             spikeTimes = st
         return spikeTimes
     
     def plot_an(self, celltime, somaVoltage, stimInfo, dendVoltage=None):
         """
+        Plot the cell's voltage reponse to the AN inputs
+        
+        Parameters
+        ----------
+        celltime : array (no default)
+            time array for the cell voltage data
+        somaVoltage : array (no default)
+            Voltage recorded at the soma for this cell
+        stimInfo : dict (no default)
+            stimulus parameters (require 'nReps' and 'threshold' for spikes)
+        dendVoltage : array (default: None)
+            Voltage recorded at some point in the dendrite for this cell
+        
+        Returns
+        -------
+        Nothing
+         
         """
         if not self.Params['plotFlag']:
             return
@@ -1288,6 +1305,17 @@ class ModelRun():
         pgh.show()
     
     def analysis_filewriter(self, filebase, result, tag=''):
+        """
+        Write the analysis information to a pickled file
+        
+        Parameters:
+        filebase : string (no default)
+            base filename - *not used* (value replaced bye cellID)
+        result : dict (no default)
+            dict hlding results. Must be pickleable
+        tag : string (default: '')
+            tag to insert in filename string
+        """
         k = result.keys()
         requiredKeys = ['stimInfo', 'spikeTimes', 'inputSpikeTimes', 'somaVoltage', 'time']
         for rk in requiredKeys:
@@ -1445,9 +1473,3 @@ if __name__ == "__main__":
 
     
     model.run_model() # then run the model
-    # if showCell:
-    #     QtGui.QApplication.instance().exec_()
-    try:
-        exit()
-    except:
-        pass

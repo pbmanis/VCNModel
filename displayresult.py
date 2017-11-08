@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 displayresult shows the results of a model_run. Just enter the filename in the fn field
 
@@ -50,7 +51,7 @@ class DisplayResult():
             self.Params['patterns'] = ['c%02d' % int(p) for p in self.Params['cell']]
             self.findfiles = True
         else:
-            self.Params['patterns'] = ['c%02d' % int(self.Params['cell'])] #i for i in [8, 9, 17, 18, 19, 20, 21, 22]]
+            self.Params['patterns'] = ['c%02d' % int(p) for p in self.Params['cell']] #i for i in [8, 9, 17, 18, 19, 20, 21, 22]]
             self.findfiles = False
 
         print self.Params['patterns']
@@ -84,7 +85,6 @@ class DisplayResult():
                     print 'did not find file for %s' % p, self.fn[p]
                     exit(1)
 
-
     def show(self):
         self.file_setup()
         if self.Params['runtype'] == 'IV':
@@ -94,7 +94,7 @@ class DisplayResult():
             self.show_AN()
         if self.Params['runtype'] == 'gifnoise':
             self.show_gifnoise()
-    
+
     def show_AN(self):    
         fig = plt.figure()
         gs_outer = gridspec.GridSpec(4, 1)  # 4 rows, one column
@@ -130,7 +130,6 @@ class DisplayResult():
         # d[cell] has keys: ['inputSpikeTimes', 'somaVoltage', 'spikeTimes', 'time', 'dendriteVoltage', 'stimInfo', 'stimWaveform']
         #print 'data keys: ', d.keys()
         #print len(d['time'])
-
 
         dt = 0.1
         for j, pattern in enumerate(self.Params['patterns']):
@@ -222,7 +221,6 @@ class DisplayResult():
         #PH.nice_plot(ax.flatten().tolist())
         plt.show()
 
-
     def show_IV(self):
             fig, ax = plt.subplots(2,1)
             a = ax.ravel()
@@ -241,11 +239,8 @@ class DisplayResult():
                     a[0].plot(k0[rkey]['monitor']['time'], v, linewidth=0.5)
                     inj = k0[rkey]['monitor']['postsynapticI']
                     a[1].plot(k0[rkey]['monitor']['time'], inj)
-            
-
 
             plt.show()
-            exit(0)
 
     def show_gifnoise(self):
             fig, ax = plt.subplots(2,1)
@@ -285,7 +280,7 @@ if __name__ == '__main__':
     
     DR = DisplayResult()
     parser = argparse.ArgumentParser(description='Display model results')
-    parser.add_argument(dest='cell', action='store', nargs='+',
+    parser.add_argument(dest='cell', action='store', nargs='+', type=int,
                    default=None,
                    help='Select the cell(s) (no default)')
     parser.add_argument('-p', '--protocol', dest='runtype', action='store',

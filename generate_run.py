@@ -291,10 +291,12 @@ class GenerateRun():
             print('generate_run.py, mode %s  unknown' % self.runInfo.postMode)
             return
         self.hf.h.tstop = maxt+self.runInfo.stimDelay
-        print('PrepareRun: \n   maxt = {:8.2f}'.format(maxt))
-        print('   delay: {:9.3f} ms\n   duration: {:9.3f} ms'.format(self.runInfo.stimDelay, self.runInfo.stimDur))
-        print('   tstop: {:9.3f} ms'.format(self.hf.h.tstop))
-        print("   t:  {:8.2f}\n----------------\n".format(self.hf.h.t))
+        print('PrepareRun: \n')
+        print('   maxt:     {:8.2f}'.format(maxt))
+        print('   delay:    {:8.2f} ms'.format(self.runInfo.stimDelay))
+        print('   duration: {:9.3f} ms'.format(self.runInfo.stimDur))
+        print('   tstop:    {:8.2f} ms'.format(self.hf.h.tstop))
+        print("   t:        {:8.2f}\n----------------\n".format(self.hf.h.t))
         self.monitor['time'].record(self.hf.h._ref_t)
         #self.hf.h.topology()
         #pg.show()
