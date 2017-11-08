@@ -395,7 +395,7 @@ class GenerateRun():
         QtGui.QApplication.instance().exec_()
 
 
-    def _executeRun(self, testPlot=True):
+    def _executeRun(self, testPlot=False):
         """
         (private mmethod)
         After prepare run and initialization, this routine actually calls the run method in hoc
@@ -421,6 +421,7 @@ class GenerateRun():
         print('Finishing Vm: {:6.2f}'.format(self.electrode_site.v))
         self.monitor['time'] = np.array(self.monitor['time'])
         self.monitor['time'][0] = 0.
+        print('post v: ', self.monitor['postsynapticV'])
         if testPlot:
            pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))
            QtGui.QApplication.instance().exec_()

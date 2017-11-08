@@ -1,0 +1,27 @@
+cells needing taper/myelinated/unmeylinated axon section definitions
+GBC_c08  2.5X 
+
+
+
+Ones with axonal compartment differentiation:
+
+GBC_c09  converted, run mGBC 1.5-1.75X -20 mV  (re-singles)
+GBC_c17  converted, run mGBC  3X -30mv (re-singles)
+GBC_c18  converted (used GBC18_waxon_scaled, Dec 23 2016) 3X and -30 mV (re-singles)
+GBC_c19  converted 1.5x, -30 mV (re-singles)
+GBC_c20  converted 1.5x, -30 mV
+GBC_c21  converted 3.0X, -30 mV
+GBC_c22  converted 3.5x -34 mV  (could be 4x)
+
+[converted means made into hillock, myelinatedaxon and unmyelinatedaxon sections]
+Runs using "mGBC" parameters on 3/22/2017. 
+
+	modified:   VCN_Cells/VCN_c18/Morphology/VCN_c18.hoc
+	modified:   analysis.py
+	modified:   analyze_run.py
+	modified:   cell_config.py
+	modified:   channel_decorate.py
+	modified:   displayRevCorrResult.py
+	modified:   generate_run.py
+	modified:   model_run.py
+	modified:   syn_config.py

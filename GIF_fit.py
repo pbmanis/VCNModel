@@ -19,6 +19,8 @@ class GIFFitter():
         self.dt = dt
         self.set_timescales()
         self.Exp = Experiment('Experiment 1', self.dt)
+        self.GIF = GIF(dt=self.dt)
+        
 
     def set_templates(self, aec=None, train=None, test=None):
         self.aec_template = aec
@@ -55,13 +57,12 @@ class GIFFitter():
     def set_timescales(self, ts=[1.0, 5.0, 30.0, 70.0, 100.0, 500.0]):
         self.timescales = ts
 
-    def fit(self, thr=-15, refract=1.0, beforeSpike=4.0):
+    def fit(self, threshold=0., refract=1.0, beforeSpike=4.0):
 
-        self.Exp.detectSpikes(threshold=thr, ref=refract)
+        self.Exp.detectSpikes(threshold=threshold, ref=refract)
         # self.Exp.plotTrainingSet()
         # self.Exp.plotTestSet()
 
-        self.GIF = GIF(dt=self.dt)
         self.GIF.Tref = refract    # refractory period
 
         print('Setting up GIF')

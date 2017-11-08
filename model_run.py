@@ -381,7 +381,8 @@ class ModelRun():
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=self.post_cell.i_test_range,
-                             plotting = self.Params['plotFlag'])
+                             plotting = self.Params['plotFlag'],
+                             params = self.Params)
             cellInit.get_initial_condition_state(self.post_cell, tdur=500.,
                filename=ivinitfile, electrode_site=self.electrode_site)
             print('Ran to get initial state for {:.1f} msec'.format(self.post_cell.hr.h.t))
@@ -397,7 +398,8 @@ class ModelRun():
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=self.post_cell.irange,
-                             plotting = HAVE_PG and self.Params['plotFlag'], )
+                             plotting = HAVE_PG and self.Params['plotFlag'], 
+                             params = self.params)
             cellInit.test_initial_conditions(self.post_cell, filename=ivinitfile,
                 electrode_site=self.electrode_site)
             self.R.testRun(initfile=ivinitfile)
@@ -473,7 +475,8 @@ class ModelRun():
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=iinjValues,
-                             plotting = HAVE_PG and self.Params['plotFlag'])
+                             plotting = HAVE_PG and self.Params['plotFlag'],
+                             params=self.Params)
         ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                                 self.initDirectory, self.Params['initIVStateFile'])
         self.R.runInfo.folder = os.path.join('VCN_Cells', self.cellID, self.simDirectory, 'IV')
@@ -542,8 +545,8 @@ class ModelRun():
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              stimtype='gifnoise',
-                             params=self.Params,
-                             plotting = HAVE_PG and self.Params['plotFlag'])
+                             plotting = HAVE_PG and self.Params['plotFlag'],
+                             params=self.Params)
         ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                                 self.initDirectory, self.Params['initIVStateFile'])
         self.R.runInfo.folder = os.path.join('VCN_Cells', self.cellID, self.simDirectory, 'Noise')

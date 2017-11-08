@@ -24,7 +24,8 @@ import pycircstat as PCS
 import pylibrary.PlotHelpers as PH
 import GIF_fit as GFit
 
-
+import warnings
+warnings.filterwarnings("ignore")
 
 class DisplayResult():
     def __init__(self):
@@ -40,6 +41,7 @@ class DisplayResult():
         self.Params['modeltype'] = 'XM13'
         self.Params['runtype'] = 'IV'
         self.Params['modetypes'] = 'singles'
+        self.Params['threshold'] = 0.
         self.findfiles = False
         
     def file_setup(self):
@@ -263,11 +265,12 @@ class DisplayResult():
                     inj = data['postsynapticI']
                     dt = data['time'][1]-data['time'][0]
                     GF = GFit.GIFFitter(path=self.bp[pattern], dt=dt)
+                    GF.GIF.DV=1.0
                     #GF.set_templates(aec=None, train=train_template, test=None)
                     GF.Exp.addTrainingSetTrace(v, 1e-3, inj, 1e-9, np.max(data['time']), 'Array')
                     #GF.set_files_test(AECtrace=None, trainingset=1008, testsets = range(1009, 1018), filetype='Igor')
                    # GF.set_timescales(ts=[0.2, 1.0, 5.0, 12.0, 50.0, 100.0])
-                    GF.fit()
+                    GF.fit(threshold=self.Params['threshold'])
                     print ('v: ', v[0])
                     (time, Vs, I_a, V_t, S) = GF.GIF.simulate(inj, v[0])  # simulate response to current trace I with starting voltage V0
                     a[0].plot(time, Vs, 'r-', linewidth=0.75)
@@ -293,6 +296,8 @@ if __name__ == '__main__':
                     default='XM13', help=('Select the model type (default XM13) from: %s '% DR.modeltypes))
     parser.add_argument('-n', '--synno', dest='synno', action='store',
                     default=None, help='Select the synno')
+    parser.add_argument('-t', '--threshold', dest='threshold', type=float, action='store',
+                    default=0., help=('Spike detection threshold, mV'))
                    
     args = vars(parser.parse_args())
 #    model.print_modelsetup()
