@@ -22,6 +22,11 @@ __pycache__/
 # and output data files
 *.dat
 
+# linked directories
+acq4
+gif
+cnmodel
+
 # synaptic configure .xls or ods files
 VCN_Cells/VCN_ASAs*.xls
 VCN_Cells/*.ods
