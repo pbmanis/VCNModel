@@ -79,8 +79,8 @@ class DisplayResult():
                     print '       found %s' % p
                     h.close()
                 except:
-                    print 'did not find file for %s' % p
-            exit(1)
+                    print 'did not find file for %s' % p, self.fn[p]
+                    exit(1)
 
 
     def show(self):
@@ -236,7 +236,7 @@ class DisplayResult():
                     k0 = d[pattern]['Results'][k]
                     rkey = k0.keys()[0]
                     v = k0[rkey]['monitor']['postsynapticV']
-                    a[0].plot(k0[rkey]['monitor']['time'], v)
+                    a[0].plot(k0[rkey]['monitor']['time'], v, linewidth=0.5)
                     inj = k0[rkey]['monitor']['postsynapticI']
                     a[1].plot(k0[rkey]['monitor']['time'], inj)
             
@@ -270,9 +270,9 @@ class DisplayResult():
                     GF.fit()
                     print ('v: ', v[0])
                     (time, Vs, I_a, V_t, S) = GF.GIF.simulate(inj, v[0])  # simulate response to current trace I with starting voltage V0
-                    a[0].plot(time, Vs, 'r-')
-                    a[0].plot(data['time'], v, 'b-')
-                    a[1].plot(data['time'], inj, 'g-')
+                    a[0].plot(time, Vs, 'r-', linewidth=0.75)
+                    a[0].plot(data['time'], v, 'b-', linewidth=0.5)
+                    a[1].plot(data['time'], inj, 'k-', linewidth=0.5)
                     GF.GIF.plotParameters()
             plt.show()
             exit(0)
@@ -282,9 +282,9 @@ if __name__ == '__main__':
     
     DR = DisplayResult()
     parser = argparse.ArgumentParser(description='Display model results')
-    parser.add_argument(dest='cell', action='store',
+    parser.add_argument(dest='cell', action='store', nargs='+',
                    default=None,
-                   help='Select the cell (no default)')
+                   help='Select the cell(s) (no default)')
     parser.add_argument('-p', '--protocol', dest='runtype', action='store',
                     default='IV', help=('Select the run type (default: IV) from: %s' % DR.runtypes))
     parser.add_argument('-m', '--modetype', dest='modetype', action='store',

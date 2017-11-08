@@ -55,14 +55,14 @@ class GIFFitter():
     def set_timescales(self, ts=[1.0, 5.0, 30.0, 70.0, 100.0, 500.0]):
         self.timescales = ts
 
-    def fit(self):
+    def fit(self, thr=-15, refract=1.0, beforeSpike=4.0):
 
-        self.Exp.detectSpikes(threshold=-15.0, ref=1.0)
+        self.Exp.detectSpikes(threshold=thr, ref=refract)
         # self.Exp.plotTrainingSet()
         # self.Exp.plotTestSet()
 
         self.GIF = GIF(dt=self.dt)
-        self.GIF.Tref = 1.0    # refractory period
+        self.GIF.Tref = refract    # refractory period
 
         print('Setting up GIF')
         self.GIF.eta = Filter_Rect_LogSpaced()
@@ -79,7 +79,7 @@ class GIFFitter():
         #To perform the fit using only a specific part of the training set, use the following command before calling self.GIF.fit():
         #self.Exp.trainingset_traces[0].setROI([[0,10000.0], [20000.0, 60000.0]])
 
-        self.GIF.fit(self.Exp, DT_beforeSpike=4.0)
+        self.GIF.fit(self.Exp, DT_beforeSpike=beforeSpike)
         print('GIF fitted')
         # self.GIF.save('./self.GIF.pck')
         # self.GIF_reloaded = GIF.load('./self.GIF.pck')
