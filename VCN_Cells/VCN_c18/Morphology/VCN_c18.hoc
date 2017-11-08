@@ -1,7 +1,5 @@
 objref soma
 soma = new SectionList()
-objref axon
-axon = new SectionList()
 objref dendrite
 dendrite = new SectionList()
 objref hillock
@@ -26,7 +24,7 @@ sections[0] {
 // axon (taper)
 access sections[170]
 hillock.append()
-connect sections [170](0), sections[0](0)
+connect sections[170](0), sections[0](0)
 sections[170] {
   pt3dadd(8.419719, -29.422723, -7.36153, 2.640176)
   pt3dadd(7.559013, -30.04232, -7.462642, 2.263008)
@@ -43,7 +41,7 @@ sections[170] {
 // axon (unmyelinated)
 access sections[171]
 unmyelinatedaxon.append()
-connect sections [171](0), sections[170](1)
+connect sections[171](0), sections[170](1)
 sections[171] {
   pt3dadd(2.621234, -31.735594, -10.251076, 1.037212)
   pt3dadd(1.926914, -31.710294, -10.505473, 1.037212)
@@ -67,7 +65,7 @@ sections[171] {
 // axon (myelinated)
 access sections[172]
 myelinatedaxon.append()
-connect sections [172](0), sections[171](1)
+connect sections[172](0), sections[171](1)
 sections[172] {
   pt3dadd(-4.539898, -33.421806, -17.2205, 0.94292)
   pt3dadd(-4.86695, -33.687038, -17.484115, 0.94292)

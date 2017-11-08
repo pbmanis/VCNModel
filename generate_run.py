@@ -19,6 +19,7 @@ import numpy as np
 import copy
 from collections import OrderedDict
 from cnmodel.util.stim import make_pulse # makestim
+from NoiseTrainingGen import generator
 from pylibrary.Params import Params
 import calyxPlots as cp
 import analyze_run as ar
@@ -41,10 +42,12 @@ class GenerateRun():
                  electrodeSection=None,
                  dendriticElectrodeSection=None,
                  starttime=None,
+                 stimtype='IV',
                  iRange=[-1, 0, 1],
                  plotting=False,
                  saveAllSections=False,
-                 useSavedState=True):
+                 useSavedState=True,
+                 params=None):
 
         self.run_initialized = False
         self.plotting = plotting
@@ -80,6 +83,11 @@ class GenerateRun():
                               vstimDelay=2.0,  # msec
                               vstimPost=3.0,  # msec
                               vstimHolding=-60, # holding, mV
+                              gif_i0 = params['gif_i0'],
+                              gif_sigma = params['gif_sigma'],
+                              gif_fmod = params['gif_fmod'],
+                              gif_tau = params['gif_tau'],
+                              gif_dur = params['gif_dur'],
                               runTime=time.asctime(),  # store date and time of run
                               inFile=None,
                               # 'ANFiles/AN10000Hz.txt', # if this is not None, then we will use these spike times...
@@ -88,6 +96,14 @@ class GenerateRun():
                               v_init = -61.0,  # from Rothman type II model - not appropriate in all cases
                               useSaveState = useSavedState,  # use the saved state.
         )
+        if stimtype == 'IV':
+            self.runInfo.postMode = 'cc'
+        elif stimtype == 'VC':
+            self.runInfo.postMode = 'vc'
+        elif stimtype == 'gifnoise':
+            self.runInfo.postMode = 'gifnoise'
+            if params is None:
+                raise ValueError('generate_run: gifnoise mode requires params to be passed')
 
         electrodeSection = list(self.hf.sec_groups[self.runInfo.electrodeSection])[0]
         self.electrode_site = self.hf.get_section(electrodeSection)
@@ -102,7 +118,6 @@ class GenerateRun():
         # now find the distlist key that corresponds to the closest value to our desired value
         (num, dist) = min(enumerate(revmap), key=lambda x: abs(x[1]-self.runInfo.dendriticSectionDistance))
         print('Monitoring dendrite section number {:d}, at {:6.2f} microns from soma: '.format(num, dist))
-        
         
         dendriticElectrodeSection = list(self.hf.sec_groups[self.runInfo.dendriticElectrodeSection])[num]
         self.dendriticElectrodeSite = self.hf.get_section(dendriticElectrodeSection)
@@ -252,6 +267,26 @@ class GenerateRun():
             self.monitor['postsynapticV'].record(self.electrode_site(0.5)._ref_v, sec=self.electrode_site)
             self.monitor['dendriteV'].record(self.dendriticElectrodeSite(0.5)._ref_v, sec=self.dendriticElectrodeSite)
             self.mons = ['postsynapticV', 'postsynapticI', 'dendriteV' ]
+        elif self.runInfo.postMode in ['gifnoise']:
+            stim = {}
+            self.stim = generator(
+                dt = self.hf.h.dt,
+                i0=self.runInfo.gif_i0,
+                sigma0=self.runInfo.gif_sigma,
+                fmod=self.runInfo.gif_fmod,
+                tau=self.runInfo.gif_tau,
+                dur=self.runInfo.gif_dur,)
+            maxt = 1000.*self.runInfo.gif_dur
+            self.icPost = self.hf.h.iStim(0.5, sec=self.electrode_site)
+            self.icPost.delay = 2
+            self.icPost.dur = 1e9  # these actually do not matter...
+            self.icPost.iMax = 1.0
+            self.monitor['i_stim0'] = self.hf.h.Vector(self.stim[1])
+            self.monitor['i_stim0'].play(self.icPost._ref_i, self.hf.h.dt, 0, sec=self.electrode_site)
+            self.monitor['postsynapticI'].record(self.icPost._ref_i, sec=self.electrode_site)
+            self.monitor['postsynapticV'].record(self.electrode_site(0.5)._ref_v, sec=self.electrode_site)
+            self.monitor['dendriteV'].record(self.dendriticElectrodeSite(0.5)._ref_v, sec=self.dendriticElectrodeSite)
+            self.mons = ['postsynapticV', 'postsynapticI', 'dendriteV' ]
         else:
             print('generate_run.py, mode %s  unknown' % self.runInfo.postMode)
             return
@@ -288,8 +323,11 @@ class GenerateRun():
         #self.hf.update() # make sure channels are all up to date
         self.results={}
         
-        s = self.runInfo.stimInj['pulse']
-        ipulses = np.arange(s[0], s[1], s[2])
+        if self.runInfo.postMode in ['cc', 'iclamp']:
+            s = self.runInfo.stimInj['pulse']
+            ipulses = np.arange(s[0], s[1], s[2])
+        else:
+            ipulses = [0]
         nLevels = len(ipulses)
         nWorkers = workers
         print('doRun: initfile = {:s}'.format(initfile))
@@ -309,10 +347,9 @@ class GenerateRun():
         
 #        self.results = results
         self.results = OrderedDict()
-#        print ('tresults: ', tresults)
 #        exit()
         for i in range(nLevels):
-#            print('level: ', i, '  tresults[i]["i"]: ', tresults[i]['i'])
+            print('level: ', i, '  tresults[i]["i"]: ', tresults[i]['i'])
             self.results[tresults[i]['i']] = tresults[i]['r']
         for k, i in enumerate(ipulses):
             if self.plotting:
@@ -321,21 +358,26 @@ class GenerateRun():
                     self.plotRun(self.results[i], init=True)
                 else:
                     self.plotRun(self.results[i], init=False)
-        if verbose:
-            print ('doRun, calling IV')
-        self.arun = ar.AnalyzeRun(self.results) # create an instance of the class with the data
-        self.arun.IV()  # compute the IV on the data
-        self.IVResult = self.arun.IVResult
-        if verbose:
-            print ('doRun, back from IV')
-        if save == 'monitor':
-            self.saveRuns('monitor')
-        if verbose:
-            print('doRun: ivresult is: {:32}'.format(self.IVResult))
-        if self.plotting:
-            self.plotFits(1, self.IVResult['taufit'], c='r')
-            self.plotFits(1, self.IVResult['ihfit'], c='b')
-            self.cplts.show()
+        if self.runInfo.postMode in ['cc', 'iclamp']:
+            if verbose:
+                print ('doRun, calling IV')
+            self.arun = ar.AnalyzeRun(self.results) # create an instance of the class with the data
+            self.arun.IV()  # compute the IV on the data
+            self.IVResult = self.arun.IVResult
+            if verbose:
+                print ('doRun, back from IV')
+            if save == 'monitor':
+                self.saveRuns('monitor')
+            if verbose:
+                print('doRun: ivresult is: {:32}'.format(self.IVResult))
+            if self.plotting:
+                self.plotFits(1, self.IVResult['taufit'], c='r')
+                self.plotFits(1, self.IVResult['ihfit'], c='b')
+                self.cplts.show()
+        if self.runInfo.postMode in ['gifnoise']:
+            self.IVResult = None
+            if save == 'monitor':
+                self.saveRuns('gifnoise')
 
 
     def testRun(self, title='testing...', initfile=None):
@@ -353,7 +395,7 @@ class GenerateRun():
         QtGui.QApplication.instance().exec_()
 
 
-    def _executeRun(self, testPlot=False):
+    def _executeRun(self, testPlot=True):
         """
         (private mmethod)
         After prepare run and initialization, this routine actually calls the run method in hoc
@@ -380,13 +422,15 @@ class GenerateRun():
         self.monitor['time'] = np.array(self.monitor['time'])
         self.monitor['time'][0] = 0.
         if testPlot:
-            pg.mkQApp()
-            pl = pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))
-            if self.filename is not None:
-                pl.setTitle('%s' % self.filename)
-            else:
-                pl.setTitle('executeRun, no filename')
-#        print 'run done'
+           pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))
+           QtGui.QApplication.instance().exec_()
+           # pg.mkQApp()
+            # pl = pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))
+            # if self.filename is not None:
+            #     pl.setTitle('%s' % self.filename)
+            # else:
+            #     pl.setTitle('executeRun, no filename')
+        print ('run done')
         np_monitor = {}
         for k in self.monitor.keys():
             np_monitor[k] = np.array(self.monitor[k])
@@ -428,14 +472,19 @@ class GenerateRun():
         each element of which is a Param structure, which we then turn into
         a dictionary...
         """
-        fn = ('{0:s}_{1:s}.p'.format(self.basename, self.cell.status['modelType']))
+        if save is None:
+            fn = ('{0:s}_{1:s}.p'.format(self.basename, self.cell.status['modelType']))
+        else:
+            fn = ('{0:s}_{1:s}_{2:s}.p'.format(self.basename, self.cell.status['modelType'], save))
+            
         pfout = open(fn, 'wb')
         mp = copy.deepcopy(self.cell.status)
         del mp['decorator']
         pickle.dump({'basename': self.basename,
                      'runInfo': self.runInfo.todict(),
                      'modelPars': mp,
-                     'Results': [{k:x.todict()} for k,x in self.results.iteritems()]}, pfout)
+                     'Results': [{k:x.todict()} for k,x in self.results.iteritems()]
+                    }, pfout)
                      
         pfout.close()
         return (self.runInfo.folder, self.basename) # return tuple to assemble name elsewhere

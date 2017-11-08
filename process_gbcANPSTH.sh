@@ -13,8 +13,8 @@
 
 
 # python model_run.py VCN_c08 --protocol runANPSTH --model XM13 -r 50 --sgcmodel cochlea -S MS -a 1.0 --noparallel &
-#python model_run.py VCN_c09 --protocol runANPSTH --model mGBC -r 50 --sgcmodel cochlea -S MS -a 1.5 --noparallel &
-python model_run.py VCN_c09h --protocol runANPSTH --model mGBC -r 50 --sgcmodel cochlea -S MS -a 1.5 &
+python model_run.py VCN_c09 --protocol runANPSTH --model mGBC -r 50 -d 40 -f 4000. --sgcmodel cochlea -S MS -a 1.5 --noparallel &
+#python model_run.py VCN_c09h --protocol runANPSTH --model mGBC -r 50 --sgcmodel cochlea -S MS -a 1.5 &
 #python model_run.py VCN_c09nd --protocol runANPSTH --model mGBC -r 50 --sgcmodel cochlea -S MS -a 1.5 --noparallel &
 # python model_run.py VCN_c17 --protocol runANPSTH --model mGBC -r 50 --sgcmodel cochlea -S MS -a 3.0 --noparallel &
 # python model_run.py VCN_c18 --protocol runANPSTH --model mGBC -r 50 --sgcmodel cochlea -S MS -a 3.0 --noparallel &

@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 __author__ = 'pbmanis'
 
 import sys
@@ -39,7 +41,6 @@ class Render():
         self.clist = []
 
         for si in self.hf.sections: # self.section_list[s]:
-            #print dir(si)
             self.hf.h('access %s' % si)
             sr = self.hf.h.SectionRef()
             n1 = self.hf.h.cas().name()
@@ -78,9 +79,9 @@ if __name__ == '__main__':
     post_cell = cells.Bushy.create(morphology=filename, decorator=Decorator,
             species='mouse',
             modelType='mGBC')
-    post_cell.set_distances()
+    #post_cell.distances()
     R = Render(post_cell)
-    g = R.render(['klt', 'gbar'], rendertype = 'surface')
+    g = R.render(['jsrna', 'gbar'], rendertype = 'cylinder')
 #    pg.show()
     pg.Qt.QtGui.QApplication.exec_()
     

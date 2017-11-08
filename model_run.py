@@ -99,7 +99,6 @@ import json
 import neuronvis.hoc_graphics as hoc_graphics
 from generate_run import GenerateRun
 import cellInitialization as cellInit
-
 from cnmodel import cells
 from cnmodel.util import sound
 from cnmodel.decorator import Decorator
@@ -136,7 +135,7 @@ class ModelRun():
         self.SGCmodelChoices = ['Zilany', 'cochlea']  # cochlea is python model of Zilany data, no matlab, JIT computation; Zilany model creates matlab instance for every run.
         self.cmmrModeChoices = ['CM', 'CD', 'REF']  # comodulated, codeviant, reference
         self.SRChoices = ['LS', 'MS', 'HS', 'fromcell']  # AN SR groups (assigned across all inputs)
-        self.protocolChoices = ['initIV', 'testIV', 'runIV', 'initAN', 'runANPSTH', 'runANIO', 'runANSingles', 'runANOmitOne']
+        self.protocolChoices = ['initIV', 'testIV', 'runIV', 'initAN', 'runANPSTH', 'runANIO', 'runANSingles', 'runANOmitOne', 'gifnoise']
         self.soundChoices = ['tonepip', 'noise', 'stationaryNoise', 'SAM', 'CMMR']
         self.speciesChoices = ['mouse', 'guineapig']
 
@@ -177,6 +176,14 @@ class ModelRun():
         self.Params['fmod'] = 20 # hz, modulation if SAM
         self.Params['dmod'] = 0 # percent if SAM
         self.Params['threshold'] = -35
+        # parameters for generating a noise signal to generating GIF model of cell
+        self.Params['gif_i0'] = 0.  # base current level
+        self.Params['gif_sigma'] = 0.5 # std of noise
+        self.Params['gif_fmod'] = 0.2 # mod in Hz
+        self.Params['gif_tau'] = 3.0 # tau, msec
+        self.Params['gif_dur'] = 10. # seconds
+
+        # general control parameters
         self.Params['plotFlag'] = False
         self.Params['auto_initialize'] = False
         self.Params['nWorkers'] = 4
@@ -426,6 +433,9 @@ class ModelRun():
                 print ('Run IV')
             self.iv_run()
 
+        if self.Params['runProtocol'] == 'gifnoise':
+            self.noise_run()
+
         # if showCell:
         #     print (dir(self.post_cell))
         #     self.render = HocViewer(self.post_cell.hr)
@@ -481,11 +491,11 @@ class ModelRun():
         isteps = self.R.IVResult['I']
         if self.Params['verbose']:
             for k, i in enumerate(self.R.IVResult['tauih'].keys()):
-                print( '   ih: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['tauih'][i]['tau'].value))
-                print('           dV : %f' % self.R.IVResult['tauih'][i]['a'].value)
+                print( '   ih: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['tauih'][i]['tau']))
+                print('           dV : %f' % self.R.IVResult['tauih'][i]['a'])
             for k, i in enumerate(self.R.IVResult['taus'].keys()):
-                print('   i: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['taus'][i]['tau'].value))
-                print( '          dV : %f' % (self.R.IVResult['taus'][i]['a'].value))
+                print('   i: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['taus'][i]['tau']))
+                print( '          dV : %f' % (self.R.IVResult['taus'][i]['a']))
         
         print('   Nspike, Ispike: ', self.R.IVResult['Nspike'], self.R.IVResult['Ispike'])
         print('   Rinss: ', self.R.IVResult['Rinss'])
@@ -494,9 +504,9 @@ class ModelRun():
             taum_mean = 0.
             tauih_mean = 0.
         else:
-            taum_mean = np.mean([self.R.IVResult['taus'][i]['tau'].value for k, i in
+            taum_mean = np.mean([self.R.IVResult['taus'][i]['tau'] for k, i in
                 enumerate(self.R.IVResult['taus'].keys())])
-            tauih_mean = np.mean([self.R.IVResult['tauih'][i]['tau'].value for k, i in
+            tauih_mean = np.mean([self.R.IVResult['tauih'][i]['tau'] for k, i in
                 enumerate(self.R.IVResult['tauih'].keys())])
         # construct dictionary for return results:
         self.IVSummary = {'basefile': self.R.basename,
@@ -509,6 +519,47 @@ class ModelRun():
 #        print 'model_run::run_model::iv_run write summary for file set = ', self.R.basename
         return self.IVSummary
     
+    def noise_run(self, par_map={}):
+        """
+        Main entry routine for running noise into cell current injection (for generating GIF models)
+        
+        Parameters
+        ----------
+        par_map : dict (default: empty)
+            A dictionary of paramters, passed to models that are run (not used).
+        
+        Returns
+        -------
+            summary : dict
+                A summary of the results, including the file, par_map, resting input resistance,
+                time constant, and spike times
+        
+        """
+        print ('noise_run: starting')
+        # parse i_test_range and pass it here
+        self.R = GenerateRun(self.post_cell, idnum=self.idnum, celltype=self.Params['cellType'],
+                             starttime=None,
+                             electrodeSection=self.electrodeSection,
+                             dendriticElectrodeSection=self.dendriticElectrodeSection,
+                             stimtype='gifnoise',
+                             params=self.Params,
+                             plotting = HAVE_PG and self.Params['plotFlag'])
+        ivinitfile = os.path.join(self.baseDirectory, self.cellID,
+                                self.initDirectory, self.Params['initIVStateFile'])
+        self.R.runInfo.folder = os.path.join('VCN_Cells', self.cellID, self.simDirectory, 'Noise')
+        if self.Params['verbose']:
+            print ('noise_run: calling do_run')
+        nworkers = self.Params['nWorkers']
+#        print(self.Params['Parallel'])
+        if self.Params['Parallel'] == False:
+            nworkers = 1
+#        print('Number of workers available on this machine: ', nworkers)
+        self.R.doRun(self.Params['hocfile'], parMap=par_map, save='monitor', restore_from_file=True, initfile=ivinitfile,
+            workers=nworkers)
+        if self.Params['verbose']:
+            print( '   noise_run: do_run completed')
+
+
     def check_for_an_statefile(self):
         print('State file name: ', self.Params['initANStateFile'])
         print('Cell: ', self.Params['cell'])
@@ -1246,15 +1297,16 @@ class ModelRun():
         if self.Params['inputPattern'] is not None:
             ID += '_%s' % self.Params['inputPattern']
         if stimInfo['soundtype'] in ['SAM', 'sam']:
-            ofile = os.path.join(outPath, 'AN_Result_' + ID + '_%s_N%03d_%03ddB_%06.1f_FM%03.1f_DM%03d_%2s' %
-                (tag, stimInfo['nReps'],
+            ofile = os.path.join(outPath, 'AN_Result_' + ID + '_%s_%s_N%03d_%03ddB_%06.1f_FM%03.1f_DM%03d_%2s' %
+                (tag, self.Params['modelType'], stimInfo['nReps'],
                 int(stimInfo['dB']), stimInfo['F0'],
                 stimInfo['fmod'], int(stimInfo['dmod']), stimInfo['SR']) + '.p')
                 
             f = open(ofile, 'w')
         else:
-            ofile = os.path.join(outPath, 'AN_Result_' + ID + '_%s_%s_N%03d_%03ddB_%06.1f_%2s' % (tag,
-                 self.Params['modelType'], stimInfo['nReps'],
+            ofile = os.path.join(outPath, 'AN_Result_' + ID + '_%s_%s_N%03d_%03ddB_%06.1f_%2s' % (
+                self.Params['modelType'], tag,
+                 stimInfo['nReps'],
                 int(stimInfo['dB']), stimInfo['F0'], stimInfo['SR']) + '.p')
             f = open(ofile, 'w')
         pickle.dump(result, f)
@@ -1322,10 +1374,15 @@ if __name__ == "__main__":
                    help='Define the stimulus type (default: tonepip)')
 
     # lowercase options are generally parameter settings:
-    parser.add_argument('-a', '--AMPAScale', type=float, default=1.0, dest='AMPAScale',
-        help='Set AMPAR conductance scale factor (default 1.0)')
+    parser.add_argument('-d', '--dB', type=float, default=30., dest='dB',
+        help='Set sound intensity dB SPL (default 30)')
+    parser.add_argument('-f', '--frequency', type=float, default=4000., dest='F0',
+        help='Set tone frequency, Hz (default 4000)')
     parser.add_argument('-r', '--reps', type=int, default=1, dest = 'nReps',
         help='# repetitions')
+    parser.add_argument('-S', '--SRType', type=str, default='HS', dest = 'SRType',
+        choices=model.SRChoices,
+        help=('Specify SR type (from: %s)' % model.SRChoices))
     parser.add_argument('--fmod', type=float, default=20, dest = 'fmod',
         help='Set SAM modulation frequency')
     parser.add_argument('--depth', type=float, default=100., dest = 'dmod',
@@ -1335,11 +1392,11 @@ if __name__ == "__main__":
     parser.add_argument('--cmmrmode', type=str, default='CMR', dest = 'CMMRmode',
         choices=model.cmmrModeChoices,
         help=('Specify mode (from: %s)' % model.cmmrModeChoices))
+
+    parser.add_argument('-a', '--AMPAScale', type=float, default=1.0, dest='AMPAScale',
+        help='Set AMPAR conductance scale factor (default 1.0)')
     parser.add_argument('--allmodes', action="store_true", default = False, dest = 'all_modes',
         help=('Force run of all modes (CMR, CMD, REF) for stimulus configuration.'))
-    parser.add_argument('-S', '--SRType', type=str, default='HS', dest = 'SRType',
-        choices=model.SRChoices,
-        help=('Specify SR type (from: %s)' % model.SRChoices))
     parser.add_argument('--sequence', type=str, default='[1,2,5]', dest = 'sequence',
             help=('Specify a sequence for the primary run parameters'))
     parser.add_argument('--plot',  action="store_true", default=False, dest = 'plotFlag',
@@ -1352,6 +1409,19 @@ if __name__ == "__main__":
             help='Force auto initialization if reading the state fails in initialization')
     parser.add_argument('--verbose', action="store_true", default=False, dest='verbose',
             help='Print out extra stuff for debugging')
+
+# Parser arguments for gif noise generator:
+# parameters for generating a noise signal to generating GIF model of cell
+    parser.add_argument('--gifi', type=float, default=0.0, dest='gif_i0',
+        help='Set Noise for GIF current level (default 0 nA)')
+    parser.add_argument('--gifsigma', type=float, default=0.2, dest='gif_sigma',
+        help='Set Noise for GIF variance (default 0.2 nA)')
+    parser.add_argument('--giffmod', type=float, default=0.2, dest='gif_fmod',
+        help='Set Noise for GIF fmod (default 0.2 Hz)')
+    parser.add_argument('--giftau', type=float, default=3.0, dest='gif_tau',
+        help='Set Noise for GIF tau (default 0.3 ms)')
+    parser.add_argument('--gifdur', type=float, default=10., dest='gif_dur',
+        help='Set Noise for GIF duration (default 10 s)')
 
     
     # parser.add_argument('-p', '--print', action="store_true", default=False, dest = 'print_info',
