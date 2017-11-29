@@ -20,7 +20,6 @@ class GIFFitter():
         self.set_timescales()
         self.Exp = Experiment('Experiment 1', self.dt)
         self.GIF = GIF(dt=self.dt)
-        
 
     def set_templates(self, aec=None, train=None, test=None):
         self.aec_template = aec
@@ -57,7 +56,7 @@ class GIFFitter():
     def set_timescales(self, ts=[1.0, 5.0, 30.0, 70.0, 100.0, 500.0]):
         self.timescales = ts
 
-    def fit(self, threshold=0., refract=1.0, beforeSpike=4.0):
+    def fit(self, threshold=0., refract=1.0, beforeSpike=5.0, current=None, ax=None):
 
         self.Exp.detectSpikes(threshold=threshold, ref=refract)
         # self.Exp.plotTrainingSet()
@@ -81,19 +80,31 @@ class GIFFitter():
         #self.Exp.trainingset_traces[0].setROI([[0,10000.0], [20000.0, 60000.0]])
 
         self.GIF.fit(self.Exp, DT_beforeSpike=beforeSpike)
-        print('GIF fitted')
         # self.GIF.save('./self.GIF.pck')
         # self.GIF_reloaded = GIF.load('./self.GIF.pck')
         # print dir(self.GIF_reloaded)
 
         self.GIF.printParameters()
-        #self.GIF.plotParameters()
+        self.GIF.plotParameters()
+        tsmax = np.max(self.Exp.trainingset_traces[0].getTime())/1000.
+        if current is None:
+            tb, I = generator(i0=0, dt=self.Exp.dt, sigma0=0.2, fmod=0.2, tau=3.0,
+             dur=tsmax)
+        else:
+            I = current
+        V0 = -65
+        (time, V, I_a, V_t, S) = self.GIF.simulate(I, V0)  # simulate response to current trace I with starting voltage V0
+        if ax is None:
+            plt.figure()
+            plt.suptitle('Fitted')
         
-        # tb, I = generator(i0=0, dt=self.Exp.dt, sigma0=0.2, fmod=0.2, tau=3.0, dur=20.0)
-        # V0 = -65
-        # (time, V, I_a, V_t, S) = self.GIF.simulate(I, V0)  # simulate response to current trace I with starting voltage V0
-        # plt.plot(time, V)
-        # plt.show()
+            plt.plot(time, V, 'r-', linewidth=0.75)
+            plt.plot(self.Exp.trainingset_traces[0].getTime(), self.Exp.trainingset_traces[0].V, 'k-', linewidth=0.5)
+            plt.show()
+        else:
+            ax.plot(time, V, 'r-', linewidth=0.75)
+            ax.plot(self.Exp.trainingset_traces[0].getTime(), self.Exp.trainingset_traces[0].V, 'k-', linewidth=0.5)
+            
         
     def predictor(self):
         print('GIF predictor')
@@ -103,7 +114,7 @@ class GIFFitter():
         self.Prediction.plotRaster(delta=1000.0)
 
 def test_original():
-    # templates first argument is the "channel" and teh second is the record
+    # templates first argument is the "channel" and the second is the record
     aec_template = 'Cell3_Ger1Elec_ch{0:d}_{1:4d}.ibw'
     train_template = 'Cell3_Ger1Training_ch{0:d}_{1:4d}.ibw'
     test_template = 'Cell3_Ger1Test_ch{0:d}_{1:4d}.ibw'
@@ -113,7 +124,18 @@ def test_original():
     GF.set_templates(aec=aec_template, train=train_template, test=test_template)
     GF.set_files_test(AECtrace=None, trainingset=1008, testsets = range(1009, 1018), filetype='Igor')
     
-    GF.fit()    
+    GF.fit(current=GF.Exp.trainingset_traces[0].I)
+       
 
 if __name__ == '__main__':
     test_original()
+    exit(1)
+    cell = 19
+    model = 'XM13'
+    cname = 'VCN_c%02d' % cell 
+    basepath = 'pbmanis:/Users/pbmanis/Desktop/Python/VCNModel'
+    GF = GIFFitter(path=os.path.join(basepath, cname, 'Simulations', '%s_%s_gifnoise.p' % (cname, model)))
+    #GF.set_files_test(AECtrace=None, trainingset=1, testsets = range(1009, 1018), filetype=None)
+    GF.fit()
+    
+    

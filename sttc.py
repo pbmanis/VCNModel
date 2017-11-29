@@ -2,15 +2,20 @@
 from __future__ import print_function
 
 """
-Spike time tiling calculation
+Spike time tiling calculation, from:
+Cutts, C.S. and Eglen, S.J., "Detecting Pairwise Correlations in Spike Trains: An Objective Comparison of Methods and Application to the Study of Retinal Waves", The Journal of Neuroscience, October 22, 2014, 34(43):14288-14303
+
+Implementation by P.B. Manis, Ph.D., UNC Chapel Hill
+November, 2017  
 
 """
+
 import numpy as np
 import matplotlib.pyplot as mpl
 
 class STTC():
-    def __init__(self):
-        pass
+    def __init__(self, seed=0):
+        np.random.seed(0)
         
         #self.set_spikes(time, rate, st1, st2, dt)
         
@@ -94,8 +99,11 @@ class STTC():
 #        print('len st1, st2: ', len(st1), len(st2), np.max(st1), np.max(st2))
         self.set_spikes(samplerate, st1, st2, tilewindow=tilewindow)
         sttc = self.calc_sttc()
-        print('nspikes 1, 2: ', st1.shape[0], st2.shape[0])
-        print('STTC: ', sttc)
+        print('# of spikes in spike train 1: {0:d}, in spike train 2: {1:d} '.format(st1.shape[0], st2.shape[0]))
+        print('STTC value: {0:.3f} '.format(sttc))
+        self.plot_sttc(st1, st2)
+
+    def plot_sttc(self, st1, st2):
         mpl.figure()
         st1x = np.repeat(st1, 3)
         st1x[2::3] = np.NaN
@@ -123,7 +131,7 @@ class STTC():
     
 if __name__ == '__main__':
 
-    S = STTC()
+    S = STTC(seed=0)
     S.tests(distribution='exp', pdelete=0.3, independent=False, dither=2.0,
         tilewindow=2.0)
     

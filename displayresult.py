@@ -11,7 +11,6 @@ AN_Result_VCN_c09_Syn006_N001_030dB_16000.0_MS.p
 
 
 """
-import sys
 import os
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -48,10 +47,10 @@ class DisplayResult():
     def file_setup(self):
         if self.Params['modetype'] in ['multi']:
             # multiple cells
-            self.Params['patterns'] = ['c%02d' % int(p) for p in self.Params['cell']]
+            self.Params['patterns'] = ['c%s' % p for p in self.Params['cell']]
             self.findfiles = True
         else:
-            self.Params['patterns'] = ['c%02d' % int(p) for p in self.Params['cell']] #i for i in [8, 9, 17, 18, 19, 20, 21, 22]]
+            self.Params['patterns'] = ['c%s' % p for p in self.Params['cell']] #i for i in [8, 9, 17, 18, 19, 20, 21, 22]]
             self.findfiles = False
 
         print self.Params['patterns']
@@ -62,7 +61,7 @@ class DisplayResult():
                 self.bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/AN'.format(p)
             
             elif self.Params['runtype']in ['AN'] and self.Params['modetype'] in ['IO']:
-                self.fn[p] = 'AN_Result_VCN_{0:s}_{1:s}_SynIO{2:03d}_N001_030dB_16000.0_MS.p'.format(p, self.Params['modeltype'], sself.Params['synno'])
+                self.fn[p] = 'AN_Result_VCN_{0:s}_{1:s}_SynIO{2:03d}_N001_030dB_16000.0_MS.p'.format(p, self.Params['modeltype'], self.Params['synno'])
                 self.bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/AN'.format(p)
         
             elif self.Params['runtype'] in ['IV']:
@@ -121,7 +120,7 @@ class DisplayResult():
         #fig.tight_layout()
         # plt.show()
         # exit()
-
+        d = {}
         for p in self.Params['patterns']:
             h = open(os.path.join(self.bp[p], self.fn[p]))
             d[p] = pickle.load(h)
@@ -131,7 +130,6 @@ class DisplayResult():
         #print 'data keys: ', d.keys()
         #print len(d['time'])
 
-        dt = 0.1
         for j, pattern in enumerate(self.Params['patterns']):
             for i in d[pattern]['somaVoltage'].keys():
                 v = d[pattern]['somaVoltage'][i]
@@ -144,7 +142,7 @@ class DisplayResult():
 
             for i, st in enumerate(d[pattern]['spikeTimes'].keys()):
                 ax[j][0].plot(d[pattern]['spikeTimes'][st]/1000., i*np.ones(len( d[pattern]['spikeTimes'][st])), 'o', markersize=2.5, color='b')
-                inputs = len(d[pattern]['inputSpikeTimes'][st])
+                i#nputs = len(d[pattern]['inputSpikeTimes'][st])
                 # for j in range(inputs):
                 #     t = (d['ref']['inputSpikeTimes'][st][j])/1000.
                 #     y = (i+0.1+j*0.05)*np.ones(len(t))
@@ -156,38 +154,34 @@ class DisplayResult():
 
     def show_SAC(self):
         sac = SAC.SAC()
+        f, ax = plt.figure()
+        d = {}
         for p in self.Params['patterns']:
             h = open(os.path.join(self.bp[p], self.fn[p]))
             d[p] = pickle.load(h)
             h.close()
 
-        fmod = d[patterns[0]]['stimInfo']['fmod']  # modulation frequency
-        sacht = 2.5
+        fmod = d['patterns'[0]]['stimInfo']['fmod']  # modulation frequency
+        #sacht = 2.5
         sacmax = 100
-        phaseht = 15
+        #phaseht = 15
 
         f, ax2 = plt.subplots(1)
-        xf = []
-        dt = 0.1
         u = 2.0*np.pi/(1000.0/fmod)
         for j, pattern in enumerate(self.Params['patterns']):
             X = []
-            R = {}
             pars = {'twin': 500., 'binw': 1., 'ntestrep': 20, 
                     'baseper': 1.0, 'stimdur': 800., 'delay': 100.,
                     'dur': 1000., 'ddur': 200.}
             pars_x =     pars = {'twin': 500., 'binw': 1., 'ntestrep': 20, 
                     'baseper': 1.0, 'stimdur': 800., 'delay': 100.,
                     'dur': 1000., 'ddur': 200.}
-            tsynch = np.arange(0., 1000., dt)
             x_spl = []
             y_spl = []
             Nspikes = 0
             for i, st in enumerate(d[pattern]['spikeTimes'].keys()):
 
                 X.append(d[pattern]['spikeTimes'][st])
-                xw = np.zeros(tsynch.shape[0])
-        #        print [int(xx/dt) for xx in X[-1]]
                 Nspikes += np.shape(X[-1])[0]
                 # calculate vector strength as well.
                 x_spl.append(np.cos(np.array(X[-1])*u))
@@ -229,7 +223,6 @@ class DisplayResult():
                 h = open(os.path.join(self.bp[p], self.fn[p]))
                 d[p] = pickle.load(h)
                 h.close()
-            dt = 0.1
             print ('pattern: ',self.Params['patterns'])
             for j, pattern in enumerate(self.Params['patterns']):
                 for k in range(len(d[pattern]['Results'])):
@@ -244,13 +237,14 @@ class DisplayResult():
 
     def show_gifnoise(self):
             fig, ax = plt.subplots(2,1)
-            a = ax.ravel()
+            plt.suptitle('gifnoise compare')
+            dt_beforespike = 3.
+            ax = ax.ravel()
             d = {}
             for p in self.Params['patterns']:
                 h = open(os.path.join(self.bp[p], self.fn[p]))
                 d[p] = pickle.load(h)
                 h.close()
-            dt = 0.1
             for j, pattern in enumerate(self.Params['patterns']):
                 for k in range(len(d[pattern]['Results'])):
                     k0 = d[pattern]['Results'][k]
@@ -260,18 +254,32 @@ class DisplayResult():
                     inj = data['postsynapticI']
                     dt = data['time'][1]-data['time'][0]
                     GF = GFit.GIFFitter(path=self.bp[pattern], dt=dt)
-                    GF.GIF.DV=1.0
-                    #GF.set_templates(aec=None, train=train_template, test=None)
+                    GF.GIF.gl      = 100.        # nS, leak conductance
+                    GF.GIF.C       = 20.     # nF, capacitance
+                    GF.GIF.El      = -65.0            # mV, reversal potential
+
+                    GF.GIF.Vr      = -55.0            # mV, voltage reset
+                    GF.GIF.Tref    = 0.2             # ms, absolute refractory period
+
+                    GF.GIF.Vt_star = -45.0            # mV, steady state voltage threshold VT*
+                    GF.GIF.DV      = 10.             # mV, threshold sharpness
+                  #GF.set_templates(aec=None, train=train_template, test=None)
                     GF.Exp.addTrainingSetTrace(v, 1e-3, inj, 1e-9, np.max(data['time']), 'Array')
                     #GF.set_files_test(AECtrace=None, trainingset=1008, testsets = range(1009, 1018), filetype='Igor')
-                   # GF.set_timescales(ts=[0.2, 1.0, 5.0, 12.0, 50.0, 100.0])
-                    GF.fit(threshold=self.Params['threshold'])
+                    #GF.set_timescales(ts=[0.1, 0.5, 2., 5.0, 10.0, 20.0])
+                    print('Starting Parameters: ')
+                    GF.GIF.printParameters()
+                    GF.fit(threshold=self.Params['threshold'],
+                            ax=ax[0], current=inj, beforeSpike=dt_beforespike)
+                    print('Final Parameters: ')
+                    GF.GIF.printParameters()
                     print ('v: ', v[0])
+                    print('len inj, dt: ', len(inj), GF.dt, len(inj)*GF.dt)
                     (time, Vs, I_a, V_t, S) = GF.GIF.simulate(inj, v[0])  # simulate response to current trace I with starting voltage V0
-                    a[0].plot(time, Vs, 'r-', linewidth=0.75)
-                    a[0].plot(data['time'], v, 'b-', linewidth=0.5)
-                    a[1].plot(data['time'], inj, 'k-', linewidth=0.5)
-                    GF.GIF.plotParameters()
+                    # a[0].plot(time, Vs, 'r-', linewidth=0.75)
+    #                 a[0].plot(data['time'], v, 'b-', linewidth=0.5)
+                    ax[1].plot(data['time'], inj, 'k-', linewidth=0.5)
+                    #GF.GIF.plotParameters()
             plt.show()
             exit(0)
 
@@ -280,7 +288,7 @@ if __name__ == '__main__':
     
     DR = DisplayResult()
     parser = argparse.ArgumentParser(description='Display model results')
-    parser.add_argument(dest='cell', action='store', nargs='+', type=int,
+    parser.add_argument(dest='cell', action='store', nargs='+', type=str,
                    default=None,
                    help='Select the cell(s) (no default)')
     parser.add_argument('-p', '--protocol', dest='runtype', action='store',
