@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from __future__ import print_function
 
 __author__ = 'pbmanis'
@@ -129,6 +130,7 @@ from collections import OrderedDict
 import pprint
 import json
 import numpy as np
+import timeit
 
 # from neuronvis.hoc_viewer import HocViewer
 
@@ -216,6 +218,7 @@ class ModelRun():
         self.Params['nWorkers'] = 4
         self.Params['Parallel'] = True
         self.Params['verbose'] = False
+        self.Params['save_all_sections'] = False
 
         self.baseDirectory = 'VCN_Cells'
         self.morphDirectory = 'Morphology'
@@ -487,6 +490,7 @@ class ModelRun():
         
         """
         print ('iv_run: starting')
+        start_time = timeit.default_timer()
         if self.Params['verbose']:
             print ('iv_run: calling generateRun', self.post_cell.i_test_range)
         # parse i_test_range and pass it here
@@ -500,7 +504,8 @@ class ModelRun():
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=iinjValues,
                              plotting = HAVE_PG and self.Params['plotFlag'],
-                             params=self.Params)
+                             params=self.Params,
+                             )
         ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                                 self.initDirectory, self.Params['initIVStateFile'])
         self.R.runInfo.folder = os.path.join('VCN_Cells', self.cellID, self.simDirectory, 'IV')
@@ -515,6 +520,8 @@ class ModelRun():
             workers=nworkers)
         if self.Params['verbose']:
             print( '   iv_run: do_run completed')
+        elapsed = timeit.default_timer() - start_time
+        print ('iv_rin:: Elapsed time: {:f} seconds'.format(elapsed))
         isteps = self.R.IVResult['I']
         if self.Params['verbose']:
             for k, i in enumerate(self.R.IVResult['tauih'].keys()):
@@ -694,10 +701,11 @@ class ModelRun():
         dendriteVoltage = {}
         celltime = []
         stimWaveform = {}
+        allDendriteVoltages = {}  # Saving of all dendrite voltages is controlled by --saveall flag
         self.setup_time = time.time() - self.start_time
         self.nrn_run_time = 0.0
         self.an_setup_time = 0.
-        
+
         nWorkers = self.Params['nWorkers']
         TASKS = [s for s in range(nReps)]
         tresults = [None]*len(TASKS)
@@ -721,6 +729,8 @@ class ModelRun():
                 somaVoltage[N] = np.array(tresults[j]['Vsoma'])
                 dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
                 stimWaveform[N] = np.array(tresults[j]['stim']) # save the stimulus
+                if self.Params['save_all_sections']:  # just save soma sections        for section in list(g):
+                    allDendriteVoltages[N] = tresults[j]['allsecVec']
 
         else:
             # Non parallelized version (with --noparallel flag - useful for debugging):
@@ -738,6 +748,8 @@ class ModelRun():
                 somaVoltage[N] = np.array(tresults[j]['Vsoma']) # np.array(self.Vsoma)
                 dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
                 stimWaveform[N] = np.array(tresults[j]['stim']) # save the stimulus
+                if self.Params['save_all_sections']:  # save data for all sections
+                    allDendriteVoltages[N] = tresults[j]['allsecVec']
         
         total_elapsed_time = time.time() - self.start_time
 #        total_run_time = time.time() - run_time
@@ -746,10 +758,15 @@ class ModelRun():
         print("Total AN Calculation Time = {:8.2f} min ({:8.0f}s)".format(self.an_setup_time/60., self.an_setup_time))
         print("Total Neuron Run Time = %{:8.2f} min ({:8.0f}s)".format(self.nrn_run_time/60., self.nrn_run_time))
         
+        if self.Params['save_all_sections']: 
+            for n in range(len(allDendriteVoltages)):
+                for s in allDendriteVoltages[n].keys():
+                    allDendriteVoltages[n][s] = np.array(allDendriteVoltages[n][s])
+#        print(dir(allDendriteVoltages[n][s]))
         result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes,
             'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'stimWaveform': stimWaveform,
-            'time': np.array(celltime[0])}
-        
+            'time': np.array(celltime[0]), 'allDendriteVoltages': allDendriteVoltages}
+
         self.analysis_filewriter(self.Params['cell'], result, tag='delays')
         if self.Params['plotFlag']:
             self.plot_an(np.array(celltime[0]), result['somaVoltage'], result['stimInfo'],
@@ -1039,6 +1056,12 @@ class ModelRun():
         
         an_setup_time += (time.time() - an0_time)
         nrn_start = time.time()
+        if self.Params['save_all_sections']:  # just save soma sections        for section in list(g):
+            g = hf.sec_groups[group]
+            sec = hf.get_section(section)
+            self.allsecVec[sec.name()] = hf.h.Vector()
+            self.allsecVec[sec.name()].record(sec(0.5)._ref_v, sec=sec)  # recording of voltage all set up here
+            
         Vsoma = hf.h.Vector()
         Vdend = hf.h.Vector()
         rtime = hf.h.Vector()
@@ -1058,7 +1081,14 @@ class ModelRun():
         nrn_run_time += (time.time() - nrn_start)
         if dendsite == None:
             Vdend = np.zeros_like(Vsoma)
-        anresult = {'Vsoma': np.array(Vsoma), 'Vdend': np.array(Vdend), 'time': np.array(rtime), 'ANSpikeTimes': ANSpikeTimes, 'stim': stim}
+        anresult = {'Vsoma': np.array(Vsoma), 'Vdend': np.array(Vdend), 'time': np.array(rtime),
+                'ANSpikeTimes': ANSpikeTimes, 'stim': stim}
+        
+        print ('all sec vecs: ', self.allsecVec.keys())
+        print (' flag for all sections: ', self.Params['save_all_sections'])
+        if self.Params['save_all_sections']: 
+            anresult['allsecv'] = self.allsecVec
+            
         return anresult
 
 
@@ -1236,7 +1266,14 @@ class ModelRun():
             Vdend.record(dendsite(0.5)._ref_v, sec=dendsite)
         else:
             dendsite = None
-            
+        if self.Params['save_all_sections']:
+            self.allsecVec = OrderedDict()
+            for group in post_cell.hr.sec_groups.keys(): # get morphological components
+                g = post_cell.hr.sec_groups[group]
+                for section in list(g):
+                    sec = post_cell.hr.get_section(section)
+                    self.allsecVec[sec.name()] = post_cell.hr.h.Vector()
+                    self.allsecVec[sec.name()].record(sec(0.5)._ref_v, sec=sec)  # recording of voltage all set up here            
         Vsoma.record(post_cell.soma(0.5)._ref_v, sec=post_cell.soma)
         rtime.record(post_cell.hr.h._ref_t)
         post_cell.hr.h.finitialize()
@@ -1248,6 +1285,9 @@ class ModelRun():
         if dendsite == None:
             Vdend = np.zeros_like(Vsoma)
         anresult = {'Vsoma': np.array(Vsoma), 'Vdend': np.array(Vdend), 'time': np.array(rtime), 'ANSpikeTimes': ANSpikeTimes, 'stim': stim}
+        if self.Params['save_all_sections']:
+            anresult['allsecVec'] = self.allsecVec
+        
         return anresult
 
     def clean_spiketimes(self, spikeTimes, mindT=0.7):
@@ -1295,7 +1335,7 @@ class ModelRun():
             layout.plot(0, celltime, somaVoltage[N], pen=pg.mkPen(pg.intColor(N, nReps)))
             layout.plot(0, [np.min(celltime), np.max(celltime)], [threshold, threshold],
                  pen=pg.mkPen((0.5, 0.5, 0.5), width=0.5))
-            dvdt = np.diff(somaVoltage[N])
+            dvdt = np.diff(somaVoltage[N])/np.diff(celltime)  # show in mV/ms
             layout.plot(1, celltime[:-1], dvdt, pen=pg.mkPen(pg.intColor(N, nReps)))
             layout.getPlot(0).setXLink(layout.getPlot(1))
         if dendVoltage is not None:
@@ -1438,6 +1478,8 @@ if __name__ == "__main__":
             help='Use parallel or not (default: True)')
     parser.add_argument('--auto', action="store_true", default=False, dest='auto_initialize',
             help='Force auto initialization if reading the state fails in initialization')
+    parser.add_argument('--saveall', action="store_true", default=False, dest='save_all_sections',
+            help='Save data from all sections in model')
     parser.add_argument('--verbose', action="store_true", default=False, dest='verbose',
             help='Print out extra stuff for debugging')
 
