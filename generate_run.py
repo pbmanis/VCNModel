@@ -55,9 +55,10 @@ class GenerateRun():
         self.cell = cell
         self.hf = cell.hr # get the reader structure and the hoc pointer object locally
         self.basename = 'basenamenotset'
+        self.saveAllSections = params['save_all_sections']
+        print(' save all sections: ', self.saveAllSections)
         self.idnum = idnum
         self.startTime = starttime
-        self.saveAllSections = saveAllSections
         # use the Params class to hold program run information and states
         # runInfo holds information that is specific the the run - stimuli, conditions, etc
         # DO NOT add .p to filename...
@@ -143,9 +144,9 @@ class GenerateRun():
                         self.runInfo.spikeTimeList[int(row[0])] = [float(row[1]) * 1000.]
                 self.runInfo.tstop = maxt
 
-        self.monitor = {} # standard monitoring
-        self.allsecVec = {} # all section monitoring
-        self.mons = {}
+        self.monitor = OrderedDict() # standard monitoring
+        self.allsecVec = OrderedDict() # all section monitoring
+        self.mons = OrderedDict()
         self.filename=None
 
         if verbose:
@@ -203,14 +204,14 @@ class GenerateRun():
                 for section in list(g):
                     sec = self.hf.get_section(section)
                     self.allsecVec[sec.name()] = self.hf.h.Vector()
-                    self.allsecVec[sec.name()].record(sec(0.5)._ref_v, sec=sec)
+                    self.allsecVec[sec.name()].record(sec(0.5)._ref_v, sec=sec)  # recording of voltage all set up here
 
         for var in ['time', 'postsynapticV', 'dendriteV', 'postsynapticI', 'i_stim0', 'v_stim0']: # get standard stuff
             self.monitor[var] = self.hf.h.Vector()
 
         self.runInfo.celsius = self.cell.status['temperature']
         self.hf.h.celsius = self.runInfo.celsius
-
+        
         self.clist = {}  #  color list
 
         electrodeSection = list(self.hf.sec_groups[self.runInfo.electrodeSection])[0]
@@ -243,6 +244,7 @@ class GenerateRun():
             self.monitor['dendriteV'].record(self.dendriticElectrodeSite(0.5)._ref_v, sec=self.dendriticElectrodeSite)
             self.monitor['postsynapticI'].record(self.vcPost._ref_i, sec=self.electrode_site)
             self.mons = ['postsynapticI', 'v_stim0']
+            
         elif self.runInfo.postMode in ['cc', 'iclamp']:
             stim = {}
             stim['NP'] = self.runInfo.nStim
@@ -375,7 +377,8 @@ class GenerateRun():
             if self.plotting:
                 self.plotFits(1, self.IVResult['taufit'], c='r')
                 self.plotFits(1, self.IVResult['ihfit'], c='b')
-                self.cplts.show()
+                #print (dir(self.ivplots))
+                self.ivplts.show()
         if self.runInfo.postMode in ['gifnoise']:
             self.IVResult = None
             if save == 'monitor':
@@ -438,7 +441,7 @@ class GenerateRun():
         for k in self.monitor.keys():
             np_monitor[k] = np.array(self.monitor[k])
 
-        np_allsecVec = {}
+        np_allsecVec = OrderedDict()
         for k in self.allsecVec.keys():
             np_allsecVec[k] = np.array(self.allsecVec[k])
         self.runInfo.clist = self.clist
