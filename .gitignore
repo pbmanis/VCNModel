@@ -12,6 +12,7 @@ __pycache__/
 *.png
 *.bak
 *.ppt
+
 *.pptx
 *.svg
 *.ai
