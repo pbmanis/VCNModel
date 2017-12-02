@@ -6,6 +6,7 @@ Basic run will do a test against the datasets provided at the original site.
 
 """
 import os
+import pickle
 from gif.Experiment import *
 from gif.AEC_Badel import *
 from gif.GIF import *
@@ -59,11 +60,10 @@ class GIFFitter():
     def fit(self, threshold=0., refract=1.0, beforeSpike=5.0, current=None, ax=None):
 
         self.Exp.detectSpikes(threshold=threshold, ref=refract)
-        # self.Exp.plotTrainingSet()
-        # self.Exp.plotTestSet()
+        self.Exp.plotTrainingSet()
+#        self.Exp.plotTestSet()
 
         self.GIF.Tref = refract    # refractory period
-
         print('Setting up GIF')
         self.GIF.eta = Filter_Rect_LogSpaced()
         self.GIF.eta.setMetaParameters(length=5000.0, binsize_lb=2.0, binsize_ub=1000.0, slope=4.5)
@@ -87,6 +87,7 @@ class GIFFitter():
         self.GIF.printParameters()
         self.GIF.plotParameters()
         tsmax = np.max(self.Exp.trainingset_traces[0].getTime())/1000.
+        print('TSMAX: ', tsmax)
         if current is None:
             tb, I = generator(i0=0, dt=self.Exp.dt, sigma0=0.2, fmod=0.2, tau=3.0,
              dur=tsmax)
@@ -94,6 +95,7 @@ class GIFFitter():
             I = current
         V0 = -65
         (time, V, I_a, V_t, S) = self.GIF.simulate(I, V0)  # simulate response to current trace I with starting voltage V0
+        self.model_traces ={'time': time, 'V': V, 'I_a': I_a, 'I_stim': I, 'V_t': V_t}
         if ax is None:
             plt.figure()
             plt.suptitle('Fitted')
@@ -104,8 +106,13 @@ class GIFFitter():
         else:
             ax.plot(time, V, 'r-', linewidth=0.75)
             ax.plot(self.Exp.trainingset_traces[0].getTime(), self.Exp.trainingset_traces[0].V, 'k-', linewidth=0.5)
-            
         
+    def write_result(self, fn):
+        h = open(fn, 'wb')
+        import pickle
+        pickle.dump(self.model_traces, h)
+        h.close()
+            
     def predictor(self):
         print('GIF predictor')
         self.Prediction = self.Exp.compareSpikes(self.GIF, nb_rep=500)
@@ -128,14 +135,31 @@ def test_original():
        
 
 if __name__ == '__main__':
-    test_original()
-    exit(1)
+#    test_original()
+#    exit(1)
     cell = 19
-    model = 'XM13'
+    model = 'mGBC'
     cname = 'VCN_c%02d' % cell 
-    basepath = 'pbmanis:/Users/pbmanis/Desktop/Python/VCNModel'
-    GF = GIFFitter(path=os.path.join(basepath, cname, 'Simulations', '%s_%s_gifnoise.p' % (cname, model)))
-    #GF.set_files_test(AECtrace=None, trainingset=1, testsets = range(1009, 1018), filetype=None)
-    GF.fit()
+    basepath = '/Users/pbmanis/Desktop/Python/VCNModel'
+    cellpath = 'VCN_Cells/%s/Simulations/Noise/' % cname
+        
+    testset = os.path.join(basepath, cellpath, '%s_%s_gifnoise.p' % (cname, model))
+    h = open(testset, 'rb')
+    d = pickle.load(h)
+#    print d['Results'][0][0].keys()
+    tr = d['Results'][0][0]['monitor']
+    V = np.array(tr['postsynapticV'])
+#    print 'V: ', V
+    T = np.array(tr['time'])
+#    print 'Tmax: ', np.max(T)
+    I = np.array(d['Results'][0][0]['stim'][1])
+#    print 'I: ', I
+    V_units = 1e-3
+    I_units = 1e-9
+#    exit(1)
+    GF = GIFFitter(path=testset, dt=0.025)
+    GF.Exp.addTrainingSetTrace(V, V_units, I, I_units, np.max(T)-0.025*200., FILETYPE='Array')#GF.set_files_test(AECtrace=None, trainingset=1, testsets = range(1009, 1018), filetype=None)
+    GF.fit(threshold=-20., current=I)
+    GF.write_result('GFIT_%s_%s_gifnoise.p' % (cname, model))
     
     
