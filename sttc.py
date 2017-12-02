@@ -6,7 +6,7 @@ Spike time tiling calculation, from:
 Cutts, C.S. and Eglen, S.J., "Detecting Pairwise Correlations in Spike Trains: An Objective Comparison of Methods and Application to the Study of Retinal Waves", The Journal of Neuroscience, October 22, 2014, 34(43):14288-14303
 
 Implementation by P.B. Manis, Ph.D., UNC Chapel Hill
-November, 2017  
+November, 2017
 
 """
 
@@ -18,7 +18,7 @@ class STTC():
         np.random.seed(0)
         
         #self.set_spikes(time, rate, st1, st2, dt)
-        
+    
     def set_spikes(self, rate, st1, st2, tilewindow):
         self.tilewindow = tilewindow
         self.sample_rate = rate
@@ -46,7 +46,7 @@ class STTC():
         self.tatiles = tatiles
         self.tbtiles = tbtiles
         return sttc
-
+    
     def tiletimes(self, time, rate, st):
         """
         Compute the total time tiled in spike train st
@@ -69,7 +69,7 @@ class STTC():
         ist = [int(sti/self.sample_rate) for sti in st]
         p = np.sum(tile[ist])/len(st)
         return p
-
+    
     
     def tests(self, distribution='exp', pdelete=0., independent=True, dither=0., tilewindow=1.0):
         
@@ -92,7 +92,7 @@ class STTC():
             st2 = np.cumsum(st1)
         else:
             st2 = st1
-        st2 = np.random.choice(st2, 
+        st2 = np.random.choice(st2,
                     int((1.0-pdelete)*st1.shape[0]), replace=False)
         if dither > 0:
             st2 = st2 + np.random.randn(len(st2))*dither
@@ -102,7 +102,7 @@ class STTC():
         print('# of spikes in spike train 1: {0:d}, in spike train 2: {1:d} '.format(st1.shape[0], st2.shape[0]))
         print('STTC value: {0:.3f} '.format(sttc))
         self.plot_sttc(st1, st2)
-
+    
     def plot_sttc(self, st1, st2):
         mpl.figure()
         st1x = np.repeat(st1, 3)
@@ -128,16 +128,16 @@ class STTC():
         mpl.ylim([0., 2.])
         mpl.show()
     
-    
-if __name__ == '__main__':
 
+if __name__ == '__main__':
+    
     S = STTC(seed=0)
     S.tests(distribution='exp', pdelete=0.3, independent=False, dither=2.0,
         tilewindow=2.0)
     
     
-    
         
         
     
+        
         
