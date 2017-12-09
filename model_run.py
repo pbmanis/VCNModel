@@ -211,6 +211,7 @@ class ModelRun():
         self.Params['gif_fmod'] = 0.2 # mod in Hz
         self.Params['gif_tau'] = 3.0 # tau, msec
         self.Params['gif_dur'] = 10. # seconds
+        self.Params['gif_skew'] = 0. # a in scipy.skew 
 
         # general control parameters
         self.Params['plotFlag'] = False
@@ -219,11 +220,12 @@ class ModelRun():
         self.Params['Parallel'] = True
         self.Params['verbose'] = False
         self.Params['save_all_sections'] = False
-
+        self.Params['commandline'] = ''  # store command line on run
         self.baseDirectory = 'VCN_Cells'
         self.morphDirectory = 'Morphology'
         self.initDirectory = 'Initialization'
         self.simDirectory = 'Simulations'
+        
 
     def print_modelsetup(self):
         """
@@ -1418,7 +1420,8 @@ if __name__ == "__main__":
     model = ModelRun(sys.argv[1:])  # create instance of the model
     pp = pprint.PrettyPrinter(indent=4, width=60)
     
-    parser = argparse.ArgumentParser(description='Simulate activity in a reconstructed model cell')
+    parser = argparse.ArgumentParser(description='Simulate activity in a reconstructed model cell',
+        argument_default=argparse.SUPPRESS)
     parser.add_argument(dest='cell', action='store',
                    default=None,
                    help='Select the cell (no default)')
@@ -1428,7 +1431,7 @@ if __name__ == "__main__":
     parser.add_argument('--model', '-M', dest='modelType', action='store',
                    default='XM13', choices=model.modelChoices,
                    help='Define the model type (default: XM13)')
-    parser.add_argument('--sgcmodel', dest='SGCmodelType', action='store',
+    parser.add_argument('--sgcmodel', type=str, dest='SGCmodelType', action='store',
                    default='Zilany', choices=model.SGCmodelChoices,
                    help='Define the SGC model type (default: Zilany)')
     parser.add_argument('--protocol', '-P', dest='runProtocol', action='store',
@@ -1437,13 +1440,15 @@ if __name__ == "__main__":
     parser.add_argument('--hoc', '-H', dest='hocfile', action='store',
                   default=None,
                   help='hoc file to use for simulation (default is the selected "cell".hoc)')
-    parser.add_argument('--inputpattern', dest='inputPattern', action='store',
+    parser.add_argument('--inputpattern', '-i', type=str, dest='inputPattern', action='store',
                   default=None,
                   help='cell input pattern to use (substitute) from cell_config.py')
-    parser.add_argument('--stimulus', dest='soundtype', action='store',
+    parser.add_argument('--stimulus', '-s', type=str, dest='soundtype', action='store',
                    default='tonepip', choices=model.soundChoices,
                    help='Define the stimulus type (default: tonepip)')
-
+    parser.add_argument('--check', '-/', action='store_true', default=False, dest='checkcommand',
+                   help='Only check command line for valid input; do not run model')
+                   
     # lowercase options are generally parameter settings:
     parser.add_argument('-d', '--dB', type=float, default=30., dest='dB',
         help='Set sound intensity dB SPL (default 30)')
@@ -1495,6 +1500,9 @@ if __name__ == "__main__":
         help='Set Noise for GIF tau (default 0.3 ms)')
     parser.add_argument('--gifdur', type=float, default=10., dest='gif_dur',
         help='Set Noise for GIF duration (default 10 s)')
+    parser.add_argument('--gifskew', type=float, default=0., dest='gif_skew',
+        help='Set Noise for GIF to have skewed distribution (0 = normal)')
+    
 
     
     # parser.add_argument('-p', '--print', action="store_true", default=False, dest = 'print_info',
@@ -1511,7 +1519,16 @@ if __name__ == "__main__":
     print(model.Params['cell'])
     if model.Params['hocfile'] == None: # just use the matching hoc file
         model.Params['hocfile'] = model.Params['cell'] + '.hoc'
+    # allargs = ''
+    # parsedargs, unparsed = parser.parse_known_args()
+    # for parg in vars(parsedargs):
+    #     try:
+    #         allargs = allargs + ('{0:s}: {1:s}\n'.format(parg, getattr(parsedargs, parg)))
+    #     except:
+    #         pass
+    model.Params['commandline'] = ' '.join(sys.argv)
     print(json.dumps(model.Params, indent=4))  # pprint doesn't work well with ordered dicts
+    print(model.Params['commandline'])
 
-    
-    model.run_model() # then run the model
+    if not model.Params['checkcommand']:
+        model.run_model() # then run the model

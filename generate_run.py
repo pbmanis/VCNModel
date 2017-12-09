@@ -89,6 +89,7 @@ class GenerateRun():
                               gif_fmod = params['gif_fmod'],
                               gif_tau = params['gif_tau'],
                               gif_dur = params['gif_dur'],
+                              gif_skew = params['gif_skew'],
                               runTime=time.asctime(),  # store date and time of run
                               inFile=None,
                               # 'ANFiles/AN10000Hz.txt', # if this is not None, then we will use these spike times...
@@ -277,7 +278,8 @@ class GenerateRun():
                 sigma0=self.runInfo.gif_sigma,
                 fmod=self.runInfo.gif_fmod,
                 tau=self.runInfo.gif_tau,
-                dur=self.runInfo.gif_dur,)
+                dur=self.runInfo.gif_dur,
+                skew=self.runInfo.gif_skew,)
             maxt = 1000.*self.runInfo.gif_dur
             self.icPost = self.hf.h.iStim(0.5, sec=self.electrode_site)
             self.icPost.delay = 2

@@ -2,11 +2,12 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats
 
 dt = 0.05  # msec
 
 
-def generator(i0=0, dt=0.05, sigma0=2.0, fmod=0.2, tau=3.0, dur=10.0):
+def generator(i0=0, dt=0.05, sigma0=2.0, fmod=0.2, tau=3.0, dur=10.0, skew=0.):
     
     # compute all times
     tb = np.linspace(0, dur*1000., int(dur*1000./dt))
@@ -14,8 +15,13 @@ def generator(i0=0, dt=0.05, sigma0=2.0, fmod=0.2, tau=3.0, dur=10.0):
     # compute how    sigma varies over time:
     sigma = sigma0*(1.0+0.5*(1-np.cos(2.0*np.pi*(fmod/1000)*tb)))
     
-    nrand = np.random.rand(tb.shape[0])-0.5
+    if skew == 0.0:
+        nrand = np.random.rand(tb.shape[0])-0.5
+    else:
+        rv = scipy.stats.skewnorm(skew)
+        nrand = scipy.stats.skewnorm.rvs(skew, size=int(tb.shape[0])) - 0.5
     sig = nrand*np.sqrt(2.0*(sigma*sigma)*dt/tau)
+        
     It[0] = i0
     # brute now:
     for j in range(len(tb)-1):
@@ -24,7 +30,7 @@ def generator(i0=0, dt=0.05, sigma0=2.0, fmod=0.2, tau=3.0, dur=10.0):
     return(tb, It)
 
 if __name__ == '__main__':
-    tb, It = generator()
+    tb, It = generator(skew=np.sqrt(2))
 
     plt.plot(tb, It)
     plt.show()
