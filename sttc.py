@@ -12,6 +12,23 @@ November, 2017
 
 import numpy as np
 import matplotlib.pyplot as mpl
+from numba import jit
+
+@jit(nopython=True, cache=True,)
+def nb_tiletimes(time, st, rate, itile):
+    npts = time.shape[0]
+    tiles = np.zeros(npts)
+#    itile = int(self.tilewindow/rate)
+    for i in range(len(st)):
+        ix0 = int(st[i]/rate)-itile
+        if ix0 < 0:
+            ix0 = 0
+        ix1 = int(st[i]/rate)+itile
+        if ix1 > len(tiles):
+            ix1 = len(tiles)
+        tiles[ix0:ix1] = 1
+    ta = np.sum(tiles)/npts
+    return ta, tiles
 
 class STTC():
     def __init__(self, seed=0):
@@ -29,12 +46,12 @@ class STTC():
         print('npts: ', npts)
         self.time = np.arange(npts)*self.sample_rate
     
-    def calc_sttc(self, dt=None):
+    def calc_sttc(self, tw=None):
         
-        if dt is None:
-            dt = self.tilewindow
+        if tw is None:
+            tw = self.tilewindow
         else:
-            self.tilewindow = dt
+            self.tilewindow = tw
         st1 = np.sort(self.st1)
         st2 = np.sort(self.st2)
         ta, tatiles = self.tiletimes(self.time, self.sample_rate, st1)
@@ -51,9 +68,11 @@ class STTC():
         """
         Compute the total time tiled in spike train st
         """
+        itile = int(self.tilewindow/rate)
+        #ta, tiles = nb_tiletimes(time, st, rate, itile)  # not faster with numba... 
         ta = 0.
         tiles = np.zeros(time.shape[0])
-        itile = int(self.tilewindow/rate)
+
         for i in range(len(st)):
             ix0 = int(st[i]/rate)-itile
             if ix0 < 0:
@@ -69,14 +88,13 @@ class STTC():
         ist = [int(sti/self.sample_rate) for sti in st]
         p = np.sum(tile[ist])/len(st)
         return p
-    
-    
+
     def tests(self, distribution='exp', pdelete=0., independent=True, dither=0., tilewindow=1.0):
         
         assert distribution in ['exp', 'poisson', 'regular']
         samplerate = 0.1 # ms
         spikerate = 0.001 # firing rate
-        nspikes = 100. # number of spikes to test
+        nspikes = 100 # number of spikes to test
         if distribution in ['exp']:
             st1 = np.random.exponential(1./spikerate, nspikes)
             st1 = np.cumsum(st1)

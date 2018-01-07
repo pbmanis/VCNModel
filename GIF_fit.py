@@ -4,6 +4,8 @@ Set up with ln -s giffitterlocation/src gif in the running directory
 
 Basic run will do a test against the datasets provided at the original site.
 
+Fit generalized integrate and fire models to data
+Uses Pozzorini et al. PLoS Comp. Bio. 2015 method,
 """
 import os
 import pickle
@@ -15,9 +17,21 @@ from gif.GIF import GIF
 from gif.Filter_Rect_LogSpaced import Filter_Rect_LogSpaced
 from gif.Filter_Exps import Filter_Exps
 from NoiseTrainingGen import generator
+import faulthandler
+
+faulthandler.enable()
 
 class GIFFitter():
     def __init__(self, path, dt=0.1):
+        """
+        Set up fitter. 
+        Parameters
+        ----------
+        path : str (no default)
+            full path to the data to be fit
+        dt : float (default: 0.1)
+            Time step, in msec
+        """
         self.path = path
         self.dt = dt
         self.set_eta_timescales()
@@ -63,14 +77,28 @@ class GIFFitter():
     def set_gamma_timescales(self, ts=[1.0, 20.]):
         self.gamma_timescales = ts
 
-    def fit(self, threshold=0., refract=1.0, beforeSpike=5.0, current=None, ax=None):
+    def fit(self, threshold=0., beforeSpike=5.0, current=None, ax=None, plot=True):
+        """
+        Perform fit against GIF model. 
+        Parameters
+        ----------
+        threshold : float (default 0)
+            Voltage threshold for spike detection, in mV
 
-        self.Exp.detectSpikes(threshold=threshold, ref=refract)
-        self.Exp.plotTrainingSet()
-#        self.Exp.plotTestSet()
+        beforeSpike : float (default 5.0)
+            Time before spike to compute reverse correlation for fitting, in msec
+        
+        current : array (default None)
+            Current injection to use for the fit (in nA)
+            If None, this routine generates an arbitrary current.
+    
+        ax : matplotlib axis object (default None)
+            if None, then data is plotted. 
+        
+        """
+        self.Exp.detectSpikes(threshold=threshold, refractory=1.5)
+        #self.Exp.plotTrainingSet()
 
-        self.GIF.Tref = refract    # refractory period
-        print('Setting up GIF')
         self.GIF.eta = Filter_Rect_LogSpaced()
         self.GIF.eta.setMetaParameters(length=5000.0, binsize_lb=2.0, binsize_ub=1000.0, slope=4.5)
 
@@ -84,13 +112,9 @@ class GIFFitter():
 
         #To perform the fit using only a specific part of the training set, use the following command before calling self.GIF.fit():
         self.Exp.trainingset_traces[0].setROI([[0,10000.0], [20000.0, 60000.0]])
-
-        self.GIF.fit(self.Exp, DT_beforeSpike=beforeSpike)
-        # self.GIF.save('./self.GIF.pck')
-        # self.GIF_reloaded = GIF.load('./self.GIF.pck')
-        # print dir(self.GIF_reloaded)
+        
+        self.GIF.fit(self.Exp, DT_beforeSpike=beforeSpike, threshold=threshold)
         fittedpars = self.GIF.getParameters()
-        self.GIF.printParameters()
         self.GIF.plotParameters()
         tsmax = np.max(self.Exp.trainingset_traces[0].getTime())/1000.
 
@@ -101,17 +125,25 @@ class GIFFitter():
             I = current
         V0 = -65.
         (time, V, I_a, V_t, S) = self.GIF.simulate(I, V0, pars=fittedpars)  # simulate response to current trace I with starting voltage V0
-        self.model_traces ={'time': time, 'V': V, 'I_a': I_a, 'I_stim': I, 'V_t': V_t}
-        if ax is None:
-            mpl.figure()
-            mpl.suptitle('Fitted')
+#        print('Simulated with fittedpars: \n', fittedpars)
+        self.model_traces ={'time': time, 'V': V, 'I_a': I_a, 'I_stim': I, 'V_t': V_t,
+            'gifpars': fittedpars._asdict()}
+        self.model_traces['ExpData'] = self.Exp.trainingset_traces[0].V
+        if plot:
+            if ax is None:
+                mpl.figure()
+                mpl.suptitle('Fitted')
         
-            mpl.plot(time, V, 'r-', linewidth=0.75)
-            mpl.plot(self.Exp.trainingset_traces[0].getTime(), self.Exp.trainingset_traces[0].V, 'k-', linewidth=0.5)
-            mpl.show()
-        else:
-            ax.plot(time, V, 'r-', linewidth=0.75)
-            ax.plot(self.Exp.trainingset_traces[0].getTime(), self.Exp.trainingset_traces[0].V, 'k-', linewidth=0.5)
+                mpl.plot(self.Exp.trainingset_traces[0].getTime(), 
+                        self.Exp.trainingset_traces[0].V, 'k-',  linewidth=0.75)
+                mpl.plot(time, V, 'r-', linewidth=0.5)
+
+                mpl.show()
+            else:
+                ax.plot(self.Exp.trainingset_traces[0].getTime(), 
+                        self.Exp.trainingset_traces[0].V, 'k-', linewidth=0.75)
+                ax.plot(time, V, 'r-', linewidth=0.5)
+        self.write_result('GFIT_Original_gifnoise.p')
 
     def test_simulator(self, current=None, fs=False):
         tsmax = 0.1*np.max(self.Exp.trainingset_traces[0].getTime())/1000.
@@ -128,15 +160,17 @@ class GIFFitter():
             (time, V, eta_S) = self.GIF.simulateDeterministic_forceSpikes(I, V0, spks)
             I_a = np.zeros_like(V)
             V_t = np.zeros_like(V)
-        self.model_traces ={'time': time, 'V': V, 'I_a': I_a, 'I_stim': I, 'V_t': V_t}
+        fittedpars = self.GIF.getParameters()
+        self.model_traces ={'time': time, 'V': V, 'I_a': I_a, 'I_stim': I, 'V_t': V_t,
+            'gifpars': fittedpars._asdict()}
+        self.model_traces['ExpData'] = self.Exp.trainingset_traces[0].V
+
         mpl.figure()
         mpl.suptitle('Simulated')
     
         mpl.plot(time, V, 'r-', linewidth=0.75)
 #        mpl.plot(self.Exp.trainingset_traces[0].getTime(), self.Exp.trainingset_traces[0].V, 'k-', linewidth=0.5)
         mpl.show()
- 
-        
 
     def write_result(self, fn):
         h = open(fn, 'wb')
@@ -159,54 +193,70 @@ def test_original():
     basepath = '/Users/pbmanis/Desktop/Python/GIFFittingToolbox/data/fi/'
 
     GF = GIFFitter(path=basepath)
+    GF.GIF.gn = 0.0
+    GF.GIF.refract = 8.0
     GF.set_templates(aec=aec_template, train=train_template, test=test_template)
     GF.set_files_test(AECtrace=None, trainingset=1008, testsets = range(1009, 1018), filetype='Igor')
     
-    GF.fit(current=GF.Exp.trainingset_traces[0].I)
-       
+    GF.fit(current=GF.Exp.trainingset_traces[0].I, threshold=0.)
+    #GIFFitter.GF.plotAverageModel(GF)
+    return GF
 
-if __name__ == '__main__':
-#    test_original()
-#    exit(1)
-    cell = 19
+def fit_cell(cellno=19, gn=0.):
+    threshold = -20.
+    cell = cellno
     model = 'mGBC'
     cname = 'VCN_c%02d' % cell 
     basepath = '/Users/pbmanis/Desktop/Python/VCNModel'
     cellpath = 'VCN_Cells/%s/Simulations/Noise/' % cname
-        
+    
     testset = os.path.join(basepath, cellpath, '%s_%s_gifnoise.p' % (cname, model))
     h = open(testset, 'rb')
     d = pickle.load(h)
-    # print d.keys()
-    # print d['modelPars']
-    # print d['runInfo']
-
     tr = d['Results'][0][0]['monitor']
     V = np.array(tr['postsynapticV'])
-#    print 'V: ', V
+
     T = np.array(tr['time'])
     I = np.array(d['Results'][0][0]['stim'][1])
-#    print 'I: ', I
-    T = T
-    I = I
+
     V_units = 1e-3
     I_units = 1e-9
-#    exit(1)
+
     GF = GIFFitter(path=testset, dt=0.025)
     GF.Exp.addTrainingSetTrace(V, V_units, I, I_units, np.max(T)-0.025*200., FILETYPE='Array')
+    GF.Exp.detectSpikes(threshold=threshold, refractory=1.5)
+    all_spks_times_trainingset = []
+
+    for tr in GF.Exp.trainingset_traces:
+        spks_times = tr.getSpikeTimes()
+        all_spks_times_trainingset.append(spks_times)
+    mean_firingrate =  np.mean(np.diff(all_spks_times_trainingset))
+    GF.GIF.DV = 50.
+    GF.GIF.Vt_star = -GF.GIF.DV * np.log(mean_firingrate)
+    print GF.GIF.DV, GF.GIF.Vt_star
     # mpl.plot(T, V)
     # mpl.show()
-    GF.set_eta_timescales(ts=[0.1, 1.0, 10.0]) # [0.1, 0.2, 0.4, 0.6, 1.0, 2.0, 5.0, 10.])
-    GF.set_gamma_timescales(ts=[0.1, 1.0, 10.0]) # [0.3, 0.5, 0.7, 1.0, 1.2, 2.4, 10.0])
+    GF.set_eta_timescales(ts=[0.1, 1., 5., 20.])
+    GF.set_gamma_timescales(ts=[0.3, 1.0, 5.0, 20.])
     GF.GIF.C = 0.1
-    GF.GIF.gl = 0.01
-    GF.GIF.gn = 0.00
-    GF.GIF.DV = 4.0
+    GF.GIF.gl = 0.05
+    GF.GIF.gn = gn
+ #   GF.GIF.DV = 4.0
     GF.GIF.lambda0 = 1.
     GF.GIF.dt = 0.1
+    GF.GIF.Tref = 2.5
 #    GF.test_simulator(current=None, fs=False)
 #    exit(1)
-    GF.fit(threshold=-20., current=I)
-    GF.write_result('GFIT_%s_%s_gifnoise.p' % (cname, model))
-    
+    GF.fit(threshold=threshold, current=I, plot=False)
+    print 'returned'
+    GF.write_result('GFIT_%s_%s_gn=%6.3f_gifnoise.p' % (cname, model, GF.GIF.gn))
+       
+
+if __name__ == '__main__':
+    # gf = test_original()
+    # gf.GIF.plotAverageModel([gf])
+    # exit(1)
+    for gn in [0., 0.01, 0.05, 0.1, 0.2, 0.5, 1., 2., 5., 10.]:
+        fit_cell(cellno=19, gn=gn)
+
     

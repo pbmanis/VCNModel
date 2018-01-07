@@ -1,34 +1,59 @@
 #!/bin/bash
-FILES="VCN_c08 VCN_c09 VCN_c09nd VCN_c11 VCN_c14 VCN_c17 VCN_c18 VCN_c19 VCN_c20 VCN_c21 VCN_c22"
+#FILES="VCN_c08 VCN_c09 VCN_c09nd VCN_c11 VCN_c14 VCN_c16 VCN_c17 VCN_c18 VCN_c19 VCN_c20 VCN_c21 VCN_c22"
 model="mGBC"
 proto="runIV"
 case $1 in
+ run)
+    proto="runIV"
+    ;;
  init)
     proto="initIV"
     ;;
- justplot)
-    proto="justplot"
+ plot)
+    proto="plot"
     ;;
  list)
-    proto="justlist"
+    proto="list"
+    ;;
+esac
+
+case $2 in
+ all)
+    FILES="VCN_c08 VCN_c09 VCN_c09nd VCN_c11 VCN_c14 VCN_c16 VCN_c17 VCN_c18 VCN_c19 VCN_c20 VCN_c21 VCN_c22"
+    ;;
+ *)
+    FILES=$2
+    ;;
+esac
+
+case $3 in
+  plot)
+    PLOT="--plot"
+    ;;
+  *)
+    PLOT=""
     ;;
 esac
 
 echo $proto
 
-if ! [[ "$proto" = "justplot" ]] ; then
-    #python model_run.py VCN_c08 -P  --model XM13 -r 10 --sgcmodel cochlea -S MS -a 1.0 --noparallel
-    echo "what are we doing here?"
-    python model_run.py VCN_c09nd -P ${proto} -M ${model}  --noparallel &
-    python model_run.py VCN_c09 -P ${proto} -M ${model} --noparallel &
-    python model_run.py VCN_c11 -P ${proto} -M ${model} --noparallel &
-    python model_run.py VCN_c14 -P ${proto} -M ${model} --noparallel &
-    python model_run.py VCN_c17 -P ${proto} -M ${model} --noparallel &
-    python model_run.py VCN_c18 -P ${proto} -M ${model} --noparallel &
-    python model_run.py VCN_c19 -P ${proto} -M ${model} --noparallel &
-    python model_run.py VCN_c20 -P ${proto} -M ${model} --noparallel &
-    python model_run.py VCN_c21 -P ${proto} -M ${model} --noparallel &
-    python model_run.py VCN_c22 -P ${proto} -M ${model} --noparallel &
+if [[ "$proto" = "initIV" ]] || [[ "$proto" = "runIV" ]] ; then
+    #MS -a 1.0 --noparallel
+    echo "running the individual initialization or IV protocols"
+    for f in $FILES
+    do
+        python model_run.py ${f} -P ${proto} -M ${model} ${PLOT} --noparallel &
+    # python model_run.py VCN_c09 -P ${proto} -M ${model} --noparallel &
+    # python model_run.py VCN_c11 -P ${proto} -M ${model} --noparallel &
+    # python model_run.py VCN_c14 -P ${proto} -M ${model} --noparallel &
+    # python model_run.py VCN_c16 -P ${proto} -M ${model} --noparallel &
+    # python model_run.py VCN_c17 -P ${proto} -M ${model} --noparallel &
+    # python model_run.py VCN_c18 -P ${proto} -M ${model} --noparallel &
+    # python model_run.py VCN_c19 -P ${proto} -M ${model} --noparallel &
+    # python model_run.py VCN_c20 -P ${proto} -M ${model} --noparallel &
+    # python model_run.py VCN_c21 -P ${proto} -M ${model} --noparallel &
+    # python model_run.py VCN_c22 -P ${proto} -M ${model} --noparallel &
+    done
 
     wait
     echo IV runs complete
@@ -36,16 +61,17 @@ if ! [[ "$proto" = "justplot" ]] ; then
     for f in $FILES
     do
     	echo "Cell: <$f>"
+        echo "VCN_Cells/$f/Simulations/IV"
         ls -lat VCN_Cells/$f/Simulations/IV
         echo " "
     done
 fi
 
-if [[ "$proto" = "runIV" ]] || [[ "$proto" = "justplot" ]] ; then
+if [[ "$proto" = "runIV" ]] || [[ "$proto" = "plot" ]] ; then
     python all_gbc_iv.py ${model}
 fi
 
-if [["$proto" = 'list']] ; then
+if [[ "$proto" = 'list' ]] ; then
     for f in $FILES
     do
     	echo "Cell: <$f>"

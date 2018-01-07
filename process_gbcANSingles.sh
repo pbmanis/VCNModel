@@ -3,7 +3,7 @@ model=mGBC
 #python model_run.py VCN_c08 --protocol runANSingles --model ${model} -r 10 --sgcmodel cochlea -S MS -a 1.0 --noparallel &
 # VCN_09 was -a 1.5
 #python model_run.py VCN_c09 --protocol runANSingles -M ${model} -r 10 --sgcmodel cochlea -S MS -a 1.5 --plot 
-python model_run.py VCN_c09nd --protocol runANSingles -M ${model} -r 10 --sgcmodel cochlea -S MS -a 1.5 --plot
+python model_run.py VCN_c16 --protocol runANSingles -M ${model} -r 10 --sgcmodel cochlea -S MS -a 1.5 --plot
 # python model_run.py VCN_c17 --protocol runANSingles --model ${model} -r 10 --sgcmodel cochlea -S MS -a 3.0 --noparallel &
 # python model_run.py VCN_c18 --protocol runANSingles --model ${model} -r 10 --sgcmodel cochlea -S MS -a 3.0 --noparallel &
 # python model_run.py VCN_c19 --protocol runANSingles --model ${model} -r 10 --sgcmodel cochlea -S MS -a 1.5 --noparallel &

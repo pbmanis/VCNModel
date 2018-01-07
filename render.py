@@ -53,7 +53,7 @@ class Render():
 
     def render(self, rendertype='cylinder', mech=None, colormap='viridis', backgroundcolor='w'): #'magma'):
         renderer = HocViewer(self.hf.hr.h)
-        renderer.setBackcolor(backgroundcolor)
+#        renderer.setBackcolor(backgroundcolor)
         if rendertype == 'line':
             g = renderer.draw_graph()
             g.set_group_colors(self.section_colors, mechanism=mech, colormap=colormap)
