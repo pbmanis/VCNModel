@@ -144,13 +144,9 @@ from cnmodel.decorator import Decorator
 
 import pylibrary.Utility as pu  # access to a spike finder routine
 
-try:
-    import pyqtgraph as pg
-    from PyQt4 import QtCore
-    import pylibrary.pyqtgraphPlotHelpers as pgh
-    HAVE_PG = True
-except:
-	HAVE_PG = False
+
+import pyqtgraph as pg
+import pylibrary.pyqtgraphPlotHelpers as pgh
 
 
 showCell = True
@@ -185,6 +181,7 @@ class ModelRun():
         self.Params['species'] = self.speciesChoices[0]
         self.Params['Ra'] = 150.  # ohm.cm
         self.Params['lambdaFreq'] = 2000.  # Hz for segment number
+        self.Params['sequence'] = '' # sequence for run - may be string [start, stop, step]
         # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
         self.Params['SRType'] = self.SRChoices[2]
         self.Params['SR'] = self.Params['SRType']  # actually used SR: this might be cell-defined, rather than entirely specified from the command line
@@ -427,7 +424,7 @@ class ModelRun():
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=self.post_cell.irange,
-                             plotting = HAVE_PG and self.Params['plotFlag'], 
+                             plotting = self.Params['plotFlag'], 
                              params = self.params)
             cellInit.test_initial_conditions(self.post_cell, filename=ivinitfile,
                 electrode_site=self.electrode_site)
@@ -475,7 +472,7 @@ class ModelRun():
         #     pg.show()
 
     
-    def iv_run(self, par_map={}):
+    def iv_run(self, par_map=None):
         """
         Main entry routine for running all IV (current-voltage relationships with somatic electrode)
         
@@ -496,16 +493,19 @@ class ModelRun():
         if self.Params['verbose']:
             print ('iv_run: calling generateRun', self.post_cell.i_test_range)
         # parse i_test_range and pass it here
-        if isinstance(self.post_cell.i_test_range, dict):
-            iinjValues = self.post_cell.i_test_range
+        if self.Params['sequence'] is '':
+            if isinstance(self.post_cell.i_test_range, dict):
+                iinjValues = self.post_cell.i_test_range
+            else:
+                iinjValues = {'pulse': self.post_cell.i_test_range}
         else:
-            iinjValues = {'pulse': self.post_cell.i_test_range}
+            iinjValues = {'pulse': eval(self.Params['sequence'])}
         self.R = GenerateRun(self.post_cell, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              iRange=iinjValues,
-                             plotting = HAVE_PG and self.Params['plotFlag'],
+                             plotting = self.Params['plotFlag'],
                              params=self.Params,
                              )
         ivinitfile = os.path.join(self.baseDirectory, self.cellID,
@@ -518,7 +518,7 @@ class ModelRun():
         if self.Params['Parallel'] == False:
             nworkers = 1
 #        print('Number of workers available on this machine: ', nworkers)
-        self.R.doRun(self.Params['hocfile'], parMap=par_map, save='monitor', restore_from_file=True, initfile=ivinitfile,
+        self.R.doRun(self.Params['hocfile'], parMap=iinjValues, save='monitor', restore_from_file=True, initfile=ivinitfile,
             workers=nworkers)
         if self.Params['verbose']:
             print( '   iv_run: do_run completed')
@@ -547,6 +547,7 @@ class ModelRun():
         # construct dictionary for return results:
         self.IVSummary = {'basefile': self.R.basename,
                           'par_map': par_map, 'ID': self.idnum,
+                          'sequence' : iinjValues,
                           'Vm': np.mean(self.R.IVResult['Vm']),
                           'Rin': self.R.IVResult['Rinss'],
                           'taum': taum_mean, 'tauih': tauih_mean,
@@ -577,7 +578,7 @@ class ModelRun():
                              electrodeSection=self.electrodeSection,
                              dendriticElectrodeSection=self.dendriticElectrodeSection,
                              stimtype='gifnoise',
-                             plotting = HAVE_PG and self.Params['plotFlag'],
+                             plotting = self.Params['plotFlag'],
                              params=self.Params)
         ivinitfile = os.path.join(self.baseDirectory, self.cellID,
                                 self.initDirectory, self.Params['initIVStateFile'])
@@ -1343,7 +1344,7 @@ class ModelRun():
         if dendVoltage is not None:
             for j, N in enumerate(range(len(dendVoltage))):
                 layout.plot(0, celltime, dendVoltage[N], pen=pg.mkPen(pg.intColor(N, nReps)),
-                    style=QtCore.Qt.DashLine)
+                    style=pg.QtCore.Qt.DashLine)
         pgh.show()
     
     def analysis_filewriter(self, filebase, result, tag=''):
@@ -1473,7 +1474,7 @@ if __name__ == "__main__":
         help='Set AMPAR conductance scale factor (default 1.0)')
     parser.add_argument('--allmodes', action="store_true", default = False, dest = 'all_modes',
         help=('Force run of all modes (CMR, CMD, REF) for stimulus configuration.'))
-    parser.add_argument('--sequence', type=str, default='[1,2,5]', dest = 'sequence',
+    parser.add_argument('--sequence', type=str, default='', dest = 'sequence',
             help=('Specify a sequence for the primary run parameters'))
     parser.add_argument('--plot',  action="store_true", default=False, dest = 'plotFlag',
             help='Plot results as they are generated - requires user intervention... ')
@@ -1531,4 +1532,9 @@ if __name__ == "__main__":
     print(model.Params['commandline'])
 
     if not model.Params['checkcommand']:
+        model.Params['Icmds'] = '[-2.0, 2.0, 0.5]'
         model.run_model() # then run the model
+    
+    # if sys.flags.interactive == 0:
+    #     pg.QtGui.QApplication.exec_()
+    

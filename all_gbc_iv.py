@@ -28,6 +28,7 @@ else:
 print('Model type: {:s}'.format(modeltype))
 
 testing = False
+forcerun = True
 
 # set up plots
 l1 = 0.08
@@ -69,7 +70,6 @@ for n in gbc_names:
     initf = os.path.join(M.baseDirectory, cell, ivinitfile)
     print ('\nRetrieving data for cell {0:s}'.format(cell))
     M.Params['cell'] = cell
-#    print ('cell, params cell: ', cell, M.Params)
     M.Params['modelType'] = modeltype
     M.Params['hocfile'] = M.Params['cell'] + '.hoc'
     if M.Params['hocfile'] == None: # just use the matching hoc file
@@ -77,17 +77,14 @@ for n in gbc_names:
     if not os.path.isfile(initf):
         print('creating new init file for cell, did not find {:s}'.format(initf))
         M.Params['runProtocol'] = 'initIV'
-#        try:
         if not_testing:
             M.run_model(par_map = M.Params)
-#        except:
-#            print('Failed to run model for {:s}'.format(initf))
     else:
         print('    Initialization file for {:s} exists'.format(cell))
     if not os.path.isfile(initf):
         raise ValueError('Failed to create the IV init state file')
     ivdatafile = os.path.join(M.baseDirectory, cell, M.simDirectory, 'IV', cell+'_' + modeltype+'_monitor.p')
-    if not os.path.isfile(ivdatafile):
+    if not os.path.isfile(ivdatafile) or forcerun is True:
         print ('Creating ivdatafile: {:s}\n'.format(ivdatafile))
         M.Params['runProtocol'] = 'runIV'
         if not testing:
@@ -98,7 +95,7 @@ for n in gbc_names:
     fh = open(ivdatafile)
     df = pickle.load(fh)
     r = df['Results'][0]
-#    print  (df['Results'])
+
     for trial in range(len(df['Results'])):
         ds = df['Results'][trial]
         k0 = df['Results'][trial].keys()[0]

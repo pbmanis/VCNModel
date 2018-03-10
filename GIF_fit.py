@@ -16,7 +16,7 @@ from gif.AEC_Badel import AEC_Badel
 from gif.GIF import GIF
 from gif.Filter_Rect_LogSpaced import Filter_Rect_LogSpaced
 from gif.Filter_Exps import Filter_Exps
-from NoiseTrainingGen import generator
+import NoiseTrainingGen as NTG
 import faulthandler
 
 faulthandler.enable()
@@ -119,8 +119,9 @@ class GIFFitter():
         tsmax = np.max(self.Exp.trainingset_traces[0].getTime())/1000.
 
         if current is None:
-            tb, I = generator(i0=0, dt=self.Exp.dt, sigma0=0.2, fmod=0.2, tau=3.0,
-             dur=tsmax)
+            gen = NTB()
+            gen.set_params(skew=8., sigma0=0.2, fmod=0.2, tau=3.0, dt=self.Exp.dt, i0=0, dur=tsmax)
+            tb, I = gen.generator()
         else:
             I = current
         V0 = -65.
@@ -148,8 +149,12 @@ class GIFFitter():
     def test_simulator(self, current=None, fs=False):
         tsmax = 0.1*np.max(self.Exp.trainingset_traces[0].getTime())/1000.
         if current is None:
-            tb, I = generator(i0=0, dt=self.Exp.dt, sigma0=0.5, fmod=0.2, tau=3.0,
-             dur=tsmax)
+            gen = NTB()
+            gen.set_params(skew=8., sigma0=0.5, fmod=0.2, tau=3.0, dt=self.Exp.dt, i0=0, dur=tsmax)
+            tb, I = gen.generator()
+
+            # tb, I = generator(i0=0, dt=self.Exp.dt, sigma0=0.5, fmod=0.2, tau=3.0,
+            #  dur=tsmax)
         else:
             I = current
         V0 = -65.

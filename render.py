@@ -53,8 +53,8 @@ class Render():
 
     def render(self, rendertype='cylinder', mech=None, colormap='viridis', backgroundcolor='w'): #'magma'):
         renderer = HocViewer(self.hf.hr.h)
-#        renderer.setBackcolor(backgroundcolor)
-        if rendertype == 'line':
+        renderer.setBackcolor(backgroundcolor)
+        if rendertype in ['line', 'graph']:
             g = renderer.draw_graph()
             g.set_group_colors(self.section_colors, mechanism=mech, colormap=colormap)
         elif rendertype == 'surface':
@@ -64,10 +64,14 @@ class Render():
             g = renderer.draw_cylinders()
             g.set_group_colors(self.section_colors,  mechanism=mech, colormap=colormap)
         elif rendertype == 'volume':
-            
 #            volume = render.draw_volume(resolution = 1.0, max_size=1e9)
             g = renderer.draw_volume()
             g.set_group_colors(self.section_colors, mechanism=mech, alpha=1, colormap=colormap)
+        elif rendertype == 'mpl':
+            g = renderer.draw_mpl()
+        elif rendertype == 'vispy':
+            g = renderer.draw_vispy()
+
         else:
             print 'rendertype: ', rendertype
             raise ValueError('Render type %s not known: ' % rendertype)
@@ -76,8 +80,8 @@ class Render():
 
 if __name__ == '__main__':
     
-#    pg.mkQApp()
-    rendertype = 'surface'
+    #pg.mkQApp()
+    rendertype = 'line'
     mechanisms = ['ihvcn', 'gbar']
     #mechanisms = None
     fn = sys.argv[1]
@@ -86,12 +90,17 @@ if __name__ == '__main__':
             species='mouse',
             modelType='mGBC')
     #post_cell.distances()
+    if len(sys.argv) > 2:
+        rendertype = sys.argv[2]
     R = Render(post_cell)
-    backgroundcolor = 'w'
-    if rendertype in ['volume', 'line']:
-        backgroundcolor = (125, 125, 125, 255)
+    backgroundcolor = (50, 50, 125, 255)  # 'blue'
+    if rendertype in ['volume', 'line', 'graph']:
+         backgroundcolor = (125, 125, 125, 255)
+    print backgroundcolor, rendertype
     g, renderer = R.render(rendertype=rendertype, mech=mechanisms, backgroundcolor=backgroundcolor)
-#    pg.show()
+
+    if rendertype == 'mpl':
+        exit(0)
     if not sys.flags.interactive:
         pg.Qt.QtGui.QApplication.exec_()
     

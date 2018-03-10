@@ -19,7 +19,10 @@ import numpy as np
 import copy
 from collections import OrderedDict
 from cnmodel.util.stim import make_pulse # makestim
-from NoiseTrainingGen import generator
+import NoiseTrainingGen as NG
+print (dir(NG))
+print (dir(NG.NoiseGen))
+#from NoiseTrainingGen.NoiseGen import generator
 from pylibrary.Params import Params
 import IVPlots as IVP
 import analyze_run as ar
@@ -272,7 +275,8 @@ class GenerateRun():
             self.mons = ['postsynapticV', 'postsynapticI', 'dendriteV' ]
         elif self.runInfo.postMode in ['gifnoise']:
             stim = {}
-            self.stim = generator(
+            self.stim = NG.NoiseGen()
+            self.stim.generator(
                 dt = self.hf.h.dt,
                 i0=self.runInfo.gif_i0,
                 sigma0=self.runInfo.gif_sigma,

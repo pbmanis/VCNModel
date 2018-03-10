@@ -3,6 +3,7 @@
 # show traces from simulation run (current-voltage - IV)
 #
 import os
+import sys
 import pickle
 import matplotlib.pyplot as mpl
 
@@ -48,7 +49,7 @@ d = pickle.load(fh)
 #             print' '
 #
 
-if datatype == 'IV':
+if datatype == 'IV' and len(sys.argv) == 1:
     dibase = d['Results'][0]
     k = dibase.keys()[0]
     di = dibase[k]
@@ -61,7 +62,7 @@ if datatype == 'IV':
     mpl.plot(t, dd2)
     mpl.show()
 
-if datatype == 'AN':
+if datatype == 'AN'  and len(sys.argv) == 1:
     di = d  # direct, not a list; reps are stored inside dicts.
     rep = 0  # which repetition to extract
     t = di['time']
@@ -69,7 +70,19 @@ if datatype == 'AN':
         ds = di['allDendriteVoltages'][rep]['sections[%i]'%i]  # happens to be the soma section
         mpl.plot(t, ds)
     mpl.show()
+    
 
+if len(sys.argv) > 1:
+    fn = sys.argv[1]
+    di = d  # direct, not a list; reps are stored inside dicts.
+    rep = 0  # which repetition to extract
+    t = di['time']
+    dout = {'time': t}
+    for i in range(0, len(di['allDendriteVoltages'][rep].keys())):  # subset
+        ds = di['allDendriteVoltages'][rep]['sections[%i]'%i]  # happens to be the soma section
+        dout['sections[%i]'%i] = ds
+    with open(fn, 'wb') as f:  # should be platform agnostic
+        pickle.dump(dout, f)
 
 
 
