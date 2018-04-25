@@ -1,6 +1,6 @@
 #!/bin/bash
 #FILES="VCN_c08 VCN_c09 VCN_c09nd VCN_c11 VCN_c14 VCN_c16 VCN_c17 VCN_c18 VCN_c19 VCN_c20 VCN_c21 VCN_c22"
-model="mGBC"
+model="XM13"
 proto="runIV"
 case $1 in
  run)
@@ -19,7 +19,7 @@ esac
 
 case $2 in
  all)
-    FILES="VCN_c08 VCN_c09 VCN_c09nd VCN_c11 VCN_c14 VCN_c16 VCN_c17 VCN_c18 VCN_c19 VCN_c20 VCN_c21 VCN_c22"
+    FILES="VCN_c08 VCN_c09 VCN_c11 VCN_c14 VCN_c16 VCN_c17 VCN_c18 VCN_c19 VCN_c20 VCN_c21 VCN_c22"
     ;;
  *)
     FILES=$2
@@ -42,7 +42,7 @@ if [[ "$proto" = "initIV" ]] || [[ "$proto" = "runIV" ]] ; then
     echo "running the individual initialization or IV protocols"
     for f in $FILES
     do
-        python model_run.py ${f} -P ${proto} -M ${model} ${PLOT} --noparallel &
+        python model_run.py ${f} --hoc ${f}.hoc -P ${proto} -M ${model} ${PLOT} --noparallel &
     # python model_run.py VCN_c09 -P ${proto} -M ${model} --noparallel &
     # python model_run.py VCN_c11 -P ${proto} -M ${model} --noparallel &
     # python model_run.py VCN_c14 -P ${proto} -M ${model} --noparallel &

@@ -14,7 +14,6 @@ pyqtgraph (Campagnola, from github)
 neuronvis (Campagnola/Manis, from github)
 cnmodel (Campagnola/Manis, from github)
 vcnmodel parts:
-    channel_decorate
     generate_run
     cellInitialization
     analysis
@@ -141,15 +140,14 @@ import cellInitialization as cellInit
 from cnmodel import cells
 from cnmodel.util import sound
 from cnmodel.decorator import Decorator
-
+from cnmodel import data as DATA
 import pylibrary.Utility as pu  # access to a spike finder routine
-
-
 import pyqtgraph as pg
 import pylibrary.pyqtgraphPlotHelpers as pgh
 
 
 showCell = True
+
 
 
 class ModelRun():
@@ -162,7 +160,9 @@ class ModelRun():
         self.SGCmodelChoices = ['Zilany', 'cochlea']  # cochlea is python model of Zilany data, no matlab, JIT computation; Zilany model creates matlab instance for every run.
         self.cmmrModeChoices = ['CM', 'CD', 'REF']  # comodulated, codeviant, reference
         self.SRChoices = ['LS', 'MS', 'HS', 'fromcell']  # AN SR groups (assigned across all inputs)
-        self.protocolChoices = ['initIV', 'testIV', 'runIV', 'initAN', 'runANPSTH', 'runANIO', 'runANSingles', 'runANOmitOne', 'gifnoise']
+        self.protocolChoices = ['initIV', 'testIV', 'runIV', 'initandrunIV', 
+                                'initAN', 'runANPSTH', 'runANIO', 'runANSingles', 'runANOmitOne',
+                                'gifnoise']
         self.soundChoices = ['tonepip', 'noise', 'stationaryNoise', 'SAM', 'CMMR']
         self.speciesChoices = ['mouse', 'guineapig']
         self.spirouChoices = ['all', 'max=mean', 'all=mean']
@@ -172,7 +172,7 @@ class ModelRun():
         self.srname = ['LS', 'MS', 'HS']  # runs 0-2, not starting at 0
         self.cellID = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
         self.Params = OrderedDict()
-        
+        self.Params['cellID'] = self.cellID
         self.Params['AMPAScale'] = 1.0 # Use the default scale for AMPAR conductances
         self.Params['ANSynapseType'] = 'simple'  # or multisite
         self.Params['SynapticDepression'] = 0  # depression calculation is off by default
@@ -325,8 +325,8 @@ class ModelRun():
             Nothing
         
         """
-        if self.Params['ANSynapseType'] == 'simple':
-            raise ValueError('model_run:: Simple AN synapses are not fully implemented in this version')
+        # if self.Params['ANSynapseType'] == 'simple':
+        #     raise ValueError('model_run:: Simple AN synapses are not fully implemented in this version')
 
         if self.Params['verbose']:
             print ('run_model entry')
@@ -348,7 +348,6 @@ class ModelRun():
         print ('Morphology directory: ', self.morphDirectory)
         if self.Params['usedefaulthoc']:
             self.Params['hocfile'] = self.Params['cell'] + '.hoc'
-
         print ('Hoc (structure) file: ', self.Params['hocfile'])
         print ('Base directory: ', self.baseDirectory)
         filename = os.path.join(self.baseDirectory, self.cellID, self.morphDirectory, self.Params['hocfile'])
@@ -356,6 +355,85 @@ class ModelRun():
         # instantiate cells
         if self.Params['cellType'] in ['Bushy', 'bushy']:
             print ('Creating a bushy cell (run_model) ')
+            from cnmodel import data
+
+            changes = data.add_table_data('XM13_channels', row_key='field', col_key='model_type', 
+                           species='mouse', data=u"""
+
+            This table describes the REFERENCE ion channel densities (and voltage shifts if necessary)
+            for different cell types based on the Xie and Manis 2013 models for mouse.
+
+            The REFERENCE values are applied to "point" models, and to the soma of
+            compartmental models.
+            The names of the mechanisms must match a channel mechanism (Neuron .mod files)
+            and the following _(gbar, vshift, etc) must match an attribute of that channel
+            that can be accessed.
+
+            -----------------------------------------------------------------------------------------------------------------------------------
+                           II             II-I           I-c           I-II          I-t       
+                                                                                   
+            nav11_gbar     1000.  [1]     1000.  [1]     3000.  [1]    1000.  [2]    3000.  [1] 
+            kht_gbar       58.0   [3]     58.0   [1]     500.0  [1]    150.0  [2]    500.0  [1] 
+            klt_gbar       80.0   [1]     14.0   [1]     0.0    [1]    20.0   [2]    0.0    [1] 
+            ka_gbar        0.0    [1]     0.0    [1]     0.0    [1]    0.0    [2]    125.0    [1] 
+            ihvcn_gbar     30.0   [1]     30.0   [1]     18.0   [1]    2.0    [2]    18.0   [1] 
+            leak_gbar      2.0    [1]     2.0    [1]     8.0    [1]    2.0    [2]    8.0    [1] 
+            leak_erev      -65    [1]     -65    [1]     -65    [1]    -65    [2]    -65    [1] 
+            na_type        nav11  [1]     nav11  [1]     nav11  [1]    nav11  [1]    nav11  [1] 
+            ih_type        ihvcn  [1]     ihvcn  [1]     ihvcn  [1]    ihvcn  [2]    ihvcn  [1] 
+            soma_Cap       26.0   [1]     26.0   [1]     25.0   [1]    26.0   [2]    25.0   [1] 
+            nav11_vshift   10.    [1]     4.3    [1]     4.3    [1]    4.3    [1]    4.3    [1]
+            e_k            -84    [1]     -84    [1]     -84    [1]    -84    [2]    -84    [1] 
+            e_na           50.    [1]     50.    [1]     50.    [1]    50.    [2]    50.    [1] 
+            ih_eh          -43    [1]     -43    [1]     -43    [1]    -43    [2]    -43    [1] 
+
+            -----------------------------------------------------------------------------------------------------------------------------------
+
+            [1] Uses channels from Rothman and Manis, 2003
+                Conductances are for Mouse bushy cells
+                Xie and Manis, 2013
+                Age "adult", Temperature=34C
+                Units are nS.
+
+            [2] Rothman and Manis, 2003, model I-II
+                Some low-voltage K current, based on observations of
+                a single spike near threshold and regular firing for higher
+                currents (Xie and Manis, 2017)
+                
+            [3] Increased DR to force AP repolarization to be faster
+
+
+            """)
+            changes = data.add_table_data('XM13_channels_compartments', row_key='parameter', col_key='compartment',
+                    species='mouse', model_type='II', data=u"""
+
+            This table describes the ion channel densities relative to somatic densities,
+            e.g., relative to REFERENCE densities in the table XM13_channels.
+            and voltage shifts, for different compartments of the specified neuron,
+            Conductances will be calculated from the Model derived from Xie and Manis 2013 for mouse
+            (data table: XM13_channels).
+
+            NOTE: unmyelinatedaxon and initialsegment are equivalent in George's models, but only "unmyelinatedaxon" is actually used.
+            ------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                           axon       unmyelinatedaxon     myelinatedaxon     initialsegment    hillock     soma        dendrite         primarydendrite    secondarydendrite
+
+            nav11_gbar     3.0 [1]    15. [1]              0.0 [1]            0.0 [1]           9.0 [1]     2.5 [1]     0.5 [1]          0.25 [1]           0.25 [1]
+            kht_gbar       1.0 [1]    1.0 [1]              0.01 [1]           2.0 [1]           1.0 [1]     1.0 [1]     1.0 [1]          0.5 [1]            0.25 [1]
+            klt_gbar       1.0 [1]    1.0 [1]              0.01 [1]           1.0 [1]           1.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.25 [1]
+            ihvcn_gbar     0.0 [1]    0.0 [1]              0.0 [1]            0.5 [1]           0.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.5 [1]
+            leak_gbar      1.0 [1]    0.25 [1]             0.25e-3 [1]        1.0 [1]           1.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.5 [1]
+            leak_erev      -65. [1]   -65. [1]             -65. [1]           -65. [1]          -65. [1]    -65. [1]    -65. [1]         -65. [1]           -65. [1]
+            nav11_vshift   4.3  [1]   4.3 [1]              0.0 [1]            4.3 [1]           4.3 [1]     4.3 [1]     0.0  [1]         0.0  [1]            0.0 [1]
+            na_type        nav11      nav11                nav11              nav11             nav11       nav11       nav11            nav11              nav11
+            ih_type        ihvcn      ihvcn                ihvcn              ihvcn             ihvcn       ihvcn       ihvcn            ihvcn              ihvcn
+            -------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+            [1] Scaling is relative to soma scaling. Numbers are estimates based on general distribution from literature on cortical neurons.
+
+
+            """)
+            data.report_changes(changes)
+
             self.post_cell = cells.Bushy.create(morphology=filename, decorator=Decorator,
                     species=self.Params['species'],
                     modelType=self.Params['modelType'])
@@ -413,7 +491,7 @@ class ModelRun():
         if self.Params['runProtocol'] in ['runANPSTH', 'runANSingles']:
             model.Params['run_duration'] = model.Params['pip_duration'] + np.sum(model.Params['pip_start']) + model.Params['pip_offduration']
             
-        if self.Params['runProtocol'] == 'initIV':
+        if self.Params['runProtocol'] in ['initIV', 'initandrunIV']:
             if self.Params['verbose']:
                 print ('run_model: protocol is initIV')
             ivinitfile = os.path.join(self.baseDirectory, self.cellID,
@@ -428,7 +506,11 @@ class ModelRun():
             cellInit.get_initial_condition_state(self.post_cell, tdur=500.,
                filename=ivinitfile, electrode_site=self.electrode_site)
             print('Ran to get initial state for {:.1f} msec'.format(self.post_cell.hr.h.t))
-            return
+
+        if self.Params['runProtocol'] in ['runIV', 'initandrunIV']:
+            if self.Params['verbose']:
+                print ('Run IV')
+            self.iv_run()
         
         if self.Params['runProtocol'] == 'testIV':
             if self.Params['verbose']:
@@ -445,7 +527,7 @@ class ModelRun():
             cellInit.test_initial_conditions(self.post_cell, filename=ivinitfile,
                 electrode_site=self.electrode_site)
             self.R.testRun(initfile=ivinitfile)
-            return  # that is ALL, never make init and then keep running.
+            return  # that is ALL, never make testIV/init and then keep running.
         
         if self.Params['runProtocol'] == 'runANPSTH':
             if self.Params['verbose']:
@@ -471,11 +553,6 @@ class ModelRun():
             if self.Params['verbose']:
                 print ('ANOmitOne')
             self.an_run_singles(self.post_cell, exclude=True)
-
-        if self.Params['runProtocol'] == 'runIV':
-            if self.Params['verbose']:
-                print ('Run IV')
-            self.iv_run()
 
         if self.Params['runProtocol'] == 'gifnoise':
             self.noise_run()
@@ -539,7 +616,7 @@ class ModelRun():
         if self.Params['verbose']:
             print( '   iv_run: do_run completed')
         elapsed = timeit.default_timer() - start_time
-        print ('iv_rin:: Elapsed time: {:f} seconds'.format(elapsed))
+        print ('   iv_rin: Elapsed time: {:2f} seconds'.format(elapsed))
         isteps = self.R.IVResult['I']
         if self.Params['verbose']:
             for k, i in enumerate(self.R.IVResult['tauih'].keys()):
@@ -549,9 +626,11 @@ class ModelRun():
                 print('   i: %3d (%6.1fnA) tau: %f' % (i, isteps[k], self.R.IVResult['taus'][i]['tau']))
                 print( '          dV : %f' % (self.R.IVResult['taus'][i]['a']))
         
-        print('   Nspike, Ispike: ', self.R.IVResult['Nspike'], self.R.IVResult['Ispike'])
-        print('   Rinss: ', self.R.IVResult['Rinss'])
-        print('   Vm: ', np.mean(self.R.IVResult['Vm']))
+        #print('   Nspike, Ispike: ', self.R.IVResult['Nspike'], self.R.IVResult['Ispike'])
+        print('   N spikes:   {0:d}'.format(int(np.sum(self.R.IVResult['Nspike']))))
+        print('   Rinss:      {0:.1f} Mohm'.format(self.R.IVResult['Rinss']))
+        print('   Tau(mean):  {0:.3f} ms'.format(np.mean([self.R.IVResult['taus'][i]['tau'] for i in range(len(self.R.IVResult['taus']))])))
+        print('   Vm:         {0:.1f} mV'.format(np.mean(self.R.IVResult['Vm'])))
         if len(self.R.IVResult['taus'].keys()) == 0:
             taum_mean = 0.
             tauih_mean = 0.

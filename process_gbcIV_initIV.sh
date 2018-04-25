@@ -5,6 +5,7 @@ python model_run.py VCN_c09nd --hoc VCN_c09nd.hoc --protocol initIV --model XM13
 python model_run.py VCN_c09 --hoc VCN_c09.hoc --protocol initIV --model XM13 --noparallel &
 python model_run.py VCN_c11 --hoc VCN_c11.hoc --protocol initIV --model XM13 --noparallel &
 python model_run.py VCN_c14 --hoc VCN_c14.hoc --protocol initIV --model XM13 --noparallel &
+python model_run.py VCN_c16 --hoc VCN_c16.hoc --protocol initIV --model XM13 --noparallel &
 python model_run.py VCN_c17 --hoc VCN_c17.hoc --protocol initIV --model XM13 --noparallel &
 python model_run.py VCN_c18 --hoc VCN_c18.hoc --protocol initIV --model XM13 --noparallel &
 python model_run.py VCN_c19 --hoc VCN_c19.hoc --protocol initIV --model XM13 --noparallel &

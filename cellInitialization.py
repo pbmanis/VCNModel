@@ -162,7 +162,7 @@ def restore_initial_conditions_state(cell, filename, electrode_site=None, reinit
     -------
         Nothing
     """
-    print('restoring from file: {:s}'.format(filename))
+#    print('restoring from file: {:s}'.format(filename))
 #    cell.set_d_lambda(freq=100, d_lambda=0.1)
     cell.hr.h.finitialize()
     stateFile = cell.hr.h.File() # restore state AFTER finitialize
@@ -175,7 +175,7 @@ def restore_initial_conditions_state(cell, filename, electrode_site=None, reinit
         raise IOError('stateFile read failed - states do not match')
     stateFile.close()
     state.restore(1)
-    print('Restored initial conditions from file: %s' % filename)
+    print('Restored initial conditions from: %s' % filename)
 
     if electrode_site is not None:
         vm = electrode_site.v

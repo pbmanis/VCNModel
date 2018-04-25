@@ -42,11 +42,9 @@ import numpy as np
 import json
 from collections import OrderedDict
 
-synperum2 = 0.65 # average density of synapses, synapses per micron sequared 
+synperum2 = 0.65 # average density of synapses, synapses per micron squared 
                  # Original value, from Spriou measurements in MNTB.
 
-
-    
 # VCN_c18 = [ [(216.66), 0., 2, np.nan, np.nan, 49.2, 1.222, 'AN', {'soma': [0, 0.5, 1.0]} ],
 #             [(122.16), 0., 2, 82.7, 1.417, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
 #             [(46.865), 0., 2, 67.3 , 1.309, 62.1, 0.717,  'AN' ],
@@ -65,7 +63,7 @@ LC_neuromantic_scaled = [ [(50./synperum2), 0., 2, np.nan, np.nan, np.nan, np.na
              [(50./synperum2), 0., 2, np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
         ]
 
-# based on new data 12/17/2016, from Spirou (table in Final7_Somatic_Input_ASAs.ods)
+# based on new data 12/17/2016, from Spirou (Table in Final7_Somatic_Input_ASAs.ods)
 
 # George says cell 7 is not a GBC
 VCN_c07 = [ [(15.08), 0., 2., np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}],
@@ -359,7 +357,24 @@ VCN_Inputs = {'VCN_c07': ['notbushy', VCN_c07],
         'VCN_c29': ['bushy', VCN_c29],
         }
 
-
+VCN_Inputs_Clean = {  # Spriou SBEM VCN Bushy cells only, no variants
+        'VCN_c08': ['bushy', VCN_c08],
+        'VCN_c09': ['bushy', VCN_c09],
+        'VCN_c10': ['bushy', VCN_c10],
+        'VCN_c11': ['bushy', VCN_c11],
+        'VCN_c13': ['bushy', VCN_c13],
+        'VCN_c14': ['bushy', VCN_c14],
+        'VCN_c15': ['bushy', VCN_c15],
+        'VCN_c16': ['bushy', VCN_c16],
+        'VCN_c17': ['bushy', VCN_c17],
+        'VCN_c18': ['bushy', VCN_c18], 
+        'VCN_c19': ['bushy', VCN_c19],
+        'VCN_c20': ['bushy', VCN_c20],
+        'VCN_c21': ['bushy', VCN_c21],
+        'VCN_c22': ['bushy', VCN_c22],
+        'VCN_c24': ['bushy', VCN_c24],
+        'VCN_c29': ['bushy', VCN_c29],
+        }
 # convert the table for a given cell to the dictionary used by model_run to decroate
 # cell with synapses.
 
@@ -384,9 +399,88 @@ def printCellInputs(r):
     print(json.dumps(r, indent=4))
 
 
+def summarize_inputs():
+    import matplotlib.pyplot as mpl
+    import pylibrary.PlotHelpers as PH
+    P = PH.regular_grid(2, 3, order='columns', figsize=(10., 8), showgrid=False)
+    ax = [P.axdict[x] for x in P.axdict.keys()]
+    print(ax)
+ #   PH.nice_plot(ax)
+    allendings = []
+    cellendings = {}
+    for cell, v in iter(VCN_Inputs_Clean.items()):
+        cellendings[cell] = []
+        for s in v[1]:
+            # print cell, s[0]
+            allendings.append(s[0])
+            cellendings[cell].append(s[0])
+    ax[0].hist(allendings, bins=20)
+    ax[0].set_title('All ending areas')
+    ax[0].set_ylim((0, 25))
+    ax[0].set_ylabel('N')
+    ax[0].set_xlim((0,350))
+    ax[0].set_xlabel('Area (um^2)')
+    
+    normd = []
+    ratio1 = []
+    ratio2 = []
+    meansize = []
+    maxsize = []
+    convergence = []
+    
+    for cell in cellendings.keys():
+            normd.extend(cellendings[cell]/np.max(cellendings[cell]))
+            ratio1.append(cellendings[cell][1]/cellendings[cell][0])
+            ratio2.append(np.mean(cellendings[cell])/cellendings[cell][0])
+            meansize.append(np.mean(cellendings[cell]))
+            maxsize.append(np.max(cellendings[cell]))
+            convergence.append(len(cellendings[cell]))
+    print('convergence: ', convergence)
+    ax[1].set_title('Normaized by largest')
+    ax[1].hist(normd, bins=20, range=(0,1.0), align='mid')
+    ax[1].set_xlabel('Area (um^2)')
+    ax[1].set_ylabel('N')
+
+    ax[2].set_title('ratio largest to next largest')
+    ax[2].hist(ratio1, bins=10, range=(0,1.0), align='mid')
+    ax[2].set_xlabel('Area (um^2)')
+    ax[2].set_title('ratio mean to largest')
+
+    ax[3].set_title('Ratio of mean to largest')
+    ax[3].hist(ratio2, bins=10, range=(0,1.0), align='mid')
+    ax[3].set_xlabel('Area (um^2)')
+
+    ax[4].set_xlim((0., 200.))
+    ax[4].set_xlabel('Area (um^2)')
+    ax[4].set_ylim((0., 15.))  
+    ax[4].set_ylabel('Convergence')
+    ax[4].set_title('Convergence vs. mean size')
+    fit = np.polyfit(meansize, convergence, 1)
+    fit_fn = np.poly1d(fit) 
+    ax[4].scatter(meansize, convergence)
+    ax[4].plot(meansize, fit_fn(meansize), '--k')
+
+
+    ax[5].set_title('Convergence vs max size')
+    fit = np.polyfit(maxsize, convergence, 1)
+    fit_fn = np.poly1d(fit) 
+    ax[5].scatter(maxsize, convergence)
+    ax[5].plot(maxsize, fit_fn(maxsize), '--k')
+    ax[5].set_xlim((0., 350.))
+    ax[5].set_xlabel('Area (um^2)')
+    ax[5].set_ylim((0., 15.))
+    ax[5].set_xlabel('Convergence')
+
+    
+
+    mpl.show()
+        
+
+
 if __name__ == '__main__':
     # Check the formatting and display the results  
-# Check the formatting and display the results
+    summarize_inputs()
+    exit(0)
     r, celltype = makeDict('VCN_c09')
     print 'Cell Type: ', celltype
     printCellInputs(r)
