@@ -9,7 +9,6 @@ import os
 import pickle
 import numpy as np
 import pylibrary.Utility as pu
-import matplotlib.pylab as PL
 from lmfit import Model
 from lmfit.models import ExponentialModel
 
@@ -45,7 +44,8 @@ class AnalyzeRun():
         self.delay = site['delay']
         self.duration = site['dur']
         self.tw = [self.delay, self.duration, 10.]
-        print( 'analyze_run.py: self.tw = ', self.tw)
+        if verbose:
+            print( 'analyze_run.py: self.tw = ', self.tw)
 
     def parseResults(self, res):
         """
@@ -280,7 +280,8 @@ class AnalyzeRun():
         cye = np.mean(cy[-5:])
         try:
             result = expmodel.fit(cy-cye, x=cx-t0, amplitude=0., decay=10.)
-            print(result.fit_report())  # print the result
+            if verbose:
+                print(result.fit_report())  # print the result
             rbv = result.best_values
             fitr = {'a': 0, 'tau': 5., 'dc': 0.}
             fitr['a'] = rbv['amplitude']

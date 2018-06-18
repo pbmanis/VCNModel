@@ -27,12 +27,15 @@ else:
 
 print('Model type: {:s}'.format(modeltype))
 
+testing = False
+forcerun = True
+
 # set up plots
 l1 = 0.08
 l2 = 0.55
 wid = 0.38
 ymargin = 0.05
-numrows = 5
+numrows = 6
 ht = (1. - 2*(ymargin))/numrows
 yp = np.arange(0.05, numrows*ht, ht)
 yp = np.flipud(yp)
@@ -42,7 +45,8 @@ sizer = OrderedDict([('VCNc09nd', {'pos': [l1, wid, yp[0], ht], 'labelpos': lpos
                     ('VCNc09',  {'pos': [l1, wid, yp[1], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc11',  {'pos': [l1, wid, yp[2], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc14',  {'pos': [l1, wid, yp[3], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
-                    ('VCNc17',  {'pos': [l1, wid, yp[4], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
+                    ('VCNc16',  {'pos': [l1, wid, yp[4], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
+                    ('VCNc17',  {'pos': [l1, wid, yp[5], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc18',  {'pos': [l2, wid, yp[0], ht], 'labelpos': lpos, 'ylabel': 'mV'}), 
                     ('VCNc19',  {'pos': [l2, wid, yp[1], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc20',  {'pos': [l2, wid, yp[2], ht], 'labelpos': lpos, 'ylabel': 'mV'}), 
@@ -54,7 +58,7 @@ axmap = OrderedDict(zip(sizer.keys(), gr))
 P = PH.Plotter(rcshape=sizer, label=False, figsize=(6, 8), labeloffset=[0.6, 0.])
 #PH.show_figure_grid(P.figure_handle)
 
-gbc_names = ['09nd', '09', '11', '14', '17', '18', '19', '20', '21', '22']
+gbc_names = ['09nd', '09', '11', '14', '16', '17', '18', '19', '20', '21', '22']
 
 
 for n in gbc_names:
@@ -66,7 +70,6 @@ for n in gbc_names:
     initf = os.path.join(M.baseDirectory, cell, ivinitfile)
     print ('\nRetrieving data for cell {0:s}'.format(cell))
     M.Params['cell'] = cell
-#    print ('cell, params cell: ', cell, M.Params)
     M.Params['modelType'] = modeltype
     M.Params['hocfile'] = M.Params['cell'] + '.hoc'
     if M.Params['hocfile'] == None: # just use the matching hoc file
@@ -74,26 +77,25 @@ for n in gbc_names:
     if not os.path.isfile(initf):
         print('creating new init file for cell, did not find {:s}'.format(initf))
         M.Params['runProtocol'] = 'initIV'
-#        try:
-        M.run_model(par_map = M.Params)
-#        except:
-#            print('Failed to run model for {:s}'.format(initf))
+        if not_testing:
+            M.run_model(par_map = M.Params)
     else:
         print('    Initialization file for {:s} exists'.format(cell))
     if not os.path.isfile(initf):
         raise ValueError('Failed to create the IV init state file')
-    ivdatafile = os.path.join(M.baseDirectory, cell, M.simDirectory, 'IV', cell+'_' + modeltype+'.p')
-    if not os.path.isfile(ivdatafile):
+    ivdatafile = os.path.join(M.baseDirectory, cell, M.simDirectory, 'IV', cell+'_' + modeltype+'_monitor.p')
+    if not os.path.isfile(ivdatafile) or forcerun is True:
         print ('Creating ivdatafile: {:s}\n'.format(ivdatafile))
         M.Params['runProtocol'] = 'runIV'
-        M.run_model(par_map = M.Params)
+        if not testing:
+            M.run_model(par_map = M.Params)
     else:
         print('    IV file for {:s} exists'.format(cell))
-    
+    print(' IV data file: ', ivdatafile)
     fh = open(ivdatafile)
     df = pickle.load(fh)
     r = df['Results'][0]
-#    print  (df['Results'])
+
     for trial in range(len(df['Results'])):
         ds = df['Results'][trial]
         k0 = df['Results'][trial].keys()[0]

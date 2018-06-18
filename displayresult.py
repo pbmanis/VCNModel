@@ -13,15 +13,15 @@ AN_Result_VCN_c09_Syn006_N001_030dB_16000.0_MS.p
 """
 import os
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 import numpy as np
 import pickle
 import argparse
 from collections import OrderedDict
-#from cnmodel.util import sound
+from cnmodel.util import sound
 import sac_campagnola as SAC
 import pycircstat as PCS
-import pylibrary.PlotHelpers as PH
+import pylibrary.PlotHelpers as PH 
+from cnmodel.util import vector_strength
 import GIF_fit as GFit
 
 import warnings
@@ -56,8 +56,16 @@ class DisplayResult():
         print self.Params['patterns']
         for p in self.Params['patterns']:
             if self.Params['runtype'] in ['AN'] and self.Params['modetype'] not in ['IO']:
-                self.fn[p] = 'AN_Result_VCN_{0:s}_{1:s}_delays_N020_040dB_4000.0_FM50.0_DM100_MS.p'.format(p, self.Params['modeltype'])
-                self.fn[p] = 'AN_Result_VCN_{0:s}_{1:s}_Syn{2:03d}_N001_030dB_16000.0_MS.p'.format(p, self.Params['modeltype'], self.Params['synno'])
+                self.fn[p] = 'AN_Result_VCN_{0:s}_delays_{1:s}_N001_060dB_4000.0_FM40.0_DM050_HS.p'.format(p, self.Params['modeltype'])
+                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM250.0_DM100_HS.p'             
+           #     self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM250.0_DM100_MS_mean.p'             
+              #  self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM100.0_DM100_MS.p'             
+                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM300.0_DM100_MS_mean.p'             
+                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM300.0_DM100_MS_allmean.p'             
+                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N050_060dB_4000.0_FM400.0_DM050_MS_mean.p'             
+                #self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N050_060dB_4000.0_FM400.0_DM050_MS.p'             
+                #self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N050_060dB_4000.0_FM400.0_DM050_MS_allmean.p'             
+            #  self.fn[p] = 'AN_Result_VCN_{0:s}_{1:s}_Syn{2:03d}_N001_030dB_16000.0_MS.p'.format(p, self.Params['modeltype'], self.Params['synno'])
                 self.bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/AN'.format(p)
             
             elif self.Params['runtype']in ['AN'] and self.Params['modetype'] in ['IO']:
@@ -72,7 +80,8 @@ class DisplayResult():
                 self.fn[p] = 'VCN_{0:s}_{1:s}_gifnoise.p'.format(p, self.Params['modeltype'])
                 self.bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/Noise'.format(p)
         self.lookupfiles()
-
+        print('Files: ', self.fn)
+        
     def lookupfiles(self):  # simply look for files
         if self.findfiles:
             for p in self.Params['patterns']:
@@ -86,6 +95,7 @@ class DisplayResult():
 
     def show(self):
         self.file_setup()
+        print('runtype: ', self.Params['runtype'])
         if self.Params['runtype'] == 'IV':
             self.show_IV()
             #fig, ax = plt.subplots(len(self.Params['patterns'])+1, 3)
@@ -95,62 +105,94 @@ class DisplayResult():
             self.show_gifnoise()
 
     def show_AN(self):    
-        fig = plt.figure()
-        gs_outer = gridspec.GridSpec(4, 1)  # 4 rows, one column
-        gs_inner = []
-        ax = {}
-        for i, outer in enumerate(gs_outer):
-            gs_inner.append(gridspec.GridSpecFromSubplotSpec(4, 4, subplot_spec=outer))
-            ax1 = plt.Subplot(fig, gs_inner[-1][:-1, 0])
-            fig.add_subplot(ax1)
-            ax2 = plt.Subplot(fig, gs_inner[-1][3, 0])
-            fig.add_subplot(ax2)
-    
-            ax3 = plt.Subplot(fig, gs_inner[-1][:, 1])
-            fig.add_subplot(ax3)
-            ax4 = plt.Subplot(fig, gs_inner[-1][:, 2])
-            fig.add_subplot(ax4)
-            ax5 = plt.Subplot(fig, gs_inner[-1][:, 3])
-            fig.add_subplot(ax5)
-            ax[i] = [ax1, ax2, ax3, ax4, ax5]
-            for a in ax[i]:
-                PH.nice_plot(a)
-            PH.noaxes(ax1, 'x')
+        print('Show an')
+        # bulid plot layout
+        sizer = OrderedDict([('A', {'pos': [0.08, 0.4, 0.71, 0.22]}), ('B', {'pos': [0.55, 0.4, 0.71, 0.22]}),
+                             ('C', {'pos': [0.08, 0.4, 0.39, 0.22]}), ('D', {'pos': [0.55, 0.4, 0.39, 0.22]}),
+                             ('E', {'pos': [0.08, 0.4, 0.07, 0.22]}), ('F', {'pos': [0.55, 0.4, 0.07, 0.22]}),
+        ])  # dict elements are [left, width, bottom, height] for the axes in the plot.
+        n_panels = len(sizer.keys())
+        gr = [(a, a+1, 0, 1) for a in range(0, n_panels)]   # just generate subplots - shape does not matter
+        axmap = OrderedDict(zip(sizer.keys(), gr))
+        P = PH.Plotter((n_panels, 1), axmap=axmap, label=True, figsize=(8., 6.))
+        P.resize(sizer)  # perform positioning magic
 
-        #fig.tight_layout()
-        # plt.show()
-        # exit()
         d = {}
-        for p in self.Params['patterns']:
+        for p in self.Params['patterns']:  # for each cell/run get the data
             h = open(os.path.join(self.bp[p], self.fn[p]))
             d[p] = pickle.load(h)
             h.close()
 
         # d[cell] has keys: ['inputSpikeTimes', 'somaVoltage', 'spikeTimes', 'time', 'dendriteVoltage', 'stimInfo', 'stimWaveform']
-        #print 'data keys: ', d.keys()
-        #print len(d['time'])
+        sk = sizer.keys()
+        si = d['c09']['Params']
+        totaldur = si['pip_start'] + np.max(si['pip_start']) + si['pip_duration'] + si['pip_offduration']
+        for j, pattern in enumerate(self.Params['patterns']): # for all cells in the "pattern"
 
-        for j, pattern in enumerate(self.Params['patterns']):
-            for i in d[pattern]['somaVoltage'].keys():
-                v = d[pattern]['somaVoltage'][i]
-                ax2.plot(d[pattern]['time'], v)
-        #    plt.show()
-        #    print np.array(d[patterns[j]]['stimWaveform'][0])
-        #    w = d[patterns[j]]['stimWaveform'][0]
-        #    t = np.linspace(0., len(d[patterns[j]]['stimWaveform'][0])*dt, len(d[patterns[j]]['stimWaveform'][0])) 
-        #    ax[j][1].plot(t, w)  # stimulus underneath
+            for i in range(len(d[pattern]['trials'])):  # for all trails in the measure.
+                trial = d[pattern]['trials'][i]
+                w = trial['stimWaveform']
+                stb = trial['stimTimebase']
+                P.axdict['A'].plot(trial['time']/1000., trial['somaVoltage'], linewidth=0.5)
+                P.axdict['B'].plot(stb, w, linewidth=0.5)  # stimulus underneath
+                P.axdict['C'].plot(trial['spikeTimes']/1000., i*np.ones(len( trial['spikeTimes'])),
+                        'o', markersize=2.5, color='b')
+                inputs = len(trial['inputSpikeTimes'])
+                for k in range(inputs):
+                    tk = trial['inputSpikeTimes'][k]/1000.
+                    y = (i+0.1+k*0.05)*np.ones(len(tk))
+                    P.axdict['E'].plot(tk, y, '|', markersize=2.5, color='r', linewidth=0.5)
+        for a in ['A', 'B', 'C', 'E', 'F']:  # set some common layout scaling
+            P.axdict[a].set_xlim((0., totaldur))
+            P.axdict[a].set_xlabel('T (s)')
+        P.axdict['A'].set_ylabel('mV', fontsize=8)
+        P.axdict['D'].set_xlabel('Phase', fontsize=8)
+        P.axdict['C'].set_ylabel('Trial', fontsize=8)
+        P.axdict['E'].set_ylabel('Trial, ANF', fontsize=8)
+        P.axdict['B'].set_title('Stimulus', fontsize=9)
+        P.axdict['E'].set_title('ANF Spike Raster', fontsize=9)
+        P.axdict['C'].set_title('Bushy Spike Raster', fontsize=9)
+        P.axdict['F'].set_title('PSTH', fontsize=9)
+        if si['soundtype'] == 'SAM':  # calculate vs and plot histogram
+            # combine all spikes into one array, plot PSTH
+            data = d[pattern]
+            allst = []
+            for trial in data['trials']:
+                # print (trial)
+                allst.extend(data['trials'][trial]['spikeTimes']/1000.)
+            allst = np.array(allst)
+            allst = np.sort(allst)
+            # the histogram of the data
+            P.axdict['F'].hist(allst, 100, normed=1, facecolor='blue', alpha=0.75)
+            # print('allst: ', allst)
+            phasewin = [data['Params']['pip_start'][0] + 0.25*data['Params']['pip_duration'], 
+                data['Params']['pip_start'][0] + data['Params']['pip_duration']]
+            # print (phasewin)
+            spkin = allst[np.where(allst > phasewin[0])]
+            spikesinwin = spkin[np.where(spkin <= phasewin[1])]
 
-            for i, st in enumerate(d[pattern]['spikeTimes'].keys()):
-                ax[j][0].plot(d[pattern]['spikeTimes'][st]/1000., i*np.ones(len( d[pattern]['spikeTimes'][st])), 'o', markersize=2.5, color='b')
-                i#nputs = len(d[pattern]['inputSpikeTimes'][st])
-                # for j in range(inputs):
-                #     t = (d['ref']['inputSpikeTimes'][st][j])/1000.
-                #     y = (i+0.1+j*0.05)*np.ones(len(t))
-                #     ax[0,].plot(t, y, 'o', markersize=2.5, color='r')
-        #for i, st in enumerate(d['ref']['somaVoltage'].keys()):
-        #    ax[2,].plot(d['ref']['time'], d['ref']['somaVoltage'][st], color='k')
-        #    ax[j][0].set_xlim((0, 0.25))
-        #    ax[j][1].set_xlim((0, 0.25))
+            # set freq for VS calculation
+            if si['soundtype'] == 'tone':
+                f0 = data['Params']['F0']
+                print ("Tone: f0=%.3f at %3.1f dbSPL, cell CF=%.3f" % 
+                        (data['Params']['f0'], data['Params']['dB'], data['Params']['F0'] ))
+            if si['soundtype'] == 'SAM':
+                f0 = data['Params']['fmod']
+                tstring = ("SAM Tone: f0=%.3f at %3.1f dbSPL, fMod=%3.1f  dMod=%5.2f, cell CF=%.3f" %
+                     (data['Params']['F0'], data['Params']['dB'], data['Params']['fmod'], data['Params']['dmod'], data['Params']['F0']))
+                print tstring
+                P.figure_handle.suptitle(tstring, fontsize=10)
+           # print('spikes: ', spikesinwin)
+            vs = vector_strength(spikesinwin*1000., f0)  # vs expects spikes in msec
+            print(' Sound type: ', si['soundtype'])
+            print 'AN Vector Strength at %.1f: %7.3f, d=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d' % (f0, vs['r'], vs['d']*1e6, vs['R'], vs['p'], vs['n'])
+            # print(vs['ph'])
+            P.axdict['D'].hist(vs['ph'], bins=2*np.pi*np.arange(30)/30.)
+            P.axdict['D'].set_xlim((0., 2*np.pi))
+            P.axdict['D'].set_title('Phase (VS = {0:.3f})'.format(vs['r']), fontsize=9, horizontalalignment='center')
+                    
+        P.figure_handle.savefig('AN_res.pdf')
+        plt.show()
 
     def show_SAC(self):
         sac = SAC.SAC()

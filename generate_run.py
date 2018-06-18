@@ -13,13 +13,13 @@ Methods:
 February 2014, Paul B. Manis UNC Chapel Hill
 """
 
-
 import os
 import numpy as np
 import copy
 from collections import OrderedDict
 from cnmodel.util.stim import make_pulse # makestim
-from NoiseTrainingGen import generator
+import NoiseTrainingGen as NG
+#from NoiseTrainingGen.NoiseGen import generator
 from pylibrary.Params import Params
 import IVPlots as IVP
 import analyze_run as ar
@@ -53,6 +53,7 @@ class GenerateRun():
         self.plotting = plotting
         #print(dir(cell))
         self.cell = cell
+        self.filename = params['cell']
         self.hf = cell.hr # get the reader structure and the hoc pointer object locally
         self.basename = 'basenamenotset'
         self.saveAllSections = params['save_all_sections']
@@ -89,6 +90,7 @@ class GenerateRun():
                               gif_fmod = params['gif_fmod'],
                               gif_tau = params['gif_tau'],
                               gif_dur = params['gif_dur'],
+                              gif_skew = params['gif_skew'],
                               runTime=time.asctime(),  # store date and time of run
                               inFile=None,
                               # 'ANFiles/AN10000Hz.txt', # if this is not None, then we will use these spike times...
@@ -147,7 +149,7 @@ class GenerateRun():
         self.monitor = OrderedDict() # standard monitoring
         self.allsecVec = OrderedDict() # all section monitoring
         self.mons = OrderedDict()
-        self.filename=None
+
 
         if verbose:
             print('runinfo initialization done')
@@ -271,13 +273,15 @@ class GenerateRun():
             self.mons = ['postsynapticV', 'postsynapticI', 'dendriteV' ]
         elif self.runInfo.postMode in ['gifnoise']:
             stim = {}
-            self.stim = generator(
+            self.stim = NG.NoiseGen()
+            self.stim.generator(
                 dt = self.hf.h.dt,
                 i0=self.runInfo.gif_i0,
                 sigma0=self.runInfo.gif_sigma,
                 fmod=self.runInfo.gif_fmod,
                 tau=self.runInfo.gif_tau,
-                dur=self.runInfo.gif_dur,)
+                dur=self.runInfo.gif_dur,
+                skew=self.runInfo.gif_skew,)
             maxt = 1000.*self.runInfo.gif_dur
             self.icPost = self.hf.h.iStim(0.5, sec=self.electrode_site)
             self.icPost.delay = 2
@@ -294,11 +298,11 @@ class GenerateRun():
             return
         self.hf.h.tstop = maxt+self.runInfo.stimDelay
         print('PrepareRun: \n')
-        print('   maxt:     {:8.2f}'.format(maxt))
+        print('   maxt:     {:8.2f} ms'.format(maxt))
         print('   delay:    {:8.2f} ms'.format(self.runInfo.stimDelay))
-        print('   duration: {:9.3f} ms'.format(self.runInfo.stimDur))
+        print('   duration: {:8.2f} ms'.format(self.runInfo.stimDur))
         print('   tstop:    {:8.2f} ms'.format(self.hf.h.tstop))
-        print("   t:        {:8.2f}\n----------------\n".format(self.hf.h.t))
+        print("   h.t:      {:8.2f} ms\n----------------\n".format(self.hf.h.t))
         self.monitor['time'].record(self.hf.h._ref_t)
         #self.hf.h.topology()
         #pg.show()
@@ -349,11 +353,10 @@ class GenerateRun():
                 tr = {'r': self._executeRun(), 'i': inj} # now you can do the run
                 tasker.results[i] = tr
         
-#        self.results = results
         self.results = OrderedDict()
-#        exit()
+
         for i in range(nLevels):
-            print('level: ', i, '  tresults[i]["i"]: ', tresults[i]['i'])
+           #  print('level: ', i, '  tresults[i]["i"]: ', tresults[i]['i'])
             self.results[tresults[i]['i']] = tresults[i]['r']
         for k, i in enumerate(ipulses):
             if self.plotting:
@@ -426,7 +429,8 @@ class GenerateRun():
         print('Finishing Vm: {:6.2f}'.format(self.electrode_site.v))
         self.monitor['time'] = np.array(self.monitor['time'])
         self.monitor['time'][0] = 0.
-        print('post v: ', self.monitor['postsynapticV'])
+        if verbose:
+            print('post v: ', self.monitor['postsynapticV'])
         if testPlot:
            pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))
            QtGui.QApplication.instance().exec_()
@@ -436,7 +440,7 @@ class GenerateRun():
             #     pl.setTitle('%s' % self.filename)
             # else:
             #     pl.setTitle('executeRun, no filename')
-        print ('run done')
+        print ('    Run finished')
         np_monitor = {}
         for k in self.monitor.keys():
             np_monitor[k] = np.array(self.monitor[k])

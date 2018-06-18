@@ -13,7 +13,7 @@ The implementation here is based on these works, but there is a much
 larger literature (cited in these works).
 
 1: White JA, Young ED, Manis PB. The electrotonic structure of regular-spiking
-neurons in the ventral cochlear nucleus may determine their response properties. 
+neurons in the ventral cochlear nucleus may determine their response properties.
 J Neurophysiol. 1994 May;71(5):1774-86. PubMed PMID: 8064348.
 
 2: White JA, Manis PB, Young ED. The parameter identification problem for the
@@ -26,17 +26,16 @@ lmfit 0.96 or later: for curve fitting routines
 
 """
 
-import os
 import numpy as np
 import matplotlib.pyplot as mpl
 import matplotlib.cm as cm
-import lmfit
+#import lmfit
 from lmfit import  Model
-from cnmodel.util import ExpFitting
+#from cnmodel.util import ExpFitting
 
-# note need to define functions to be fit outside of class - 
+# note need to define functions to be fit outside of class -
 # otherwise lmfit gets confused about the arguments (self...)
-# 
+#
 def doubleexp(x, amp=1., C0=5, C1=1, tau0=20., tau1=0.2):
     """
     Double exponential fit
@@ -61,7 +60,7 @@ class Electrotonic():
              Time points for the current and voltage arrays
         tstart: float
             Time at which the voltage step starts
-
+        
         """
         self.V = V
         self.I = I
@@ -73,7 +72,7 @@ class Electrotonic():
         self.taum = 10.
         self.I0 = -0.1
         self.L = None
-
+    
     def nexp(self, I0, Rn, C=np.zeros(2),
              tau=np.array([10., 0.5]), N=2, noise=0.):
         """
@@ -95,20 +94,20 @@ class Electrotonic():
         if noise > 0:
             v = v + np.random.randn(v.shape[0])*noise
         return v
-
+    
     def fitexps(self, x, y, amp=5):
         dexpmodel = Model(doubleexp, independent_vars=['x'])
         params = dexpmodel.make_params(amp=amp, C0=5, C1=1, tau0=5, tau1=0.5)
         print ('Params: ', [p for p in params.values()])
         self.fitresult = dexpmodel.fit(y, params, x=x)
-        
+    
     def coeffs_ratio(self):
          C1 = self.fitresult.params['C1'].value
          C0 = self.fitresult.params['C0'].value
          tau0 = self.fitresult.params['tau0'].value
          tau1 = self.fitresult.params['tau1'].value
          return(C1*tau0/(2.0*C0*tau1))
-
+    
     def print_pars(self):
         print('---------------------------')
         print('Rn: {0:.3f}'.format(self.Rn))
@@ -119,7 +118,7 @@ class Electrotonic():
         
         print('ASt: {0:.3f}'.format(self.ASt()))
         print('Ct: {0:.3f}, {1:.3f}'.format(self.Ct(0), self.Ct(1)))
-        
+    
     def alphas(self):
         """
         eqn 10, White et al. 1992
@@ -129,7 +128,7 @@ class Electrotonic():
             a[i] = np.sqrt((self.tau_d/
                         self.fitresult.params['tau%d'%i].value)-1.0)
         return a
-        
+    
     def eta(self, alpha=None):
         if alpha is None:
             alpha = self.alphas()
@@ -143,17 +142,17 @@ class Electrotonic():
     
     def ASt(self):
         """
-        eq. 12, white et al. 1994
+        eq. 12, White et al. 1994
         """
         return self.eta()*self.tau_d/(self.Cm*self.Rn*(self.rho+1.0))
-
+    
     def betas(self, alpha=None):
         if alpha is None:
             alpha = self.alphas()
         a = alpha
         betas = np.zeros(2)
         for i in range(0,2):
-            print(a[i])
+#            print(a[i])
             betas[i] = [1.0 - self.eta(alpha=a)*(1.0+a[i]*a[i])]/(a[i]*a[i])
         return betas
     
@@ -169,7 +168,7 @@ class Electrotonic():
         x1n = x1n + (np.power(a[i]*b[i]*self.L, 2.0)
                      /(self.rho*self.L/np.tanh(self.L)))
         return x1/x1n
-
+    
     def Err(self, wa=1.0):
         """
         Eqn. 11, White et al. 1994
@@ -235,7 +234,3 @@ if __name__ == '__main__':
     cs = mpl.contour(x, y, esurf)
     mpl.clabel(cs, inline=1, fontsize=8)
     mpl.show()
-    
-    
-        
-        

@@ -6,19 +6,36 @@ Spike time tiling calculation, from:
 Cutts, C.S. and Eglen, S.J., "Detecting Pairwise Correlations in Spike Trains: An Objective Comparison of Methods and Application to the Study of Retinal Waves", The Journal of Neuroscience, October 22, 2014, 34(43):14288-14303
 
 Implementation by P.B. Manis, Ph.D., UNC Chapel Hill
-November, 2017  
+November, 2017
 
 """
 
 import numpy as np
 import matplotlib.pyplot as mpl
+from numba import jit
+
+@jit(nopython=True, cache=True,)
+def nb_tiletimes(time, st, rate, itile):
+    npts = time.shape[0]
+    tiles = np.zeros(npts)
+#    itile = int(self.tilewindow/rate)
+    for i in range(len(st)):
+        ix0 = int(st[i]/rate)-itile
+        if ix0 < 0:
+            ix0 = 0
+        ix1 = int(st[i]/rate)+itile
+        if ix1 > len(tiles):
+            ix1 = len(tiles)
+        tiles[ix0:ix1] = 1
+    ta = np.sum(tiles)/npts
+    return ta, tiles
 
 class STTC():
     def __init__(self, seed=0):
         np.random.seed(0)
         
         #self.set_spikes(time, rate, st1, st2, dt)
-        
+    
     def set_spikes(self, rate, st1, st2, tilewindow):
         self.tilewindow = tilewindow
         self.sample_rate = rate
@@ -29,12 +46,12 @@ class STTC():
         print('npts: ', npts)
         self.time = np.arange(npts)*self.sample_rate
     
-    def calc_sttc(self, dt=None):
+    def calc_sttc(self, tw=None):
         
-        if dt is None:
-            dt = self.tilewindow
+        if tw is None:
+            tw = self.tilewindow
         else:
-            self.tilewindow = dt
+            self.tilewindow = tw
         st1 = np.sort(self.st1)
         st2 = np.sort(self.st2)
         ta, tatiles = self.tiletimes(self.time, self.sample_rate, st1)
@@ -46,14 +63,16 @@ class STTC():
         self.tatiles = tatiles
         self.tbtiles = tbtiles
         return sttc
-
+    
     def tiletimes(self, time, rate, st):
         """
         Compute the total time tiled in spike train st
         """
+        itile = int(self.tilewindow/rate)
+        #ta, tiles = nb_tiletimes(time, st, rate, itile)  # not faster with numba... 
         ta = 0.
         tiles = np.zeros(time.shape[0])
-        itile = int(self.tilewindow/rate)
+
         for i in range(len(st)):
             ix0 = int(st[i]/rate)-itile
             if ix0 < 0:
@@ -70,7 +89,6 @@ class STTC():
         p = np.sum(tile[ist])/len(st)
         return p
 
-    
     def tests(self, distribution='exp', pdelete=0., independent=True, dither=0., tilewindow=1.0):
         
         assert distribution in ['exp', 'exponential', 'poisson', 'regular']
@@ -92,7 +110,7 @@ class STTC():
             st2 = np.cumsum(st1)
         else:
             st2 = st1
-        st2 = np.random.choice(st2, 
+        st2 = np.random.choice(st2,
                     int((1.0-pdelete)*st1.shape[0]), replace=False)
         if dither > 0:
             st2 = st2 + np.random.randn(len(st2))*dither
@@ -102,7 +120,7 @@ class STTC():
         print('# of spikes in spike train 1: {0:d}, in spike train 2: {1:d} '.format(st1.shape[0], st2.shape[0]))
         print('STTC value: {0:.3f} '.format(sttc))
         self.plot_sttc(st1, st2)
-
+    
     def plot_sttc(self, st1, st2):
         mpl.figure()
         st1x = np.repeat(st1, 3)
@@ -128,16 +146,16 @@ class STTC():
         mpl.ylim([0., 2.])
         #mpl.show()
     
-    
-if __name__ == '__main__':
 
+if __name__ == '__main__':
+    
     S = STTC(seed=0)
     S.tests(distribution='regular', pdelete=0.3, independent=False, dither=2.0,
         tilewindow=2.0)
     
     
-    
         
         
     
+        
         
