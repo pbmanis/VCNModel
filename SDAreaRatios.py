@@ -15,7 +15,7 @@ def area(fn):
     filename = os.path.join('VCN_Cells', fn, 'Morphology', fn+'.hoc')
     post_cell = cells.Bushy.create(morphology=filename, decorator=Decorator,
             species='mouse',
-            modelType='mGBC')
+            modelType='II', modelName='XM13')
     post_cell.distances()
     post_cell.computeAreas()
     secareas = {}

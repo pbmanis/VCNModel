@@ -73,11 +73,11 @@ class STTC():
     
     def tests(self, distribution='exp', pdelete=0., independent=True, dither=0., tilewindow=1.0):
         
-        assert distribution in ['exp', 'poisson', 'regular']
+        assert distribution in ['exp', 'exponential', 'poisson', 'regular']
         samplerate = 0.1 # ms
         spikerate = 0.001 # firing rate
-        nspikes = 100. # number of spikes to test
-        if distribution in ['exp']:
+        nspikes = 100 # number of spikes to test
+        if distribution in ['exp', 'exponential']:
             st1 = np.random.exponential(1./spikerate, nspikes)
             st1 = np.cumsum(st1)
         elif distribution == 'regular':
@@ -126,13 +126,13 @@ class STTC():
         mpl.plot(self.time, tb*0.95, 'r-')
         
         mpl.ylim([0., 2.])
-        mpl.show()
+        #mpl.show()
     
     
 if __name__ == '__main__':
 
     S = STTC(seed=0)
-    S.tests(distribution='exp', pdelete=0.3, independent=False, dither=2.0,
+    S.tests(distribution='regular', pdelete=0.3, independent=False, dither=2.0,
         tilewindow=2.0)
     
     

@@ -78,7 +78,7 @@ if __name__ == '__main__':
     
 #    pg.mkQApp()
     rendertype = 'surface'
-    mechanisms = ['ihvcn', 'gbar']
+    mechanisms = ['klt', 'gbar']
     #mechanisms = None
     fn = sys.argv[1]
     filename = os.path.join('VCN_Cells', fn, 'Morphology', fn+'.hoc')
