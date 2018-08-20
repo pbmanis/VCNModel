@@ -3,6 +3,7 @@ Spike statistics
 ----------------
 In all functions below, spikes is a sorted list of spike times
 '''
+from __future__ import print_function
 from numpy import *
 from brian.units import check_units, second
 from brian.stdunits import ms, Hz
@@ -145,7 +146,7 @@ def spike_triggered_average(spikes,stimulus,max_interval,dt,onset=None,display=F
     onset = float(onset)
     for ispike,spike in enumerate(spikes):
         if display==True:
-            print 'sta: spike #',ispike,' out of :',nspikes
+            print('sta: spike #',ispike,' out of :',nspikes)
         if spike>onset:
             spike = int(spike/dt) 
             #print stimulus[spike-sta_length:spike].shape
@@ -259,7 +260,7 @@ def get_gamma_factor_matrix(coincidence_matrix, model_length, target_length, tar
     norm =.5 * (1 - 2 * delta * target_rateMAT)
 
    # print  target_rateMAT 
-    print coincidence_matrix 
+    print(coincidence_matrix) 
     #print NCoincAvg
     #print (norm * (target_lengthMAT + model_lengthMAT))
     gamma = (coincidence_matrix - NCoincAvg) / (norm * (target_lengthMAT + model_lengthMAT))
@@ -327,7 +328,7 @@ if __name__ == '__main__':
 
     from brian import *
 
-    print vector_strength([1.1 * ms, 1 * ms, .9 * ms], 2 * ms)
+    print(vector_strength([1.1 * ms, 1 * ms, .9 * ms], 2 * ms))
 
     N = 100000
     T1 = cumsum(rand(N) * 10 * ms)
@@ -335,8 +336,8 @@ if __name__ == '__main__':
     duration = T1[N / 2] # Cut so that both spike trains have the same duration
     T1 = T1[T1 < duration]
     T2 = T2[T2 < duration]
-    print firing_rate(T1)
+    print(firing_rate(T1))
     C = CCVF(T1, T2, bin=1 * ms)
-    print total_correlation(T1, T2)
+    print(total_correlation(T1, T2))
     plot(C)
     show()

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as mpl
 import scipy.stats
@@ -43,7 +44,7 @@ n_inf = 0.0;
 n_tau  = 1;
 dndt = 0.;
 
-print('Refract: ', Trefract_ind)
+print(('Refract: ', Trefract_ind))
 V = np.zeros_like(T)
 V[0] = -65.
        

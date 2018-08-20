@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = 'pbmanis'
 
 
@@ -31,10 +32,10 @@ if celltype == 'Stellate':
 elif celltype == 'Bushy':
     space = {'ihvcn': np.linspace(0.2, 2, 5), 'klt': np.linspace(0.2, 2, 5)}
 else:
-    print 'What cell type? %s' % (celltype)
+    print('What cell type? %s' % (celltype))
     exit()
 
-spvalues = [x for x in apply(itertools.product, space.values())]
+spvalues = [x for x in itertools.product(*space.values())]
 spaceMap = [dict(zip(space.keys(), p)) for p in spvalues]
 for idnum, x in enumerate(spaceMap): # add an ID as a key
     x['id'] = idnum
@@ -47,23 +48,23 @@ if test is True:
         run_model_Star(s)
 
     runtime = time.time() - start_time
-    print 'run time: ', runtime, "seconds"
+    print('run time: ', runtime, "seconds")
     exit()
 ######
 
 PROCESSES = len(spaceMap)
 TASKS = [s for s in spaceMap]
-print "Number of tasks: ", len(TASKS)
+print("Number of tasks: ", len(TASKS))
 
 ncpu = multiprocessing.cpu_count()
-print 'ncpu: ', ncpu
+print('ncpu: ', ncpu)
 pool = multiprocessing.Pool(ncpu)
 
 if len(TASKS) < ncpu:
     chunksize = len(TASKS)
 else:
     chunksize = len(TASKS) // ncpu
-print 'chunksize: ', chunksize
+print('chunksize: ', chunksize)
 
 #print 'tasks: ', TASKS
 
@@ -79,8 +80,8 @@ for x in imap_it:
         #print 'Result %d:\n' % (n), result[n]
         n = n + 1
     else:
-        print '>'*80
-        print '   parallel_model_run: multiprocessing result error: X is NONE?'
+        print('>'*80)
+        print('   parallel_model_run: multiprocessing result error: X is NONE?')
 #except:
 #    print '$'*80
 #    print 'try FAILED at n = %d' % n
@@ -106,5 +107,5 @@ pickle.dump(big_result, f)
 f.close()
 
 runtime = time.time() - start_time
-print 'run time: ', runtime, "seconds"
-print 'file: ', fn
+print('run time: ', runtime, "seconds")
+print('file: ', fn)

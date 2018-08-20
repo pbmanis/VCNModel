@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from __future__ import print_function
 __author__ = 'pbmanis'
 
 import sys
@@ -73,7 +74,7 @@ class Render():
             g = renderer.draw_vispy()
 
         else:
-            print 'rendertype: ', rendertype
+            print('rendertype: ', rendertype)
             raise ValueError('Render type %s not known: ' % rendertype)
         return g, renderer 
 
@@ -98,7 +99,7 @@ if __name__ == '__main__':
     backgroundcolor = (50, 50, 125, 255)  # 'blue'
     if rendertype in ['volume', 'line', 'graph']:
          backgroundcolor = (125, 125, 125, 255)
-    print backgroundcolor, rendertype
+    print(backgroundcolor, rendertype)
     g, renderer = R.render(rendertype=rendertype, mech=mechanisms, backgroundcolor=backgroundcolor)
 
     if rendertype == 'mpl':

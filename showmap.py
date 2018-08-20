@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = 'pbmanis'
 
 """
@@ -23,7 +24,7 @@ class ShowMap():
     def __init__(self, fname=None):
         if fname == None:
             fname = fn
-        print 'loading file: %s' % fname
+        print('loading file: %s' % fname)
         self.loadfile(fname)
 
         self.getids()

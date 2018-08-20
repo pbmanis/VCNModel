@@ -2,6 +2,7 @@
 Read a hoc file, and rescale x,y,z with an anisotropic set of factors
 Designate an output file
 """
+from __future__ import print_function
 import sys
 import os
 import re
@@ -23,8 +24,8 @@ def rescale_hoc_aniso(infile=None, outfile='temp.hoc'):
 
     pt3dFlag = False
     inf = open(infile, 'r')
-    print infile
-    print inf
+    print(infile)
+    print(inf)
     outf = open(outfile, 'w')
     for line in iter(inf):
         
@@ -34,7 +35,7 @@ def rescale_hoc_aniso(infile=None, outfile='temp.hoc'):
             #mo = re.search(r"pt3dadd", line)
             nl = np.array(eval(mo.group('point')))
           #  nl = np.array(eval(line[8:]))
-            print 'nl : ', nl
+            print('nl : ', nl)
             nls = (nl * scaleFactor)
             nls = (nls)
             line = '\tpt3dadd('
@@ -44,7 +45,7 @@ def rescale_hoc_aniso(infile=None, outfile='temp.hoc'):
                 line += str(f)
                 if i < nls.shape[0]-1:
                     line  += ', '
-            print 'new nls: ', nls
+            print('new nls: ', nls)
 #            line += ')'+ mo.group('comment')  + '\n' # may have a comment to follow
             line += ')'+  '\n' # may have a comment to follow
          #   outf.write(newLine+'\n')

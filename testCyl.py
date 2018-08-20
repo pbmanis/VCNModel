@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = 'pbmanis'
 
 from pyqtgraph.Qt import QtCore, QtGui
@@ -43,22 +44,22 @@ class testcyl():
         connections.append((2,1))
         connections.append((2,1))
         lines = np.vstack(connections)
-        print 'lines: ', lines
+        print('lines: ', lines)
         self.drawMeshes(x,y,z,d,lines, mode)
         self.drawMeshes(x,y,z,d,lines, 'line')
 
 
     def drawMeshes(self, x, y, z, d, lines, mode):
-        print 'x: ', len(x)
+        print('x: ', len(x))
         dmax = np.max(d)
         #wmax = 20.
         for c in range(len(lines)-1):
             i = lines[c, 0] # from
             j = lines[c, 1] # to
             if i < 3:
-                print 'xyzd: %6.1f %6.1f %6.1f %6.2f' % (x[j], y[j], z[j], d[j])
+                print('xyzd: %6.1f %6.1f %6.1f %6.2f' % (x[j], y[j], z[j], d[j]))
             pts = np.vstack([[x[j], x[i]],[y[j], y[i]],[z[j],z[i]]]).transpose()
-            print 'pts: ', pts
+            print('pts: ', pts)
             if mode == "line":
                 plt = gl.GLLinePlotItem(pos=pts, width =(d[i]+d[j])/(2.), color=pg.glColor((int(255.*d[i]/dmax), 128))) #connected=True)
                 self.w.addItem(plt)

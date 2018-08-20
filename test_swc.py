@@ -1,6 +1,7 @@
+from __future__ import print_function
 import neuronvis.swc_to_hoc as swc
 
-print dir(swc)
+print(dir(swc))
 SWC = swc.SWC
 soma = SWC('MorphologyFiles/cellbody.swc', types={1:'soma', 2:'axon', 3:'dendrite'})
 soma.set_type(1)

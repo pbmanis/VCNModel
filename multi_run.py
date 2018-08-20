@@ -1,6 +1,7 @@
 """
 multi_run does multiple runs with the models
 """
+from __future__ import print_function
 
 import os.path
 import model_run as MR
@@ -82,7 +83,7 @@ for runid in runs.keys():
     parkeys = i1.Params.keys()
     for p in common.keys():
         if p not in parkeys:
-            print 'parameter %s not in parkeys list' % p
+            print('parameter %s not in parkeys list' % p)
             exit()
         else:
             i1.Params[p] = common[p] # set the parameters

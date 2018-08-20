@@ -4,6 +4,7 @@ compute STTC for different windows from the data in the specified file
 Compares gif vs input model sttcs.
 
 """
+from __future__ import print_function
 
 import sys
 import numpy as np
@@ -53,7 +54,7 @@ def compute(gn, ax, cell=19, hist=False, trace=False):
     st_m = d['V']
     st_e = d['ExpData']
     rate = d['gifpars']['dt']
-    print 'Rate: ', rate
+    print('Rate: ', rate)
     tilewindow = 1.0
     refract = 1.5
     threshold = -20.
@@ -83,7 +84,7 @@ def compute(gn, ax, cell=19, hist=False, trace=False):
     for i, tw in enumerate(tilerange):
         st[i] = SC.calc_sttc(tw=tw)
      
-    print 'STTC : ' % st
+    print('STTC : ' % st)
     stx = stexpt + np.random.randn(len(stexpt))*0.15  # jitter to show effect of timing on STTC.
     SC.set_spikes(rate, stexpt, stx, tilewindow)
     stxw = np.zeros(len(tilerange))

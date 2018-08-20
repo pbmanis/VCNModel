@@ -116,7 +116,7 @@ class GenerateRun():
         dendDistMap = {}
         for k in dend_sections:
             dendDistMap[k] = self.hf.distanceMap[k]
-        revmap = dict((v, k) for k, v in dendDistMap.iteritems())
+        revmap = dict((v, k) for k, v in dendDistMap.items())
             
         # now find the distlist key that corresponds to the closest value to our desired value
         (num, dist) = min(enumerate(revmap), key=lambda x: abs(x[1]-self.runInfo.dendriticSectionDistance))
@@ -446,10 +446,10 @@ class GenerateRun():
             np_monitor[k] = np.array(self.monitor[k])
 
         np_allsecVec = OrderedDict()
-        for k in self.allsecVec.keys():
+        for k in list(self.allsecVec.keys()):
             np_allsecVec[k] = np.array(self.allsecVec[k])
         self.runInfo.clist = self.clist
-        results = Params(Sections=self.hf.sections.keys(),  vec=np_allsecVec,
+        results = Params(Sections=list(self.hf.sections.keys()),  vec=np_allsecVec,
                          monitor=np_monitor, stim=self.stim, runInfo=self.runInfo,
                          distanceMap = self.hf.distanceMap,
         )
@@ -463,18 +463,17 @@ class GenerateRun():
         Save the result of a single run to disk. Results must be a Param structure, which we turn into
          a dictionary...
         """
-        fn = ('{0:s}_{1:s}.p'.format(self.basename, self.cell.status['modelType']))
-        pfout = open(fn, 'wb')
+        fn = '{0:s}_{1:s}_{2:s}.p'.format(self.basename, self.cell.status['modelName'], self.cell.status['modelType'])
+        print('save as fn: ', fn)
         mp = copy.deepcopy(self.cell.status)
         del mp['decorator']
-        pickle.dump({'basename': self.basename,
-                     'runInfo': self.runInfo.todict(),
-                     'modelPars': mp,
-                     'Results': results.todict(),
-                     'IVResults': self.IVResult},
-                     pfout)
-        pfout.close()
-
+        with open(fn, 'wb') as pfout:
+            pickle.dump({'basename': self.basename,
+                         'runInfo': self.runInfo.todict(),
+                         'modelPars': mp,
+                         'Results': results.todict(),
+                         'IVResults': self.IVResult},
+                         pfout)
 
     def saveRuns(self, save=None):
         """
@@ -483,17 +482,17 @@ class GenerateRun():
         a dictionary...
         """
         if save is None:
-            fn = ('{0:s}_{1:s}.p'.format(self.basename, self.cell.status['modelType']))
+            fn = ('{0:s}{1:s}_{2:s}.p'.format(self.basename, self.cell.status['modelName'], self.cell.status['modelType']))
         else:
-            fn = ('{0:s}_{1:s}_{2:s}.p'.format(self.basename, self.cell.status['modelType'], save))
-            
+            fn = ('{0:s}{1:s}_{2:s}_{3:s}.p'.format(self.basename, self.cell.status['modelName'], self.cell.status['modelType'], save))
+        
         pfout = open(fn, 'wb')
         mp = copy.deepcopy(self.cell.status)
         del mp['decorator']
         pickle.dump({'basename': self.basename,
                      'runInfo': self.runInfo.todict(),
                      'modelPars': mp,
-                     'Results': [{k:x.todict()} for k,x in self.results.iteritems()]
+                     'Results': [{k:x.todict()} for k,x in self.results.items()]
                     }, pfout)
                      
         pfout.close()

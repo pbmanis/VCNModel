@@ -12,6 +12,7 @@ VCN_c18 = [ [(216.66), 0., 2, np.nan, np.nan, 49.2, 1.222, 'e' ],
 Copy the output and paste it into syn_config.py 
 
 """
+from __future__ import print_function
 
 import pandas as pd
 import numpy as np
@@ -36,5 +37,5 @@ for dx in df.columns.values:
     for asa in u:
         s += "            [ (%.2f), 0., 2., np.nan, np.nan, np.nan, np.nan, 'e'],\n" % asa
     s += '            ]'
-    print ''
-    print s
+    print('')
+    print(s)

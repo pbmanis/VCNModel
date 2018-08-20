@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import print_function
 __author__ = 'pbmanis'
 import string
 import getpass
@@ -20,8 +21,8 @@ Note you must be on campus or using a VPN to access the machine this way
 """
 import paramiko
 import sys
-print len(sys.argv)
-print sys.argv[0]
+print(len(sys.argv))
+print(sys.argv[0])
 if len(sys.argv) > 1:
     machine = sys.argv[1]
 else:
@@ -41,18 +42,18 @@ sysChoice = {'Killdevil': {'uname': 'pmanis', 'dir': 'PyNeuronLibrary/%s' % mode
             }
 
 if machine not in sysChoice.keys():
-    print 'Machine %s not recognized' % machine
+    print('Machine %s not recognized' % machine)
     exit()
 
 mypwd = getpass.getpass("Password for %s: " % machine)
 
 ssh=paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-print 'connecting to: ', sysChoice[machine]['addr']
-print 'as user: ', sysChoice[machine]['uname']
+print('connecting to: ', sysChoice[machine]['addr'])
+print('as user: ', sysChoice[machine]['uname'])
 conn = ssh.connect(sysChoice[machine]['addr'], username=sysChoice[machine]['uname'], password=mypwd)  # hate putting pwd in file like this...
 if conn is False:
-    print 'Connection failed'
+    print('Connection failed')
     exit()
 
 cdcmd = 'cd ' + sysChoice[machine]['dir']
@@ -63,11 +64,11 @@ cdcmd = 'cd ' + sysChoice[machine]['dir']
 #for l in stdout.readlines():
 #    print l,
 
-print 'dir : ', sysChoice[machine]['dir']
-print 'open ftp:'
+print('dir : ', sysChoice[machine]['dir'])
+print('open ftp:')
 ftp = ssh.open_sftp()
 ftp.chdir(sysChoice[machine]['dir'])  # however this works for the sftp
-print ftp.getcwd()
+print(ftp.getcwd())
 for f in sourceFiles:
     ftp.put(f, f)  # update the source files
 ftp.close()

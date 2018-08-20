@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = 'pbmanis'
 
 import pickle
@@ -12,7 +13,7 @@ def listDirs():
         for fname in fileList:
             with open(dirName+fname, "r") as f:
                 d = pickle.load(f)
-                print 'File: %s\n', fname
+                print('File: %s\n', fname)
                 pprint.pprint(d['runInfo'], indent=4)
 
 

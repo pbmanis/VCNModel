@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = 'pbmanis'
 
 import numpy as np
@@ -36,14 +37,14 @@ if len(hf.sec_groups) > 1: # multiple names, so assign colors to structure type
     section_colors = {}
     for i, s in enumerate(hf.sec_groups.keys()):
         section_colors[s] = named_section_colors[s]
-        print 'section type %s assigned color %s' % (s, named_section_colors[s])
+        print('section type %s assigned color %s' % (s, named_section_colors[s]))
         # else:
         #     icolor = i % 12
         #     section_colors[s] = hoc_graphics.colorMap[icolor]
 else: # single section name, assign colors to SectionList types:
     # here we should find out the names of the section lists in hoc
     section_colors = named_section_colors
-print 'section colors:', section_colors
+print('section colors:', section_colors)
 
 (v, e) = hf.get_geometry()
 clist = []
@@ -88,7 +89,7 @@ dist = render.opts['distance']
 elev = render.opts['elevation']
 azim = render.opts['azimuth']
 
-print 'Pos (center, dist, elev, azim)', center, dist, elev, azim
+print('Pos (center, dist, elev, azim)', center, dist, elev, azim)
 
 # for i in range(0,3):
 #     print 'Soma section [%d] diameter = %6.1f microns' % (i, hf.h('soma[%d].diam' % i))

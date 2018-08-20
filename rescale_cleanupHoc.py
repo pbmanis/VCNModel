@@ -10,6 +10,7 @@ This function rescales a hoc file.
 It turns sections only found in the "section list" and replaces axon[k] with an appropriate 'swelling[n]'
 All is hardcoded... 
 """
+from __future__ import print_function
 
 import sys
 import os
@@ -40,8 +41,8 @@ def main():
 
     pt3dFlag = False
     inf = open(infile, 'r')
-    print infile
-    print inf
+    print(infile)
+    print(inf)
     outf = open(outfile, 'w')
     for line in iter(inf):
         #print line[0:9]

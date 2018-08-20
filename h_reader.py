@@ -1,3 +1,4 @@
+from __future__ import print_function
 __author__ = 'pbmanis'
 
 
@@ -144,15 +145,15 @@ class HocReader(object):
                 if mecbar in dir(x):
                     gmech.append(getattr(x, mechanism[1]))
                 else:
-                    print 'hoc_reader:get_density did not find the mechanism in dir x'
+                    print('hoc_reader:get_density did not find the mechanism in dir x')
             except NameError:
                 return(0.)
             except:
-                print 'hoc_reader:get_density failed to evaluate the mechanisms... '
+                print('hoc_reader:get_density failed to evaluate the mechanisms... ')
                 raise
 
 
-        print gmech
+        print(gmech)
         if len(gmech) == 0:
             gmech = 0.
         return np.mean(gmech)

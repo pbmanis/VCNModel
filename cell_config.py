@@ -1,3 +1,4 @@
+from __future__ import print_function
 """cell_config generates the configuration of synaptic inputs and devines a cell
 
 the synaptic input structure consists of a list of tuples.
@@ -38,6 +39,7 @@ Cell18 Cell19 Cell20 Cell21 Cell22
 Cell24 Cell29
 
 """
+
 import numpy as np
 import json
 from collections import OrderedDict
@@ -435,7 +437,7 @@ def summarize_inputs():
             meansize.append(np.mean(cellendings[cell]))
             maxsize.append(np.max(cellendings[cell]))
             convergence.append(len(cellendings[cell]))
-    print('convergence: ', convergence)
+    print(('convergence: ', convergence))
     ax[1].set_title('Normaized by largest')
     ax[1].hist(normd, bins=20, range=(0,1.0), align='mid')
     ax[1].set_xlabel('Area (um^2)')
@@ -482,5 +484,5 @@ if __name__ == '__main__':
     summarize_inputs()
     exit(0)
     r, celltype = makeDict('VCN_c09')
-    print 'Cell Type: ', celltype
+    print('Cell Type: ', celltype)
     printCellInputs(r)

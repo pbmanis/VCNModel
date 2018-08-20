@@ -7,6 +7,7 @@ Basic run will do a test against the datasets provided at the original site.
 Fit generalized integrate and fire models to data
 Uses Pozzorini et al. PLoS Comp. Bio. 2015 method,
 """
+from __future__ import print_function
 import os
 import pickle
 import matplotlib.pyplot as mpl
@@ -238,7 +239,7 @@ def fit_cell(cellno=19, gn=0.):
     mean_firingrate =  np.mean(np.diff(all_spks_times_trainingset))
     GF.GIF.DV = 50.
     GF.GIF.Vt_star = -GF.GIF.DV * np.log(mean_firingrate)
-    print GF.GIF.DV, GF.GIF.Vt_star
+    print(GF.GIF.DV, GF.GIF.Vt_star)
     # mpl.plot(T, V)
     # mpl.show()
     GF.set_eta_timescales(ts=[0.1, 1., 5., 20.])
@@ -253,7 +254,7 @@ def fit_cell(cellno=19, gn=0.):
 #    GF.test_simulator(current=None, fs=False)
 #    exit(1)
     GF.fit(threshold=threshold, current=I, plot=False)
-    print 'returned'
+    print('returned')
     GF.write_result('GFIT_%s_%s_gn=%6.3f_gifnoise.p' % (cname, model, GF.GIF.gn))
        
 

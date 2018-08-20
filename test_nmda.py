@@ -5,6 +5,7 @@ Make a single site version of the multisite synapse, set AMPA to 0.
 Go voltage clamp, vary V and watch currents
 
 """
+from __future__ import print_function
 
 
 from collections import OrderedDict
@@ -104,8 +105,8 @@ for syn in synapses:
 
 # print 'terminal: ', dir(synapses[0].terminal)
 # print 'synapses: ', dir(synapses[0])
-print 'synapse psd: ', synapses[0].psd.ampa_psd[0].gmax
-print 'v shift: ', synapses[0].psd.nmda_psd[0].vshift
+print('synapse psd: ', synapses[0].psd.ampa_psd[0].gmax)
+print('v shift: ', synapses[0].psd.nmda_psd[0].vshift)
 
 #print 'all psd: ', all_psd    
 #
@@ -122,7 +123,7 @@ results = {}
 vcmds = range(-100, 60, 10)
 f, ax = mpl.subplots(3, 1)
 ax = np.ravel(ax)
-print dir(post_cell.soma(0.5))
+print(dir(post_cell.soma(0.5)))
 ivdat = np.zeros((2, len(vcmds)))
 for i, vc in enumerate(vcmds):
     vccontrol.amp[1] = vc

@@ -16,8 +16,9 @@ verbose = False
 
 class AnalyzeRun():
     def __init__(self, results):
-        self.injs = results.keys()
-        self.nRun = len(results.keys())
+        self.results = results
+        self.injs = list(results.keys())
+        self.nRun = len(self.injs)
         self.parseResults(results)
         self.parseStim(results)
         self.IVResult={}
@@ -61,12 +62,13 @@ class AnalyzeRun():
         -------
         Nothing
         """
-        
+
         self.somasite=['postsynapticV', 'postsynapticI']
+        inj0 = self.injs[0]
         try:
-            msite = res[self.injs[0]].monitor
+            msite = self.results[inj0].monitor
         except:
-            msite = res[self.injs[0]]['monitor']
+            msite = self.results[inj0]['monitor']
         vlen = len(msite[self.somasite[1]])
         self.V = np.zeros((self.nRun, vlen))
         self.I = np.zeros((self.nRun, vlen))

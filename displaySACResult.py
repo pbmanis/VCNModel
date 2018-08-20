@@ -1,6 +1,7 @@
 """
 displayresult shows the results of a model_run. Just enter the filename in the fn field
 """
+from __future__ import print_function
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -121,8 +122,8 @@ for j, pattern in enumerate(patterns):
     if j == 0:
         X0 = X  # save the X
     yh, bins = sac.SAC_asm(X, pars)
-    print 'mean vs: for %s at fMod = %.2f:  %f angle: %f' % (pattern, fmod, vs, th.mean())
-    print 'rayleigh: p=%f  z=%f (p > 0.05 means data is uniformly distributed)' % (p, z)
+    print('mean vs: for %s at fMod = %.2f:  %f angle: %f' % (pattern, fmod, vs, th.mean()))
+    print('rayleigh: p=%f  z=%f (p > 0.05 means data is uniformly distributed)' % (p, z))
     ax[j][2].bar(bins[:-1], yh)
     ax[j][2].set_xlim((-sacmax, sacmax))
     ax[j][2].set_ylim((0, sacht))

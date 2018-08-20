@@ -8,6 +8,7 @@ Note: only modfiles that implement voltage-dependent ion channel models make sen
 with his routine
 2/3/2014 PB Manis
 """
+from __future__ import print_function
 
 import neuron as h
 from neuron import *
@@ -29,7 +30,7 @@ class ChannelKinetics():
             modfile = args[0] # must be string, not list...
         else:
             modfile = args # 'CaPCalyx'
-        print 'modfile: ', modfile
+        print('modfile: ', modfile)
         modfile2 = None
         if isinstance(args, list) and len(args) > 1:
             modfile2 = args[1]
@@ -55,9 +56,9 @@ class ChannelKinetics():
                      'ihsgcApical': [1000., 200.],
                      'ihsgcBasalMiddle': [1000., 200.],
                      }
-        print 'prior to run'
+        print('prior to run')
         self.run(modfile=modfile)
-        print 'after run'
+        print('after run')
         if modfile2 is not None:
             self.run(modfile = modfile2, color='b')
         self.win.setWindowTitle('VC Plots: ' + modfile)
@@ -70,7 +71,7 @@ class ChannelKinetics():
             self.computeKinetics('nav11')
 
         self.show()
-        print 'after show'
+        print('after show')
 
 
     def show(self):
@@ -121,8 +122,8 @@ class ChannelKinetics():
         self.vcPost.dur3 = tstep[1]
         self.vcPost.amp3 = clampV
         self.vcPost.rs = 1e-6
-        print "soma: ", self.soma, 
-        print ' vcpost sec: ', self.vcPost.Section()
+        print("soma: ", self.soma, end=' ') 
+        print(' vcpost sec: ', self.vcPost.Section())
 
         if modfile[0:2] == 'ih':
             stimamp = np.linspace(-140, -40, num=21, endpoint=True)
@@ -130,7 +131,7 @@ class ChannelKinetics():
             stimamp = np.linspace(-100, 60, num=35, endpoint=True)
         self.ivss = np.zeros((2, stimamp.shape[0]))
         self.ivmin = np.zeros((2, stimamp.shape[0]))
-        print dir(h)
+        print(dir(h))
         for i, V in enumerate(stimamp):
             stim={}
             stim['NP'] = 1
@@ -143,7 +144,7 @@ class ChannelKinetics():
             self.vec['IChan'].record(self.vcPost._ref_i, sec=self.soma)
             self.vec['V'].record(self.soma()._ref_v, sec=self.soma)
             self.vec['time'].record(h._ref_t)
-            print 'V = ', V, 
+            print('V = ', V, end=' ') 
             h.tstop = self.vcPost.dur1+self.vcPost.dur2+self.vcPost.dur3
             h.finitialize(v_init)
             h.run()
@@ -156,7 +157,7 @@ class ChannelKinetics():
             (self.ivmin[1,i], r2) = Util.measure('minormax', self.t, self.ichan, tdelay+0.1, tdelay+tstep[0]/5.0)
             self.ivss[0,i] = V
             self.ivmin[0,i] = V
-            print ' T = ', h.celsius
+            print(' T = ', h.celsius)
         self.p2.plot(self.ivss[0,:], self.ivss[1,:], symbol='o', symbolsize=2.0, pen= pg.mkPen(color))
         self.p4.plot(self.ivmin[0,:], self.ivmin[1,:], symbol='s', symbolsize=2.0, pen=pg.mkPen(color))
 
@@ -167,4 +168,4 @@ class ChannelKinetics():
 if __name__ == "__main__":
 
     ChannelKinetics(sys.argv[1:])
-    print 'at last'
+    print('at last')

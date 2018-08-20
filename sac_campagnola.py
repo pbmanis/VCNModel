@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 # Shuffled autocorrelation function
 # Based on Louage et al., 2004
@@ -282,7 +283,7 @@ if __name__ == '__main__':
             start = time.time()
             #yh, bins = sac.SAC(X, p)
             yh, bins = sac.SAC_asm(X, p)
-            print "SAC:", time.time() - start
+            print("SAC:", time.time() - start)
             sach = pg.PlotCurveItem(bins, yh, stepMode=True, fillLevel=0,
                 brush=(255, 0, 255, 255), pen=None)
             layout.getPlot((i, 1)).addItem(sach)

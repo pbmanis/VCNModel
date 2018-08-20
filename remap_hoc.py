@@ -12,6 +12,7 @@ It turns sections only found in the "section list" and replaces axon[k] with an 
 A
 ll is hardcoded...
 """
+from __future__ import print_function
 
 import sys
 import os
@@ -77,7 +78,7 @@ def main():
     transmap = []
     firstPoint = True
     # pt3dFlag = False
-    print 'Processing: ', infile
+    print('Processing: ', infile)
     inf = open(infile, 'r')
     zeropos = [0., 0., 0.]
     allstructs = collections.OrderedDict()
@@ -114,7 +115,7 @@ def main():
             if translateFlag:
                 if firstPoint:
                     zeropos = nl[0:3].copy() # save the very first position
-                    print 'translate to: ', zeropos
+                    print('translate to: ', zeropos)
                     firstPoint = False
                 nl[0:3] = nl[0:3] - zeropos
             nls = (nl * scaleFactor)
@@ -153,8 +154,8 @@ def main():
         if len(l) > 0:
             for p in l: # look for all the replacements.
                 if submap(int(p[1])) == None:
-                    print 'submap none:'
-                    print newline
+                    print('submap none:')
+                    print(newline)
                     continue
                 newline = anyaxon.sub(submap(int(p[1])), newline)
         if len(newline) == 1 and pt3dFlag:
@@ -187,7 +188,7 @@ def main():
                # print 'this struct: ', s
                 n = int(xl.group('number'))
                 thisstruct = "%s[%d]" % (s, n)
-        print thisstruct
+        print(thisstruct)
         # now scale if it's a pt3dadd.
         mo  = points.match(newline)
         if mo is not None:

@@ -19,13 +19,14 @@ import matplotlib.pyplot as mpl
 import pylibrary.PlotHelpers as PH
 import model_run as mrun
 
-default_modeltype = 'mGBC'
+default_modelName = 'mGBC'
 if len(sys.argv) > 1:
-    modeltype = sys.argv[1]
+    modelName = sys.argv[1]
 else:
-    modeltype = default_modeltype
+    modelName = default_modelName
 
-print('Model type: {:s}'.format(modeltype))
+print('Model Name: {:s}'.format(modelName))
+modelType = 'II'
 
 testing = False
 forcerun = True
@@ -64,26 +65,27 @@ gbc_names = ['09nd', '09', '11', '14', '16', '17', '18', '19', '20', '21', '22']
 for n in gbc_names:
     M = mrun.ModelRun() # create an instance
     # create paths to the simulation runs to check for existing IV initialization
-    ivinitfile = os.path.join(M.initDirectory, 'IVneuronState_{:s}.dat'.format(modeltype))
+    ivinitfile = os.path.join(M.initDirectory, 'IVneuronState_{0:s}_{1:s}.dat'.format(modelName, modelType))
     cell = 'VCN_c{0:s}'.format(n)
     cell_ax = 'VCNc{0:s}'.format(n)
     initf = os.path.join(M.baseDirectory, cell, ivinitfile)
     print ('\nRetrieving data for cell {0:s}'.format(cell))
     M.Params['cell'] = cell
-    M.Params['modelType'] = modeltype
+    M.Params['modelType'] = modelType
     M.Params['hocfile'] = M.Params['cell'] + '.hoc'
     if M.Params['hocfile'] == None: # just use the matching hoc file
         M.Params['hocfile'] = M.Params['cell'] + '.hoc'
     if not os.path.isfile(initf):
         print('creating new init file for cell, did not find {:s}'.format(initf))
         M.Params['runProtocol'] = 'initIV'
-        if not_testing:
+        print(M.Params)
+        if not testing:
             M.run_model(par_map = M.Params)
     else:
         print('    Initialization file for {:s} exists'.format(cell))
     if not os.path.isfile(initf):
-        raise ValueError('Failed to create the IV init state file')
-    ivdatafile = os.path.join(M.baseDirectory, cell, M.simDirectory, 'IV', cell+'_' + modeltype+'_monitor.p')
+        raise ValueError('Failed to create the IV init state file %s' % initf)
+    ivdatafile = os.path.join(M.baseDirectory, cell, M.simDirectory, 'IV', '_'.join((cell, 'pulse', modelName, modelType, 'monitor.p')))
     if not os.path.isfile(ivdatafile) or forcerun is True:
         print ('Creating ivdatafile: {:s}\n'.format(ivdatafile))
         M.Params['runProtocol'] = 'runIV'
@@ -92,13 +94,13 @@ for n in gbc_names:
     else:
         print('    IV file for {:s} exists'.format(cell))
     print(' IV data file: ', ivdatafile)
-    fh = open(ivdatafile)
+    fh = open(ivdatafile, 'rb')
     df = pickle.load(fh)
     r = df['Results'][0]
 
     for trial in range(len(df['Results'])):
         ds = df['Results'][trial]
-        k0 = df['Results'][trial].keys()[0]
+        k0 = list(ds.keys())[0]
         dx = ds[k0]['monitor']
         P.axdict[cell_ax].plot(dx['time'], dx['postsynapticV'], linewidth=1.0)
         P.axdict[cell_ax].set_xlim(0., 150.)
@@ -106,6 +108,6 @@ for n in gbc_names:
     PH.calbar(P.axdict[cell_ax], calbar=[120., -95., 25., 20.], axesoff=True, orient='left', 
             unitNames={'x': 'ms', 'y': 'mV'}, font='Arial', fontsize=8)
 
-mpl.savefig('GBC_IVs_{0:s}.pdf'.format(modeltype))
+mpl.savefig('GBC_IVs_{0:s}_{1:s}.pdf'.format(modelName, modelType))
 mpl.show()
 

@@ -13,6 +13,7 @@ AN_Result_VCN_c09_Syn006_N001_030dB_16000.0_MS.p
 
 
 """
+from __future__ import print_function
 import os
 import matplotlib.pyplot as mpl
 import numpy as np
@@ -64,7 +65,7 @@ class DisplayResult():
         self.vspfile = 'VS.p'
 
     def make_filename(self, tag=''):
-        print self.Params
+        print(self.Params)
 
         addarg=DR.Params['spirou']
         if addarg == 'all':
@@ -75,7 +76,7 @@ class DisplayResult():
             addarg = '_mean'
         p = self.Params['cell']
         self.bp[p] = 'VCN_Cells/{0:s}/Simulations/AN'.format(p)
-        print('bp: ', self.Params['cell'], self.bp)
+        print(('bp: ', self.Params['cell'], self.bp))
         if self.Params['soundtype'] in ['SAM', 'sam']:
             ofile = os.path.join(self.bp[p], 'AN_Result_' + self.Params['cell'] + '_%s_%s_%s_N%03d_%03ddB_%06.1f_FM%03.1f_DM%03d_%2s%s' %
                 (tag, self.Params['modelName'], self.Params['ANSynapseType'], self.Params['nReps'],
@@ -99,7 +100,7 @@ class DisplayResult():
             self.Params['patterns'] = ['c%s' % p for p in self.Params['cell']] #i for i in [8, 9, 17, 18, 19, 20, 21, 22]]
             self.findfiles = False
 
-        print self.Params['patterns']
+        print(self.Params['patterns'])
         for p in self.Params['patterns']:
             if self.Params['runProtocol'] in ['AN'] and self.Params['modetype'] not in ['IO']:
                 self.fn[p] = self.make_filename()
@@ -117,24 +118,24 @@ class DisplayResult():
                 self.fn[p] = 'VCN_{0:s}_{1:s}_gifnoise.p'.format(p, self.Params['modeltype'])
                 self.bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/Noise'.format(p)
         self.lookupfiles()
-        print('Files: ', self.fn)
+        print(('Files: ', self.fn))
         
     def lookupfiles(self):  # simply look for files
         if self.findfiles:
             for p in self.Params['patterns']:
                 try:
                     h = open(os.path.join(self.bp[p], self.fn[p]))
-                    print '       found %s' % p
+                    print('       found %s' % p)
                     h.close()
                 except:
-                    print 'did not find file for %s' % p, self.fn[p]
+                    print('did not find file for %s' % p, self.fn[p])
                     exit(1)
 
     def show(self, pattern):
         self.Params['patterns'] = pattern
-        print self.Params['patterns']
+        print(self.Params['patterns'])
         #self.file_setup()
-        print('runtype: ', self.Params['runProtocol'])
+        print(('runtype: ', self.Params['runProtocol']))
         if self.Params['runProtocol'] == 'IV':
             self.show_IV()
             #fig, ax = mpl.subplots(len(self.Params['patterns'])+1, 3)
@@ -218,16 +219,16 @@ class DisplayResult():
                 f0 = data['Params']['fmod']
                 tstring = ("SAM Tone: f0=%.3f at %3.1f dbSPL, fMod=%3.1f  dMod=%5.2f, cell CF=%.3f" %
                      (data['Params']['F0'], data['Params']['dB'], data['Params']['fmod'], data['Params']['dmod'], data['Params']['F0']))
-                print tstring
+                print(tstring)
                 P.figure_handle.suptitle(tstring + '\n' + self.fn[self.Params['patterns'][0]].replace('_', '\_'), fontsize=9)
            # print('spikes: ', spikesinwin)
-            print(' Sound type: ', si['soundtype'])
+            print((' Sound type: ', si['soundtype']))
             if len(spikesinwin) < 10:
                 vs = 0.
-                print 'AN Vector Strength: Insufficient spike count, n = %d' % (len(spikesinwin))
+                print('AN Vector Strength: Insufficient spike count, n = %d' % (len(spikesinwin)))
             else:
                 vs = vector_strength(spikesinwin*1000., f0)  # vs expects spikes in msec
-                print 'AN Vector Strength at %.1f: %7.3f, d=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d' % (f0, vs['r'], vs['d']*1e6, vs['R'], vs['p'], vs['n'])
+                print('AN Vector Strength at %.1f: %7.3f, d=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d' % (f0, vs['r'], vs['d']*1e6, vs['R'], vs['p'], vs['n']))
                 vspfile.add_data(self.Params['patterns'][0], self.Params['spirou'], vs['r'])
                 # fh = open(self.vspfile, 'rb')  # set file handle to write  - open, and append
                 # vsp = pickle.load(fh)  # get vs data for all cells (outside this file)
@@ -292,8 +293,8 @@ class DisplayResult():
             if j == 0:
                 X0 = X  # save the X
             yh, bins = sac.SAC_asm(X, pars)
-            print 'mean vs: for %s at fMod = %.2f:  %f angle: %f' % (pattern, fmod, vs, th.mean())
-            print 'rayleigh: p=%f  z=%f (p > 0.05 means data is uniformly distributed)' % (p, z)
+            print('mean vs: for %s at fMod = %.2f:  %f angle: %f' % (pattern, fmod, vs, th.mean()))
+            print('rayleigh: p=%f  z=%f (p > 0.05 means data is uniformly distributed)' % (p, z))
             ax[j][2].bar(bins[:-1], yh)
             ax[j][2].set_xlim((-sacmax, sacmax))
         #    ax[j][2].set_ylim((0, sacht))
@@ -321,7 +322,7 @@ class DisplayResult():
                 h = open(os.path.join(self.bp[p], self.fn[p]))
                 d[p] = pickle.load(h)
                 h.close()
-            print ('pattern: ',self.Params['patterns'])
+            print(('pattern: ',self.Params['patterns']))
             for j, pattern in enumerate(self.Params['patterns']):
                 for k in range(len(d[pattern]['Results'])):
                     k0 = d[pattern]['Results'][k]
@@ -371,8 +372,8 @@ class DisplayResult():
                             ax=ax[0], current=inj, beforeSpike=dt_beforespike)
                     print('Final Parameters: ')
                     GF.GIF.printParameters()
-                    print ('v: ', v[0])
-                    print('len inj, dt: ', len(inj), GF.dt, len(inj)*GF.dt)
+                    print(('v: ', v[0]))
+                    print(('len inj, dt: ', len(inj), GF.dt, len(inj)*GF.dt))
                     (time, Vs, I_a, V_t, S) = GF.GIF.simulate(inj, v[0])  # simulate response to current trace I with starting voltage V0
                     # a[0].plot(time, Vs, 'r-', linewidth=0.75)
     #                 a[0].plot(data['time'], v, 'b-', linewidth=0.5)
@@ -468,9 +469,9 @@ if __name__ == '__main__':
     
     DR.make_filename(tag='delays')
     if os.path.isfile(DR.filename):
-        print('FOUND ofile: ', DR.filename)
+        print(('FOUND ofile: ', DR.filename))
         DR.show(pattern=[DR.Params['cell']])
     else:
-        print('NOT FOUND: ', DR.filename)
+        print(('NOT FOUND: ', DR.filename))
     #DR.show()
         

@@ -7,7 +7,7 @@ model_run.py
 
 Run a model based on a hoc structure, decorating the structure with ion channels and synapses.
 
-Requires:
+Original Requirements:
 Python 2.7.13 (anaconda distribution)
 Neuron7.4 (neuron.yale.edu)
 pyqtgraph (Campagnola, from github)
@@ -20,6 +20,12 @@ vcnmodel parts:
 
 cochlea # Rudniki python implementation of Zilany model
 thorns  # required for cochlea
+
+Updated 8/19/2018 for PYthon 3
+------------------------------
+Python 3.6
+neuron 7.5
+cnmodel_pbm (Python 3 branch)
 
 
 Expects the following directory structure:
@@ -335,8 +341,8 @@ class ModelRun():
         else:
             self.idnum = 9999
         self.cellID = os.path.splitext(self.Params['cell'])[0]
-        self.Params['initIVStateFile'] = 'IVneuronState_%s.dat' % self.Params['modelName']
-        self.Params['initANStateFile'] = 'ANneuronState_%s.dat' % self.Params['modelName']
+        self.Params['initIVStateFile'] = 'IVneuronState_%s_%s.dat' % (self.Params['modelName'], self.Params['modelType'])
+        self.Params['initANStateFile'] = 'ANneuronState_%s_%s.dat' % (self.Params['modelName'], self.Params['modelType'])
         
         # Set up initialization and filenames
         ivinitfile = os.path.join(self.baseDirectory, self.cellID,
@@ -435,18 +441,18 @@ class ModelRun():
             data.report_changes(changes)
 
             self.post_cell = cells.Bushy.create(morphology=filename, decorator=Decorator,
-                    species=self.Params['species'],
+                    species=self.Params['species'], modelName=self.Params['modelName'],
                     modelType=self.Params['modelType'])
         elif self.Params['cellType'] in ['tstellate', 'TStellate']:
             print ('Creating a t-stellate cell (run_model) ')
             self.post_cell = cells.TStellate.create(morphology=filename, decorator=Decorator,
-                    species=self.Params['species'],
-                    modelType=self.Params['modelName'], )
+                    species=self.Params['species'], modelName=self.Params['modelName'],
+                    modelType=self.Params['modelType'], )
         elif self.Params['cellType'] in ['dstellate', 'DStellate']:
             print ('Creating a D-stellate cell (run_model)')
             self.post_cell = cells.DStellate.create(morphology=filename, decorator=Decorator,
-                    species=self.Params['species'],
-                    modelType=self.Params['modelName'], )
+                    species=self.Params['species'], modelName=self.Params['modelName'],
+                    modelType=self.Params['modelType'], )
         else:
             raise ValueError("cell type {:s} not implemented".format(self.Params['cellType']))
                       
@@ -1601,13 +1607,12 @@ class ModelRun():
                 int(self.Params['dB']), self.Params['F0'],
                 self.Params['fmod'], int(self.Params['dmod']), self.Params['SR'], addarg) + '.p')
                 
-            f = open(ofile, 'w')
         else:
             ofile = os.path.join(outPath, 'AN_Result_' + ID + '_%s_%s_%s_N%03d_%03ddB_%06.1f_%2s_%s' % (
                 self.Params['modelName'], tag, self.Params['ANSynapseType'],
                  self.Params['nReps'],
                 int(self.Params['dB']), self.Params['F0'], self.Params['SR'], addarg) + '.p')
-            f = open(ofile, 'w')
+        f = open(ofile, 'wb')
         results['trials'] = result
         pickle.dump(results, f)
         f.close()

@@ -2,6 +2,7 @@
 """
 
 """
+from __future__ import print_function
 from subprocess import call
 import os
 
@@ -50,7 +51,7 @@ for gbc in gbc_names:
             cmdlist.append('test')
         if forcerun:
             cmdlist.append('forcerun')
-        print cmdlist
+        print(cmdlist)
         call(cmdlist)
     try:
         with open(andatafile, 'r') as fh:
