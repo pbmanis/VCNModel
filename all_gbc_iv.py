@@ -28,6 +28,7 @@ else:
 print('Model Name: {:s}'.format(modelName))
 modelType = 'II'
 
+modelmode = 'II'
 testing = False
 forcerun = True
 
@@ -42,7 +43,7 @@ yp = np.arange(0.05, numrows*ht, ht)
 yp = np.flipud(yp)
 print ('yp:', yp)
 lpos = [0.5, 0.95]
-sizer = OrderedDict([('VCNc09nd', {'pos': [l1, wid, yp[0], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
+sizer = OrderedDict([#('VCNc09nd', {'pos': [l1, wid, yp[0], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc09',  {'pos': [l1, wid, yp[1], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc11',  {'pos': [l1, wid, yp[2], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc14',  {'pos': [l1, wid, yp[3], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
@@ -59,7 +60,8 @@ axmap = OrderedDict(zip(sizer.keys(), gr))
 P = PH.Plotter(rcshape=sizer, label=False, figsize=(6, 8), labeloffset=[0.6, 0.])
 #PH.show_figure_grid(P.figure_handle)
 
-gbc_names = ['09nd', '09', '11', '14', '16', '17', '18', '19', '20', '21', '22']
+gbc_names = [#'09nd',
+            '09', '11', '14', '16', '17', '18', '19', '20', '21', '22']
 
 
 for n in gbc_names:
@@ -78,14 +80,15 @@ for n in gbc_names:
     if not os.path.isfile(initf):
         print('creating new init file for cell, did not find {:s}'.format(initf))
         M.Params['runProtocol'] = 'initIV'
-        print(M.Params)
         if not testing:
             M.run_model(par_map = M.Params)
     else:
         print('    Initialization file for {:s} exists'.format(cell))
     if not os.path.isfile(initf):
         raise ValueError('Failed to create the IV init state file %s' % initf)
-    ivdatafile = os.path.join(M.baseDirectory, cell, M.simDirectory, 'IV', '_'.join((cell, 'pulse', modelName, modelType, 'monitor.p')))
+        raise ValueError('Failed to create the IV init state file')
+    ivdatafile = os.path.join(M.baseDirectory, cell, M.simDirectory, 'IV', cell+'_pulse__' + modelmode+'_monitor.p')
+    print(' file exists: ', os.path.isfile(ivdatafile))
     if not os.path.isfile(ivdatafile) or forcerun is True:
         print ('Creating ivdatafile: {:s}\n'.format(ivdatafile))
         M.Params['runProtocol'] = 'runIV'
@@ -100,7 +103,7 @@ for n in gbc_names:
 
     for trial in range(len(df['Results'])):
         ds = df['Results'][trial]
-        k0 = list(ds.keys())[0]
+        k0 = list(df['Results'][trial].keys())[0]
         dx = ds[k0]['monitor']
         P.axdict[cell_ax].plot(dx['time'], dx['postsynapticV'], linewidth=1.0)
         P.axdict[cell_ax].set_xlim(0., 150.)

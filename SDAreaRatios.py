@@ -29,12 +29,32 @@ def area(fn):
             modelType='II', modelName='XM13')
     post_cell.distances()
     post_cell.computeAreas()
+# <<<<<<< HEAD
     print('\n    Found the following section types: ', post_cell.areaMap.keys())
 
     secareas = {}  # accumulate areas of all of the section types in the data
     for sectype in list(post_cell.areaMap.keys()):  # am is a string... 
         if sectype not in list(secareas.keys()):
             secareas[sectype] = sum_area(post_cell.areaMap[sectype])
+# =======
+    # secareas = {}
+    # #print 'areamap: ', post_cell.areaMap
+    # for am in post_cell.areaMap.keys():
+    #     sectype = post_cell.get_section_type(am)
+    #     if sectype is None:
+    #         continue
+    #     if sectype not in secareas.keys():
+    #         secareas[sectype] = post_cell.areaMap[am]
+    #         print('new type: %s  area: %f' % (sectype, post_cell.areaMap[am]))
+    #     else:
+    #         secareas[sectype] = secareas[sectype] + post_cell.areaMap[am]
+    #         print('     type: %s  area: %f' % (sectype, secareas[sectype]))
+    # for am in post_cell.areaMap2.keys():
+    #     sectype = post_cell.get_section_type(am)
+    #     if sectype == 'soma':
+    #         secareas['somabysegment'] = post_cell.areaMap2[am]
+    #
+# >>>>>>> Py3 fixes, adjust to cnmodel_pbm py3
     return secareas
     
     
@@ -45,9 +65,9 @@ if __name__ == '__main__':
         filename = 'VCN_c'+fn # os.path.join('VCN_Cells', 'VCN_c'+fn, 'Morphology', 'VCN_c'+fn+'.hoc')
         ar[fn] = area(filename)
     print('')
-    hdrstr = ['Cell', 'Somatic area', 'Dendritic area', 'Ratio', 'Hillock Area', 'Unmyel Area', 'Myelin Area']
-    hdrkeys = ['', 'soma', 'dendrite', 'ratio', 'hillock', 'unmyelinatedaxon', 'myelinatedaxon']
-    dec = [0, 2, 2, 3, 2, 2, 2]  # define decimals for each column
+    hdrstr = ['Cell', 'Somatic area', 'somabysegment', 'Dendritic area', 'Ratio', 'Hillock Area', 'Unmyel Area', 'Myelin Area']
+    hdrkeys = ['', 'soma', 'somabysegment', 'dendrite', 'ratio', 'hillock', 'unmyelinatedaxon', 'myelinatedaxon']
+    dec = [0, 2, 2, 2, 3, 2, 2, 2]  # define decimals for each column
     
     headers = ''.join('{:^12s}  '.format(hs) for hs in hdrstr)
     print( headers)
@@ -56,12 +76,19 @@ if __name__ == '__main__':
         ar[fn]['ratio'] = ar[fn]['dendrite']/ar[fn]['soma']
         txt = '{:^12s}  '.format('VCN_c{0:2s}'.format(fn))
         for ik, k in enumerate(hdrkeys):
+# <<<<<<< HEAD
             if k not in list(ar[fn].keys()):
                 txt += '{:>12.{:d}f}  '.format(0., dec[ik])
             elif k == 'somabysegment':
                 txt += '{:>12.{:d}f}  '.format(ar[fn][k], dec[ik])
             elif k == '':
                 continue
+# =======
+#             if k == 'somabysegment':
+#                 txt += '{:>12.{:d}f}  '.format(ar[fn][k], dec[ik])
+#             if k == '':
+#                 txt += '{:^12s}  '.format('VCN_c{0:2s}'.format(fn))
+# >>>>>>> Py3 fixes, adjust to cnmodel_pbm py3
             else:
                 txt += '{:>12.{:d}f}  '.format(ar[fn][k], dec[ik])
         print( txt)

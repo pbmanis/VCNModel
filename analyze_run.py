@@ -17,6 +17,9 @@ verbose = False
 class AnalyzeRun():
     def __init__(self, results):
         self.results = results
+        """
+        In python 3, results is an iterator over the dict, not the dict itself
+        """
         self.injs = list(results.keys())
         self.nRun = len(self.injs)
         self.parseResults(results)

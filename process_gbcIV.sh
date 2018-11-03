@@ -1,6 +1,6 @@
 #!/bin/bash
 #FILES="VCN_c08 VCN_c09 VCN_c09nd VCN_c11 VCN_c14 VCN_c16 VCN_c17 VCN_c18 VCN_c19 VCN_c20 VCN_c21 VCN_c22"
-model="XM13"
+model="mGBC"
 proto="runIV"
 case $1 in
  run)
@@ -42,7 +42,8 @@ if [[ "$proto" = "initIV" ]] || [[ "$proto" = "runIV" ]] ; then
     echo "running the individual initialization and/or running of IV protocols"
     for f in $FILES
     do
-        python model_run.py ${f} --hoc ${f}.hoc -P ${proto} -M ${model} ${PLOT} --noparallel &
+        echo $f
+        python model_run.py ${f} -H -P ${proto} -M ${model} ${PLOT} --noparallel &
     # python model_run.py VCN_c09 -P ${proto} -M ${model} --noparallel &
     # python model_run.py VCN_c11 -P ${proto} -M ${model} --noparallel &
     # python model_run.py VCN_c14 -P ${proto} -M ${model} --noparallel &
@@ -70,12 +71,12 @@ fi
 if [[ "$proto" = "runIV" ]] || [[ "$proto" = "plot" ]] ; then
     python all_gbc_iv.py ${model}
 fi
-
+#
 if [[ "$proto" = 'list' ]] ; then
     for f in $FILES
     do
-    	echo "Cell: <$f>"
+        echo "Cell: <$f>"
         ls -lat VCN_Cells/$f/Simulations/IV
         echo " "
     done
-fi    
+fi
