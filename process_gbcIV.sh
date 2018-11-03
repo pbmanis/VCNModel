@@ -39,7 +39,7 @@ echo $proto
 
 if [[ "$proto" = "initIV" ]] || [[ "$proto" = "runIV" ]] ; then
     #MS -a 1.0 --noparallel
-    echo "running the individual initialization or IV protocols"
+    echo "running the individual initialization and/or running of IV protocols"
     for f in $FILES
     do
         python model_run.py ${f} --hoc ${f}.hoc -P ${proto} -M ${model} ${PLOT} --noparallel &
