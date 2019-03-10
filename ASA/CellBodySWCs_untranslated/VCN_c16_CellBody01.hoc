@@ -1,0 +1,26 @@
+objref undefined
+undefined = new SectionList()
+objref soma
+soma = new SectionList()
+objref axon
+axon = new SectionList()
+objref basal_dendrite
+basal_dendrite = new SectionList()
+objref apical_dendrite
+apical_dendrite = new SectionList()
+
+create sections[1]
+access sections[0]
+soma.append()
+sections[0] {
+  pt3dadd(17.482937, -37.736473, 6.556953, 0.044957)
+  pt3dadd(17.855167, -35.870178, 5.404640, 4.458202)
+  pt3dadd(17.885132, -30.881493, 6.885162, 8.820814)
+  pt3dadd(17.536880, -30.202911, 3.049805, 12.733878)
+  pt3dadd(17.627632, -30.763062, 0.266937, 13.821772)
+  pt3dadd(17.256973, -31.353134, -3.858673, 15.859976)
+  pt3dadd(15.682770, -30.999710, -6.269775, 11.033026)
+  pt3dadd(16.000694, -29.919277, -6.594467, 8.559840)
+  pt3dadd(14.965866, -29.558369, -8.425827, 4.838170)
+  pt3dadd(13.239660, -28.339474, -10.285929, 0.095296)
+}

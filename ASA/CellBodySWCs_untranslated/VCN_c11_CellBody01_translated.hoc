@@ -1,0 +1,29 @@
+// Original file: /Users/pbmanis/Desktop/Python/VCNModel/ASA/CellBodySWCs/VCN_c11_CellBody01.hoc
+// Coordinates Translated and soma sections have been reordered
+// on: 2019-03-06 11:13:57
+objref undefined
+undefined = new SectionList()
+objref soma
+soma = new SectionList()
+objref axon
+axon = new SectionList()
+objref basal_dendrite
+basal_dendrite = new SectionList()
+objref apical_dendrite
+apical_dendrite = new SectionList()
+
+create sections[1]
+access sections[0]
+soma.append()
+sections[0] {
+  pt3dadd(15.369568, -12.544678, -22.205699, 0.524863)
+  pt3dadd(15.369308, -12.111618, -20.518929, 4.608896)
+  pt3dadd(17.392807, -12.714950, -16.919183, 9.427288)
+  pt3dadd(20.313965, -13.742157, -13.103036, 15.091512)
+  pt3dadd(19.895782, -13.885391, -12.888711, 16.481448)
+  pt3dadd(20.004120, -14.833252, -10.721017, 15.313874)
+  pt3dadd(18.086212, -13.959152, -6.224740, 11.366774)
+  pt3dadd(15.990890, -12.880997, -0.540246, 6.033838)
+  pt3dadd(14.972733, -12.126694, 2.238818, 3.860842)
+  pt3dadd(14.500000, -12.000000, 3.700000, 0.111530)
+}
