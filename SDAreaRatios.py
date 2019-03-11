@@ -22,6 +22,17 @@ def sum_area(areamap):
     return area
 
 
+
+def sum_area(areamap):
+    # areamap is post_cell.areaMap[sectiontype]
+    # is still a dict{ 'section[x]': floatingareavalue}
+    
+    area = 0.
+    for x in areamap:
+        area += float(areamap[x])
+    return area
+
+
 def area(fn):
     filename = Path('VCN_Cells', fn, 'Morphology', fn+'.hoc')
     post_cell = cells.Bushy.create(morphology=str(filename), decorator=Decorator,
@@ -29,32 +40,23 @@ def area(fn):
             modelType='II', modelName='XM13')
     post_cell.distances()
     post_cell.computeAreas()
-# <<<<<<< HEAD
-    print('\n    Found the following section types: ', post_cell.areaMap.keys())
+    secareas = {}
+    #print 'areamap: ', post_cell.areaMap
+    for am in post_cell.areaMap.keys():
+        sectype = post_cell.get_section_type(am)
+        if sectype is None:
+            continue
+        if sectype not in secareas.keys():
+            secareas[sectype] = post_cell.areaMap[am]
+            print('new type: %s  area: %f' % (sectype, post_cell.areaMap[am]))
+        else:
+            secareas[sectype] = secareas[sectype] + post_cell.areaMap[am]
+            print('     type: %s  area: %f' % (sectype, secareas[sectype]))
+    for am in post_cell.areaMap2.keys():
+        sectype = post_cell.get_section_type(am)
+        if sectype == 'soma':
+            secareas['somabysegment'] = post_cell.areaMap2[am]
 
-    secareas = {}  # accumulate areas of all of the section types in the data
-    for sectype in list(post_cell.areaMap.keys()):  # am is a string... 
-        if sectype not in list(secareas.keys()):
-            secareas[sectype] = sum_area(post_cell.areaMap[sectype])
-# =======
-    # secareas = {}
-    # #print 'areamap: ', post_cell.areaMap
-    # for am in post_cell.areaMap.keys():
-    #     sectype = post_cell.get_section_type(am)
-    #     if sectype is None:
-    #         continue
-    #     if sectype not in secareas.keys():
-    #         secareas[sectype] = post_cell.areaMap[am]
-    #         print('new type: %s  area: %f' % (sectype, post_cell.areaMap[am]))
-    #     else:
-    #         secareas[sectype] = secareas[sectype] + post_cell.areaMap[am]
-    #         print('     type: %s  area: %f' % (sectype, secareas[sectype]))
-    # for am in post_cell.areaMap2.keys():
-    #     sectype = post_cell.get_section_type(am)
-    #     if sectype == 'soma':
-    #         secareas['somabysegment'] = post_cell.areaMap2[am]
-    #
-# >>>>>>> Py3 fixes, adjust to cnmodel_pbm py3
     return secareas
     
     
@@ -65,9 +67,9 @@ if __name__ == '__main__':
         filename = 'VCN_c'+fn # os.path.join('VCN_Cells', 'VCN_c'+fn, 'Morphology', 'VCN_c'+fn+'.hoc')
         ar[fn] = area(filename)
     print('')
-    hdrstr = ['Cell', 'Somatic area', 'somabysegment', 'Dendritic area', 'Ratio', 'Hillock Area', 'Unmyel Area', 'Myelin Area']
-    hdrkeys = ['', 'soma', 'somabysegment', 'dendrite', 'ratio', 'hillock', 'unmyelinatedaxon', 'myelinatedaxon']
-    dec = [0, 2, 2, 2, 3, 2, 2, 2]  # define decimals for each column
+    hdrstr = ['Cell', 'Somatic area', 'Dendritic area', 'Ratio', 'Hillock Area', 'Unmyel Area', 'Myelin Area']
+    hdrkeys = ['', 'soma', 'dendrite', 'ratio', 'hillock', 'unmyelinatedaxon', 'myelinatedaxon']
+    dec = [0, 2, 2, 3, 2, 2, 2]  # define decimals for each column
     
     headers = ''.join('{:^12s}  '.format(hs) for hs in hdrstr)
     print( headers)
