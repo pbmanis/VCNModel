@@ -1,10 +1,20 @@
 __author__ = 'pbmanis'
 
+from collections import OrderedDict
+import matplotlib
+matplotlib.use('Qt4Agg')
+rcParams = matplotlib.rcParams
+rcParams['svg.fonttype'] = 'none' # No text as paths. Assume font installed.
+rcParams['pdf.fonttype'] = 42
+rcParams['ps.fonttype'] = 42
+import matplotlib.pyplot as mpl
+
 from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
 import numpy as np
 import pickle
-import pylibrary.pyqtgraphPlotHelpers as PH
+import pylibrary.pyqtgraphPlotHelpers as pgPH
+import pylibrary.PlotHelpers as PH  # matplotlib
 import analyze_run as ar
 import pprint
 import os, sys
@@ -14,7 +24,18 @@ pg.setConfigOption('foreground', 'k')
 
 
 class IVPlots():
-    def __init__(self, title=None):
+    def __init__(self, title=None, mode='pg'):
+        if mode in ['pg', 'mpl']:
+            self.plotmode = mode
+        else:
+            print('IVPlots: plot mode must be pg or mpl')
+            exit()
+        if self.plotmode == 'pg':
+            self.pg_setup(title=title)
+        elif self.plotmode == 'mpl':
+            self.mpl_setup(title=title)
+
+    def pg_setup(self, title=None):
         self.app = pg.mkQApp()
         if title is None:
             wintitle = 'NEURON run plots'
@@ -44,67 +65,143 @@ class IVPlots():
         self.plots['p3'] = self.lo.addPlot(title="IInj", row=nr1, col=1, rowspan=1, colspan=9)
         # self.plots['p4'] = self.lo.addPlot(title="", row=6, col=0, rowspan=1, colspan=1)
 
+    def mpl_setup(self, title):
+        if title is None:
+            title = "NEURON run plots"
+        
+        # self.mpl_P = PH.regular_grid(3, 1, order='columns', figsize=(6.0, 4.0), showgrid=False,
+        #         verticalspacing=0.08, horizontalspacing=0.08,
+        #         margins={'leftmargin': 0.07, 'rightmargin': 0.05, 'topmargin': 0.03, 'bottommargin': 0.1},
+        #         labelposition=(0., 0.), parent_figure=None, panel_labels=['p1', 'p2', 'p3'],
+        #         title=title)
+        # define positions for each panel in Figure coordinages (0, 1, 0, 1)
+        # you don't have to use an ordered dict for this, I just prefer it when debugging
+        x = -0.05
+        y = 1.05
+        sizer = {'p1': {'pos': [0.1, 0.8, 0.50, 0.40], 'labelpos': (x,y), 'noaxes': True},
+                 'p2': {'pos': [0.1, 0.8, 0.20, 0.20], 'labelpos': (x,y) },
+                 'p3': {'pos': [0.1, 0.8, 0.10, 0.10], 'labelpos': (x,y), 'noaxes': True},
+                }
+        # dict pos elements are [left, width, bottom, height] for the axes in the plot.
+        gr = [(a, a+1, 0, 1) for a in range(0, 3)]   # just generate subplots - shape does not matter
+        axmap = OrderedDict(zip(sizer.keys(), gr))
+        self.mpl_P = PH.Plotter((3, 1), axmap=axmap, label=True, figsize=(6., 4.))
+        # PH.show_figure_grid(self.mpl_P.figure_handle)
+        self.mpl_P.resize(sizer)  # perform positioning magic
+        self.plots = self.mpl_P.axdict
+        self.plots['p4'] = None
+
+
     def show(self):
-        QtGui.QApplication.instance().exec_()
+        if self.plotmode == 'pg':
+            QtGui.QApplication.instance().exec_()
+        else:
+            mpl.show()
 
     def plotResults(self, res, runInfo, somasite=['postsynapticV', 'postsynapticI', 'dendriteV']):
         clist={'axon': 'r', 'heminode': 'g', 'stalk':'y', 'branch': 'g', 'neck': 'b',
                 'swelling': 'm', 'tip': 'k', 'parentaxon': '', r'synapse': 'c', 'soma': 'k',
                 'dendrite': 'c', 'dend': 'c'}
         dx = np.array([x for k,x in res['distanceMap'].items()])
-        self.plots['p1'].setLabel('left', 'V')
         dlen = res['monitor']['postsynapticV'].shape[0]
-        self.plots['p1'].plot(res['monitor']['time'][:dlen], res['monitor']['postsynapticV'],
-            pen=pg.mkPen(clist['soma'], width=1.5), )
-        if 'dendriteV' in somasite and self.plots['p2'] is not None and len(res['monitor']['dendriteV']) > 0:
-            self.plots['p1'].plot(res['monitor']['time'][:dlen], 
-                res['monitor']['dendriteV'], pen=pg.mkPen(clist['dendrite'], width=1.5), )
-            dxmax = np.max(dx)
-            
-            self.plots['p2'].setLabel('left', 'V (mV)')
-        if 'vec' in res.keys()and self.plots['p4'] is not None:
-            for v in res['vec']:
-                self.plots['p4'].plot(res['monitor']['time'], res['vec'][v],
-                             pen=pg.mkPen(pg.intColor(int(255.*res['distanceMap'][v]/dxmax))),
-                             width=2.0)
-        if 'postsynapticI' in somasite and self.plots['p3'] is not None:
-            vlen = len(res['monitor']['postsynapticI'])
-            self.plots['p3'].plot(res['monitor']['time'][0:vlen], res['monitor']['postsynapticI'],
-                pen = pg.mkPen('b', width=1.5))
-            self.plots['p3'].setLabel('left', 'I (inj, nA)')
-        if 'vec' in res.keys() and self.plots['p4'] is not None:
-            for v in res['vec']:
-                self.plots['p4'].plot(res['monitor']['time'], res['vec'][v],
-                             pen=pg.mkPen(pg.intColor(int(255.*res['distanceMap'][v]/dxmax))),
-                             width=2.0)
-        #for c in res['ICa']:
-        #     self.plots['p2'].plot(res['monitor']['time'], res['ICa'][c]*1e12, pen=pg.mkPen('b', width=1.5))
-        #     self.plots['p3'].plot(res['vec']['time'], res['Cai'][c]*1e6, pen=pg.mkPen('g', width=1.5))
+        dxmax = np.max(dx)
 
-                #p2.set_ylim(-5e-12, 1e-12)
-        self.plots['p1'].setXRange(0., 120., padding=0.2)
-        self.plots['p2'].setXRange(0., 120., padding=0.2)
-        if self.plots['p3'] is not None:
-            self.plots['p3'].setXRange(0., 120., padding=0.2)
+        
+        if self.plotmode == 'pg':
+            self.plots['p1'].setLabel('left', 'V')
+            self.plots['p1'].plot(res['monitor']['time'][:dlen], res['monitor']['postsynapticV'],
+            pen=pg.mkPen(clist['soma'], width=0.75), )
+            if 'dendriteV' in somasite and self.plots['p2'] is not None and len(res['monitor']['dendriteV']) > 0:
+                self.plots['p1'].plot(res['monitor']['time'][:dlen], 
+                    res['monitor']['dendriteV'], pen=pg.mkPen(clist['dendrite'], width=0.75), )
+                self.plots['p2'].setLabel('left', 'V (mV)')
+            if 'vec' in res.keys()and self.plots['p4'] is not None:
+                for v in res['vec']:
+                    self.plots['p4'].plot(res['monitor']['time'], res['vec'][v],
+                                 pen=pg.mkPen(pg.intColor(int(255.*res['distanceMap'][v]/dxmax))),
+                                 width=1.5)
+            if 'postsynapticI' in somasite and self.plots['p3'] is not None:
+                vlen = len(res['monitor']['postsynapticI'])
+                self.plots['p3'].plot(res['monitor']['time'][0:vlen], res['monitor']['postsynapticI'],
+                    pen = pg.mkPen('b', width=0.75))
+                self.plots['p3'].setLabel('left', 'I (inj, nA)')
+            if 'vec' in res.keys() and self.plots['p4'] is not None:
+                for v in res['vec']:
+                    self.plots['p4'].plot(res['monitor']['time'], res['vec'][v],
+                                 pen=pg.mkPen(pg.intColor(int(255.*res['distanceMap'][v]/dxmax))),
+                                 width=1.5)
+            #for c in res['ICa']:
+            #     self.plots['p2'].plot(res['monitor']['time'], res['ICa'][c]*1e12, pen=pg.mkPen('b', width=1.5))
+            #     self.plots['p3'].plot(res['vec']['time'], res['Cai'][c]*1e6, pen=pg.mkPen('g', width=1.5))
+
+                    #p2.set_ylim(-5e-12, 1e-12)
+            self.plots['p1'].setXRange(0., 120., padding=0.2)
+            self.plots['p2'].setXRange(0., 120., padding=0.2)
+            if self.plots['p3'] is not None:
+                self.plots['p3'].setXRange(0., 120., padding=0.2)
             
-        PH.cleanAxes([self.plots['p1'], self.plots['p2'], self.plots['p3'], self.plots['p4']])
-        PH.nice_plot(self.plots['p1'])
-        PH.calbar(self.plots['p1'], [110, -50, 20, 50])
-       # PH.nice_plot(self.plots['p2'])
-    #    PH.calbar(self.plots['p2'], [110, 0.1, 20, 1])
-        if self.plots['p3'] is not None:
-            PH.nice_plot(self.plots['p3'])
-            PH.calbar(self.plots['p3'], [110, -0.1, 20, 1])
+            pgPH.cleanAxes([self.plots['p1'], self.plots['p2'], self.plots['p3'], self.plots['p4']])
+            pgPH.nice_plot(self.plots['p1'])
+            pgPH.calbar(self.plots['p1'], [110, -50, 20, 50])
+           # pgPH.nice_plot(self.plots['p2'])
+        #    pgPH.calbar(self.plots['p2'], [110, 0.1, 20, 1])
+            if self.plots['p3'] is not None:
+                pgPH.nice_plot(self.plots['p3'])
+                pgPH.calbar(self.plots['p3'], [110, -0.1, 20, 1])
+
+
+        elif self.plotmode == 'mpl':
+            self.plots['p1'].set_ylabel('V')
+            self.plots['p1'].plot(res['monitor']['time'][:dlen], res['monitor']['postsynapticV'],
+            color=clist['soma'], linewidth=1.5)
+            if 'dendriteV' in somasite and self.plots['p2'] is not None and len(res['monitor']['dendriteV']) > 0:
+                self.plots['p1'].plot(res['monitor']['time'][:dlen], 
+                    res['monitor']['dendriteV'], color=clist['dendrite'], linewidth=1.5)
+                self.plots['p2'].set_ylabel('V (mV)')
+            if 'vec' in res.keys()and self.plots['p4'] is not None:
+                for v in res['vec']:
+                    self.plots['p4'].plot(res['monitor']['time'], res['vec'][v],
+                                 color=[[int(255.*res['distanceMap'][v]/dxmax)]*3],
+                                 linewidth=2.0)
+            if 'postsynapticI' in somasite and self.plots['p3'] is not None:
+                vlen = len(res['monitor']['postsynapticI'])
+                self.plots['p3'].plot(res['monitor']['time'][0:vlen], res['monitor']['postsynapticI'],
+                    color='b', linewidth=1.5)
+                self.plots['p3'].set_ylabel('I (inj, nA)')
+            if 'vec' in res.keys() and self.plots['p4'] is not None:
+                for v in res['vec']:
+                    self.plots['p4'].plot(res['monitor']['time'], res['vec'][v],
+                                 color=[[int(255.*res['distanceMap'][v]/dxmax)]*3],
+                                 linewidth=2.0)
+            #for c in res['ICa']:
+            #     self.plots['p2'].plot(res['monitor']['time'], res['ICa'][c]*1e12, pen=pg.mkPen('b', width=1.5))
+            #     self.plots['p3'].plot(res['vec']['time'], res['Cai'][c]*1e6, pen=pg.mkPen('g', width=1.5))
+
+                    #p2.set_ylim(-5e-12, 1e-12)
+            self.plots['p1'].set_xlim(0., 120.)
+            self.plots['p2'].set_xlim(0., 120.)
+            if self.plots['p3'] is not None:
+                self.plots['p3'].set_xlim(0., 120.)
+            
+            PH.cleanAxes([self.plots['p1'], self.plots['p2'], self.plots['p3']])
+            PH.nice_plot(self.plots['p1'])
+            PH.calbar(self.plots['p1'], [110, -50, 20, 50])
+           # pgPH.nice_plot(self.plots['p2'])
+        #    pgPH.calbar(self.plots['p2'], [110, 0.1, 20, 1])
+            if self.plots['p3'] is not None:
+                PH.nice_plot(self.plots['p3'])
+                PH.calbar(self.plots['p3'], [110, -0.1, 20, 1])        
+
 
     def plotFit(self, panel, x, y, c='g'):
-        p = eval("self.plots[\'p%d\' % panel]")
+        # p = eval("self.plots[\'p%d\' % panel]")
         for j in y.keys():
             if x[j] is None:
                 continue
-            p.plot(np.array(x[j]), np.array(y[j]), pen=pg.mkPen(c, width=1.5))
-
-    def show(self):
-        QtGui.QApplication.instance().exec_()
+            if self.plotmode == 'pg':
+                self.plots['p'+str(panel)].plot(np.array(x[j]), np.array(y[j]), pen=pg.mkPen(c, width=1.0))
+            else:
+                self.plots['p'+str(panel)].plot(np.array(x[j]), np.array(y[j]), color=c, linewidth=1.0)
 
 
 if __name__ == "__main__":

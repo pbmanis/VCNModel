@@ -15,6 +15,7 @@ February 2014, Paul B. Manis UNC Chapel Hill
 
 import os
 import numpy as np
+from pathlib import Path
 import copy
 from collections import OrderedDict
 from cnmodel.util.stim import make_pulse # makestim
@@ -338,7 +339,7 @@ class GenerateRun():
             ipulses = [0]
         nLevels = len(ipulses)
         nWorkers = workers
-        print('doRun: initfile = {:s}'.format(initfile))
+        print(f"doRun: initfile = {str(initfile):s}")
         TASKS = [s for s in range(nLevels)]
         tresults = [None]*len(TASKS)
         runner = [None]*nLevels
@@ -446,7 +447,7 @@ class GenerateRun():
             np_monitor[k] = np.array(self.monitor[k])
 
         np_allsecVec = OrderedDict()
-        for k in list(self.allsecVec.keys()):
+        for k in self.allsecVec.keys():
             np_allsecVec[k] = np.array(self.allsecVec[k])
         self.runInfo.clist = self.clist
         results = Params(Sections=list(self.hf.sections.keys()),  vec=np_allsecVec,
@@ -463,17 +464,18 @@ class GenerateRun():
         Save the result of a single run to disk. Results must be a Param structure, which we turn into
          a dictionary...
         """
-        fn = '{0:s}_{1:s}_{2:s}.p'.format(self.basename, self.cell.status['modelName'], self.cell.status['modelType'])
-        print('save as fn: ', fn)
+        fn = ('{0:s}_{1:s}.p'.format(self.basename, self.cell.status['modelType']))
+        pfout = open(fn, 'wb')
         mp = copy.deepcopy(self.cell.status)
         del mp['decorator']
-        with open(fn, 'wb') as pfout:
-            pickle.dump({'basename': self.basename,
-                         'runInfo': self.runInfo.todict(),
-                         'modelPars': mp,
-                         'Results': results.todict(),
-                         'IVResults': self.IVResult},
-                         pfout)
+        pickle.dump({'basename': self.basename,
+                     'runInfo': self.runInfo.todict(),
+                     'modelPars': mp,
+                     'Results': results.todict(),
+                     'IVResults': self.IVResult},
+                     pfout)
+        pfout.close()
+
 
     def saveRuns(self, save=None):
         """
@@ -482,10 +484,10 @@ class GenerateRun():
         a dictionary...
         """
         if save is None:
-            fn = ('{0:s}{1:s}_{2:s}.p'.format(self.basename, self.cell.status['modelName'], self.cell.status['modelType']))
+            fn = ('{0:s}_{1:s}.p'.format(self.basename, self.cell.status['modelType']))
         else:
-            fn = ('{0:s}{1:s}_{2:s}_{3:s}.p'.format(self.basename, self.cell.status['modelName'], self.cell.status['modelType'], save))
-        
+            fn = ('{0:s}_{1:s}_{2:s}.p'.format(self.basename, self.cell.status['modelType'], save))
+            
         pfout = open(fn, 'wb')
         mp = copy.deepcopy(self.cell.status)
         del mp['decorator']
@@ -521,7 +523,7 @@ class GenerateRun():
 
     def plotRun(self, results, init=True, show=False):
         if init:
-            self.ivplts = IVP.IVPlots(title=self.filename)
+            self.ivplts = IVP.IVPlots(title=self.filename, mode='mpl')
         self.ivplts.plotResults(results.todict(), self.runInfo.todict(), somasite=self.mons)
         if show:
             self.ivplts.show()

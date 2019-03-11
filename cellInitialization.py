@@ -2,6 +2,7 @@
 from __future__ import print_function
 import numpy as np
 import cnmodel.util as CU
+from pathlib import Path
 
 """
 cellInitialization provides routines for initializing the membrane potential
@@ -168,14 +169,14 @@ def restore_initial_conditions_state(cell, filename, electrode_site=None, reinit
     stateFile = cell.hr.h.File() # restore state AFTER finitialize
     state = cell.hr.h.SaveState()
     
-    stateFile.ropen(filename)
+    stateFile.ropen(str(filename))
     try:
         state.fread(stateFile)
     except:
         raise IOError('stateFile read failed - states do not match')
     stateFile.close()
     state.restore(1)
-    print('Restored initial conditions from: %s' % filename)
+    print(f'Restored initial conditions from: {str(filename):s}')
 
     if electrode_site is not None:
         vm = electrode_site.v
@@ -213,7 +214,7 @@ def test_initial_conditions(cell, electrode_site=None, filename=None):
     monitor['time'] = cell.hr.h.Vector()
     monitor['time'].record(cell.hr.h._ref_t)
     monitor['Velectrode'] = cell.hr.h.Vector()
-    print('Test Initial Conditions\n   at site: ', electrode_site)
+    print(f'Test Initial Conditions\n   at site: {str(electrode_site):s}')
     monitor['Velectrode'].record(electrode_site(0.5)._ref_v, sec=electrode_site)
     
     restore_initial_conditions_state(cell, filename=filename, electrode_site=electrode_site)
@@ -224,9 +225,9 @@ def test_initial_conditions(cell, electrode_site=None, filename=None):
    #     hf.hr.h.fadvance()
     cell.hr.h.batch_save() # save nothing
     cell.hr.h.batch_run(cell.hr.h.tstop, cell.hr.h.dt, "an.dat")
-    print('Filename: %s'.format(filename))
-    print('\ntime: ', np.array(monitor['time']))
-    print('\nVelectrode: ', np.array(monitor['Velectrode']))
+    print(f'Filename: {filename:s}')
+    print(f"\ntime: {str(np.array(monitor['time'])):s}")
+    print(f"\nVelectrode:  {str(np.array(monitor['Velectrode'])):s}")
     # pg.mkQApp()
     # pl = pg.plot(np.array(monitor['time']), np.array(monitor['Velectrode']))
     # pl.setTitle(filename)
