@@ -192,6 +192,7 @@ class ModelRun():
         self.Params['species'] = self.speciesChoices[0]
         self.Params['Ra'] = 150.  # ohm.cm
         self.Params['soma_inflation'] = 1.0
+        self.Params['soma_autoinflate'] = False
         self.Params['lambdaFreq'] = 2000.  # Hz for segment number
         self.Params['sequence'] = '' # sequence for run - may be string [start, stop, step]
         # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
@@ -235,7 +236,7 @@ class ModelRun():
         self.morphDirectory = 'Morphology'
         self.initDirectory = 'Initialization'
         self.simDirectory = 'Simulations'
-        
+
 
     def print_modelsetup(self):
         """
@@ -460,7 +461,12 @@ class ModelRun():
         self.post_cell.hr.h.Ra = self.Params['Ra']
         print('Ra (ohm.cm) = {:8.1f}'.format(self.post_cell.hr.h.Ra))
         print(f'Specified Temperature = {self.post_cell.hr.h.celsius:8.1f} degC ')
-
+        
+        if self.Params['soma_autoinflate']: # get values and inflate soma automatically to match mesh
+            cconfig = cell_config.CellConfig()
+            inflateratio = cconfig.get_soma_ratio(self.cellID)
+            self.Params['soma_inflation'] = inflateratio
+        
         if self.Params['soma_inflation'] != 1.0:
             print('!!!!!   Inflating soma')
             soma_group = self.post_cell.hr.sec_groups['soma']
@@ -831,8 +837,8 @@ class ModelRun():
             print('Cell id: %s  using input pattern: %s' % (self.cellID, fromdict))
         else:
             fromdict = self.cellID
-        
-        synapseConfig, celltype = cell_config.makeDict(fromdict)
+        cconfig = cell_config.CellConfig(self.cellID)
+        synapseConfig, celltype = cconfig.makeDict(fromdict)
         self.start_time = time.time()
         # compute delays in a simple manner
         # assumption 3 meters/second conduction time
@@ -1625,6 +1631,7 @@ class ModelRun():
             addarg = '_mean'
         elif self.Params['spirou'] == 'all=mean':
             addarg = '_allmean'
+            
         if self.Params['soundtype'] in ['SAM', 'sam']:
             ofile = Path(outPath, 'AN_Result_' + ID + '_%s_%s_%s_N%03d_%03ddB_%06.1f_FM%03.1f_DM%03d_%2s%s' %
                 (tag, self.Params['modelName'], self.Params['ANSynapseType'], self.Params['nReps'],
@@ -1745,6 +1752,9 @@ if __name__ == "__main__":
             help='Specify spirou experiment type.... ')
     parser.add_argument('--soma-inflate', type=float, dest='soma_inflation', action='store', default=1.0,
             help='Specify factor by which to inflate soma AREA')
+    parser.add_argument('--soma-autoinflate', action='store_true', dest='soma_autoinflate', default=False,
+            help='Automatically inflate soma based on table')
+
     parser.add_argument('-a', '--AMPAScale', type=float, default=1.0, dest='AMPAScale',
         help='Set AMPAR conductance scale factor (default 1.0)')
     parser.add_argument('--allmodes', action="store_true", default = False, dest = 'all_modes',

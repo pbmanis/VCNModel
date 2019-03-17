@@ -78,19 +78,12 @@ if __name__ == '__main__':
         ar[fn]['ratio'] = ar[fn]['dendrite']/ar[fn]['soma']
         txt = '{:^12s}  '.format('VCN_c{0:2s}'.format(fn))
         for ik, k in enumerate(hdrkeys):
-# <<<<<<< HEAD
             if k not in list(ar[fn].keys()):
                 txt += '{:>12.{:d}f}  '.format(0., dec[ik])
             elif k == 'somabysegment':
                 txt += '{:>12.{:d}f}  '.format(ar[fn][k], dec[ik])
             elif k == '':
                 continue
-# =======
-#             if k == 'somabysegment':
-#                 txt += '{:>12.{:d}f}  '.format(ar[fn][k], dec[ik])
-#             if k == '':
-#                 txt += '{:^12s}  '.format('VCN_c{0:2s}'.format(fn))
-# >>>>>>> Py3 fixes, adjust to cnmodel_pbm py3
             else:
                 txt += '{:>12.{:d}f}  '.format(ar[fn][k], dec[ik])
         print( txt)

@@ -379,8 +379,8 @@ class GenerateRun():
             if verbose:
                 print('doRun: ivresult is: {:32}'.format(self.IVResult))
             if self.plotting:
-                self.plotFits(1, self.IVResult['taufit'], c='r')
-                self.plotFits(1, self.IVResult['ihfit'], c='b')
+                self.plotFits('Soma', self.IVResult['taufit'], c='r')
+                self.plotFits('Soma', self.IVResult['ihfit'], c='b')
                 #print (dir(self.ivplots))
                 self.ivplts.show()
         if self.runInfo.postMode in ['gifnoise']:
