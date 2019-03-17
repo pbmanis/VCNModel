@@ -49,11 +49,12 @@ class GenerateRun():
                  saveAllSections=False,
                  useSavedState=True,
                  params=None):
-
+        
         self.run_initialized = False
         self.plotting = plotting
         #print(dir(cell))
-        self.cell = cell
+        self.cell = cell  # cnmodel cell instance
+        self.params = params
         self.filename = params['cell']
         self.hf = cell.hr # get the reader structure and the hoc pointer object locally
         self.basename = 'basenamenotset'
@@ -485,12 +486,13 @@ class GenerateRun():
         each element of which is a Param structure, which we then turn into
         a dictionary...
         """
-        if save is None:
-            fn = f"{self.basename:s}{self.cell.status['modelName']:s}_{self.cell.status['modelType']:s}.p"
-        else:
-            fn = f"{self.basename:s}{self.cell.status['modelName']:s}_{self.cell.status['modelType']:s}_{save:s}.p"
-            # (f'{0:s}_{1:s}_{2:s}.p'.format(self.basename, self.cell.status['modelType'], save))
-        print(f'WRITING DATA TO: {fn:s}')   
+        # if save is None:
+        #     fn = f"{self.basename:s}{self.cell.status['modelName']:s}_{self.cell.status['modelType']:s}.p"
+        # else:
+        #     fn = f"{self.basename:s}{self.cell.status['modelName']:s}_{self.cell.status['modelType']:s}_{save:s}.p"
+        #     # (f'{0:s}_{1:s}_{2:s}.p'.format(self.basename, self.cell.status['modelType'], save))
+        fn = self.params['simulationFilename']
+        print(f'WRITING DATA TO: {str(fn):s}')   
         pfout = open(fn, 'wb')
         mp = copy.deepcopy(self.cell.status)
         del mp['decorator']

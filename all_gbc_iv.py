@@ -31,7 +31,7 @@ modelType = 'II'
 
 modelmode = 'II'
 testing = False
-forcerun = True
+forcerun = False
 
 # set up plots
 l1 = 0.08
@@ -44,12 +44,12 @@ yp = np.arange(0.05, numrows*ht, ht)
 yp = np.flipud(yp)
 # print ('yp:', yp)
 lpos = [0.5, 0.95]
-sizer = OrderedDict([#('VCNc09nd', {'pos': [l1, wid, yp[0], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
+sizer = OrderedDict([('VCNc08', {'pos': [l1, wid, yp[0], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc09',  {'pos': [l1, wid, yp[1], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc11',  {'pos': [l1, wid, yp[2], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc14',  {'pos': [l1, wid, yp[3], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc16',  {'pos': [l1, wid, yp[4], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
-                    # ('VCNc17',  {'pos': [l1, wid, yp[5], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
+                    ('VCNc17',  {'pos': [l1, wid, yp[5], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc18',  {'pos': [l2, wid, yp[0], ht], 'labelpos': lpos, 'ylabel': 'mV'}), 
                     ('VCNc19',  {'pos': [l2, wid, yp[1], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc20',  {'pos': [l2, wid, yp[2], ht], 'labelpos': lpos, 'ylabel': 'mV'}), 
@@ -63,6 +63,7 @@ P = PH.Plotter(rcshape=sizer, label=False, figsize=(6, 8), labeloffset=[0.6, 0.]
 
 gbc_names = [s[-2:] for s in sizer.keys()]
 
+# gbc_names = ['08']  # how to just run one when encoutering a bug
 
 for n in gbc_names:
     M = mrun.ModelRun() # create an instance
@@ -75,14 +76,14 @@ for n in gbc_names:
     M.Params['Parallel'] = True
     M.Params['modelType'] = modelType
     M.Params['modelName'] = modelName
-    M.Params['soma_autoinflate'] = True
-
-    initf = Path(M.baseDirectory, cell, ivinitfile)
-    print (f'\nRetrieving setup data for cell {cell:s}')
-    print(f'    from: {str(initf):s}')
-    M.Params['initIVStateFile'] = initf
+    M.Params['soma_autoinflate'] = False
+    
     if M.Params['hocfile'] == None: # just use the matching hoc file
         M.Params['hocfile'] = M.Params['cell'] + '.hoc'
+    M.setup_model(par_map=M.Params)
+    print(M.Params['hocfile'])
+    
+    initf = M.Params['initIVStateFile']
     if not initf.is_file() or forcerun:
         print(f'creating new init file for cell, did not find {str(initf):s}')
         M.Params['runProtocol'] = 'initIV'
@@ -93,7 +94,8 @@ for n in gbc_names:
     if not initf.is_file():
         raise ValueError(f'Failed to create the IV init state file {str(initf):s}')
 
-    ivdatafile = Path(M.baseDirectory, cell, M.simDirectory, 'IV', f"{cell:s}_pulse_{modelName:s}_{modelType:s}_monitor.p")
+    ivdatafile = M.Params['simulationFilename']
+    # ivdatafile = Path(M.baseDirectory, cell, M.simDirectory, 'IV', f"{cell:s}_pulse_{modelName:s}_{modelType:s}_monitor.p")
     print(' file exists: ', ivdatafile.is_file())
     if not ivdatafile.is_file() or forcerun is True:
         print (f'Creating ivdatafile: {str(ivdatafile):s}\n')

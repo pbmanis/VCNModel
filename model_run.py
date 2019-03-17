@@ -172,6 +172,7 @@ class ModelRun():
         self.cellmap = {'bushy': cells.bushy, 'tstellate': cells.tstellate, 'dstellate': cells.dstellate}
         self.srname = ['LS', 'MS', 'HS']  # runs 0-2, not starting at 0
         self.cellID = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
+        self.setup = False  # require setup ahead of run - but setup can be done separately
         
         # The following are initial values. Some values of some of these are replaced after
         # parsing the command line.
@@ -183,6 +184,7 @@ class ModelRun():
         self.Params['SynapticDepression'] = 0  # depression calculation is off by default
         self.Params['initIVStateFile'] = None # 'IVneuronState_%s.dat'
         self.Params['initANStateFile'] = None # 'ANneuronState_%s.dat'
+        self.Params['simulationFilename'] = None
         self.Params['hocfile'] = None
         self.Params['usedefaulthoc'] = False
         self.Params['cellType'] = self.cellChoices[0]
@@ -193,6 +195,8 @@ class ModelRun():
         self.Params['Ra'] = 150.  # ohm.cm
         self.Params['soma_inflation'] = 1.0
         self.Params['soma_autoinflate'] = False
+        self.Params['dendrite_inflation'] = 1.0
+        self.Params['dendrite_autoinflate'] = False
         self.Params['lambdaFreq'] = 2000.  # Hz for segment number
         self.Params['sequence'] = '' # sequence for run - may be string [start, stop, step]
         # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
@@ -284,6 +288,80 @@ class ModelRun():
             exit()
         self.Params['modelName'] = model_name
 
+    def _make_filenames(self):
+        """
+        Define program-wide file names (used also in cell_initialization and generate_run) one time for consistencye
+        
+        This routine generates two names: 
+            1. The name of the initizlization file. This name includes the model name, the model type (for that name),
+                soma and dendrite inflation factors if relevenat. Other parameters can be added if needed
+            2. The name of the simulation data file. This name is similar to the initizlizaiton name, but may include
+                information about the type of run, stimuli, etc.
+        
+        
+        """
+        self.cellID = Path(self.Params['cell']).stem # os.path.splitext(self.Params['cell'])[0]
+        # pick up parameters that should be in both init and run filenames:
+        # Run / init type independent parameters:
+        namePars = f"{str(self.Params['modelName']):s}_{str(self.Params['modelType']):s}"
+        if self.Params['soma_inflation'] != 1.0:
+            namePars += f"_soma={self.Params['soma_inflation']:.3f}"
+        if self.Params['dendrite_inflation'] != 1.0:
+            namePars += f"_dend={self.Params['dendrite_inflation']:.3f}"
+        if self.Params['runProtocol'] in ['initIV', 'initandrunIV', 'runIV']:
+            if self.Params['initIVStateFile'] is None:
+                fn = f"IVneuronState_{namePars:s}.dat"
+                ivinitdir = Path(self.baseDirectory, self.cellID,
+                                    self.initDirectory)
+                self.Params['initIVStateFile'] = Path(ivinitdir, fn)
+            print('IV Initialization file: ', self.Params['initIVStateFile'])
+            self.mkdir_p(ivinitdir) # confirm existence of that file
+        
+        if self.Params['runProtocol'] in ['initandrunIV', 'runIV']:
+            outPath = Path('VCN_Cells', self.cellID, self.simDirectory, 'IV')
+            self.mkdir_p(outPath) # confirm that output path exists
+            self.Params['simulationFilename'] = Path(outPath, f"{self.cellID:s}_pulse_{namePars:s}_monitor.p")
+            print('Simulation filename: ', self.Params['simulationFilename'])
+               
+        
+        if self.Params['runProtocol'].startswith('runAN'):
+            if self.Params['initANStateFile'] is None:
+                fn = f"ANneuronState_{namePars:s}.dat"
+                aninitdir= Path(self.baseDirectory, self.cellID,
+                                    self.initDirectory)
+                self.Params['initANStateFile'] = Path(aninitdir, fn)
+                self.mkdir_p(aninitdir) # confirm existence of that file  
+                print('IV Initialization file: ', self.Params['initANStateFile'])
+                   
+            outPath = Path('VCN_Cells', self.cellID, self.simDirectory, 'AN')
+            self.mkdir_p(outPath) # confirm that output path exists
+            ID = self.cellID
+            if self.Params['inputPattern'] is not None:
+                ID += '_%s' % self.Params['inputPattern']
+            addarg = ''
+            if self.Params['spirou'] == 'all':
+                addarg = ''
+            elif self.Params['spirou'] == 'max=mean':
+                addarg = '_mean'
+            elif self.Params['spirou'] == 'all=mean':
+                addarg = '_allmean'
+            
+            if self.Params['soundtype'] in ['SAM', 'sam']:
+                ofile = Path(outPath, 'AN_Result_' + ID + '_%s_%s_%s_N%03d_%03ddB_%06.1f_FM%03.1f_DM%03d_%2s%s' %
+                    (tag, self.Params['modelName'], self.Params['ANSynapseType'], self.Params['nReps'],
+                    int(self.Params['dB']), self.Params['F0'],
+                    self.Params['fmod'], int(self.Params['dmod']), self.Params['SR'], addarg) + '.p')
+                
+                f = open(ofile, 'w')
+            else:
+                ofile = Path(outPath, 'AN_Result_' + ID + '_%s_%s_%s_N%03d_%03ddB_%06.1f_%2s_%s' % (
+                    self.Params['modelName'], tag, self.Params['ANSynapseType'],
+                     self.Params['nReps'],
+                    int(self.Params['dB']), self.Params['F0'], self.Params['SR'], addarg) + '.p')
+            self.Params['simulationFilename'] = ofile
+
+        
+        
     def set_spontaneousrate(self, spont_rate_type):
         """
         Set the SR, overriding SR in the cell_config file. The SR type must be in the SR choices
@@ -315,7 +393,7 @@ class ModelRun():
         except:
             raise FileNotFoundError(f"Cannot create path: {str(path):s}")
 
-    def run_model(self, par_map={}):
+    def setup_model(self, par_map=None):
         """
         Main entry routine for running all models
         
@@ -334,25 +412,12 @@ class ModelRun():
 
         if self.Params['verbose']:
             print('run_model entry')
-        if 'id' in par_map.keys():
+        if par_map is not None and 'id' in par_map.keys():
             self.idnum = par_map['id']
         else:
             self.idnum = 9999
         self.cellID = Path(self.Params['cell']).stem # os.path.splitext(self.Params['cell'])[0]
-        if self.Params['initIVStateFile'] is None:
-            self.Params['initIVStateFile'] = f"IVneuronState_{str(self.Params['modelName']):s}.dat"
-            ivinitfile = Path(self.baseDirectory, self.cellID,
-                                self.initDirectory, self.Params['initIVStateFile'])
-        else:
-            ivinitfile = self.Params['initIVStateFile']
-        if self.Params['initANStateFile'] is None:
-            self.Params['initANStateFile'] = f"ANneuronState_{str(self.Params['modelName']):s}.dat"
-        # Set up initialization and filenames
         
-        ivinitdir = Path(self.baseDirectory, self.cellID,
-                                self.initDirectory)
-        print('Initialization file: ', ivinitfile)
-        self.mkdir_p(ivinitdir) # confirm existence of that file
         print('Morphology directory: ', self.morphDirectory)
         if self.Params['usedefaulthoc']:
             self.Params['hocfile'] = self.Params['cell'] + '.hoc'
@@ -475,6 +540,7 @@ class ModelRun():
         if self.Params['soma_inflation'] != 1.0:
             print('!!!!!   Inflating soma')
             soma_group = self.post_cell.hr.sec_groups['soma']
+            print(' Section in soma group: ', soma_group)
             rtau = self.post_cell.compute_rmrintau(auto_initialize=True, vrange=[-80., -60.])
             print(f"     Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}")
             origdiam = {}
@@ -521,14 +587,22 @@ class ModelRun():
             self.dendriticElectrodeSection = 'soma'
         
         if self.Params['verbose']:
-            print('Listing par_map (run_model): ', par_map)
+            if par_map is not None:
+                print('Listing par_map (run_model): ', par_map)
             self.post_cell.hr.h.topology()
        
         self.post_cell.set_d_lambda(freq=self.Params['lambdaFreq'])
         
         # handle the following protocols:
         # ['initIV', 'initAN', 'runIV', 'run', 'runANSingles', 'gifnoise']
+
+        self._make_filenames()  # make filenames AFTER all manipulations of the cell
         
+        self.setup = True
+
+    def run_model(self, par_map=None):
+        if not self.setup:
+            self.setup_model(par_mnap=par_map)
         if self.Params['runProtocol'] in ['runANPSTH', 'runANSingles']:
             model.Params['run_duration'] = model.Params['pip_duration'] + np.sum(model.Params['pip_start']) + model.Params['pip_offduration']
             
@@ -556,8 +630,8 @@ class ModelRun():
         if self.Params['runProtocol'] == 'testIV':
             if self.Params['verbose']:
                 print( 'test_init')
-            ivinitfile = Path(self.baseDirectory, self.cellID,
-                                self.initDirectory, self.Params['initIVStateFile'])
+            # ivinitfile = Path(self.baseDirectory, self.cellID,
+            #                     self.initDirectory, self.Params['initIVStateFile'])
             self.R = GenerateRun(self.post_cell, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
                              electrodeSection=self.electrodeSection,
@@ -567,7 +641,7 @@ class ModelRun():
                              params = self.params)
             cellInit.test_initial_conditions(self.post_cell, filename=self.Params['initIVStateFile'],
                 electrode_site=self.electrode_site)
-            self.R.testRun(initfile=ivinitfile)
+            self.R.testRun(initfile=self.Params['initIVStateFile'])
             return  # that is ALL, never make testIV/init and then keep running.
         
         if self.Params['runProtocol'] == 'runANPSTH':
@@ -715,8 +789,8 @@ class ModelRun():
                              stimtype='gifnoise',
                              plotting = self.Params['plotFlag'],
                              params=self.Params)
-        ivinitfile = Path(self.baseDirectory, self.cellID,
-                                self.initDirectory, self.Params['initIVStateFile'])
+        # ivinitfile = Path(self.baseDirectory, self.cellID,
+        #                         self.initDirectory, self.Params['initIVStateFile'])
         self.R.runInfo.folder = Path('VCN_Cells', self.cellID, self.simDirectory, 'Noise')
         if self.Params['verbose']:
             print('noise_run: calling do_run')
@@ -725,7 +799,8 @@ class ModelRun():
         if self.Params['Parallel'] == False:
             nworkers = 1
 #        print('Number of workers available on this machine: ', nworkers)
-        self.R.doRun(self.Params['hocfile'], parMap=par_map, save='monitor', restore_from_file=True, initfile=ivinitfile,
+        self.R.doRun(self.Params['hocfile'], parMap=par_map, save='monitor', restore_from_file=True,
+            initfile=self.Params['initIVStateFile'],
             workers=nworkers)
         if self.Params['verbose']:
             print( '   noise_run: do_run completed')
@@ -1614,41 +1689,17 @@ class ModelRun():
         tag : string (default: '')
             tag to insert in filename string
         """
+        k = result[0].keys()
+        requiredKeys = ['stimInfo', 'spikeTimes', 'inputSpikeTimes', 'somaVoltage', 'time', 'stimWaveform', 'stimTimebase']
+        for rk in requiredKeys:
+            assert rk in k
         results = {}
         # results with be a dict with params, stiminfo, and trials as keys
         
         results['Params'] = self.Params  # include all the parameters of the run too
         print('\n*** analysis_filewriter\n')
-        k = result[0].keys()
-        requiredKeys = ['stimInfo', 'spikeTimes', 'inputSpikeTimes', 'somaVoltage', 'time', 'stimWaveform', 'stimTimebase']
-        for rk in requiredKeys:
-            assert rk in k
-        outPath = Path('VCN_Cells', self.cellID, self.simDirectory, 'AN')
-        self.mkdir_p(outPath) # confirm that output path exists
-        ID = self.cellID
-        if self.Params['inputPattern'] is not None:
-            ID += '_%s' % self.Params['inputPattern']
-        addarg = ''
-        if self.Params['spirou'] == 'all':
-            addarg = ''
-        elif self.Params['spirou'] == 'max=mean':
-            addarg = '_mean'
-        elif self.Params['spirou'] == 'all=mean':
-            addarg = '_allmean'
-            
-        if self.Params['soundtype'] in ['SAM', 'sam']:
-            ofile = Path(outPath, 'AN_Result_' + ID + '_%s_%s_%s_N%03d_%03ddB_%06.1f_FM%03.1f_DM%03d_%2s%s' %
-                (tag, self.Params['modelName'], self.Params['ANSynapseType'], self.Params['nReps'],
-                int(self.Params['dB']), self.Params['F0'],
-                self.Params['fmod'], int(self.Params['dmod']), self.Params['SR'], addarg) + '.p')
-                
-            f = open(ofile, 'w')
-        else:
-            ofile = Path(outPath, 'AN_Result_' + ID + '_%s_%s_%s_N%03d_%03ddB_%06.1f_%2s_%s' % (
-                self.Params['modelName'], tag, self.Params['ANSynapseType'],
-                 self.Params['nReps'],
-                int(self.Params['dB']), self.Params['F0'], self.Params['SR'], addarg) + '.p')
-            f = open(ofile, 'w')
+
+        f = open(self.Params['simulationFilename'], 'w')
         results['trials'] = result
         pickle.dump(results, f)
         f.close()
