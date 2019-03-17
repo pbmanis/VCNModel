@@ -1,6 +1,7 @@
 # -*- coding: utf8 -*-
 import numpy as np
 import os.path
+from pathlib import Path
 
 """
 SWC File format from CNIC:
@@ -339,7 +340,7 @@ if __name__ == '__main__':
         soma.topology()
 
         #soma.write_hoc('MorphologyFiles/VCN_c18_reparented755.hoc')
-    if sys.argv[1] == 'P30':
+    elif sys.argv[1] == 'P30':
         print ('P30')
         base = 'Calyx_Terminals/VCN_P30/Morphology'
         # somafile = os.path.join(base, 'P30_cellbody_scaled.swc')
@@ -370,3 +371,7 @@ if __name__ == '__main__':
         calyx.write_hoc(os.path.join('MorphologyFiles', 'P30_calyx.hoc'))
         
         calyx.topology()
+    else:
+        fn = Path(sys.argv[1])
+        cell = SWC(str(fn))
+        cell.write_hoc(Path(fn.parent, fn.name+'.hoc'))

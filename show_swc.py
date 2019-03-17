@@ -34,9 +34,14 @@ parser.add_argument('-n', dest='cellname', type=str, default='None',
                         help='Specificy a single cell name when plotting')
 parser.add_argument('-t', '--translate', action='store_true', dest='translate',
                         help='compute translation between cells')
+parser.add_argument('-o', '--original', action='store_true', dest='original',
+                        help='display original hoc on top of new one for a cell')
 
 parser.add_argument('-f', '--file', type=str, default='None',
-                    help="just display the specified file")
+                    help="just display the specified file in the SWC dataset")
+
+parser.add_argument('-F', '--FILENAME', type=str, default='None', dest='filename',
+                    help="just display the specified file on the path")
                     
 args = parser.parse_args()
 mode = args.mode # mode contains letters 's' (swc), 'n' (new coords) or 'c' (cell reconstruction)
@@ -73,6 +78,18 @@ if args.file is not 'None':
     mlab.show()
     exit()
 
+if args.filename is not 'None':
+    f = Path(basedir, args.file)
+    
+    renderer = 'mayavi'
+    print('args.filename: ')
+    fighandle = mlab.figure(bgcolor=(0,0,0), fgcolor=(1,1,1), size=(800, 800))
+    HR.Render(command='cylinders', renderer=renderer, hoc_file=args.filename, fax=fax,
+                 fighandle=fighandle, somaonly=True, color=(0.7, 0.7, 1.0), label=Path(args.filename).name, flags=['notext', 'norefline', 'norefaxes'])
+    # fswc =  Path('/Users/pbmanis/Desktop/Python', 'VCNModel', 'ASA', 'CellBodySWCs')
+    mlab.show()
+    exit()
+    
 def align_cells_soma(f0, f1, reorder=False):
     """
     Compute the linear transform that moves f1 soma to f0 soma (center)
@@ -338,6 +355,13 @@ for i, f in enumerate(allfiles):
             colormap[fn] = (1,1,1)  # and do them in white - we know they are already in position (mostly)
         renders.append(HR.Render(command=usemode, renderer=renderer, hoc_file=f, fax=fax,
                      fighandle=fighandle, somaonly=True, color=colormap[fn], label=fn, flags=['noaxes', 'nolines', 'notext']))
+        if args.original:
+            fp = f.parent
+            fs = f.stem
+            forig = Path(fp, fs+'_original.hoc')
+            renders.append(HR.Render(command=usemode, renderer=renderer, hoc_file=forig, fax=fax,
+                     fighandle=fighandle, somaonly=True, color=colormap[fn], label=fn, flags=['noaxes', 'nolines', 'notext']))
+            
     else:
         renders.append(HR.Render(command='cylinders', renderer=renderer, hoc_file=f, fax=fax,
                      fighandle=fighandle, somaonly=True, color=colormap[fn], label=fn, flags=['noaxes', 'nolines', 'notext']))
