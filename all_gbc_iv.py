@@ -7,6 +7,7 @@ Run all gbc IV's as a batch
 from __future__ import print_function
 import sys
 import os
+from pathlib import Path
 from collections import OrderedDict
 import numpy as np
 from matplotlib import rc
@@ -19,7 +20,7 @@ import matplotlib.pyplot as mpl
 import pylibrary.PlotHelpers as PH
 import model_run as mrun
 
-default_modelName = 'mGBC'
+default_modelName = 'XM13'
 if len(sys.argv) > 1:
     modelName = sys.argv[1]
 else:
@@ -41,14 +42,14 @@ numrows = 6
 ht = (1. - 2*(ymargin))/numrows
 yp = np.arange(0.05, numrows*ht, ht)
 yp = np.flipud(yp)
-print ('yp:', yp)
+# print ('yp:', yp)
 lpos = [0.5, 0.95]
 sizer = OrderedDict([#('VCNc09nd', {'pos': [l1, wid, yp[0], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc09',  {'pos': [l1, wid, yp[1], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc11',  {'pos': [l1, wid, yp[2], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc14',  {'pos': [l1, wid, yp[3], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc16',  {'pos': [l1, wid, yp[4], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
-                    ('VCNc17',  {'pos': [l1, wid, yp[5], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
+                    # ('VCNc17',  {'pos': [l1, wid, yp[5], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc18',  {'pos': [l2, wid, yp[0], ht], 'labelpos': lpos, 'ylabel': 'mV'}), 
                     ('VCNc19',  {'pos': [l2, wid, yp[1], ht], 'labelpos': lpos, 'ylabel': 'mV'}),
                     ('VCNc20',  {'pos': [l2, wid, yp[2], ht], 'labelpos': lpos, 'ylabel': 'mV'}), 
@@ -60,40 +61,45 @@ axmap = OrderedDict(zip(sizer.keys(), gr))
 P = PH.Plotter(rcshape=sizer, label=False, figsize=(6, 8), labeloffset=[0.6, 0.])
 #PH.show_figure_grid(P.figure_handle)
 
-gbc_names = [#'09nd',
-            '09', '11', '14', '16', '17', '18', '19', '20', '21', '22']
+gbc_names = [s[-2:] for s in sizer.keys()]
 
 
 for n in gbc_names:
     M = mrun.ModelRun() # create an instance
     # create paths to the simulation runs to check for existing IV initialization
-    ivinitfile = os.path.join(M.initDirectory, 'IVneuronState_{0:s}_{1:s}.dat'.format(modelName, modelType))
-    cell = 'VCN_c{0:s}'.format(n)
-    cell_ax = 'VCNc{0:s}'.format(n)
-    initf = os.path.join(M.baseDirectory, cell, ivinitfile)
-    print ('\nRetrieving data for cell {0:s}'.format(cell))
+    ivinitfile = Path(M.initDirectory, f'IVneuronState_{modelName:s}_{modelType:s}.dat')
+    print(f'Initfile name: {str(ivinitfile):s}')
+    cell = f'VCN_c{n:s}'
+    cell_ax = f'VCNc{n:s}'
     M.Params['cell'] = cell
+    M.Params['Parallel'] = True
     M.Params['modelType'] = modelType
-    M.Params['hocfile'] = M.Params['cell'] + '.hoc'
+    M.Params['modelName'] = modelName
+    M.Params['soma_autoinflate'] = True
+
+    initf = Path(M.baseDirectory, cell, ivinitfile)
+    print (f'\nRetrieving setup data for cell {cell:s}')
+    print(f'    from: {str(initf):s}')
+    M.Params['initIVStateFile'] = initf
     if M.Params['hocfile'] == None: # just use the matching hoc file
         M.Params['hocfile'] = M.Params['cell'] + '.hoc'
-    if not os.path.isfile(initf):
-        print('creating new init file for cell, did not find {:s}'.format(initf))
+    if not initf.is_file() or forcerun:
+        print(f'creating new init file for cell, did not find {str(initf):s}')
         M.Params['runProtocol'] = 'initIV'
         if not testing:
             M.run_model(par_map = M.Params)
     else:
-        print('    Initialization file for {:s} exists'.format(cell))
-    if not os.path.isfile(initf):
-        raise ValueError('Failed to create the IV init state file %s' % initf)
-        raise ValueError('Failed to create the IV init state file')
-    ivdatafile = os.path.join(M.baseDirectory, cell, M.simDirectory, 'IV', cell+'_pulse__' + modelmode+'_monitor.p')
-    print(' file exists: ', os.path.isfile(ivdatafile))
-    if not os.path.isfile(ivdatafile) or forcerun is True:
-        print ('Creating ivdatafile: {:s}\n'.format(ivdatafile))
+        print(f'    Initialization file for {cell:s} exists')
+    if not initf.is_file():
+        raise ValueError(f'Failed to create the IV init state file {str(initf):s}')
+
+    ivdatafile = Path(M.baseDirectory, cell, M.simDirectory, 'IV', f"{cell:s}_pulse_{modelName:s}_{modelType:s}_monitor.p")
+    print(' file exists: ', ivdatafile.is_file())
+    if not ivdatafile.is_file() or forcerun is True:
+        print (f'Creating ivdatafile: {str(ivdatafile):s}\n')
         M.Params['runProtocol'] = 'runIV'
         if not testing:
-            M.run_model(par_map = M.Params)
+            M.run_model(par_map=M.Params)
     else:
         print('    IV file for {:s} exists'.format(cell))
     print(' IV data file: ', ivdatafile)

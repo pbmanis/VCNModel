@@ -339,7 +339,7 @@ class GenerateRun():
             ipulses = [0]
         nLevels = len(ipulses)
         nWorkers = workers
-        print(f"doRun: initfile = {str(initfile):s}")
+        # print(f"doRun: initfile = {str(initfile):s}")
         TASKS = [s for s in range(nLevels)]
         tresults = [None]*len(TASKS)
         runner = [None]*nLevels
@@ -375,7 +375,7 @@ class GenerateRun():
             if verbose:
                 print ('doRun, back from IV')
             if save == 'monitor':
-                self.saveRuns('monitor')
+                self.saveRuns(save='monitor')
             if verbose:
                 print('doRun: ivresult is: {:32}'.format(self.IVResult))
             if self.plotting:
@@ -464,7 +464,9 @@ class GenerateRun():
         Save the result of a single run to disk. Results must be a Param structure, which we turn into
          a dictionary...
         """
+        print('Saving single run to: ')
         fn = ('{0:s}_{1:s}.p'.format(self.basename, self.cell.status['modelType']))
+        print('     ', fn)
         pfout = open(fn, 'wb')
         mp = copy.deepcopy(self.cell.status)
         del mp['decorator']
@@ -484,10 +486,11 @@ class GenerateRun():
         a dictionary...
         """
         if save is None:
-            fn = ('{0:s}_{1:s}.p'.format(self.basename, self.cell.status['modelType']))
+            fn = f"{self.basename:s}{self.cell.status['modelName']:s}_{self.cell.status['modelType']:s}.p"
         else:
-            fn = ('{0:s}_{1:s}_{2:s}.p'.format(self.basename, self.cell.status['modelType'], save))
-            
+            fn = f"{self.basename:s}{self.cell.status['modelName']:s}_{self.cell.status['modelType']:s}_{save:s}.p"
+            # (f'{0:s}_{1:s}_{2:s}.p'.format(self.basename, self.cell.status['modelType'], save))
+        print(f'WRITING DATA TO: {fn:s}')   
         pfout = open(fn, 'wb')
         mp = copy.deepcopy(self.cell.status)
         del mp['decorator']

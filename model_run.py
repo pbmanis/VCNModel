@@ -181,8 +181,8 @@ class ModelRun():
         self.Params['AMPAScale'] = 1.0 # Use the default scale for AMPAR conductances
         self.Params['ANSynapseType'] = 'simple'  # or multisite
         self.Params['SynapticDepression'] = 0  # depression calculation is off by default
-        self.Params['initIVStateFile'] = 'IVneuronState_%s.dat'
-        self.Params['initANStateFile'] = 'ANneuronState_%s.dat'
+        self.Params['initIVStateFile'] = None # 'IVneuronState_%s.dat'
+        self.Params['initANStateFile'] = None # 'ANneuronState_%s.dat'
         self.Params['hocfile'] = None
         self.Params['usedefaulthoc'] = False
         self.Params['cellType'] = self.cellChoices[0]
@@ -265,7 +265,7 @@ class ModelRun():
             exit()
         self.Params['cellType'] = cellType
 
-    def set_model_type(self, model_type):
+    def set_model_name(self, model_name):
         """
         Set the model Type, as requested. The model type must be in the model choices
         
@@ -279,10 +279,10 @@ class ModelRun():
             Nothing
         
         """
-        if model_type not in self.modelNameChoices:
+        if model_name not in self.modelNameChoices:
             print('Model type must be one of: {:s}. Got: {:s}'.format(', '.join(self.modelNameChoices), model_type))
             exit()
-        self.Params['modelName'] = model_type
+        self.Params['modelName'] = model_name
 
     def set_spontaneousrate(self, spont_rate_type):
         """
@@ -339,13 +339,18 @@ class ModelRun():
         else:
             self.idnum = 9999
         self.cellID = Path(self.Params['cell']).stem # os.path.splitext(self.Params['cell'])[0]
-        self.Params['initIVStateFile'] = f"IVneuronState_{str(self.Params['modelName']):s}.dat"
-        self.Params['initANStateFile'] = f"ANneuronState_{str(self.Params['modelName']):s}.dat"
+        if self.Params['initIVStateFile'] is None:
+            self.Params['initIVStateFile'] = f"IVneuronState_{str(self.Params['modelName']):s}.dat"
+            ivinitfile = Path(self.baseDirectory, self.cellID,
+                                self.initDirectory, self.Params['initIVStateFile'])
+        else:
+            ivinitfile = self.Params['initIVStateFile']
+        if self.Params['initANStateFile'] is None:
+            self.Params['initANStateFile'] = f"ANneuronState_{str(self.Params['modelName']):s}.dat"
         # Set up initialization and filenames
-        ivinitfile = Path(self.baseDirectory, self.cellID,
-                            self.initDirectory, self.Params['initIVStateFile'])
+        
         ivinitdir = Path(self.baseDirectory, self.cellID,
-                            self.initDirectory)
+                                self.initDirectory)
         print('Initialization file: ', ivinitfile)
         self.mkdir_p(ivinitdir) # confirm existence of that file
         print('Morphology directory: ', self.morphDirectory)
@@ -439,8 +444,8 @@ class ModelRun():
             data.report_changes(changes)
 
             self.post_cell = cells.Bushy.create(morphology=str(filename), decorator=Decorator,
-                    species=self.Params['species'],
-                    modelType='II') # self.Params['modelType'])
+                    species=self.Params['species'], 
+                    modelName=self.Params['modelName'], modelType=self.Params['modelType'])
         elif self.Params['cellType'] in ['tstellate', 'TStellate']:
             print('Creating a t-stellate cell (run_model) ')
             self.post_cell = cells.TStellate.create(morphology=str(filename), decorator=Decorator,
@@ -530,8 +535,8 @@ class ModelRun():
         if self.Params['runProtocol'] in ['initIV', 'initandrunIV']:
             if self.Params['verbose']:
                 print('run_model: protocol is initIV')
-            ivinitfile = Path(self.baseDirectory, self.cellID,
-                                self.initDirectory, self.Params['initIVStateFile'])
+            # ivinitfile = Path(self.baseDirectory, self.cellID,
+            #                     self.initDirectory, self.Params['initIVStateFile'])
             self.R = GenerateRun(self.post_cell, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
                              electrodeSection=self.electrodeSection,
@@ -540,7 +545,7 @@ class ModelRun():
                              plotting = self.Params['plotFlag'],
                              params = self.Params)
             cellInit.get_initial_condition_state(self.post_cell, tdur=500.,
-               filename=ivinitfile, electrode_site=self.electrode_site)
+               filename=self.Params['initIVStateFile'], electrode_site=self.electrode_site)
             print(f'Ran to get initial state for {self.post_cell.hr.h.t:.1f} msec')
 
         if self.Params['runProtocol'] in ['runIV', 'initandrunIV']:
@@ -560,7 +565,7 @@ class ModelRun():
                              iRange=self.post_cell.irange,
                              plotting = self.Params['plotFlag'], 
                              params = self.params)
-            cellInit.test_initial_conditions(self.post_cell, filename=ivinitfile,
+            cellInit.test_initial_conditions(self.post_cell, filename=self.Params['initIVStateFile'],
                 electrode_site=self.electrode_site)
             self.R.testRun(initfile=ivinitfile)
             return  # that is ALL, never make testIV/init and then keep running.
@@ -637,8 +642,6 @@ class ModelRun():
                              plotting = self.Params['plotFlag'],
                              params=self.Params,
                              )
-        ivinitfile = Path(self.baseDirectory, self.cellID,
-                                self.initDirectory, self.Params['initIVStateFile'])
         self.R.runInfo.folder = Path('VCN_Cells', self.cellID, self.simDirectory, 'IV')
         if self.Params['verbose']:
             print('iv_run: calling do_run')
@@ -647,7 +650,8 @@ class ModelRun():
         if self.Params['Parallel'] == False:
             nworkers = 1
 #        print('Number of workers available on this machine: ', nworkers)
-        self.R.doRun(self.Params['hocfile'], parMap=iinjValues, save='monitor', restore_from_file=True, initfile=ivinitfile,
+        self.R.doRun(self.Params['hocfile'], parMap=iinjValues, save='monitor', 
+            restore_from_file=True, initfile=self.Params['initIVStateFile'],
             workers=nworkers)
         if self.Params['verbose']:
             print( '   iv_run: do_run completed')
