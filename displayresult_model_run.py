@@ -15,6 +15,7 @@ AN_Result_VCN_c09_Syn006_N001_030dB_16000.0_MS.p
 """
 from __future__ import print_function
 import os
+from pathlib import Path
 import matplotlib.pyplot as mpl
 import numpy as np
 import pickle
@@ -25,7 +26,7 @@ import sac_campagnola as SAC
 import pycircstat as PCS
 import pylibrary.PlotHelpers as PH 
 from cnmodel.util import vector_strength
-import GIF_fit as GFit
+# import GIF_fit as GFit
 import vspfile
 
 import warnings
@@ -54,12 +55,15 @@ class DisplayResult():
         self.ID = ''
         self.tag = 'delays'
         self.Params['modetype'] = 'singles'
-        self.Params['modelName'] = 'Bushy'
-        self.Params['modelType'] = 'XM13'
-        self.Params['runProtocol'] = 'IV'
+        self.Params['modelName'] = 'XM13'
+        self.Params['modelType'] = 'II'
+        self.Params['runProtocol'] = 'AN'
         self.Params['threshold'] = 0.
         self.Params['depression'] = 0
+        self.Params['SR'] = 'MS'
         self.Params['pdf'] = None
+        self.Params['soma_inflation'] = 1.0
+        self.Params['dendrite_inflation'] = 1.0
         self.Params['noplot'] = False
         self.findfiles = False
         self.vspfile = 'VS.p'
@@ -69,25 +73,44 @@ class DisplayResult():
 
         addarg=DR.Params['spirou']
         if addarg == 'all':
-            addarg = ''
+            addarg = 'all'
         elif addarg == 'all=mean':
             addarg = '_allmean'
         elif addarg == 'max=mean':
             addarg = '_mean'
         p = self.Params['cell']
-        self.bp[p] = 'VCN_Cells/{0:s}/Simulations/AN'.format(p)
-        print(('bp: ', self.Params['cell'], self.bp))
-        if self.Params['soundtype'] in ['SAM', 'sam']:
-            ofile = os.path.join(self.bp[p], 'AN_Result_' + self.Params['cell'] + '_%s_%s_%s_N%03d_%03ddB_%06.1f_FM%03.1f_DM%03d_%2s%s' %
-                (tag, self.Params['modelName'], self.Params['ANSynapseType'], self.Params['nReps'],
-                int(self.Params['dB']), self.Params['F0'],
-                self.Params['fmod'], int(self.Params['dmod']), self.Params['SRType'], addarg) + '.p')
-                
+        if 'AN' in self.Params['runProtocol']:
+            simmode = 'AN'
         else:
-            ofile = os.path.join(self.bp[p], 'AN_Result_' + self.Params['cell'] + '_%s_%s_N%03d_%03ddB_%06.1f_%2s_%s' % (
-                self.Params['modelName'], tag,
-                 self.Params['nReps'],
-                int(self.Params['dB']), self.Params['F0'], self.Params['SRType'], addarg) + '.p')
+            simmode = 'IV'
+        outPath = Path('VCN_Cells', f"{p:s}", 'Simulations/', simmode)
+        self.bp[p] = 'VCN_Cells/{0:s}/Simulations/AN'.format(p)
+        # print(('bp: ', self.Params['cell'], self.bp))
+        # if self.Params['soundtype'] in ['SAM', 'sam']:
+        #     ofile = os.path.join(self.bp[p], 'AN_Result_' + self.Params['cell'] + '_%s_%s_%s_N%03d_%03ddB_%06.1f_FM%03.1f_DM%03d_%2s%s' %
+        #         (tag, self.Params['modelName'], self.Params['ANSynapseType'], self.Params['nReps'],
+        #         int(self.Params['dB']), self.Params['F0'],
+        #         self.Params['fmod'], int(self.Params['dmod']), self.Params['SRType'], addarg) + '.p')
+        #
+        # else:
+        #     ofile = os.path.join(self.bp[p], 'AN_Result_' + self.Params['cell'] + '_%s_%s_N%03d_%03ddB_%06.1f_%2s_%s' % (
+        #         self.Params['modelName'], tag,
+        #          self.Params['nReps'],
+        #         int(self.Params['dB']), self.Params['F0'], self.Params['SRType'], addarg) + '.p')
+        fn = f"AN_Result_{p:s}_{self.Params['modelName']:s}_{self.Params['modelType']:s}"
+        if self.Params['inflationfactor'] != 1.0:
+            fn += f"_soma={self.Params['inflationfactor']:.3f}"
+        fn += f"_{addarg:s}_{self.Params['ANSynapseType']:s}"
+        fn += f"_{self.Params['nReps']:03d}_{self.Params['soundtype']:s}"
+        fn += f"_{int(self.Params['dB']):03d}dB_{self.Params['F0']:06.1f}"
+        if self.Params['soundtype'] in ['SAM', 'sam']:
+            fn += f"_{self.Params['fmod']:03.1f}_{int(self.Params['dmod']):03d}"
+            fn += f"_{self.Params['SR']:2s}.p"
+            ofile = Path(outPath, fn)
+        else:
+            fn += f"_{self.Params['SR']:2s}.p"
+            ofile = Path(outPath, fn)
+        print('outpuath: ', outPath)
         self.fn[p] = ofile
         self.filename = ofile
                 
@@ -149,7 +172,7 @@ class DisplayResult():
         # bulid plot layout
         d = {}
         for p in self.Params['patterns']:  # for each cell/run get the data
-            h = open(self.fn[p])
+            h = open(self.fn[p], 'rb')
             d[p] = pickle.load(h)
             h.close()
         sizer = OrderedDict([('A', {'pos': [0.08, 0.4, 0.71, 0.22]}), ('B', {'pos': [0.55, 0.4, 0.71, 0.22]}),
@@ -168,6 +191,7 @@ class DisplayResult():
         totaldur = si['pip_start'] + np.max(si['pip_start']) + si['pip_duration'] + si['pip_offduration']
         for j, pattern in enumerate(self.Params['patterns']): # for all cells in the "pattern"
 
+            allt = []
             for i in range(len(d[pattern]['trials'])):  # for all trails in the measure.
                 trial = d[pattern]['trials'][i]
                 w = trial['stimWaveform']
@@ -176,11 +200,18 @@ class DisplayResult():
                 P.axdict['B'].plot(stb, w, linewidth=0.5)  # stimulus underneath
                 P.axdict['C'].plot(trial['spikeTimes']/1000., i*np.ones(len( trial['spikeTimes'])),
                         'o', markersize=2.5, color='b')
+                allt.append(trial['spikeTimes']/1000.)
                 inputs = len(trial['inputSpikeTimes'])
                 for k in range(inputs):
                     tk = trial['inputSpikeTimes'][k]/1000.
                     y = (i+0.1+k*0.05)*np.ones(len(tk))
                     P.axdict['E'].plot(tk, y, '|', markersize=2.5, color='r', linewidth=0.5)
+            # allt = np.array(allt).ravel()
+            # # print(allt)
+            # P.axdict['F'].hist(allt, range=(0., totaldur))
+            # print('plotted hist)')
+        
+        
         for a in ['A', 'B', 'C', 'E', 'F']:  # set some common layout scaling
             P.axdict[a].set_xlim((0., totaldur))
             P.axdict[a].set_xlabel('T (s)')
@@ -192,17 +223,19 @@ class DisplayResult():
         P.axdict['E'].set_title('ANF Spike Raster', fontsize=9)
         P.axdict['C'].set_title('Bushy Spike Raster', fontsize=9)
         P.axdict['F'].set_title('PSTH', fontsize=9)
-        if si['soundtype'] == 'SAM':  # calculate vs and plot histogram
+        # combine all spikes into one array, plot PSTH
+        data = d[pattern]
+        allst = []
+        for trial in data['trials']:
+            # print (trial)
+            allst.extend(data['trials'][trial]['spikeTimes']/1000.)
+        allst = np.array(allst)
+        allst = np.sort(allst)
             # combine all spikes into one array, plot PSTH
-            data = d[pattern]
-            allst = []
-            for trial in data['trials']:
-                # print (trial)
-                allst.extend(data['trials'][trial]['spikeTimes']/1000.)
-            allst = np.array(allst)
-            allst = np.sort(allst)
             # the histogram of the data
-            P.axdict['F'].hist(allst, 100, normed=1, facecolor='blue', alpha=0.75)
+        P.axdict['F'].hist(allst, 100, normed=1, facecolor='blue', alpha=0.75)
+
+        if si['soundtype'] == 'SAM':  # calculate vs and plot histogram
             # print('allst: ', allst)
             phasewin = [data['Params']['pip_start'][0] + 0.25*data['Params']['pip_duration'], 
                 data['Params']['pip_start'][0] + data['Params']['pip_duration']]
@@ -242,10 +275,13 @@ class DisplayResult():
                 P.axdict['D'].set_xlim((0., 2*np.pi))
                 P.axdict['D'].set_title('Phase (VS = {0:.3f})'.format(vs['r']), fontsize=9, horizontalalignment='center')
                     
-        # P.figure_handle.savefig('.pdf')
-        # mpl.show()
         # make figure output filename
-        figname = '400_%s_%s.pdf' % (self.Params['patterns'][0], self.Params['spirou'])
+        if self.Params['inflationfactor'] != 1.0:
+            t = 'Inflated'
+        else:
+            t = 'Original'
+        figname = f"{t:s}_{self.Params['patterns'][0]:s}_{self.Params['spirou']:s}.pdf"
+        P.figure_handle.suptitle(figname.replace('_', '\_'))
         mpl.savefig(figname, dpi=300)  # rasterized to 300 dpi is ok for documentation.
         mpl.close()
 
@@ -334,53 +370,53 @@ class DisplayResult():
 
             mpl.show()
 
-    def show_gifnoise(self):
-            fig, ax = mpl.subplots(2,1)
-            mpl.suptitle('gifnoise compare')
-            dt_beforespike = 3.
-            ax = ax.ravel()
-            d = {}
-            for p in self.Params['patterns']:
-                h = open(os.path.join(self.bp[p], self.fn[p]))
-                d[p] = pickle.load(h)
-                h.close()
-            for j, pattern in enumerate(self.Params['patterns']):
-                for k in range(len(d[pattern]['Results'])):
-                    k0 = d[pattern]['Results'][k]
-                    rkey = k0.keys()[0]
-                    data = k0[rkey]['monitor']
-                    v = data['postsynapticV']
-                    inj = data['postsynapticI']
-                    dt = data['time'][1]-data['time'][0]
-                    GF = GFit.GIFFitter(path=self.bp[pattern], dt=dt)
-                    GF.GIF.gl      = 100.        # nS, leak conductance
-                    GF.GIF.C       = 20.     # nF, capacitance
-                    GF.GIF.El      = -65.0            # mV, reversal potential
-
-                    GF.GIF.Vr      = -55.0            # mV, voltage reset
-                    GF.GIF.Tref    = 0.2             # ms, absolute refractory period
-
-                    GF.GIF.Vt_star = -45.0            # mV, steady state voltage threshold VT*
-                    GF.GIF.DV      = 10.             # mV, threshold sharpness
-                  #GF.set_templates(aec=None, train=train_template, test=None)
-                    GF.Exp.addTrainingSetTrace(v, 1e-3, inj, 1e-9, np.max(data['time']), 'Array')
-                    #GF.set_files_test(AECtrace=None, trainingset=1008, testsets = range(1009, 1018), filetype='Igor')
-                    #GF.set_timescales(ts=[0.1, 0.5, 2., 5.0, 10.0, 20.0])
-                    print('Starting Parameters: ')
-                    GF.GIF.printParameters()
-                    GF.fit(threshold=self.Params['threshold'],
-                            ax=ax[0], current=inj, beforeSpike=dt_beforespike)
-                    print('Final Parameters: ')
-                    GF.GIF.printParameters()
-                    print(('v: ', v[0]))
-                    print(('len inj, dt: ', len(inj), GF.dt, len(inj)*GF.dt))
-                    (time, Vs, I_a, V_t, S) = GF.GIF.simulate(inj, v[0])  # simulate response to current trace I with starting voltage V0
-                    # a[0].plot(time, Vs, 'r-', linewidth=0.75)
-    #                 a[0].plot(data['time'], v, 'b-', linewidth=0.5)
-                    ax[1].plot(data['time'], inj, 'k-', linewidth=0.5)
-                    #GF.GIF.plotParameters()
-            mpl.show()
-            exit(0)
+    # def show_gifnoise(self):
+    #         fig, ax = mpl.subplots(2,1)
+    #         mpl.suptitle('gifnoise compare')
+    #         dt_beforespike = 3.
+    #         ax = ax.ravel()
+    #         d = {}
+    #         for p in self.Params['patterns']:
+    #             h = open(os.path.join(self.bp[p], self.fn[p]))
+    #             d[p] = pickle.load(h)
+    #             h.close()
+    #         for j, pattern in enumerate(self.Params['patterns']):
+    #             for k in range(len(d[pattern]['Results'])):
+    #                 k0 = d[pattern]['Results'][k]
+    #                 rkey = k0.keys()[0]
+    #                 data = k0[rkey]['monitor']
+    #                 v = data['postsynapticV']
+    #                 inj = data['postsynapticI']
+    #                 dt = data['time'][1]-data['time'][0]
+    #                 GF = GFit.GIFFitter(path=self.bp[pattern], dt=dt)
+    #                 GF.GIF.gl      = 100.        # nS, leak conductance
+    #                 GF.GIF.C       = 20.     # nF, capacitance
+    #                 GF.GIF.El      = -65.0            # mV, reversal potential
+    #
+    #                 GF.GIF.Vr      = -55.0            # mV, voltage reset
+    #                 GF.GIF.Tref    = 0.2             # ms, absolute refractory period
+    #
+    #                 GF.GIF.Vt_star = -45.0            # mV, steady state voltage threshold VT*
+    #                 GF.GIF.DV      = 10.             # mV, threshold sharpness
+    #               #GF.set_templates(aec=None, train=train_template, test=None)
+    #                 GF.Exp.addTrainingSetTrace(v, 1e-3, inj, 1e-9, np.max(data['time']), 'Array')
+    #                 #GF.set_files_test(AECtrace=None, trainingset=1008, testsets = range(1009, 1018), filetype='Igor')
+    #                 #GF.set_timescales(ts=[0.1, 0.5, 2., 5.0, 10.0, 20.0])
+    #                 print('Starting Parameters: ')
+    #                 GF.GIF.printParameters()
+    #                 GF.fit(threshold=self.Params['threshold'],
+    #                         ax=ax[0], current=inj, beforeSpike=dt_beforespike)
+    #                 print('Final Parameters: ')
+    #                 GF.GIF.printParameters()
+    #                 print(('v: ', v[0]))
+    #                 print(('len inj, dt: ', len(inj), GF.dt, len(inj)*GF.dt))
+    #                 (time, Vs, I_a, V_t, S) = GF.GIF.simulate(inj, v[0])  # simulate response to current trace I with starting voltage V0
+    #                 # a[0].plot(time, Vs, 'r-', linewidth=0.75)
+    # #                 a[0].plot(data['time'], v, 'b-', linewidth=0.5)
+    #                 ax[1].plot(data['time'], inj, 'k-', linewidth=0.5)
+    #                 #GF.GIF.plotParameters()
+    #         mpl.show()
+    #         exit(0)
 
 
 if __name__ == '__main__':
@@ -422,7 +458,9 @@ if __name__ == '__main__':
     parser.add_argument('--check', '-/', action='store_true', default=False, dest='checkcommand',
                    help='Only check command line for valid input; do not run model')
     parser.add_argument('--noplot', action='store_false', default=False, dest='noplot',
-                   help='Supperss plots')
+                   help='Suppress plots')
+    parser.add_argument('--inflation', type=float, dest='inflationfactor', default=1.0,
+                help='select inflation factor')
                    
     # lowercase options are generally parameter settings:
     parser.add_argument('-d', '--dB', type=float, default=30., dest='dB',

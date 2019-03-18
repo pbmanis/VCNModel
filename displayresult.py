@@ -13,6 +13,9 @@ AN_Result_VCN_c09_Syn006_N001_030dB_16000.0_MS.p
 """
 from __future__ import print_function
 import os
+from pathlib import Path
+import matplotlib
+matplotlib.use('Qt4Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
@@ -23,7 +26,7 @@ import sac_campagnola as SAC
 import pycircstat as PCS
 import pylibrary.PlotHelpers as PH 
 from cnmodel.util import vector_strength
-import GIF_fit as GFit
+# import GIF_fit as GFit
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -31,7 +34,7 @@ warnings.filterwarnings("ignore")
 class DisplayResult():
     def __init__(self):
         self.findfiles = False
-
+        
         self.modeltypes = ['mGBC', 'XM13', 'RM03']
         self.runtypes = ['AN', 'an', 'IO', 'IV', 'iv', 'gifnoise']
         self.modetypes = ['find', 'singles', 'IO', 'multi']
@@ -46,6 +49,11 @@ class DisplayResult():
         self.findfiles = False
         
     def file_setup(self):
+        if self.Params['filename'] is not 'None':
+            self.fn['a'] = self.Params['filename']
+            self.lookupfiles()
+            return
+            
         if self.Params['modetype'] in ['multi']:
             # multiple cells
             self.Params['patterns'] = ['c%s' % p for p in self.Params['cell']]
@@ -119,6 +127,7 @@ class DisplayResult():
         P.resize(sizer)  # perform positioning magic
 
         d = {}
+        print('patterns: ', self.Params['patterns'])
         for p in self.Params['patterns']:  # for each cell/run get the data
             h = open(os.path.join(self.bp[p], self.fn[p]))
             d[p] = pickle.load(h)
@@ -126,6 +135,7 @@ class DisplayResult():
 
         # d[cell] has keys: ['inputSpikeTimes', 'somaVoltage', 'spikeTimes', 'time', 'dendriteVoltage', 'stimInfo', 'stimWaveform']
         sk = sizer.keys()
+        print(d.keys())
         si = d['c09']['Params']
         totaldur = si['pip_start'] + np.max(si['pip_start']) + si['pip_duration'] + si['pip_offduration']
         for j, pattern in enumerate(self.Params['patterns']): # for all cells in the "pattern"
@@ -278,53 +288,53 @@ class DisplayResult():
 
             plt.show()
 
-    def show_gifnoise(self):
-            fig, ax = plt.subplots(2,1)
-            plt.suptitle('gifnoise compare')
-            dt_beforespike = 3.
-            ax = ax.ravel()
-            d = {}
-            for p in self.Params['patterns']:
-                h = open(os.path.join(self.bp[p], self.fn[p]))
-                d[p] = pickle.load(h)
-                h.close()
-            for j, pattern in enumerate(self.Params['patterns']):
-                for k in range(len(d[pattern]['Results'])):
-                    k0 = d[pattern]['Results'][k]
-                    rkey = k0.keys()[0]
-                    data = k0[rkey]['monitor']
-                    v = data['postsynapticV']
-                    inj = data['postsynapticI']
-                    dt = data['time'][1]-data['time'][0]
-                    GF = GFit.GIFFitter(path=self.bp[pattern], dt=dt)
-                    GF.GIF.gl      = 100.        # nS, leak conductance
-                    GF.GIF.C       = 20.     # nF, capacitance
-                    GF.GIF.El      = -65.0            # mV, reversal potential
-
-                    GF.GIF.Vr      = -55.0            # mV, voltage reset
-                    GF.GIF.Tref    = 0.2             # ms, absolute refractory period
-
-                    GF.GIF.Vt_star = -45.0            # mV, steady state voltage threshold VT*
-                    GF.GIF.DV      = 10.             # mV, threshold sharpness
-                  #GF.set_templates(aec=None, train=train_template, test=None)
-                    GF.Exp.addTrainingSetTrace(v, 1e-3, inj, 1e-9, np.max(data['time']), 'Array')
-                    #GF.set_files_test(AECtrace=None, trainingset=1008, testsets = range(1009, 1018), filetype='Igor')
-                    #GF.set_timescales(ts=[0.1, 0.5, 2., 5.0, 10.0, 20.0])
-                    print('Starting Parameters: ')
-                    GF.GIF.printParameters()
-                    GF.fit(threshold=self.Params['threshold'],
-                            ax=ax[0], current=inj, beforeSpike=dt_beforespike)
-                    print('Final Parameters: ')
-                    GF.GIF.printParameters()
-                    print(('v: ', v[0]))
-                    print(('len inj, dt: ', len(inj), GF.dt, len(inj)*GF.dt))
-                    (time, Vs, I_a, V_t, S) = GF.GIF.simulate(inj, v[0])  # simulate response to current trace I with starting voltage V0
-                    # a[0].plot(time, Vs, 'r-', linewidth=0.75)
-    #                 a[0].plot(data['time'], v, 'b-', linewidth=0.5)
-                    ax[1].plot(data['time'], inj, 'k-', linewidth=0.5)
-                    #GF.GIF.plotParameters()
-            plt.show()
-            exit(0)
+    # def show_gifnoise(self):
+    #         fig, ax = plt.subplots(2,1)
+    #         plt.suptitle('gifnoise compare')
+    #         dt_beforespike = 3.
+    #         ax = ax.ravel()
+    #         d = {}
+    #         for p in self.Params['patterns']:
+    #             h = open(os.path.join(self.bp[p], self.fn[p]))
+    #             d[p] = pickle.load(h)
+    #             h.close()
+    #         for j, pattern in enumerate(self.Params['patterns']):
+    #             for k in range(len(d[pattern]['Results'])):
+    #                 k0 = d[pattern]['Results'][k]
+    #                 rkey = k0.keys()[0]
+    #                 data = k0[rkey]['monitor']
+    #                 v = data['postsynapticV']
+    #                 inj = data['postsynapticI']
+    #                 dt = data['time'][1]-data['time'][0]
+    #                 GF = GFit.GIFFitter(path=self.bp[pattern], dt=dt)
+    #                 GF.GIF.gl      = 100.        # nS, leak conductance
+    #                 GF.GIF.C       = 20.     # nF, capacitance
+    #                 GF.GIF.El      = -65.0            # mV, reversal potential
+    #
+    #                 GF.GIF.Vr      = -55.0            # mV, voltage reset
+    #                 GF.GIF.Tref    = 0.2             # ms, absolute refractory period
+    #
+    #                 GF.GIF.Vt_star = -45.0            # mV, steady state voltage threshold VT*
+    #                 GF.GIF.DV      = 10.             # mV, threshold sharpness
+    #               #GF.set_templates(aec=None, train=train_template, test=None)
+    #                 GF.Exp.addTrainingSetTrace(v, 1e-3, inj, 1e-9, np.max(data['time']), 'Array')
+    #                 #GF.set_files_test(AECtrace=None, trainingset=1008, testsets = range(1009, 1018), filetype='Igor')
+    #                 #GF.set_timescales(ts=[0.1, 0.5, 2., 5.0, 10.0, 20.0])
+    #                 print('Starting Parameters: ')
+    #                 GF.GIF.printParameters()
+    #                 GF.fit(threshold=self.Params['threshold'],
+    #                         ax=ax[0], current=inj, beforeSpike=dt_beforespike)
+    #                 print('Final Parameters: ')
+    #                 GF.GIF.printParameters()
+    #                 print(('v: ', v[0]))
+    #                 print(('len inj, dt: ', len(inj), GF.dt, len(inj)*GF.dt))
+    #                 (time, Vs, I_a, V_t, S) = GF.GIF.simulate(inj, v[0])  # simulate response to current trace I with starting voltage V0
+    #                 # a[0].plot(time, Vs, 'r-', linewidth=0.75)
+    # #                 a[0].plot(data['time'], v, 'b-', linewidth=0.5)
+    #                 ax[1].plot(data['time'], inj, 'k-', linewidth=0.5)
+    #                 #GF.GIF.plotParameters()
+    #         plt.show()
+    #         exit(0)
 
 
 if __name__ == '__main__':
@@ -344,6 +354,8 @@ if __name__ == '__main__':
                     default=None, help='Select the synno')
     parser.add_argument('-t', '--threshold', dest='threshold', type=float, action='store',
                     default=0., help=('Spike detection threshold, mV'))
+    parser.add_argument('-f', '--file', dest='filename', type=str,
+                    default='None', help='Set File Name')
                    
     args = vars(parser.parse_args())
 #    model.print_modelsetup()

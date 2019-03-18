@@ -60,7 +60,8 @@ inputs = [f"Input {i+1:d}" for i in range(12)]  # input column labels
 
 synperum2 = 0.65 # average density of synapses, synapses per micron squared 
                  # Original value, from Spriou measurements in MNTB.
-                 # value confirmed in 5 VCN gBCs (0.68)
+                 # value confirmed in 5 VCN gBCs (0.68, leaving largest out)
+                 # 0.729 with all 5
 
 class CellConfig():
     def __init__(self, datafile=None):
