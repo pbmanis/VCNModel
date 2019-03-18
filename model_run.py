@@ -326,7 +326,7 @@ class ModelRun():
         
         if self.Params['runProtocol'].startswith('runAN'):
             if self.Params['initANStateFile'] is None:
-                fn = f"ANneuronState_{namePars:s}.dat"
+                fn = f"ANneuronState_{namePars:s}_{self.Params['ANSynapseType']:s}.dat"
                 aninitdir= Path(self.baseDirectory, self.cellID,
                                     self.initDirectory)
                 self.Params['initANStateFile'] = Path(aninitdir, fn)
@@ -338,26 +338,25 @@ class ModelRun():
             ID = self.cellID
             if self.Params['inputPattern'] is not None:
                 ID += '_%s' % self.Params['inputPattern']
-            addarg = ''
+            addarg = namePars
             if self.Params['spirou'] == 'all':
-                addarg = ''
+                addarg += '_all'
             elif self.Params['spirou'] == 'max=mean':
                 addarg = '_mean'
             elif self.Params['spirou'] == 'all=mean':
                 addarg = '_allmean'
             
+            print('soundtype: ', self.Params['soundtype'])
+            fn = f"AN_Result_{self.cellID:s}_{addarg:s}_{self.Params['ANSynapseType']:s}"
+            fn += f"_{self.Params['nReps']:03d}_{self.Params['soundtype']:s}"
+            fn += f"_{int(self.Params['dB']):03d}dB_{self.Params['F0']:06.1f}"
             if self.Params['soundtype'] in ['SAM', 'sam']:
-                ofile = Path(outPath, 'AN_Result_' + ID + '_%s_%s_%s_N%03d_%03ddB_%06.1f_FM%03.1f_DM%03d_%2s%s' %
-                    (tag, self.Params['modelName'], self.Params['ANSynapseType'], self.Params['nReps'],
-                    int(self.Params['dB']), self.Params['F0'],
-                    self.Params['fmod'], int(self.Params['dmod']), self.Params['SR'], addarg) + '.p')
-                
-                f = open(ofile, 'w')
+                fn += f"_{self.Params['fmod']:03.1f}_{int(self.Params['dmod']):03d}"
+                fn += f"_{self.Params['SR']:2s}.p"
+                ofile = Path(outPath, fn)
             else:
-                ofile = Path(outPath, 'AN_Result_' + ID + '_%s_%s_%s_N%03d_%03ddB_%06.1f_%2s_%s' % (
-                    self.Params['modelName'], tag, self.Params['ANSynapseType'],
-                     self.Params['nReps'],
-                    int(self.Params['dB']), self.Params['F0'], self.Params['SR'], addarg) + '.p')
+                fn += f"_{self.Params['SR']:2s}.p"
+                ofile = Path(outPath, fn)
             self.Params['simulationFilename'] = ofile
 
         
@@ -604,7 +603,7 @@ class ModelRun():
         if not self.setup:
             self.setup_model(par_mnap=par_map)
         if self.Params['runProtocol'] in ['runANPSTH', 'runANSingles']:
-            model.Params['run_duration'] = model.Params['pip_duration'] + np.sum(model.Params['pip_start']) + model.Params['pip_offduration']
+            self.Params['run_duration'] = self.Params['pip_duration'] + np.sum(self.Params['pip_start']) + self.Params['pip_offduration']
             
         if self.Params['runProtocol'] in ['initIV', 'initandrunIV']:
             if self.Params['verbose']:
@@ -916,7 +915,7 @@ class ModelRun():
             print('Cell id: %s  using input pattern: %s' % (self.cellID, fromdict))
         else:
             fromdict = self.cellID
-        cconfig = cell_config.CellConfig(self.cellID)
+        cconfig = cell_config.CellConfig()
         synapseConfig, celltype = cconfig.makeDict(fromdict)
         self.start_time = time.time()
         # compute delays in a simple manner
@@ -935,13 +934,13 @@ class ModelRun():
         # see if we need to save the cell state now.
         if make_an_intial_conditions:
 #            print('getting initial conditions for AN')
-            aninitfile = Path(self.baseDirectory, self.cellID,
-                                self.initDirectory, self.Params['initANStateFile'])
+            # aninitfile = Path(self.baseDirectory, self.cellID,
+            #                     self.initDirectory, self.Params['initANStateFile'])
             cellInit.get_initial_condition_state(post_cell, tdur=500.,
-                filename=aninitfile, electrode_site=self.electrode_site, reinit=self.Params['auto_initialize'])
-            cellInit.test_initial_conditions(post_cell, filename=aninitfile,
+                filename=self.Params['initANStateFile'], electrode_site=self.electrode_site, reinit=self.Params['auto_initialize'])
+            cellInit.test_initial_conditions(post_cell, filename=self.Params['initANStateFile'],
                 electrode_site=self.electrode_site)
-            return
+            # return
         
         seeds = self.compute_seeds(nReps, synapseConfig)
         stimInfo['seeds'] = seeds  # keep the seed values too.
@@ -1048,7 +1047,7 @@ class ModelRun():
         else:
             # Non parallelized version (with --noparallel flag - useful for debugging):
             for j, N in enumerate(range(nReps)):
-                print('Rep: %d' % N)
+                print('Repetition %d' % N)
 
                 tresults[j] = self.single_an_run(post_cell, j, synapseConfig, 
                         stimInfo,  seeds, preCell, self.an_setup_time)
@@ -1084,6 +1083,7 @@ class ModelRun():
                     allDendriteVoltages[n][s] = np.array(allDendriteVoltages[n][s])
         self.analysis_filewriter(self.Params['cell'], result, tag='delays')
         if self.Params['plotFlag']:
+            print('plotting')
             self.plot_an(celltime, result)
 
 
@@ -1350,14 +1350,13 @@ class ModelRun():
         print('\n*** single_an_run_fixed\n')
         
         hf = post_cell.hr
-        filename = Path(self.baseDirectory, self.cellID,
-                    self.initDirectory, self.Params['initANStateFile'])
         try:
-            cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=filename)
+            cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=self.Params['initANStateFile'])
         except:
             self.an_run(post_cell, make_an_intial_conditions=True)
+            print('return from an_run, initial conditions')
             try:
-                cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=filename)
+                cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=self.Params['initANStateFile'])
             except:
                 raise ValueError('Failed initialization for cell: ', self.cellID)
 
@@ -1535,15 +1534,15 @@ class ModelRun():
         """
         print('\n*** single_an_run\n')
                
-        filename = Path(self.baseDirectory, self.cellID,
-                    self.initDirectory, self.Params['initANStateFile'])
         try:
-            cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=filename,
+            cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=self.Params['initANStateFile'],
                 autoinit=self.Params['auto_initialize'])
         except:
+            print('single_an_run: could not restore initial conditions: try creating again')
             self.an_run(post_cell, make_an_intial_conditions=True)
+            print('return from inital run initial conditions #2')
             try:
-                cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=filename)
+                cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=self.Params['initANStateFile'])
             except:
                 raise ValueError('Failed initialization for cell: ', self.cellID)
 
@@ -1695,16 +1694,14 @@ class ModelRun():
             assert rk in k
         results = {}
         # results with be a dict with params, stiminfo, and trials as keys
-        
-        results['Params'] = self.Params  # include all the parameters of the run too
         print('\n*** analysis_filewriter\n')
 
-        f = open(self.Params['simulationFilename'], 'w')
+        results['Params'] = self.Params  # include all the parameters of the run too
         results['trials'] = result
-        pickle.dump(results, f)
-        f.close()
-        print('**** Analysis wrote output file ****\n    {:s}'.format(ofile))
-        self.ANFilename = ofile
+        with open(self.Params['simulationFilename'], 'wb') as fh:
+            pickle.dump(results, fh)
+        print(f"**** Model output written to: ****\n   {str(self.Params['simulationFilename']):s}")
+        self.ANFilename = str(self.Params['simulationFilename'])
 
     def get_hoc_file(self, hf):
         if hf.file_loaded is False:

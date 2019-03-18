@@ -45,8 +45,10 @@ def init_model(cell, mode='iclamp', vinit=-65., restore_from_file=False, filenam
         Errors result in exceptions.
     
     """
+    print('initmodel')
     if mode in ['vc', 'vclamp']:
         cell.hr.h.finitialize(vinit)  # this is sufficient for initialization in voltage clamp
+        print('vclamp')
         return True
     if mode not in ['iclamp']:
         raise ValueError('Mode must be "vc", "vclamp" or "iclamp"; got %s' % mode)
@@ -54,13 +56,17 @@ def init_model(cell, mode='iclamp', vinit=-65., restore_from_file=False, filenam
     # otherwise we are in current clamp
     # get state if one is specified
     if restore_from_file:
+        print('restore: ', filename)
         restore_initial_conditions_state(cell, electrode_site=electrode_site, filename=filename, reinit=reinit)
         try:
+            print('init?: ')
             cell.hr.h.frecord_init()  # try an intialization
         except:
             raise ValueError('Unable to restore initial state')
+        print('init OK')
         return True  # much easier here...
     
+    print('custom init')
     CU.custom_init(v_init=vinit)
     
     if electrode_site is not None:
@@ -121,7 +127,7 @@ def get_initial_condition_state(cell, tdur=2000., filename=None, electrode_site=
     
     cell.cell_initialize()
     # first to an initialization to get close
-    print('get_initial_condition_state\n')
+    print('\nget_initial_condition_state: file=', filename)
     print('  starting t = %8.2f' % cell.hr.h.t)
     init_model(cell, restore_from_file=False, electrode_site=electrode_site, reinit=reinit)
     cell.hr.h.tstop = tdur
@@ -225,7 +231,7 @@ def test_initial_conditions(cell, electrode_site=None, filename=None):
    #     hf.hr.h.fadvance()
     cell.hr.h.batch_save() # save nothing
     cell.hr.h.batch_run(cell.hr.h.tstop, cell.hr.h.dt, "an.dat")
-    print(f'Filename: {filename:s}')
+    print(f'Filename: {str(filename):s}')
     print(f"\ntime: {str(np.array(monitor['time'])):s}")
     print(f"\nVelectrode:  {str(np.array(monitor['Velectrode'])):s}")
     # pg.mkQApp()
