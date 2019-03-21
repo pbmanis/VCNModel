@@ -9,6 +9,7 @@ import sys
 import os
 from pathlib import Path
 from collections import OrderedDict
+import datetime
 import numpy as np
 from matplotlib import rc
 rc('text', usetex=True)
@@ -31,7 +32,7 @@ modelType = 'II'
 
 modelmode = 'II'
 testing = False
-forcerun = False
+forcerun = True
 
 # set up plots
 l1 = 0.08
@@ -61,9 +62,11 @@ axmap = OrderedDict(zip(sizer.keys(), gr))
 P = PH.Plotter(rcshape=sizer, label=False, figsize=(6, 8), labeloffset=[0.6, 0.])
 #PH.show_figure_grid(P.figure_handle)
 
-gbc_names = [s[-2:] for s in sizer.keys()]
 
-# gbc_names = ['08']  # how to just run one when encoutering a bug
+
+gbc_names = [s[-2:] for s in sizer.keys()]
+# gbc_names = ['16']
+# gbc_names = ['16']  # how to just run one when encoutering a bug
 
 for n in gbc_names:
     M = mrun.ModelRun() # create an instance
@@ -76,11 +79,21 @@ for n in gbc_names:
     M.Params['Parallel'] = True
     M.Params['modelType'] = modelType
     M.Params['modelName'] = modelName
-    M.Params['soma_autoinflate'] = False
+    M.Params['soma_autoinflate'] = True
+    M.Params['dendrite_autoinflate'] = True
     
     if M.Params['hocfile'] == None: # just use the matching hoc file
         M.Params['hocfile'] = M.Params['cell'] + '.hoc'
     M.setup_model(par_map=M.Params)
+    sinflate='soma_rawHOC'
+    dinflate='dend_rawHOC'
+    if M.Params['soma_autoinflate']:
+        sinflate = 'soma_scaled'
+    if M.Params['dendrite_autoinflate']:
+        dinflate='dend_scaled'
+    d = datetime.datetime.now()
+    outfile = f'GBC_IVs_{modelName:s}_{modelType:s}_{sinflate:s}_{dinflate:s}.pdf'
+    P.figure_handle.suptitle(f"{outfile:s}  {d.strftime('%H:%M:%S %d-%b-%Y'):s}", fontsize=8)
     print(M.Params['hocfile'])
     
     initf = M.Params['initIVStateFile']
@@ -119,6 +132,6 @@ for n in gbc_names:
     PH.calbar(P.axdict[cell_ax], calbar=[120., -95., 25., 20.], axesoff=True, orient='left', 
             unitNames={'x': 'ms', 'y': 'mV'}, font='Arial', fontsize=8)
 
-mpl.savefig('GBC_IVs_{0:s}_{1:s}.pdf'.format(modelName, modelType))
+mpl.savefig(outfile)
 mpl.show()
 

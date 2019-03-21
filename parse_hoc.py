@@ -6,13 +6,16 @@ import pandas as pd
 import argparse
 import re
 import datetime
-
+import neuron
 from neuron import h
 
 re_pts = re.compile('\s*(pt3dadd\()([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)')
 re_section = re.compile('\s*(sections\[)([0-9]*)\]\s*{')
+re_access = re.compile('\s*(access)\s*(sections\[)([0-9]*)\]\s*')
 re_append = re.compile('\s*([a-z]*)(.append\(\))')
+re_connect = re.compile('\s*(connect)\s*(sections\[)([0-9]*)\](\([0-9]*\)),\s*(sections\[)([0-9]*)\](\([0-9]*\))')
 
+# connect sections[3](0), sections[2](1)
 """
 Parse a hoc file
 
@@ -34,9 +37,68 @@ class ParseHoc(object):
         with open(self.fn, 'r') as fh:
             for cnt, line in enumerate(fh):
                 lines.append(line)         
-        self.hoctxt = ' '.join(l for l in lines)
-        print(self.hoctxt)
+        self.hoctxt = ''.join(l for l in lines)
+        self.lines = lines
+        print('fn: ', str(self.fn))
+        x = neuron.h.load_file(str(self.fn))
+        self.fix_singlets(h)
+        exit()
+        # print(self.hoctxt)
     
+    def get_hoc_struct(self):
+        secs = {}
+        for l in self.lines:
+            m = re_access.match(l)
+            if m is not None:
+                thissec = m.groups()[1]+'['+m.groups()[2]+']'
+                if thissec not in list(secs.keys()):
+                    secs[thissec] = {}
+                    print(thissec)
+                continue
+            m = re_connect.match(l)
+            if m is not None:
+                print('connect: ', '['+m.groups()[2]+']'+m.groups()[3]+' to '+m.groups()[5]+'('+m.groups()[6])
+            
+        
+    def fix_singlets(self, h):
+        badsecs = []
+        for sec in h.allsec():
+            if sec.n3d() == 1:
+                badsecs.append(sec)
+                print(f'Fixing Singlet Section: {str(sec):s}')
+                # print(dir(sec))
+                parent = sec.trueparentseg()
+                print(f'    Section has parent {str(parent):s} ')
+                nparentseg = parent.sec.n3d() - 1
+                x = parent.sec.x3d(nparentseg)
+                y = parent.sec.y3d(nparentseg)
+                z = parent.sec.z3d(nparentseg)
+                d = parent.sec.diam3d(nparentseg)
+                h.pt3dinsert(0, x, y, z, d, sec=sec)
+                # print(dir(sec))  # could also get a child section, but if there are multiple, what do you do?
+                # child = sec.children()
+                # print('children: ', child)
+                # print(f'    Section has child: {str(child):s}')
+                # for c in child:
+                #     print(c.x3d(0))
+                # exit()
+                # x = child.sec.x3d(0)
+                # y = child.sec.y3d(0)
+                # z = child.sec.z3d(0)
+                # d = child.sec.diam3d(0)
+                # h.pt3dadd(x, y, z, d, sec=sec)
+
+        badsecs = []
+        print('fn: ', self.fn)
+        for sec in h.allsec():
+            if sec.n3d() == 1:
+                badsecs.append(sec)
+                print('badsec: ', sec)   
+        if len(badsecs) == 0:
+            print('no more bad sections')
+        h.topology()
+         
+        
     def get_ref_point(self, fref, refpoint='first'):
         if fref is not None:
             self.fref = fref
@@ -271,13 +333,14 @@ class ParseHoc(object):
 
 def main():
     basedir = '/Users/pbmanis/Desktop/Python/VCNModel'
-    fn = Path(basedir, 'VCN_Cells', 'VCN_c20', 'Morphology', 'VCN_c20.hoc')
-    fn = '/Users/pbmanis/Desktop/Python/VCNModel/VCN_newcoord/VCN_c09.hoc'
-    fn = '/Users/pbmanis/Desktop/Python/VCNModel/ASA/CellBodySWCs/VCN_c09_CellBody01.hoc'
-    h = ParseHoc(fn)
-    h.read_hoc()
-    somas = h.get_soma()
-    print('somas: ', somas)
+    fn = Path(basedir, 'VCN_Cells', 'VCN_c16', 'Morphology', 'VCN_c16.hoc')
+    # fn = '/Users/pbmanis/Desktop/Python/VCNModel/VCN_newcoord/VCN_c09.hoc'
+    # fn = '/Users/pbmanis/Desktop/Python/VCNModel/ASA/CellBodySWCs/VCN_c09_CellBody01.hoc'
+    hparse = ParseHoc(fn)
+    hparse.read_hoc()
+    hparse.get_hoc_struct()# somas = h.get_soma()
+    # print('somas: ', somas)
+    
 if __name__ == '__main__':
     main()
     

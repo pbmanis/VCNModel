@@ -392,6 +392,32 @@ class ModelRun():
         except:
             raise FileNotFoundError(f"Cannot create path: {str(path):s}")
 
+    def fix_singlets(self, h):
+        badsecs = []
+        for sec in h.allsec():
+            if sec.n3d() == 1:
+                badsecs.append(sec)
+                print(f'Fixing Singlet Section: {str(sec):s}')
+                # print(dir(sec))
+                parent = sec.parentseg()
+                if parent is None:
+                    raise ValueError(f"Section: {str(sec):s} does not have a parent, and this must be fixed manually")
+                
+                print(f'    Section connected to {str(parent):s} ')
+                nparentseg = parent.sec.n3d() - 1
+                x = parent.sec.x3d(nparentseg)
+                y = parent.sec.y3d(nparentseg)
+                z = parent.sec.z3d(nparentseg)
+                d = parent.sec.diam3d(nparentseg)
+                h.pt3dinsert(0, x, y, z, d, sec=sec)
+
+        badsecs = []
+        for sec in h.allsec():
+            if sec.n3d() == 1:
+                badsecs.append(sec)
+        if len(badsecs) == 0:
+            print('no more bad sections')
+         
     def setup_model(self, par_map=None):
         """
         Main entry routine for running all models
@@ -455,7 +481,7 @@ class ModelRun():
             na_type        nav11  [1]     nav11  [1]     nav11  [1]    nav11  [1]    nav11  [1] 
             ih_type        ihvcn  [1]     ihvcn  [1]     ihvcn  [1]    ihvcn  [2]    ihvcn  [1] 
             soma_Cap       26.0   [1]     26.0   [1]     25.0   [1]    26.0   [2]    25.0   [1] 
-            nav11_vshift   10.    [1]     4.3    [1]     4.3    [1]    4.3    [1]    4.3    [1]
+            nav11_vshift   4.3    [1]     0.0    [1]     0.0    [1]    0.0    [1]    0.0    [1]
             e_k            -84    [1]     -84    [1]     -84    [1]    -84    [2]    -84    [1] 
             e_na           50.    [1]     50.    [1]     50.    [1]    50.    [2]    50.    [1] 
             ih_eh          -43    [1]     -43    [1]     -43    [1]    -43    [2]    -43    [1] 
@@ -467,6 +493,8 @@ class ModelRun():
                 Xie and Manis, 2013
                 Age "adult", Temperature=34C
                 Units are nS.
+                nav11_vshift: was 4.3 in Xie and Manis (2013) for T-stellate cells; 0 for bushy cells
+                Here reset to 0 for bushy cells
 
             [2] Rothman and Manis, 2003, model I-II
                 Some low-voltage K current, based on observations of
@@ -496,13 +524,13 @@ class ModelRun():
             ihvcn_gbar     0.0 [1]    0.0 [1]              0.0 [1]            0.5 [1]           0.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.5 [1]
             leak_gbar      1.0 [1]    0.25 [1]             0.25e-3 [1]        1.0 [1]           1.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.5 [1]
             leak_erev      -65. [1]   -65. [1]             -65. [1]           -65. [1]          -65. [1]    -65. [1]    -65. [1]         -65. [1]           -65. [1]
-            nav11_vshift   4.3  [1]   4.3 [1]              0.0 [1]            4.3 [1]           4.3 [1]     4.3 [1]     0.0  [1]         0.0  [1]            0.0 [1]
+            nav11_vshift   4.3  [2]   4.3 [2]              0.0 [2]            4.3 [2]           4.3 [2]     4.3 [2]     0.0  [2]         0.0  [2]            0.0 [2]
             na_type        nav11      nav11                nav11              nav11             nav11       nav11       nav11            nav11              nav11
             ih_type        ihvcn      ihvcn                ihvcn              ihvcn             ihvcn       ihvcn       ihvcn            ihvcn              ihvcn
             -------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
             [1] Scaling is relative to soma scaling. Numbers are estimates based on general distribution from literature on cortical neurons.
-
+            [2] Set to 0 (was 4.3 in original model). Matches original Barela et al (2006) scaling.
 
             """)
             data.report_changes(changes)
@@ -531,6 +559,9 @@ class ModelRun():
         print('Ra (ohm.cm) = {:8.1f}'.format(self.post_cell.hr.h.Ra))
         print(f'Specified Temperature = {self.post_cell.hr.h.celsius:8.1f} degC ')
         
+        # for sec in self.post_cell.hr.h.allsec():
+        #     print ('self.post_cell.hr.h: ', sec)
+        self.fix_singlets(self.post_cell.hr.h)
         if self.Params['soma_autoinflate']: # get values and inflate soma automatically to match mesh
             cconfig = cell_config.CellConfig()
             inflateratio = cconfig.get_soma_ratio(self.cellID)
@@ -538,29 +569,71 @@ class ModelRun():
         
         if self.Params['soma_inflation'] != 1.0:
             print('!!!!!   Inflating soma')
-            soma_group = self.post_cell.hr.sec_groups['soma']
+            soma_group = self.post_cell.all_sections['soma']
             print(' Section in soma group: ', soma_group)
             rtau = self.post_cell.compute_rmrintau(auto_initialize=True, vrange=[-80., -60.])
             print(f"     Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}")
             origdiam = {}
-            origarea = self.post_cell.somaarea
             self.post_cell.computeAreas()
             a1 = np.sum(list(self.post_cell.areaMap['soma'].values()))
             print('     Original Soma area: ', a1)
-            for section in list(soma_group):
-                secobj = self.post_cell.hr.get_section(section)
+            for i, section in enumerate(list(soma_group)):
+                secobj = self.post_cell.all_sections['soma'][i]
                 origdiam[section] = secobj.diam
-                print('      diam orig: ', origdiam[section])
-                secobj.diam = origdiam[section] * self.Params['soma_inflation']
-                print('      diam new:  ', self.post_cell.hr.get_section(section).diam)
-                print('      ratio:  ', self.post_cell.hr.get_section(section).diam/origdiam[section])
+                section.diam = origdiam[section] * self.Params['soma_inflation']
+                print(f"      section diam old,:  {section.diam:.3f}")
+                print(f"      ratio:     {section.diam/origdiam[section]:.3f}")
             self.post_cell.computeAreas()
             a2 = np.sum(list(self.post_cell.areaMap['soma'].values()))
-            print('     Revised Soma area: ', a2, '  area ratio: ', a2/a1)
+            print(f"      Revised Soma area: {a2:.2f}  area ratio: {a2/a1:.3f}")
 
             rtau = self.post_cell.compute_rmrintau(auto_initialize=True, vrange=[-80., -60.])
-            print(f"     New Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}")
+            print(f"     New Rin after somatic inflation: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}")
 
+        if self.Params['dendrite_autoinflate']: # get values and inflate soma automatically to match mesh
+            cconfig = cell_config.CellConfig()
+            inflateratio = cconfig.get_dendrite_ratio(self.cellID)
+            self.Params['dendrite_inflation'] = inflateratio
+        
+        if self.Params['dendrite_inflation'] != 1.0:
+            print('!!!!!   Inflating dendrite')
+            dendrite_group = self.post_cell.all_sections['dendrite']
+            # print(' Section in dendrite group: ', dendrite_group)
+            rtau = self.post_cell.compute_rmrintau(auto_initialize=True, vrange=[-80., -55.])
+            print(f"     Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e6:.2f}, RMP: {rtau['v']:.2f}")
+            origdiam = {}
+            # self.post_cell.computeAreas()
+            a1 = np.sum(list(self.post_cell.areaMap['dendrite'].values()))
+            print('     Original dendrite area: ', a1)
+            badsecs = []
+            for i, section in enumerate(list(dendrite_group)):
+                secobj = self.post_cell.all_sections['dendrite'][i]
+                if secobj.diam > 100.:
+                    print('? bad diam: ', secobj.diam, secobj)
+                    badsecs.append(secobj)
+                origdiam[section] = secobj.diam
+                section.diam = origdiam[section] * self.Params['dendrite_inflation']
+                print(f"      section diam old, nes:  {section.diam:.3f}")
+                print(f"      ratio:     {section.diam/origdiam[section]:.3f}")
+
+                print('      diam orig: ', origdiam[section], section)
+                section.diam = float(origdiam[section] * 1.05) # self.Params['dendrite_inflation']
+                print('      diam new:  ', section.diam)
+                print('      ratio:  ', section.diam/origdiam[section])
+            self.post_cell.computeAreas()
+            a2 = np.sum(list(self.post_cell.areaMap['dendrite'].values()))
+            print('     Revised dendrite area: ', a2, '  area ratio: ', a2/a1, '  original area: ', a1)
+
+            rtau = self.post_cell.compute_rmrintau(auto_initialize=True, vrange=[-80., -55.])
+            print(f"     New Rin after dendrite inflation: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e6:.2f}, RMP: {rtau['v']:.2f}")
+            # for section in list(dendrite_group):
+                # print('      diam orig: ', origdiam[section])
+                # print('      diam new:  ', ssection.diam)
+            for sec in badsecs:
+                print('? bad diam: ', sec.diam, sec)
+            print('# bad: ', len(badsecs))
+            if len(badsecs) > 0:
+                exit()
         
         for group in self.post_cell.hr.sec_groups.keys():
             g = self.post_cell.hr.sec_groups[group]
@@ -1806,6 +1879,10 @@ if __name__ == "__main__":
             help='Specify factor by which to inflate soma AREA')
     parser.add_argument('--soma-autoinflate', action='store_true', dest='soma_autoinflate', default=False,
             help='Automatically inflate soma based on table')
+    parser.add_argument('--dendrite-inflate', type=float, dest='dendrite_inflation', action='store', default=1.0,
+            help='Specify factor by which to inflate total dendritic AREA')
+    parser.add_argument('--dendrite-autoinflate', action='store_true', dest='dendrite_autoinflate', default=False,
+            help='Automatically inflate dendrite area based on table')
 
     parser.add_argument('-a', '--AMPAScale', type=float, default=1.0, dest='AMPAScale',
         help='Set AMPAR conductance scale factor (default 1.0)')

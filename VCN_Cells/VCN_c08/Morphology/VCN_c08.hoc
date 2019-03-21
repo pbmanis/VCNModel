@@ -13,6 +13,7 @@ objref apical_dendrite
 apical_dendrite = new SectionList()
 
 create sections[153]
+
 access sections[0]
 soma.append()
 sections[0] {
