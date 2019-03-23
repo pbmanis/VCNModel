@@ -156,7 +156,7 @@ class ModelRun():
         
         # use v2 files for model with rescaled soma
         self.cellChoices = ['Bushy', 'TStellate', 'DStellate']
-        self.modelNameChoices = ['XM13', 'RM03', 'mGBC', 'XM13PasDend', 'Calyx', 'MNTB', 'L23Pyr']
+        self.modelNameChoices = ['XM13', 'XM13nacncoop', 'XM13nacn', 'RM03', 'mGBC', 'XM13PasDend', 'Calyx', 'MNTB', 'L23Pyr']
         self.modelTypeChoices = ['II', 'II-I', 'I-II', 'I-c', 'I-t', 'II-o']
         self.SGCmodelChoices = ['Zilany', 'cochlea']  # cochlea is python model of Zilany data, no matlab, JIT computation; Zilany model creates matlab instance for every run.
         self.cmmrModeChoices = ['CM', 'CD', 'REF']  # comodulated, codeviant, reference
@@ -449,20 +449,32 @@ class ModelRun():
             self.Params['hocfile'] = self.Params['cell'] + '.hoc'
         print('Hoc (structure) file: ', self.Params['hocfile'])
         print('Base directory: ', self.baseDirectory)
-        print('params: ', self.Params)
         filename = Path(self.baseDirectory, self.cellID, self.morphDirectory, self.Params['hocfile'])
         
         # instantiate cells
         if self.Params['cellType'] in ['Bushy', 'bushy']:
             print('Creating a bushy cell (run_model) ')
             from cnmodel import data
-            import data_XM13_nacncoop as CHAN
-            changes = data.add_table_data('XM13_channels', row_key='field', col_key='model_type', 
-                           species='mouse', data=CHAN.ChannelData)
-            changes = data.add_table_data('XM13_channels_compartments', row_key='parameter', col_key='compartment',
-                    species='mouse', model_type='II', data=CHAN.ChannelCompartments)
+            if self.Params['modelName'] == 'XM13nacncoop':
+                import data_XM13nacncoop as CHAN
+                changes = data.add_table_data('XM13nacncoop_channels', row_key='field', col_key='model_type',
+                               species='mouse', data=CHAN.ChannelData)
+                changes_c = data.add_table_data('XM13nacncoop_channels_compartments', row_key='parameter', col_key='compartment',
+                        species='mouse', model_type='II', data=CHAN.ChannelCompartments)
+            elif self.Params['modelName'] == 'XM13':
+                import data_XM13 as CHAN
+                changes = data.add_table_data('XM13_channels', row_key='field', col_key='model_type', 
+                               species='mouse', data=CHAN.ChannelData)
+                changes_c = data.add_table_data('XM13_channels_compartments', row_key='parameter', col_key='compartment',
+                        species='mouse', model_type='II', data=CHAN.ChannelCompartments)
+            elif self.Params['modelName'] == 'XM13nacn':
+                import data_XM13nacn as CHAN
+                changes = data.add_table_data('XM13_channels', row_key='field', col_key='model_type', 
+                               species='mouse', data=CHAN.ChannelData)
+                changes_c = data.add_table_data('XM13_channels_compartments', row_key='parameter', col_key='compartment',
+                        species='mouse', model_type='II', data=CHAN.ChannelCompartments)
             data.report_changes(changes)
-
+            data.report_changes(changes_c)
             self.post_cell = cells.Bushy.create(morphology=str(filename), decorator=Decorator,
                     species=self.Params['species'], 
                     modelName=self.Params['modelName'], modelType=self.Params['modelType'])
