@@ -66,7 +66,7 @@ P = PH.Plotter(rcshape=sizer, label=False, figsize=(6, 8), labeloffset=[0.6, 0.]
 
 gbc_names = [s[-2:] for s in sizer.keys()]
 # gbc_names = ['16']
-# gbc_names = ['16']  # how to just run one when encoutering a bug
+gbc_names = ['16']  # how to just run one when encoutering a bug
 
 for n in gbc_names:
     M = mrun.ModelRun() # create an instance
@@ -81,6 +81,7 @@ for n in gbc_names:
     M.Params['modelName'] = modelName
     M.Params['soma_autoinflate'] = True
     M.Params['dendrite_autoinflate'] = True
+    M.Params['sequence'] = '[-0.4, 0.401, 0.8]'
     
     if M.Params['hocfile'] == None: # just use the matching hoc file
         M.Params['hocfile'] = M.Params['cell'] + '.hoc'
