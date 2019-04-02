@@ -457,27 +457,39 @@ class ModelRun():
             from cnmodel import data
             if self.Params['modelName'] == 'XM13nacncoop':
                 import data_XM13nacncoop as CHAN
+                nach = 'nacncoop'
                 changes = data.add_table_data('XM13nacncoop_channels', row_key='field', col_key='model_type',
                                species='mouse', data=CHAN.ChannelData)
                 changes_c = data.add_table_data('XM13nacncoop_channels_compartments', row_key='parameter', col_key='compartment',
                         species='mouse', model_type='II', data=CHAN.ChannelCompartments)
             elif self.Params['modelName'] == 'XM13':
                 import data_XM13 as CHAN
+                nach = 'nav11'
                 changes = data.add_table_data('XM13_channels', row_key='field', col_key='model_type', 
                                species='mouse', data=CHAN.ChannelData)
                 changes_c = data.add_table_data('XM13_channels_compartments', row_key='parameter', col_key='compartment',
                         species='mouse', model_type='II', data=CHAN.ChannelCompartments)
             elif self.Params['modelName'] == 'XM13nacn':
                 import data_XM13nacn as CHAN
-                changes = data.add_table_data('XM13_channels', row_key='field', col_key='model_type', 
+                nach = 'nacn'
+                changes = data.add_table_data('XM13nacn_channels', row_key='field', col_key='model_type', 
                                species='mouse', data=CHAN.ChannelData)
-                changes_c = data.add_table_data('XM13_channels_compartments', row_key='parameter', col_key='compartment',
+                changes_c = data.add_table_data('XM13nacn_channels_compartments', row_key='parameter', col_key='compartment',
+                        species='mouse', model_type='II', data=CHAN.ChannelCompartments)
+            elif self.Params['modelName'] == 'XM13nabu':
+                import data_XM13nabu as CHAN
+                nach = 'nabu'
+                print('YAHOO nabu')
+                changes = data.add_table_data('XM13nabu_channels', row_key='field', col_key='model_type', 
+                               species='mouse', data=CHAN.ChannelData)
+                changes_c = data.add_table_data('XM13nabu_channels_compartments', row_key='parameter', col_key='compartment',
                         species='mouse', model_type='II', data=CHAN.ChannelCompartments)
             data.report_changes(changes)
             data.report_changes(changes_c)
             self.post_cell = cells.Bushy.create(morphology=str(filename), decorator=Decorator,
                     species=self.Params['species'], 
-                    modelName=self.Params['modelName'], modelType=self.Params['modelType'])
+                    modelName=self.Params['modelName'], modelType=self.Params['modelType'], 
+                    nach=nach)
         elif self.Params['cellType'] in ['tstellate', 'TStellate']:
             print('Creating a t-stellate cell (run_model) ')
             self.post_cell = cells.TStellate.create(morphology=str(filename), decorator=Decorator,
