@@ -220,7 +220,7 @@ def test_initial_conditions(cell, electrode_site=None, filename=None):
     monitor['time'] = cell.hr.h.Vector()
     monitor['time'].record(cell.hr.h._ref_t)
     monitor['Velectrode'] = cell.hr.h.Vector()
-    print(f'Test Initial Conditions\n   at site: {str(electrode_site):s}')
+    print(f'Test Initial Conditions\n   at site: {str(electrode_site):s}\n   with file: {str(filename):s}')
     monitor['Velectrode'].record(electrode_site(0.5)._ref_v, sec=electrode_site)
     
     restore_initial_conditions_state(cell, filename=filename, electrode_site=electrode_site)

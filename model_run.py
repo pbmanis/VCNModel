@@ -308,6 +308,7 @@ class ModelRun():
             namePars += f"_soma={self.Params['soma_inflation']:.3f}"
         if self.Params['dendrite_inflation'] != 1.0:
             namePars += f"_dend={self.Params['dendrite_inflation']:.3f}"
+        
         if self.Params['runProtocol'] in ['initIV', 'initandrunIV', 'runIV']:
             if self.Params['initIVStateFile'] is None:
                 fn = f"IVneuronState_{namePars:s}.dat"
@@ -322,16 +323,15 @@ class ModelRun():
             self.mkdir_p(outPath) # confirm that output path exists
             self.Params['simulationFilename'] = Path(outPath, f"{self.cellID:s}_pulse_{namePars:s}_monitor.p")
             print('Simulation filename: ', self.Params['simulationFilename'])
-               
         
-        if self.Params['runProtocol'].startswith('runAN'):
+        if self.Params['runProtocol'].startswith('runAN') or self.Params['runProtocol'] == 'initAN':
             if self.Params['initANStateFile'] is None:
                 fn = f"ANneuronState_{namePars:s}_{self.Params['ANSynapseType']:s}.dat"
                 aninitdir= Path(self.baseDirectory, self.cellID,
                                     self.initDirectory)
                 self.Params['initANStateFile'] = Path(aninitdir, fn)
                 self.mkdir_p(aninitdir) # confirm existence of that file  
-                print('IV Initialization file: ', self.Params['initANStateFile'])
+                print('AN Initialization file: ', self.Params['initANStateFile'])
                    
             outPath = Path('VCN_Cells', self.cellID, self.simDirectory, 'AN')
             self.mkdir_p(outPath) # confirm that output path exists
@@ -626,7 +626,7 @@ class ModelRun():
 
     def run_model(self, par_map=None):
         if not self.setup:
-            self.setup_model(par_mnap=par_map)
+            self.setup_model(par_map=par_map)
         if self.Params['runProtocol'] in ['runANPSTH', 'runANSingles']:
             self.Params['run_duration'] = self.Params['pip_duration'] + np.sum(self.Params['pip_start']) + self.Params['pip_offduration']
             
@@ -963,6 +963,7 @@ class ModelRun():
             #                     self.initDirectory, self.Params['initANStateFile'])
             cellInit.get_initial_condition_state(post_cell, tdur=500.,
                 filename=self.Params['initANStateFile'], electrode_site=self.electrode_site, reinit=self.Params['auto_initialize'])
+            print('TESTING; statefile = ', self.Params['initANStateFile'])
             cellInit.test_initial_conditions(post_cell, filename=self.Params['initANStateFile'],
                 electrode_site=self.electrode_site)
             # return
@@ -1776,7 +1777,7 @@ if __name__ == "__main__":
                    default='II', choices=model.modelTypeChoices,
                    help='Define the model type (default: XM13)')
     parser.add_argument('--sgcmodel', type=str, dest='SGCmodelType', action='store',
-                   default='Zilany', choices=model.SGCmodelChoices,
+                   default='cochlea', choices=model.SGCmodelChoices,
                    help='Define the SGC model type (default: Zilany)')
     parser.add_argument('--protocol', '-P', dest='runProtocol', action='store',
                    default='runIV', choices=model.protocolChoices,
