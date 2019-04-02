@@ -16,7 +16,7 @@ import pycircstat as PCS
 import pylibrary.PlotHelpers as PH
 import pylibrary.Utility as pu
 import spikestatistics as SPKS
-import cell_config as SC
+import cell_config
 from collections import OrderedDict
 from cycler import cycler
 import random
@@ -24,8 +24,10 @@ from matplotlib import rc
 rc('text', usetex=False)
 import seaborn
 #plt.style.use('seaborn-muted')
-from brian.units import check_units, second
-from brian.stdunits import ms, Hz
+from brian2.units import check_units, second
+from brian2.units.stdunits import ms, Hz
+
+SC = cell_config.CellConfig()
 
 def norm(p, n):
     pmin = np.min(p)
@@ -76,44 +78,44 @@ def clean_spiketimes(spikeTimes, mindT=0.7):
 def plot_revcorr(p, ax, ax2, respike=False, thr=-20., width=4.0):
     d={}
     basepath = 'VCN_Cells/VCN_{0:s}/Simulations/AN'.format(p)
-    h = open(os.path.join(basepath, fn[p]))
-    d[p] = pickle.load(h)
+    h = open(os.path.join(basepath, fn[p]), 'rb')
+    d[p] = pickle.load(h, )
     h.close()
     seaborn.set_style('ticks')
     syninfo = SC.VCN_Inputs['VCN_{0:s}'.format(p)]
 
-#    print ('# cells: ', d[p].keys())
     if not respike:
         st = d[p]['spikeTimes']
     else:
         st = {}
-        dt = (d[p]['time'][1]-d[p]['time'][0])
-        for k in d[p]['somaVoltage'].keys():
-            st[k] = pu.findspikes(d[p]['time'], d[p]['somaVoltage'][k], thr, dt=dt, mode='peak')
+        print(d.keys())
+        print(d[p].keys())
+        print(d[p]['trials'][0].keys())
+        for k in d[p]['trials'].keys():
+            trd = d[p]['trials'][k]
+            sv = trd['somaVoltage']
+            ti = trd['time']
+            dt = ti[1]-ti[0]
+            st[k] = pu.findspikes(ti, sv, thr, dt=dt, mode='peak')
             st[k] = clean_spiketimes(st[k])
-#    print (st[0])
     ndet1 = 0
     for n in st:
         ndet1 = ndet1 + len(st[n])   
     ndet0 = 0
-    for n in d[p]['spikeTimes']:
-        ndet0 = ndet0 + len(d[p]['spikeTimes'][n])
+    for n in d[p]['trials'].keys():
+        st = d[p]['trials'][n]['spikeTimes']
+        ndet0 = ndet0 + len(st)
         
     print('Detected %d and %d spikes', ndet0, ndet1)
-    an = d[p]['inputSpikeTimes']
-    print('cell: ', p)
-    #print ('syninfo: ', syninfo)
-    print('ans in syninfo: ', len(syninfo))
-    print ('# an inputs: ', len(an[0]))
-    print ("# trials: ", len(st))
+    ntrials = len(d[p]['trials'].keys())
+    print ("# trials: ", ntrials)
+    ninputs = len(syninfo[1])
+    sites = np.zeros(ninputs)
+    print('ninputs: ', ninputs)
     binw = 0.1
     tcwidth = width # msec for total correlation width
     xwidth = 5.
     tx = np.arange(-xwidth, 0, binw)
-    #colors = build_colors(len(an[0]))
-    #ax.set_prop_cycle( cycler('color', colr_list))
-    ninputs = len(syninfo[1])
-    sites = np.zeros(ninputs)
     amax = 0.
     for isite in range(ninputs): # precompute areas
         area = syninfo[1][isite][0]
@@ -121,45 +123,41 @@ def plot_revcorr(p, ax, ax2, respike=False, thr=-20., width=4.0):
             amax = area
         sites[isite] = int(np.around(area*SC.synperum2))
         
-    print('ninputs: ', ninputs)
     summarySiteTC = {}
     for isite in range(ninputs):  # for each ANF input (get from those on first trial)
-        nt = 0
-        for trial in range(len(st)):  # sum across trials
-#            print ('trials; ', trial, len(st), len(an), isite, len(an[trial]))
+        for trial in range(ntrials):  # sum across trials
+            stx = d[p]['trials'][trial]['spikeTimes']  # get postsynaptic spike train for this trial
+            anx = d[p]['trials'][trial]['inputSpikeTimes'][isite]
+
             andirac = np.zeros(int(200./binw)+1)
-            anindx = [int(i) for i in (an[trial][isite]/binw)]
-            andirac[anindx] = 1
-#            print('AN, Post spikes sum:', np.sum(andirac), len(st[trial]))
             if trial == 0:
-                C = SPKS.correlogram(st[trial], an[trial][isite], width=xwidth, bin=binw, T=None)
-                TC = SPKS.total_correlation(st[trial], an[trial][isite], width=tcwidth, T=None)
+                C = SPKS.correlogram(stx, anx, width=xwidth, bin=binw, T=None)
+                TC = SPKS.total_correlation(stx, anx, width=tcwidth, T=None)
                 if np.isnan(TC):
                     TC = 0.
                 # definition: spike_triggered_average(spikes,stimulus,max_interval,dt,onset=None,display=False):
                 # C = SPKS.spike_triggered_average(st[trial]*ms, andirac*ms, max_interval=width*ms, dt=binw*ms)
             else:
-                C = C + SPKS.correlogram(st[trial], an[trial][isite], width=xwidth, bin=binw, T=None)
-                tct = SPKS.total_correlation(st[trial], an[trial][isite], width=tcwidth, T=None)
+                C = C + SPKS.correlogram(stx, anx, width=xwidth, bin=binw, T=None)
+                tct = SPKS.total_correlation(stx, anx, width=tcwidth, T=None)
                 if ~np.isnan(tct):
                     TC = TC + tct
                 # C = C + SPKS.spike_triggered_average(st[trial]*ms, andirac*ms, max_interval=width*ms, dt=binw*ms)
-            nt = nt + 1
-        nc = len(C)
+        nc = int(len(C)/2)
         TC = TC/len(st)
         print('TC: ', TC)
         summarySiteTC[isite] = TC
         color = plt.cm.viridis(norm(sites, isite))
-        ax.plot(tx, C[:nc/2], color=color, label=('Input {0:2d} N={1:3d}'.format(isite, int(sites[isite]))),
+        print(tx)
+        print('nc: ', nc)
+        print(C[:nc])
+        ax.plot(tx, C[:nc], color=color, label=('Input {0:2d} N={1:3d}'.format(isite, int(sites[isite]))),
             linewidth=0.75)
         tx2 = np.array([0.2, 0.8])
         ax2.plot(tx2, TC*np.ones_like(tx2), color=color, linewidth=2)
-    #plt.legend()    
-#    PH.nice_plot(ax, spines=['left', 'bottom'], position=0)
+
     print('finished inputs')
     seaborn.despine(ax=ax)
-    PH.adjust_spines(ax, distance=0)
-#    ax.set_ylim(0, 0.20)
     ax.set_ylabel('Rate of coincidences/bin, Hz)', fontsize=6)
     ax.set_xlabel('T (ms)', fontsize=10)
     ax.set_xlim(-5., 1.)
@@ -285,16 +283,17 @@ def plot_SAC():
 
 if __name__ == '__main__':
     gbcs = ['08',  '09', '09h', '09nd', '17',   '18',    '19', '20', '21', '22']
+    gbcs = ['09']
     thrs = [-32.,  -30.,  -30.,  -0.,  -35.,   -25.,    -30., -30., -30., -30.]
     SR = 'MS'
     fn = {}
     for g in gbcs:
         fn['c{0:s}'.format(g)] = 'AN_Result_VCN_c{0:s}_delays_N050_040dB_4000.0_{1:2s}.p'.format(g, SR)
-
-    nplts = len(gbcs) + 1
+    fn['c09'] = 'AN_Result_VCN_c09_XM13nacncoop_II_soma=1.489_all_multisite_020_tonepip_030dB_16000.0_MS.p'
     patterns = fn.keys()
     print ('patterns: ', patterns)
     p = 'c09'
+    gbcs.append('Summary')
     # fig, ax = plt.subplots(2, 4, figsize=(10,6))
     lmar = 0.1
     rmar = -0.01
@@ -302,43 +301,18 @@ if __name__ == '__main__':
     bmar = 0.08
     hspace = 0.05
     vspace = 0.1
-    ncols = 4
-    nrows = nplts/ncols
-    if ncols*nrows < nplts:
-        nrows = nrows + 1
-    gwid = (1.0-lmar-rmar)/ncols - hspace
-    wid = gwid-hspace
-    ght = (1.0-(tmar+bmar))/nrows
-    ht = ght - vspace
-    yp = np.linspace(tmar, 1.0-tmar-ght-bmar, nrows)[::-1] + bmar
-    lp = np.linspace(lmar, 1.0-lmar-gwid, ncols)
-    plots  = ['rcorr']
-    sizer = OrderedDict([])
-    k = 0
-    
-    for ir, r in enumerate(range(nrows)):
-        for ic, c in enumerate(range(ncols)):
-            if k < len(gbcs):
-                pname = ('VCN_c{0:s}'.format(gbcs[k]))
-                sizer[pname] = [lp[ic], wid, yp[ir], ht]
-            else:
-                sizer['Summary'] = [lp[ic], wid, yp[ir], ht]
-            k = k + 1
-    # sizer = OrderedDict([('VCN_c08', [l1, wid, yp[0], ht]), ('VCN_c09', [l1, wid, yp[1], ht]),
-    #         ('VCN_c17', [l1, wid, yp[2], ht]), ('VCN_c18', [l1, wid, yp[3], ht]),
-    #         ('VCN_c19', [l2, wid, yp[0], ht]), ('VCN_c20', [l2, wid, yp[1], ht]),
-    #         ('VCN_c21', [l2, wid, yp[2], ht]), ('VCN_c22', [l2, wid, yp[3], ht]),
-    # ])  # dict elements are [left, width, bottom, height] for the axes in the plot.
-    gr = [(a, a+1, 0, 1) for a in range(0, len(sizer.keys()))]   # just generate subplots - shape does not matter
-    axmap = OrderedDict(zip(sizer.keys(), gr))
-    P = PH.Plotter(rcshape=sizer, label=False, figsize=(10 , 6))
+    nplts = len(gbcs)
+    nrows, ncols = PH.getLayoutDimensions(nplts, pref='height')
+
+    P = PH.regular_grid(nrows, ncols, figsize=(10, 6), panel_labels=gbcs)
+    #PH.Plotter(rcshape=sizer, label=False, figsize=(10 , 6))
     P.figure_handle.suptitle('Reverse Correlations, AN types={0:2s}'.format(SR))
     ax2 = {}
     for i, g in enumerate(P.axdict.keys()):
         if i >= len(gbcs):
             continue
         P.axdict[g].set_xlim(-5., 0.)
-        P.axdict[g].set_axis_bgcolor('gainsboro')
+        # P.axdict[g].set_axis_bgcolor('gainsboro')
         P.axdict[g].tick_params(labelsize=6)
         ax2[g] = twinax(P.figure_handle, P.axdict[g], pos=1.0)
     for l in P.axlabels:
@@ -347,16 +321,17 @@ if __name__ == '__main__':
     # exit()
     sTC = {}
     sites = {}
-    for i, g in enumerate(sizer.keys()):
+    for i, g in enumerate(list(fn.keys())):
         if i >= len(gbcs):
             continue
-        p = g[4:]
-        sTC[i], sites[i] = plot_revcorr(p, P.axdict[g], ax2[g], respike=True, thr=thrs[i], width=[2.0, -0.5])
+        print(g)
+        p = g[1:]
+        sTC[i], sites[i] = plot_revcorr(g, P.axdict[p], ax2[p], respike=True, thr=thrs[i], width=[2.0, -0.5])
     
     seaborn.color_palette("cubehelix", len(gbcs)+1)
     markers = ['o', 's', '^', 'D', 'p', '^', '*', 'v', 'H', 'd']
     alpha = [0.25, 1., 1., 1., 0.25, 0.25, 0.25, 0.25, 0.25, 0.25]
-    for i, g in enumerate(sizer.keys()):
+    for i, g in enumerate(list(fn.keys())):
         if i >= len(gbcs):
             continue
         st = [sTC[i][j] for j in sTC[i].keys()]
