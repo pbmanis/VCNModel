@@ -65,6 +65,7 @@ synperum2 = 0.65 # average density of synapses, synapses per micron squared
 
 class CellConfig():
     def __init__(self, datafile=None):
+        self.synperum2 = synperum2
         if datafile is None:
             datafile = datafile_default
         self.datafile = datafile
