@@ -1,7 +1,7 @@
 # -*- coding: utf8 -*-
 import numpy as np
-import os.path
 from pathlib import Path
+import datetime
 
 """
 SWC File format from CNIC:
@@ -24,11 +24,16 @@ x, y, z gives the cartesian coordinates of each node.
 R is the radius at that node.
 
 P indicates the parent (the integer label) of the current point or -1 to indicate an origin (soma).
+
+Python 3 version only 3-27-2019 pbm
+Handles Singleton "sections" in swc file by inserting the last parent segment information.
+
 """
 
 
 class SWC(object):
-    """Encapsulates a morphology tree as defined by the SWC standard.
+    """
+    Encapsulates a morphology tree as defined by the SWC standard.
     
     Parameters
     ----------
@@ -40,8 +45,12 @@ class SWC(object):
     data : ndarray or None
         Optionally, a data array may be provided instead of an swc file. This
         is used internally.
+    scales : dict or None
+        dict of format: {'x': 1.0, 'y': 1.0, 'z': 1.0, 'r': 1.0} to provide
+        appropriate scaling along each of the axes.
     """
-    def __init__(self, filename=None, types=None, data=None):
+    
+    def __init__(self, filename=None, types=None, data=None, scales=None):
         self._dtype = [
             ('id', int), 
             ('type', int), 
@@ -55,38 +64,51 @@ class SWC(object):
         self._id_lookup = None
         self._sections = None
         self._children = None
-
+        self.scales = scales
+        
         self.sectypes = {
             0: 'undefined',
             1: 'soma',
             2: 'axon',
             3: 'basal_dendrite',
             4: 'apical_dendrite',
+            5: 'custom', # (user-defined preferences)
+            6: 'unspecified_neurites',
+            7: 'glia_processes', # who knows why this is in here… 
+            10: 'hillock',
+            11: 'unmyelinatedaxon',
+            12: 'hub',
+            13: 'proximal_dendrite',
+            14: 'distal_dendrite',
         }
+        
         if types is not None:
             self.sectypes.update(types)
         
         if data is not None:
             self.data = data
         elif filename is not None:
-            self.load(filename)
+            self.load(filename.with_suffix('.swc'))
+            self.filename = filename
         else:
             raise TypeError("Must initialize with filename or data array.")
-        
+
         self.sort()
         
     def load(self, filename):
         self.filename = filename
-        print('loading: ', filename)
+        print(f"Loading: {str(filename):s}")
         self.data = np.loadtxt(filename, dtype=self._dtype)
+        if self.scales is not None:
+            self.scale(x=scales['x'], y=scales['y'], z=scales['z'], r=scales['r'])
 
-        
     def copy(self):
         return SWC(data=self.data.copy(), types=self.sectypes)
 
     @property
     def lookup(self):
-        """Return a dict that maps *id* to *index* in the data array.
+        """
+        Return a dict that maps *id* to *index* in the data array.
         """
         if self._id_lookup is None:
             self._id_lookup = dict([(rec['id'], i) for i, rec in enumerate(self.data)])
@@ -95,23 +117,27 @@ class SWC(object):
                 #self._id_lookup[rec['id']] = i
         return self._id_lookup
 
-    def children(self, id):
-        """Return a list of all children of the node *id*.
+    def children(self, ident):
         """
-        if self._children is None:
+        Return a list of all children of the node *id*.
+        """
+        if self._children is None:  # build the child dict
             self._children = {}
             for rec in self.data:
-                ch = self._children.setdefault(rec['parent'], [])
-                ch.append(rec['id'])
-        return self._children.get(id, [])
+                self._children.setdefault(rec['parent'], [])
+                self._children[rec['parent']].append(rec['id'])
+        # print('children: ', self._children)
+        return self._children.get(ident, [])
 
     def __getitem__(self, id):
-        """Return record for node *id*.
+        """
+        Return record for node *id*.
         """
         return self.data[self.lookup[id]]
 
     def reparent(self, id):
-        """Rearrange tree to make *id* the new root parent.
+        """
+        Rearrange tree to make *id* the new root parent.
         """
         d = self.data
         
@@ -132,10 +158,10 @@ class SWC(object):
     @property
     def sections(self):
         """Return lists of IDs grouped by topological section.
-        
         The first item in each list connects to the last item in a previous
         list.
         """
+        # print('self.data: ', self.data)
         if self._sections is None:
             sections = []
             sec = []
@@ -154,18 +180,21 @@ class SWC(object):
                     endpoints.remove(p)
             
             # build lists of unbranched node chains
+            lasttype = self.data['type'][0]
             for r in self.data:
                 sec.append(r['id'])
-                if r['id'] in branchpts or r['id'] in endpoints:
+                if r['id'] in branchpts or r['id'] in endpoints or r['type'] != lasttype:
                     sections.append(sec)
                     sec = []
+                    lasttype = r['type']
             
             self._sections = sections
             
         return self._sections
         
     def connect(self, parent_id, swc):
-        """Combine this tree with another by attaching the root of *swc* as a 
+        """
+        Combine this tree with another by attaching the root of *swc* as a 
         child of *parent_id*.
         """
         data = swc.data.copy()
@@ -183,27 +212,34 @@ class SWC(object):
         self.data['type'] = typ
         
     def write_hoc(self, filename, types=None):
-        """Write data to a HOC file.
-        
+        """
+        Write data to a HOC file.
         Each node type is written to a separate section list.
         """
         hoc = []
-        
+        # Add some header information
+        hoc.extend([f"// Translated from SWC format by: swc_to_hoc.py"])
+        hoc.append(f"// Source file: {str(self.filename):s}")
+        hoc.append(f"// {datetime.datetime.now().strftime('%B %d %Y, %H:%M:%S'):s}")
+        if self.scales is None:
+            hoc.append(f"// No scaling")
+        else:
+            hocappend(f"// Scaling: x: {self.scales['x']:f}, y: {self.scales['y']:f}, z: {self.scales['z']:f}, r: {self.scales['r']:f}")
+        hoc.append('')
         sectypes = self.sectypes.copy()
         for t in np.unique(self.data['type']):
             if t not in sectypes:
                 sectypes[t] = 'type_%d' % t
-
         # create section lists
-        for t in sectypes.values():
-            hoc.extend(['objref %s' % t,
-                        '%s = new SectionList()' % t])
+        for t in list(sectypes.values()):
+            hoc.extend([f"objref {t:s}\n{t:s} = new SectionList()"])
         hoc.append('')
-            
         # create sections
         sects = self.sections
-        hoc.append('create sections[%d]' % len(sects))
+
+        hoc.append(f'create sections[{len(sects):d}]')
         sec_ids = {}
+        
         for i, sec in enumerate(sects):
             # remember hoc index for this section
             endpt = self[sec[-1]]['id']
@@ -211,36 +247,42 @@ class SWC(object):
             sec_ids[endpt] = sec_id
             
             # add section to list
-            hoc.append('access sections[%d]' % sec_id)
+            hoc.append(f'access sections[{sec_id:d}]')
             typ = self[sec[0]]['type']
-            hoc.append('%s.append()' % sectypes[typ])
+            hoc.append(f'{sectypes[typ]:s}.append()')
             
             # connect section to parent
             p = self[sec[0]]['parent']
             if p != -1:
-                hoc.append('connect sections[%d](0), sections[%d](1)' % (sec_id, sec_ids[p]))
+                hoc.append(f'connect sections[{sec_id:d}](0), sections[{sec_ids[p]:d}](1)')
 
             # set up geometry for this section
             hoc.append('sections[%d] {' % sec_id)
-            for seg in sec:
+            if len(sec) == 1:
+                seg = sects[sec_ids[p]][-1] # get last segement in the parent section
                 rec = self[seg]
-                hoc.append('  pt3dadd(%f, %f, %f, %f)' % (rec['x'], rec['y'], rec['z'], rec['r']*2))
+                hoc.append(f"  pt3dadd({rec['x']:f}, {rec['y']:f}, {rec['z']:f}, {rec['r']*2:f})  // seg={seg:d} Singleton repair: to section[sec_ids[p]:d]")
+            for seg in sects[sec_id]:
+                rec = self[seg]
+                hoc.append(f"  pt3dadd({rec['x']:f}, {rec['y']:f}, {rec['z']:f}, {rec['r']*2:f})   // seg={seg:d}")
             hoc.append('}')
             
             hoc.append('')
         
         open(filename, 'w').write('\n'.join(hoc))
-
+        print(f"Wrote {str(filename):s}")
+        
     @property
     def root(self):
-        """ID of the root node of the tree.
         """
-        print(self.data['parent'])
+        ID of the root node of the tree.
+        """
         ind = np.argwhere(self.data['parent'] == -1)[0, 0]
         return self.data[ind]['id']
 
     def sort(self):
-        """Sort the tree in topological order.
+        """
+        Sort the tree in topological order.
         """
         order = self.branch(self.root)
         lt = self.lookup
@@ -270,7 +312,8 @@ class SWC(object):
         self.data['z'] += z
         
     def branch(self, id):
-        """Return a list of IDs in the branch beginning at *id*.
+        """
+        Return a list of IDs in the branch beginning at *id*.
         """
         branch = [id]
         for ch in self.children(id):
@@ -278,12 +321,12 @@ class SWC(object):
         return branch
     
     def topology(self):
-        """Print the tree topology.
+        """
+        Print the tree topology.
         """
         path = []
         indent = ''
         secparents = [self[s[0]]['parent'] for s in self.sections]
-        
         for i, sec in enumerate(self.sections):
             p = secparents[i]
             if p != -1:
@@ -294,11 +337,11 @@ class SWC(object):
 
             # look ahead to see whether subsequent sections are children
             if p in secparents[i+1:]:
-                this_indent = indent[:-2] + u"├─ "
-                indent =      indent[:-2] + u"│  │  "
+                this_indent = indent[:-2] + "├─ "
+                indent =      indent[:-2] + "│  │  "
             else:
-                this_indent = indent[:-2] + u"└─ "
-                indent =      indent[:-2] + u"   │  "
+                this_indent = indent[:-2] + "└─ "
+                indent =      indent[:-2] + "   │  "
                 
                 
             typ = self.sectypes[self[sec[0]]['type']]
@@ -313,65 +356,6 @@ if __name__ == '__main__':
     import sys
     if len(sys.argv) < 1:
         exit()
-    if sys.argv[1] == 'c08':
-        base = 'VCN_Cells/VCN_c08/Morphology'
-        somafile = os.path.join(base, 'VCN_c08_cellbody.swc')
-        soma = SWC(somafile, types={1:'soma', 2:'axon', 3:'dendrite'})
-        soma.set_type(1)
-        soma.data['r'] *= 0.5  # this data was recorded as diameter
-        soma.data['r'] *= 0.54545 # per michael, but not clear if this is really true or not?
-     
-        axon = SWC(os.path.join(base, 'VCN_c08_axon_hillock.swc'))
-        axon.set_type(2)
-        dend = SWC(os.path.join(base, 'VCN_c18_dendnonscaled.swc'))
-        dend.set_type(3)
-        dend.reparent(755)
-    
-        cell = soma.copy()
-        cell.connect(57, axon)
-        cell.connect(39, dend)
-        # correct for voxel size
-        cell.scale(0.11, 0.11, 0.06, 0.11)
-        # correct for shrinkage
-        s = 1.0 / 0.86 # 0.75
-        cell.scale(s, s, s, s)
-        cell.translate(-70, -90, -60)
-        cell.write_hoc(os.path.join(base, 'VCN_c08.hoc'))
-        soma.topology()
-
-        #soma.write_hoc('MorphologyFiles/VCN_c18_reparented755.hoc')
-    elif sys.argv[1] == 'P30':
-        print ('P30')
-        base = 'Calyx_Terminals/VCN_P30/Morphology'
-        # somafile = os.path.join(base, 'P30_cellbody_scaled.swc')
-        # soma = SWC(somafile, types={1:'soma', 2:'axon', 3:'dendrite'})
-        # soma.set_type(1)
-        # soma.data['r'] *= 0.1  # this data was recorded as diameter
-     
-        axon = SWC(os.path.join(base, 'input1_axon_scaled.swc'))
-        axon.set_type(2)
-        axon.scale(0.11, 0.11, 0.11, 0.11/2.)
-        axon.translate(-20, -180, -20)
-        collateral = SWC(os.path.join(base, 'input1_collat_scaled.swc'))
-        collateral.set_type(2)
-        collateral.scale(0.11, 0.11, 0.11, 0.11/2.)
-        collateral.translate(-20, -180, -20)
-        calyx = SWC(os.path.join(base, 'input_scaled.swc'))
-        calyx.scale(0.11, 0.11, 0.11, 0.11/2.)
-        calyx.translate(-20, -180, -20)
-        calyx.set_type(3)
-        #dend.reparent(755)
-        calyxbody = calyx.copy()
-        calyxbody.connect(1, axon)
-        #axon.connect(31, collateral)
-#       calyx.connect(78, dend)
-        # correct for shrinkage
-        #s = 1.0 / 0.86 # 0.75
-        #cell.scale(s, s, s, s)
-        calyx.write_hoc(os.path.join('MorphologyFiles', 'P30_calyx.hoc'))
-        
-        calyx.topology()
-    else:
-        fn = Path(sys.argv[1])
-        cell = SWC(str(fn))
-        cell.write_hoc(Path(fn.parent, fn.name+'.hoc'))
+    s = SWC(filename=Path(sys.argv[1]))
+    s.topology()
+    s.write_hoc(Path(sys.argv[1]).with_suffix('.hoc'))
