@@ -33,7 +33,7 @@ leak_erev        -65    [1]     -65    [1]     -65    [1]    -65    [2]    -65  
 na_type          nacncoop [1]   nacncoop  [1]  nacncoop [1]  nacncoop [3]  nacncoop [1] 
 ih_type          ihvcn  [1]     ihvcn  [1]     ihvcn  [1]    ihvcn  [2]    ihvcn  [1] 
 soma_Cap         26.0   [1]     26.0   [1]     25.0   [1]    25.0   [2]    25.0   [1] 
-nacncoop_vshift  2.0    [1]     0.0    [1]     0.0    [1]    0.0    [1]    0.0    [1]
+nacncoop_vshift  0.0    [1]     0.0    [1]     0.0    [1]    0.0    [1]    0.0    [1]
 e_k              -84    [1]     -84    [1]     -84    [1]    -70    [3]    -84    [1] 
 e_na             50.    [1]     50.    [1]     50.    [1]    55.    [3]    50.    [1] 
 ih_eh            -43    [1]     -43    [1]     -43    [1]    -43    [2]    -43    [1] 
@@ -71,13 +71,13 @@ Conductances will be calculated from the Model derived from Xie and Manis 2013 f
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
                    axon           unmyelinatedaxon     myelinatedaxon     initialsegment    hillock     soma        dendrite         primarydendrite    secondarydendrite
                                                                                                                                                                                                       
-nacncoop_gbar      3.0 [1]        3.0 [1]              0.0 [1]            5.0 [1]           5.0 [1]     1.0 [1]     0.5 [1]          0.50 [1]           0.25 [1]       
+nacncoop_gbar      1.0 [1]        5.0 [1]              1.0 [1]            5.0 [1]           5.0 [1]     1.0 [1]     0.5 [1]          0.50 [1]           0.25 [1]       
 kht_gbar           1.0 [1]        2.0 [1]              0.01 [1]           2.0 [1]           2.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.25 [1]       
 klt_gbar           1.0 [1]        1.0 [1]              0.01 [1]           1.0 [1]           1.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.25 [1]       
 ihvcn_gbar         0.0 [1]        0.0 [1]              0.0 [1]            0.5 [1]           0.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.5 [1]       
 leak_gbar          1.0 [1]        0.25 [1]             0.25e-3 [1]        1.0 [1]           1.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.5 [1]       
 leak_erev          -65. [1]       -65. [1]             -65. [1]           -65. [1]          -65. [1]    -65. [1]    -65. [1]         -65. [1]           -65. [1]      
-nacncoop_vshift    0.0  [1]       0.0  [1]             0.0 [1]            2.0  [1]          5.0  [1]    1.0 [1]     0.0 [1]          0.0 [1]            0.0 [1]       
+nacncoop_vshift    0.0  [1]       0.0  [1]             0.0 [1]            0.0  [1]          0.0  [1]    0.0 [1]     0.0 [1]          0.0 [1]            0.0 [1]       
 na_type            nacncoop       nacncoop             nacncoop           nacncoop          nacncoop    nacncoop    nacncoop            nacncoop              nacncoop
 ih_type            ihvcn          ihvcn                ihvcn              ihvcn             ihvcn       ihvcn       ihvcn            ihvcn              ihvcn                            
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------
