@@ -67,20 +67,27 @@ class SWC(object):
         self.scales = scales
         
         self.sectypes = {
-            0: 'undefined',
+          #  0: 'undefined',
             1: 'soma',
             2: 'axon',
-            3: 'basal_dendrite',
-            4: 'apical_dendrite',
-            5: 'custom', # (user-defined preferences)
-            6: 'unspecified_neurites',
-            7: 'glia_processes', # who knows why this is in here… 
+            3: 'dendrite', # 'basal_dendrite',
+            4: 'dendrite', # 'apical_dendrite',
+            5: 'dendrite', #'custom', # (user-defined preferences)
+            #6: 'unspecified_neurites',
+            #7: 'glia_processes', # who knows why this is in here… 
             10: 'hillock',
             11: 'unmyelinatedaxon',
-            12: 'hub',
-            13: 'proximal_dendrite',
-            14: 'distal_dendrite',
+            12: 'dendrite', # 'hub',
+           # 13: 'proximal_dendrite',
+            #14: 'distal_dendrite',
         }
+        
+        self.converts = {'basal_dendrite': 'dendrite',
+                    'apical_dendrite': 'dendrite',
+                    'hub': 'dendrite',
+                    'proximal_dendrite': 'dendrite',
+                    'distal_dendrite': 'dendrite',
+                }
         
         if types is not None:
             self.sectypes.update(types)
@@ -227,12 +234,18 @@ class SWC(object):
             hocappend(f"// Scaling: x: {self.scales['x']:f}, y: {self.scales['y']:f}, z: {self.scales['z']:f}, r: {self.scales['r']:f}")
         hoc.append('')
         sectypes = self.sectypes.copy()
+        print('sectypes: ', sectypes)
         for t in np.unique(self.data['type']):
+            print(t)
             if t not in sectypes:
                 sectypes[t] = 'type_%d' % t
         # create section lists
+        screated = []
         for t in list(sectypes.values()):
+            if t in screated:
+                continue
             hoc.extend([f"objref {t:s}\n{t:s} = new SectionList()"])
+            screated.append(t)
         hoc.append('')
         # create sections
         sects = self.sections
@@ -343,7 +356,7 @@ class SWC(object):
                 this_indent = indent[:-2] + "└─ "
                 indent =      indent[:-2] + "   │  "
                 
-                
+            
             typ = self.sectypes[self[sec[0]]['type']]
             if len(sec) > 10:
                 secstr = "%s,...%s" % (str(tuple(sec[:3]))[:-1], str(tuple(sec[-3:]))[1:])
