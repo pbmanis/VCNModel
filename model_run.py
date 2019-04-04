@@ -197,6 +197,7 @@ class ModelRun():
         self.Params['soma_autoinflate'] = False
         self.Params['dendrite_inflation'] = 1.0
         self.Params['dendrite_autoinflate'] = False
+        self.Params['substitute_inputs'] = ''
         self.Params['lambdaFreq'] = 2000.  # Hz for segment number
         self.Params['sequence'] = '' # sequence for run - may be string [start, stop, step]
         # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
@@ -325,8 +326,12 @@ class ModelRun():
             print('Simulation filename: ', self.Params['simulationFilename'])
         
         if self.Params['runProtocol'].startswith('runAN') or self.Params['runProtocol'] == 'initAN':
+            if self.Params['substitute_inputs'] == '':
+                inputs = 'self'
+            else:
+                inputs = self.Params['substitute_inputs']
             if self.Params['initANStateFile'] is None:
-                fn = f"ANneuronState_{namePars:s}_{self.Params['ANSynapseType']:s}.dat"
+                fn = f"ANneuronState_{namePars:s}_inp={inputs:s}_{self.Params['ANSynapseType']:s}.dat"
                 aninitdir= Path(self.baseDirectory, self.cellID,
                                     self.initDirectory)
                 self.Params['initANStateFile'] = Path(aninitdir, fn)
@@ -345,9 +350,8 @@ class ModelRun():
                 addarg = '_mean'
             elif self.Params['spirou'] == 'all=mean':
                 addarg = '_allmean'
-            
             print('soundtype: ', self.Params['soundtype'])
-            fn = f"AN_Result_{self.cellID:s}_{addarg:s}_{self.Params['ANSynapseType']:s}"
+            fn = f"AN_Result_{self.cellID:s}_inp={inputs:s}_{addarg:s}_{self.Params['ANSynapseType']:s}"
             fn += f"_{self.Params['nReps']:03d}_{self.Params['soundtype']:s}"
             fn += f"_{int(self.Params['dB']):03d}dB_{self.Params['F0']:06.1f}"
             if self.Params['soundtype'] in ['SAM', 'sam']:
@@ -1836,6 +1840,8 @@ if __name__ == "__main__":
             help='Specify factor by which to inflate total dendritic AREA')
     parser.add_argument('--dendrite-autoinflate', action='store_true', dest='dendrite_autoinflate', default=False,
             help='Automatically inflate dendrite area based on table')
+    parser.add_argument('--substitute_inputs', type=str, default='', dest=substitute,
+            help='Substitute inputs from cell onto the target cell')
 
     parser.add_argument('-a', '--AMPAScale', type=float, default=1.0, dest='AMPAScale',
         help='Set AMPAR conductance scale factor (default 1.0)')
