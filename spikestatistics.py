@@ -5,8 +5,8 @@ In all functions below, spikes is a sorted list of spike times
 '''
 from __future__ import print_function
 from numpy import *
-from brian.units import check_units, second
-from brian.stdunits import ms, Hz
+from brian2.units import check_units, second
+from brian2.units.stdunits import ms, Hz
 from operator import itemgetter
 
 __all__ = ['firing_rate', 'CV', 'correlogram', 'autocorrelogram', 'CCF', 'ACF', 'CCVF', 'ACVF', 'group_correlations', 'sort_spikes',

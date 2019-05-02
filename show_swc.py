@@ -29,7 +29,7 @@ from parse_hoc import ParseHoc
 parser = argparse.ArgumentParser(description='SWC/HOC renderer')
 parser.add_argument(type=str, default='n', dest='mode',
                     # choices=['s', 'c', 'n']
-                    help='Experimental database for analysis')
+                    help='mode')
 parser.add_argument('-n', dest='cellname', type=str, default='None',
                         help='Specificy a single cell name when plotting')
 parser.add_argument('-t', '--translate', action='store_true', dest='translate',
@@ -42,6 +42,8 @@ parser.add_argument('-f', '--file', type=str, default='None',
 
 parser.add_argument('-F', '--FILENAME', type=str, default='None', dest='filename',
                     help="just display the specified file on the path")
+parser.add_argument('--topology', action='store_true', dest='topology',
+                    help='Just print topology via neuron')
                     
 args = parser.parse_args()
 mode = args.mode # mode contains letters 's' (swc), 'n' (new coords) or 'c' (cell reconstruction)
@@ -61,6 +63,16 @@ Path.mkdir(newcoorddir, exist_ok=True)
 coorfile = pd.read_excel(newcoords, sheet='Sheet1')
 
 PH = ParseHoc()
+if args.topology and args.filename is not None:
+    import neuron
+    from neuron import h
+    neuron.h.hoc_stdout('/dev/null')  # prevent junk from printing while reading the file
+    success = neuron.h.load_file(str(args.filename))
+    neuron.h.hoc_stdout()
+
+    h.topology()
+    exit()
+    
 
 if args.file is not 'None':
     f = Path(basedir, args.file)
@@ -79,7 +91,7 @@ if args.file is not 'None':
     exit()
 
 if args.filename is not 'None':
-    f = Path(basedir, args.file)
+    f = Path(args.file)
     
     renderer = 'mayavi'
     print('args.filename: ')

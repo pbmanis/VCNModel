@@ -197,6 +197,7 @@ class ModelRun():
         self.Params['soma_autoinflate'] = False
         self.Params['dendrite_inflation'] = 1.0
         self.Params['dendrite_autoinflate'] = False
+        self.Params['substitute_inputs'] = ''
         self.Params['lambdaFreq'] = 2000.  # Hz for segment number
         self.Params['sequence'] = '' # sequence for run - may be string [start, stop, step]
         # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
@@ -308,6 +309,7 @@ class ModelRun():
             namePars += f"_soma={self.Params['soma_inflation']:.3f}"
         if self.Params['dendrite_inflation'] != 1.0:
             namePars += f"_dend={self.Params['dendrite_inflation']:.3f}"
+        
         if self.Params['runProtocol'] in ['initIV', 'initandrunIV', 'runIV']:
             if self.Params['initIVStateFile'] is None:
                 fn = f"IVneuronState_{namePars:s}.dat"
@@ -322,16 +324,19 @@ class ModelRun():
             self.mkdir_p(outPath) # confirm that output path exists
             self.Params['simulationFilename'] = Path(outPath, f"{self.cellID:s}_pulse_{namePars:s}_monitor.p")
             print('Simulation filename: ', self.Params['simulationFilename'])
-               
         
-        if self.Params['runProtocol'].startswith('runAN'):
+        if self.Params['runProtocol'].startswith('runAN') or self.Params['runProtocol'] == 'initAN':
+            if self.Params['substitute_inputs'] == '':
+                inputs = 'self'
+            else:
+                inputs = self.Params['substitute_inputs']
             if self.Params['initANStateFile'] is None:
-                fn = f"ANneuronState_{namePars:s}_{self.Params['ANSynapseType']:s}.dat"
+                fn = f"ANneuronState_{namePars:s}_inp={inputs:s}_{self.Params['ANSynapseType']:s}.dat"
                 aninitdir= Path(self.baseDirectory, self.cellID,
                                     self.initDirectory)
                 self.Params['initANStateFile'] = Path(aninitdir, fn)
                 self.mkdir_p(aninitdir) # confirm existence of that file  
-                print('IV Initialization file: ', self.Params['initANStateFile'])
+                print('AN Initialization file: ', self.Params['initANStateFile'])
                    
             outPath = Path('VCN_Cells', self.cellID, self.simDirectory, 'AN')
             self.mkdir_p(outPath) # confirm that output path exists
@@ -345,9 +350,8 @@ class ModelRun():
                 addarg = '_mean'
             elif self.Params['spirou'] == 'all=mean':
                 addarg = '_allmean'
-            
             print('soundtype: ', self.Params['soundtype'])
-            fn = f"AN_Result_{self.cellID:s}_{addarg:s}_{self.Params['ANSynapseType']:s}"
+            fn = f"AN_Result_{self.cellID:s}_inp={inputs:s}_{addarg:s}_{self.Params['ANSynapseType']:s}"
             fn += f"_{self.Params['nReps']:03d}_{self.Params['soundtype']:s}"
             fn += f"_{int(self.Params['dB']):03d}dB_{self.Params['F0']:06.1f}"
             if self.Params['soundtype'] in ['SAM', 'sam']:
@@ -457,27 +461,39 @@ class ModelRun():
             from cnmodel import data
             if self.Params['modelName'] == 'XM13nacncoop':
                 import data_XM13nacncoop as CHAN
+                nach = 'nacncoop'
                 changes = data.add_table_data('XM13nacncoop_channels', row_key='field', col_key='model_type',
                                species='mouse', data=CHAN.ChannelData)
                 changes_c = data.add_table_data('XM13nacncoop_channels_compartments', row_key='parameter', col_key='compartment',
                         species='mouse', model_type='II', data=CHAN.ChannelCompartments)
             elif self.Params['modelName'] == 'XM13':
                 import data_XM13 as CHAN
+                nach = 'nav11'
                 changes = data.add_table_data('XM13_channels', row_key='field', col_key='model_type', 
                                species='mouse', data=CHAN.ChannelData)
                 changes_c = data.add_table_data('XM13_channels_compartments', row_key='parameter', col_key='compartment',
                         species='mouse', model_type='II', data=CHAN.ChannelCompartments)
             elif self.Params['modelName'] == 'XM13nacn':
                 import data_XM13nacn as CHAN
-                changes = data.add_table_data('XM13_channels', row_key='field', col_key='model_type', 
+                nach = 'nacn'
+                changes = data.add_table_data('XM13nacn_channels', row_key='field', col_key='model_type', 
                                species='mouse', data=CHAN.ChannelData)
-                changes_c = data.add_table_data('XM13_channels_compartments', row_key='parameter', col_key='compartment',
+                changes_c = data.add_table_data('XM13nacn_channels_compartments', row_key='parameter', col_key='compartment',
+                        species='mouse', model_type='II', data=CHAN.ChannelCompartments)
+            elif self.Params['modelName'] == 'XM13nabu':
+                import data_XM13nabu as CHAN
+                nach = 'nabu'
+                print('YAHOO nabu')
+                changes = data.add_table_data('XM13nabu_channels', row_key='field', col_key='model_type', 
+                               species='mouse', data=CHAN.ChannelData)
+                changes_c = data.add_table_data('XM13nabu_channels_compartments', row_key='parameter', col_key='compartment',
                         species='mouse', model_type='II', data=CHAN.ChannelCompartments)
             data.report_changes(changes)
             data.report_changes(changes_c)
             self.post_cell = cells.Bushy.create(morphology=str(filename), decorator=Decorator,
                     species=self.Params['species'], 
-                    modelName=self.Params['modelName'], modelType=self.Params['modelType'])
+                    modelName=self.Params['modelName'], modelType=self.Params['modelType'], 
+                    nach=nach)
         elif self.Params['cellType'] in ['tstellate', 'TStellate']:
             print('Creating a t-stellate cell (run_model) ')
             self.post_cell = cells.TStellate.create(morphology=str(filename), decorator=Decorator,
@@ -614,7 +630,7 @@ class ModelRun():
 
     def run_model(self, par_map=None):
         if not self.setup:
-            self.setup_model(par_mnap=par_map)
+            self.setup_model(par_map=par_map)
         if self.Params['runProtocol'] in ['runANPSTH', 'runANSingles']:
             self.Params['run_duration'] = self.Params['pip_duration'] + np.sum(self.Params['pip_start']) + self.Params['pip_offduration']
             
@@ -951,6 +967,7 @@ class ModelRun():
             #                     self.initDirectory, self.Params['initANStateFile'])
             cellInit.get_initial_condition_state(post_cell, tdur=500.,
                 filename=self.Params['initANStateFile'], electrode_site=self.electrode_site, reinit=self.Params['auto_initialize'])
+            print('TESTING; statefile = ', self.Params['initANStateFile'])
             cellInit.test_initial_conditions(post_cell, filename=self.Params['initANStateFile'],
                 electrode_site=self.electrode_site)
             # return
@@ -1764,7 +1781,7 @@ if __name__ == "__main__":
                    default='II', choices=model.modelTypeChoices,
                    help='Define the model type (default: XM13)')
     parser.add_argument('--sgcmodel', type=str, dest='SGCmodelType', action='store',
-                   default='Zilany', choices=model.SGCmodelChoices,
+                   default='cochlea', choices=model.SGCmodelChoices,
                    help='Define the SGC model type (default: Zilany)')
     parser.add_argument('--protocol', '-P', dest='runProtocol', action='store',
                    default='runIV', choices=model.protocolChoices,
@@ -1823,6 +1840,8 @@ if __name__ == "__main__":
             help='Specify factor by which to inflate total dendritic AREA')
     parser.add_argument('--dendrite-autoinflate', action='store_true', dest='dendrite_autoinflate', default=False,
             help='Automatically inflate dendrite area based on table')
+    parser.add_argument('--substitute_inputs', type=str, default='', dest=substitute,
+            help='Substitute inputs from cell onto the target cell')
 
     parser.add_argument('-a', '--AMPAScale', type=float, default=1.0, dest='AMPAScale',
         help='Set AMPAR conductance scale factor (default 1.0)')
