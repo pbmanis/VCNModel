@@ -5,6 +5,9 @@ displayresult shows the results of a model_run. Just enter the filename in the f
 
 from __future__ import print_function
 
+import re
+import matplotlib
+matplotlib.use('Qt4Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
@@ -26,6 +29,9 @@ import seaborn
 #plt.style.use('seaborn-muted')
 from brian2.units import check_units, second
 from brian2.units.stdunits import ms, Hz
+
+re_c10 = re.compile('_inp=VCN_c10_')
+re_self = re.compile('_inp=self_')
 
 SC = cell_config.CellConfig()
 
@@ -83,14 +89,13 @@ def plot_revcorr(p, ax, ax2, respike=False, thr=-20., width=4.0):
     h.close()
     seaborn.set_style('ticks')
     syninfo = SC.VCN_Inputs['VCN_{0:s}'.format(p)]
-
     if not respike:
         st = d[p]['spikeTimes']
     else:
         st = {}
-        print(d.keys())
-        print(d[p].keys())
-        print(d[p]['trials'][0].keys())
+        # print(d.keys())
+        # print(d[p].keys())
+        # print(d[p]['trials'][0].keys())
         for k in d[p]['trials'].keys():
             trd = d[p]['trials'][k]
             sv = trd['somaVoltage']
@@ -106,7 +111,8 @@ def plot_revcorr(p, ax, ax2, respike=False, thr=-20., width=4.0):
         st = d[p]['trials'][n]['spikeTimes']
         ndet0 = ndet0 + len(st)
         
-    print('Detected %d and %d spikes', ndet0, ndet1)
+    print(f'Detected {ndet1:d} AN spikes')
+    print(f'Detected {ndet0:d} Postsynaptic spikes')
     ntrials = len(d[p]['trials'].keys())
     print ("# trials: ", ntrials)
     ninputs = len(syninfo[1])
@@ -124,6 +130,7 @@ def plot_revcorr(p, ax, ax2, respike=False, thr=-20., width=4.0):
         sites[isite] = int(np.around(area*SC.synperum2))
         
     summarySiteTC = {}
+    maxtc = 0
     for isite in range(ninputs):  # for each ANF input (get from those on first trial)
         for trial in range(ntrials):  # sum across trials
             stx = d[p]['trials'][trial]['spikeTimes']  # get postsynaptic spike train for this trial
@@ -132,39 +139,55 @@ def plot_revcorr(p, ax, ax2, respike=False, thr=-20., width=4.0):
             andirac = np.zeros(int(200./binw)+1)
             if trial == 0:
                 C = SPKS.correlogram(stx, anx, width=xwidth, bin=binw, T=None)
-                TC = SPKS.total_correlation(stx, anx, width=tcwidth, T=None)
+                TC = SPKS.total_correlation(anx, stx, width=tcwidth, T=None)
                 if np.isnan(TC):
                     TC = 0.
                 # definition: spike_triggered_average(spikes,stimulus,max_interval,dt,onset=None,display=False):
                 # C = SPKS.spike_triggered_average(st[trial]*ms, andirac*ms, max_interval=width*ms, dt=binw*ms)
             else:
                 C = C + SPKS.correlogram(stx, anx, width=xwidth, bin=binw, T=None)
-                tct = SPKS.total_correlation(stx, anx, width=tcwidth, T=None)
+                tct = SPKS.total_correlation(anx, stx, width=tcwidth, T=None)
                 if ~np.isnan(tct):
                     TC = TC + tct
                 # C = C + SPKS.spike_triggered_average(st[trial]*ms, andirac*ms, max_interval=width*ms, dt=binw*ms)
         nc = int(len(C)/2)
         TC = TC/len(st)
-        print('TC: ', TC)
         summarySiteTC[isite] = TC
         color = plt.cm.viridis(norm(sites, isite))
-        print(tx)
-        print('nc: ', nc)
-        print(C[:nc])
+        ax.set_facecolor((0.7, 0.7, 0.7))
+        # print(tx)
+        # print('nc: ', nc)
+        # print(C[:nc])
         ax.plot(tx, C[:nc], color=color, label=('Input {0:2d} N={1:3d}'.format(isite, int(sites[isite]))),
             linewidth=0.75)
         tx2 = np.array([0.2, 0.8])
         ax2.plot(tx2, TC*np.ones_like(tx2), color=color, linewidth=2)
+        if TC > maxtc:
+            maxtc = TC
 
     print('finished inputs')
     seaborn.despine(ax=ax)
-    ax.set_ylabel('Rate of coincidences/bin, Hz)', fontsize=6)
-    ax.set_xlabel('T (ms)', fontsize=10)
+    ax.set_ylabel('Rate of coincidences/bin (Hz)', fontsize=12)
+    ax.set_xlabel('T (ms)', fontsize=12)
     ax.set_xlim(-5., 1.)
-    ax2.set_ylabel('Total Correlation W=%.1f-%0.1f'% (tcwidth[0], tcwidth[1]), fontsize=6)
-    ax2.set_ylim(0, 1.)
-    ax.set_title('VCN_{0:s} [{1:d}-{2:d}]\nAmax={3:.1f}'.format(
-        p, int(np.min(sites)), int(np.max(sites)), amax), y=0.9, x=0.02,
+    ax.set_ylim(0, 1)
+    
+
+    ax2.set_ylabel('Total Correlation W=%.1f-%0.1f'% (tcwidth[0], tcwidth[1]), fontsize=12)
+    ax2.set_ylim(0, 1.0) # maxtc*1.2)
+    PH.talbotTicks(ax2, axes='xy',
+                   density=(1.0, 1.0), insideMargin=0.05, pointSize=10, 
+                   tickPlacesAdd={'x': 0, 'y': 1}, floatAdd={'x': 0, 'y': 1})
+                   
+    a = re_self.search(fn[p])
+    b = re_c10.search(fn[p])
+    if a is not None:
+        inp = 'VCN_c09'
+    elif b is not None:
+        inp = 'VCN_c10'
+    else:
+        inp = "Undefined"
+    ax.set_title(f'VCN_{p:s} input={inp:s} [{int(np.min(sites)):d}-{int(np.max(sites)):d}]\nAmax={amax:.1f}', y=0.9, x=0.02,
         horizontalalignment='left', fontsize=6)
     return summarySiteTC, sites
 
@@ -201,7 +224,7 @@ def plot_SAC():
     # d[cell] has keys: ['inputSpikeTimes', 'somaVoltage', 'spikeTimes', 'time', 'dendriteVoltage', 'stimInfo', 'stimWaveform']
     #print 'data keys: ', d.keys()
     #print len(d['time'])
-    fmod = d[patterns[0]]['stimInfo']['fmod']  # modulation frequency
+    fmod = d[patterns[0]]['stimInfo']['mod']  # modulation frequency
     sacht = 2.5
     sacmax = 100
     phaseht = 15
@@ -289,7 +312,8 @@ if __name__ == '__main__':
     fn = {}
     for g in gbcs:
         fn['c{0:s}'.format(g)] = 'AN_Result_VCN_c{0:s}_delays_N050_040dB_4000.0_{1:2s}.p'.format(g, SR)
-    fn['c09'] = 'AN_Result_VCN_c09_XM13nacncoop_II_soma=1.489_all_multisite_020_tonepip_030dB_16000.0_MS.p'
+    fn['c09'] = 'AN_Result_VCN_c09_inp=self_XM13nacncoop_II_soma=1.489_dend=1.236_all_multisite_050_tonepip_030dB_16000.0_MS.p'
+    # 'AN_Result_VCN_c09_XM13nacncoop_II_soma=1.489_all_multisite_020_tonepip_030dB_16000.0_MS.p'
     patterns = fn.keys()
     print ('patterns: ', patterns)
     p = 'c09'

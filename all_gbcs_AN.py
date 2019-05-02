@@ -6,6 +6,7 @@ from __future__ import print_function
 from subprocess import call
 import os
 import sys
+import datetime
 from pathlib import Path
 import matplotlib
 matplotlib.use('Qt4Agg')
@@ -16,7 +17,8 @@ rc('text', usetex=False)
 import pickle
 from collections import OrderedDict
 import all_gbc_AN as oneAN
-default_modelName = 'XM13'
+
+default_modelName = 'XM13nacncoop'
 if len(sys.argv) > 1:
     modelName = sys.argv[1]
 else:
@@ -28,13 +30,15 @@ M = mrun.ModelRun() # create an instance  (but do NOT run simulations - just to 
 
 runs = True
 
-def setuppars(cell, modelType, modelName, protocol, nreps, inflateflag):
+def setuppars(cell, modelType, modelName, protocol, nreps, inflateflag, inputpattern=None):
     M.Params['cell'] = cell
-    M.Params['Parallel'] = True
+    M.Params['Parallel'] = False
     M.Params['modelType'] = modelType
     M.Params['modelName'] = modelName
     M.Params['runProtocol'] = protocol
-    M.Params['soma_autoinflate'] = inflateflag   
+    M.Params['soma_autoinflate'] = inflateflag
+    M.Params['dendrite_autoinflate'] = inflateflag
+    M.Params['inputPattern'] = inputpattern
     
     M.Params['SGCmodelType'] = 'cochlea'
     M.Params['soundtype'] = 'tonepip'
@@ -54,14 +58,14 @@ print("all_gbc_names_AN")
 print('Model Name: {:s}'.format(modelName))
 modelType = 'II'
 protocol = 'runANPSTH'
-require_initialize=False
+require_initialize = True
 inflateflag = True
 testing = False
 forcerun = False  # set true to force a re-run of the simulation
 #PH.show_figure_grid(P.figure_handle)
 baseDirectory = 'VCN_Cells'
 simDirectory = 'Simulations'
-nrep = 25
+nrep = 50
 SR = 'MS'
 testflag = False
 
@@ -91,11 +95,12 @@ sizer = OrderedDict([('VCN_c08', {'pos': [l1, wid, yp[0], ht]}),
 # gr = [(a, a+1, 0, 1) for a in range(0, 8)]   # just generate subplots - shape does not matter
 
 gbc_names = [s[-2:] for s in sizer.keys()]
-print(len(sizer.keys()))
-print(sizer.keys())
+gbc_names = ['09']
+
 P = PH.regular_grid(6, 2, figsize=(6,8), panel_labels=list(sizer.keys()), labelposition=(0.05, 0.95))
 # P = PH.Plotter(rcshape=sizer, label=False, figsize=(6, 8), labeloffset=[0.6, 0.])
 
+inputPattern = "VCN_c10" # None # 'VCN_c10'
 
 for gbc in gbc_names:
     if gbc == 'ne':
@@ -111,7 +116,8 @@ for gbc in gbc_names:
     
     # ANR = oneAN.OneANRun(gbc, modelName, modelType, protocol, SR, nrep, forcerun=forcerun, testing=testing, inflateflag=inflateflag)
     runpars = {'gbc': gbc, 'modelName': modelName, 'modelType': modelType, 'protocol': protocol,
-    'SR': SR, 'nrep': nrep, 'initialize': require_initialize, 'forcerun': forcerun, 'testing': testing, 'inflateflag': inflateflag}
+    'SR': SR, 'nrep': nrep, 'initialize': require_initialize, 'forcerun': forcerun, 'testing': testing, 
+    'inflateflag': inflateflag, 'inputPattern': inputPattern}
     with open('oneanrun.p', 'wb') as fh:
         pickle.dump(runpars, fh)
 
@@ -125,7 +131,7 @@ for gbc in gbc_names:
         call(['python', 'all_gbc_AN.py'])
         print('call done')
     
-    pars = setuppars(cell, modelType, modelName, protocol, nrep, inflateflag)
+    pars = setuppars(cell, modelType, modelName, protocol, nrep, inflateflag, inputpattern=inputPattern)
     sfile = pars.Params['simulationFilename']  # name from that simulation
     lastsim = None
     print(f"*** looking for simulation file: {str(sfile):s}")
@@ -147,4 +153,16 @@ for gbc in gbc_names:
         # print(dx['trials'][trial]['somaVoltage'])
         P.axdict[cell].plot(dx['trials'][trial]['time'], dx['trials'][trial]['somaVoltage'], linewidth=1.0)
     P.axdict[cell].set_xlim(0., 250.)
+sinflate='soma_rawHOC'
+dinflate='dend_rawHOC'
+if M.Params['soma_autoinflate']:
+    sinflate = 'soma_scaled'
+if M.Params['dendrite_autoinflate']:
+    dinflate='dend_scaled'
+d = datetime.datetime.now()
+outfile = f'GBC_IVs_{modelName:s}_{modelType:s}_{sinflate:s}_{dinflate:s}.pdf'
+P.figure_handle.suptitle(f"{outfile:s}  {d.strftime('%H:%M:%S %d-%b-%Y'):s}", fontsize=8)
+
+
+mpl.savefig(outfile)
 mpl.show()

@@ -13,7 +13,8 @@ from pathlib import Path
 import model_run as mrun
 
 class OneANRun(object):
-    def __init__(self, gbc_name, modelName, modelType, protocol, SR, nrep, forcerun=False, testing=False, inflateflag=False, initialize=False):
+    def __init__(self, gbc_name, modelName, modelType, protocol, SR, nrep, forcerun=False, 
+        testing=False, inflateflag=False, initialize=False, inputPattern=None):
         self.forcerun = forcerun  # force the run to be redone
         self.initialize = initialize # force initialization
         self.testflag = testing  # 
@@ -34,6 +35,7 @@ class OneANRun(object):
         print('      forcerun: ', self.forcerun)
         print('      testflag: ', self.testflag)
         print('      initialize: ', initialize)
+        print('      inputPattern: ', inputPattern)
         # anresultfilenames = {}
         # for i, n in enumerate(gbc_nos):
         #     anresultfilenames[i] = 'AN_Result_VCN_c{0:s}_delays_N{1:03d}_040dB_4000.0_{2:2s}.p'.format(n, nrep, SR)
@@ -59,7 +61,9 @@ class OneANRun(object):
         M.Params['modelName'] = modelName
         M.Params['runProtocol'] = protocol
         M.Params['soma_autoinflate'] = self.inflateflag   
+        M.Params['dendrite_autoinflate'] = self.inflateflag   
         M.Params['ANSynapseType'] = 'multisite'
+        M.Params['inputPattern'] = inputPattern
         
         M.Params['SGCmodelType'] = 'cochlea'
         M.Params['soundtype'] = 'tonepip'
@@ -117,5 +121,6 @@ if __name__ == '__main__':
         d = pickle.load(fh)
     
     OneANRun(d['gbc'], d['modelName'], d['modelType'], d['protocol'], d['SR'], d['nrep'], 
-        forcerun=d['forcerun'], testing=d['testing'], inflateflag=d['inflateflag'], initialize=d['initialize'])
+        forcerun=d['forcerun'], testing=d['testing'], inflateflag=d['inflateflag'], initialize=d['initialize'], 
+        inputPattern=d['inputPattern'])
     

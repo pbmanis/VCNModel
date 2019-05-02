@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser(description='SWC/HOC renderer')
 parser.add_argument(type=str, default='n', dest='mode',
                     # choices=['s', 'c', 'n']
                     help='mode')
-parser.add_argument('-n', dest='cellname', type=str, default='None',
+parser.add_argument('-n', dest='cellnames', type=str, default='None', nargs='+',
                         help='Specificy a single cell name when plotting')
 parser.add_argument('-t', '--translate', action='store_true', dest='translate',
                         help='compute translation between cells')
@@ -80,12 +80,14 @@ if args.file is not 'None':
     renderer = 'mayavi'
     fighandle = mlab.figure(bgcolor=(0,0,0), fgcolor=(1,1,1), size=(800, 800))
     HR.Render(command='cylinders', renderer=renderer, hoc_file=f, fax=fax,
-                 fighandle=fighandle, somaonly=True, color=(0.7, 0.7, 0.7), label=args.file, flags=['notext', 'norefline', 'norefaxes'])
+                 fighandle=fighandle, somaonly=True, color=(0.7, 0.7, 0.7), label=args.file, 
+                 flags=['notext', 'norefline', 'norefaxes'])
     fswc =  Path('/Users/pbmanis/Desktop/Python', 'VCNModel', 'ASA', 'CellBodySWCs')
     fn = Path(args.file).stem[:7]+'_CellBody01.hoc'
     fswc = Path(fswc, fn)
     HR.Render(command='cylinders', renderer=renderer, hoc_file=fswc, fax=fax,
-                 fighandle=fighandle, somaonly=True, color=(0.9, 0.0, 0.0), label='SWC Soma', flags=['notext', 'norefline', 'norefaxes'])
+                 fighandle=fighandle, somaonly=True, color=(0.9, 0.0, 0.0), label='SWC Soma',
+                 flags=['notext', 'norefline', 'norefaxes'])
 
     mlab.show()
     exit()
@@ -97,7 +99,8 @@ if args.filename is not 'None':
     print('args.filename: ')
     fighandle = mlab.figure(bgcolor=(0,0,0), fgcolor=(1,1,1), size=(800, 800))
     HR.Render(command='cylinders', renderer=renderer, hoc_file=args.filename, fax=fax,
-                 fighandle=fighandle, somaonly=True, color=(0.7, 0.7, 1.0), label=Path(args.filename).name, flags=['notext', 'norefline', 'norefaxes'])
+                 fighandle=fighandle, somaonly=True, color=(0.7, 0.7, 1.0), label=Path(args.filename).name,
+                  flags=['notext', 'norefline', 'norefaxes'])
     # fswc =  Path('/Users/pbmanis/Desktop/Python', 'VCNModel', 'ASA', 'CellBodySWCs')
     mlab.show()
     exit()
@@ -176,7 +179,7 @@ soma.append()"""
         # morphfiles0.append(newf)
     # allfiles.extend(morphfiles0)
 
-colors = [(1,0,0), (0,1,0), (0,0,1), (1,1,0), (0,1,1), (1,0,1), (1,1,1), (0.6, 0.6, 0), (0., 0.6, 0.6),
+colors = [(1,0,1), (0,1,0), (1,1,0), (0,0,1), (0,1,1), (1,0,1), (1,1,1), (0.6, 0.6, 0), (0., 0.6, 0.6),
             (0.6, 0, 0.6)]*8
 colormap = {}
 
@@ -196,8 +199,14 @@ if 'x' in mode:  # get translated SWCs to plot
     allfiles.extend(morphfiles_swc)
     
 if 'c' in mode:  # get Cells and swcs 
-    if args.cellname == 'test.hoc':
-        morphfiles_cell = [Path(args.cellname)]
+    if args.cellnames[0] == 'test.hoc':
+        morphfiles_cell = [Path(args.cellname[0])]
+    elif len(args.cellnames) > 1:
+        morphfiles_cell = []
+        dataPath = Path('/Users/pbmanis/Desktop/Python', 'VCNModel', 'VCN_Cells')
+        # getting from original data sets (full cells):
+        for na in args.cellnames:
+            morphfiles_cell.append(Path(dataPath, f'VCN_c{na:s}', 'Morphology', f'VCN_c{na:s}.hoc'))
     else:
         dataPath = Path('/Users/pbmanis/Desktop/Python', 'VCNModel', 'VCN_Cells')
         # getting from original data sets (full cells):
@@ -349,14 +358,16 @@ else:
     fighandle = None
 
 renders = []
+print(allfiles)
 for i, f in enumerate(allfiles):
     fn = str(f.stem)
     print('FN: ', fn)
-    if args.cellname is not 'None':
-        print(fn, args.cellname)
-        if not args.cellname.startswith('test') and not fn.startswith(args.cellname):
-            print('not available')
-            continue
+    # if args.cellnames is not 'None':
+    #     for i, f in enumerate(args.cellnames):
+    #         print(fn, args.cellnames[i])
+    #     if not args.cellnames[i].startswith('test') and not fn.endsswith(args.cellnames[i]):
+    #         print('not available')
+    #         continue
     if '_untranslated' in fn:
         continue
     gmode = pmode
@@ -366,19 +377,23 @@ for i, f in enumerate(allfiles):
             usemode = 'graph'
             colormap[fn] = (1,1,1)  # and do them in white - we know they are already in position (mostly)
         renders.append(HR.Render(command=usemode, renderer=renderer, hoc_file=f, fax=fax,
-                     fighandle=fighandle, somaonly=True, color=colormap[fn], label=fn, flags=['noaxes', 'nolines', 'notext']))
+                     fighandle=fighandle, somaonly=True, color=colormap[fn], label=fn, 
+                     flags=['noaxes', 'lines', 'notext']))
         if args.original:
             fp = f.parent
             fs = f.stem
             forig = Path(fp, fs+'_original.hoc')
             renders.append(HR.Render(command=usemode, renderer=renderer, hoc_file=forig, fax=fax,
-                     fighandle=fighandle, somaonly=True, color=colormap[fn], label=fn, flags=['noaxes', 'nolines', 'notext']))
+                     fighandle=fighandle, somaonly=True, color=colormap[fn], label=fn, 
+                     flags=['noaxes', 'nolines', 'notext']))
             
     else:
         renders.append(HR.Render(command='cylinders', renderer=renderer, hoc_file=f, fax=fax,
-                     fighandle=fighandle, somaonly=True, color=colormap[fn], label=fn, flags=['noaxes', 'nolines', 'notext']))
+                     fighandle=fighandle, somaonly=True, color=colormap[fn], label=fn, 
+                     flags=['noaxes', 'nolines', 'notext']))
         renders.append(HR.Render(command='graph', renderer=renderer, hoc_file=f, fax=fax,
-                     fighandle=fighandle, somaonly=True, color=(1., 1., 1.), label=fn, flags=['noaxes', 'nolines', 'notext']))
+                     fighandle=fighandle, somaonly=True, color=(1., 1., 1.), label=fn, 
+                     flags=['noaxes', 'nolines', 'notext']))
     if i == 0 and renderer == 'pyqtgraph':
         fighandle = renders[-1].view
     if i == 0 and showOne:

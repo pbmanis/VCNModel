@@ -197,12 +197,11 @@ class ModelRun():
         self.Params['soma_autoinflate'] = False
         self.Params['dendrite_inflation'] = 1.0
         self.Params['dendrite_autoinflate'] = False
-        self.Params['substitute_inputs'] = ''
         self.Params['lambdaFreq'] = 2000.  # Hz for segment number
         self.Params['sequence'] = '' # sequence for run - may be string [start, stop, step]
         # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
         self.Params['SRType'] = self.SRChoices[2]
-        self.Params['SR'] = self.Params['SRType']  # actually used SR: this might be cell-defined, rather than entirely specified from the command line
+        # self.Params['SR'] = self.Params['SRType']  # actually used SR: this might be cell-defined, rather than entirely specified from the command line
         self.Params['inputPattern'] = None # ID of cellinput pattern (same as cellID): for substitute input patterns.
         self.Params['spirou'] = 'all'
         self.Params['runProtocol'] = self.protocolChoices[2]  # testIV is default because it is fast and should be run often
@@ -325,11 +324,11 @@ class ModelRun():
             self.Params['simulationFilename'] = Path(outPath, f"{self.cellID:s}_pulse_{namePars:s}_monitor.p")
             print('Simulation filename: ', self.Params['simulationFilename'])
         
-        if self.Params['runProtocol'].startswith('runAN') or self.Params['runProtocol'] == 'initAN':
-            if self.Params['substitute_inputs'] == '':
+        if self.Params['runProtocol'].startswith('runAN') or self.Params['runProtocol'] == 'initAN' or self.Params['runProtocol'] == 'runANSingles':
+            if self.Params['inputPattern'] is None:
                 inputs = 'self'
             else:
-                inputs = self.Params['substitute_inputs']
+                inputs = self.Params['inputPattern']
             if self.Params['initANStateFile'] is None:
                 fn = f"ANneuronState_{namePars:s}_inp={inputs:s}_{self.Params['ANSynapseType']:s}.dat"
                 aninitdir= Path(self.baseDirectory, self.cellID,
@@ -340,9 +339,6 @@ class ModelRun():
                    
             outPath = Path('VCN_Cells', self.cellID, self.simDirectory, 'AN')
             self.mkdir_p(outPath) # confirm that output path exists
-            ID = self.cellID
-            if self.Params['inputPattern'] is not None:
-                ID += '_%s' % self.Params['inputPattern']
             addarg = namePars
             if self.Params['spirou'] == 'all':
                 addarg += '_all'
@@ -356,10 +352,10 @@ class ModelRun():
             fn += f"_{int(self.Params['dB']):03d}dB_{self.Params['F0']:06.1f}"
             if self.Params['soundtype'] in ['SAM', 'sam']:
                 fn += f"_{self.Params['fmod']:03.1f}_{int(self.Params['dmod']):03d}"
-                fn += f"_{self.Params['SR']:2s}.p"
+                fn += f"_{self.Params['SRType']:2s}.p"
                 ofile = Path(outPath, fn)
             else:
-                fn += f"_{self.Params['SR']:2s}.p"
+                fn += f"_{self.Params['SRType']:2s}.p"
                 ofile = Path(outPath, fn)
             self.Params['simulationFilename'] = ofile
 
@@ -1099,6 +1095,7 @@ class ModelRun():
                      }
                 if self.Params['save_all_sections']:  # save data for all sections
                     allDendriteVoltages[N] = tresults[j]['allsecVec']
+                    
         
         total_elapsed_time = time.time() - self.start_time
 #        total_run_time = time.time() - run_time
@@ -1146,9 +1143,17 @@ class ModelRun():
             Nothing
         
         """
-        print('\n***singles\n')        
+        print('\n****singles****\n')        
         self.start_time = time.time()
-        synapseConfig, celltype = cell_config.makeDict(self.cellID)
+        # cconfig = cell_config.CellConfig()
+        # synapseConfig, celltype = cconfig.makeDict(self.cellID)
+        if self.Params['inputPattern'] is not None:
+            fromdict = self.Params['inputPattern']
+            print('Cell id: %s  using input pattern: %s' % (self.cellID, fromdict))
+        else:
+            fromdict = self.cellID
+        cconfig = cell_config.CellConfig()
+        synapseConfig, celltype = cconfig.makeDict(fromdict)
         nReps = self.Params['nReps']
         threshold = self.Params['threshold'] # spike threshold, mV
         
@@ -1171,14 +1176,18 @@ class ModelRun():
         self.an_setup_time = 0.
         # get the gMax's
         gMax = np.zeros(len(synapse))
+        gMaxNMDA = np.zeros(len(synapse))
+        
         for i, s in enumerate(synapse):
             for p in s.psd.ampa_psd:
                 gMax[i] = p.gmax
-        
+            for p in s.psd.nmda_psd:
+                gMaxNMDA[i] = p.gmax
+        result = {}
         for k in range(nSyns):
             # only enable gsyn on the selected input
             if exclude:
-                tagname = 'ExcludeSyn%03d'
+                tagname = 'ExcludeSyn%03d' % k
                 for i, s in enumerate(synapse):
                     for p in s.psd.ampa_psd:
                         if i == k:
@@ -1186,15 +1195,25 @@ class ModelRun():
                         else:
                             p.gmax = gMax[i]  # leaving the others set
             else:
-                tagname = 'Syn%03d'
+                tagname = 'Syn%03d' % k
                 for i, s in enumerate(synapse):
                     for p in s.psd.ampa_psd:
                         if i != k:
                             p.gmax = 0.  # disable all
+                            p.gmax = 0.
                         else:
                             p.gmax = gMax[i]  # except the chosen one
+                    for p in s.psd.nmda_psd:
+                        if i != k:
+                            p.gmax = 0.  # disable all
+                            p.gmax = 0.
+                        else:
+                            p.gmax = gMaxNMDA[i]  # except the chosen one
             print('Syn #%d   synapse gMax: %f ' % (k, gMax[k]))
-            print('tag: %s' % (tagname % k))
+            for i, s in enumerate(synapse):
+                for p in s.psd.ampa_psd:
+                    print(f"Synapse: {i:d}  gmax={p.gmax:.6f}")
+            print('tag: %s' % tagname)
             
             tresults = [None]*nReps
             
@@ -1212,6 +1231,12 @@ class ModelRun():
                 for j, N in enumerate(range(nReps)):
                     tresults[j] = self.single_an_run(post_cell, j, synapseConfig,
                             stimInfo, seeds, preCell, self.an_setup_time)
+            spikeTimes = {}
+            inputSpikeTimes = {}
+            somaVoltage = {}
+            dendriteVoltage = {}
+            celltime = []
+            stim = {}
             for j, N in enumerate(range(nReps)):
                 celltime.append(tresults[j]['time']) # (self.time)
                 spikeTimes[N] = pu.findspikes(tresults[j]['time'], tresults[j]['Vsoma'], threshold, t0=0.,
@@ -1222,7 +1247,7 @@ class ModelRun():
                 dendriteVoltage[N] = np.array(tresults[j]['Vdend'])
                 stim[N] = np.array(tresults[j]['stim'])
             stimWaveform = np.array(tresults[0]['stim'])
-            
+            stimTimebase = np.array(tresults[0]['stimTimebase'])
             total_elapsed_time = time.time() - self.start_time
     #        total_run_time = time.time() - run_time
             print("Total Elapsed Time = {:8.2f} min ({:8.0f}s)".format(total_elapsed_time/60., total_elapsed_time))
@@ -1230,11 +1255,11 @@ class ModelRun():
             print("Total AN Calculation Time = {:8.2f} min ({:8.0f}s)".format(self.an_setup_time/60., self.an_setup_time))
             print("Total Neuron Run Time = {:8.2f} min ({:8.0f}s)".format(self.nrn_run_time/60., self.nrn_run_time))
             
-            result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes,
+            result[k] = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes,
                 'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'time': np.array(tresults[j]['time']),
-                'stimWaveform': stimWaveform}
+                'stimWaveform': stimWaveform, 'stimTimebase': stimTimebase}
             
-            self.analysis_filewriter(self.Params['cell'], result, tag=tagname % k)
+            self.analysis_filewriter(self.Params['cell'], result[k], tag=tagname)
         if self.Params['plotFlag']:
             self.plot_an(celltime, result)
 
@@ -1268,7 +1293,8 @@ class ModelRun():
         """
         print('\n*** an_run_IO\n')
         self.start_time = time.time()
-        synapseConfig, celltype = cell_config.makeDict(self.cellID)
+        cconfig = cell_config.CellConfig()
+        synapseConfig, celltype = cconfig.makeDict(self.cellID)
         nReps = self.Params['nReps']
         threshold = self.Params['threshold'] # spike threshold, mV
         
@@ -1563,18 +1589,22 @@ class ModelRun():
         
         """
         print('\n*** single_an_run\n')
-               
-        try:
-            cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=self.Params['initANStateFile'],
-                autoinit=self.Params['auto_initialize'])
-        except:
-            print('single_an_run: could not restore initial conditions: try creating again')
-            self.an_run(post_cell, make_an_intial_conditions=True)
-            print('return from inital run initial conditions #2')
-            try:
-                cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=self.Params['initANStateFile'])
-            except:
-                raise ValueError('Failed initialization for cell: ', self.cellID)
+        # self.an_run(post_cell, make_an_intial_conditions=True)
+        cellInit.get_initial_condition_state(self.post_cell, tdur=500.,
+           filename=None, electrode_site=None)
+              
+        # try:
+        #     cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=self.Params['initANStateFile'],
+        #         autoinit=self.Params['auto_initialize'])
+        #     print('### SUCCESS ###')
+        # except:
+        #     print('single_an_run: could not restore initial conditions: try creating again')
+        #     self.an_run(post_cell, make_an_intial_conditions=True)
+        #     print('return from inital run initial conditions #2')
+        #     try:
+        #         cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=self.Params['initANStateFile'])
+        #     except:
+        #         raise ValueError('Failed initialization for cell: ', self.cellID)
 
         # make independent inputs for each synapse
         ANSpikeTimes = []
@@ -1694,15 +1724,15 @@ class ModelRun():
         win = pgh.figure(title='AN Inputs')
         layout = pgh.LayoutMaker(cols=1,rows=2, win=win, labelEdges=True, ticks='talbot')
         for j, N in enumerate(range(len(result))):
-            layout.plot(0, celltime[N], result[N]['somaVoltage'], pen=pg.mkPen(pg.intColor(N, nReps)))
+            layout.plot(0, celltime[N], result[N]['somaVoltage'][0], pen=pg.mkPen(pg.intColor(N, nReps)))
             layout.plot(0, [np.min(celltime[N]), np.max(celltime[N])], [threshold, threshold],
                  pen=pg.mkPen((0.5, 0.5, 0.5), width=0.5))
-            dvdt = np.diff(result[N]['somaVoltage'])/np.diff(celltime[N])  # show in mV/ms
+            dvdt = np.diff(result[N]['somaVoltage'][0])/np.diff(celltime[N])  # show in mV/ms
             layout.plot(1, celltime[N][:-1], dvdt, pen=pg.mkPen(pg.intColor(N, nReps)))
             layout.getPlot(0).setXLink(layout.getPlot(1))
         if 'dendVoltage' in result[N].keys() and result[N]['dendVoltage'] is not None:
             for j, N in enumerate(range(len(result))):
-                layout.plot(0, celltime[N], result[N]['dendVoltage'], pen=pg.mkPen(pg.intColor(N, nReps)),
+                layout.plot(0, celltime[N], result[N]['dendVoltage'][0], pen=pg.mkPen(pg.intColor(N, nReps)),
                     style=pg.QtCore.Qt.DashLine)
         pgh.show()
     
@@ -1718,20 +1748,40 @@ class ModelRun():
         tag : string (default: '')
             tag to insert in filename string
         """
-        k = result[0].keys()
+        k = result.keys()
+        # result can be either a dict, in which case this is one result to write,
+        # or it can be a dict, in which case, each key is a repetition.
         requiredKeys = ['stimInfo', 'spikeTimes', 'inputSpikeTimes', 'somaVoltage', 'time', 'stimWaveform', 'stimTimebase']
-        for rk in requiredKeys:
-            assert rk in k
+        
+        try:
+            for rk in requiredKeys:
+                assert rk in k  # make sure keys are there
+            res_mode = 'syn'
+        except:
+            res_mode = 'reps'
+            
         results = {}
         # results with be a dict with params, stiminfo, and trials as keys
         print('\n*** analysis_filewriter\n')
 
         results['Params'] = self.Params  # include all the parameters of the run too
+        # clean up Parame to remove PosixPath from filenames
+        for v in ['initIVStateFile', 'initANStateFile', 'simulationFilename', 'hocfile']:
+            results['Params'][v] = str(results['Params'][v])
         results['trials'] = result
-        with open(self.Params['simulationFilename'], 'wb') as fh:
+        results['mode'] = res_mode
+        fout = self.Params['simulationFilename']  # base name created by make-filename - do not overwrite
+        if len(tag) > 0:
+            fout = Path(str(fout).replace('_all_', '_'+tag+'_'))
+        if self.Params['tagstring'] is not None:
+            fnb = fout.stem
+            fp = fout.parent
+            fnb = str(fnb) + '_' + self.Params['tagstring']+'.p'
+            fout = Path(fp, fnb)
+        with open(fout, 'wb') as fh:
             pickle.dump(results, fh)
-        print(f"**** Model output written to: ****\n   {str(self.Params['simulationFilename']):s}")
-        self.ANFilename = str(self.Params['simulationFilename'])
+        print(f"**** Model output written to: ****\n   {str(fout):s}")
+        self.ANFilename = str(fout)  # save most rexent value
 
     def get_hoc_file(self, hf):
         if hf.file_loaded is False:
@@ -1814,7 +1864,7 @@ if __name__ == "__main__":
         help=('Specify SR type (from: %s)' % model.SRChoices))
     parser.add_argument('--synapsetype', type=str, default='multisite', dest = 'ANSynapseType',
         choices=model.ANSynapseChoices,
-        help=('Specify AN synpase type (from: %s)' % model.ANSynapseChoices))
+        help=('Specify AN synapse type (from: %s)' % model.ANSynapseChoices))
     parser.add_argument('--depression', type=int, default=0, dest = 'ANSynapticDepression',
         choices=[0, 1],
         help=('Specify AN depression flag for multisite synapses (from: %s)' % str([0, 1])))
@@ -1840,9 +1890,8 @@ if __name__ == "__main__":
             help='Specify factor by which to inflate total dendritic AREA')
     parser.add_argument('--dendrite-autoinflate', action='store_true', dest='dendrite_autoinflate', default=False,
             help='Automatically inflate dendrite area based on table')
-    parser.add_argument('--substitute_inputs', type=str, default='', dest=substitute,
-            help='Substitute inputs from cell onto the target cell')
-
+    parser.add_argument('--tagstring', type=str, default=None, dest='tagstring',
+                    help="Add a tag string to the output filename to distinguish it")
     parser.add_argument('-a', '--AMPAScale', type=float, default=1.0, dest='AMPAScale',
         help='Set AMPAR conductance scale factor (default 1.0)')
     parser.add_argument('--allmodes', action="store_true", default = False, dest = 'all_modes',

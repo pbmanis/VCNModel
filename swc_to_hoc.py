@@ -108,6 +108,7 @@ class SWC(object):
         self.data = np.loadtxt(filename, dtype=self._dtype)
         if self.scales is not None:
             self.scale(x=scales['x'], y=scales['y'], z=scales['z'], r=scales['r'])
+        
 
     def copy(self):
         return SWC(data=self.data.copy(), types=self.sectypes)
@@ -274,9 +275,15 @@ class SWC(object):
             if len(sec) == 1:
                 seg = sects[sec_ids[p]][-1] # get last segement in the parent section
                 rec = self[seg]
+                if rec['r'] < 0.05:
+                    print(f"MIN DIA ENCOUNTERED: {seg:d}, {rec['r']:f}")
+                    rec['r'] = 0.05
                 hoc.append(f"  pt3dadd({rec['x']:f}, {rec['y']:f}, {rec['z']:f}, {rec['r']*2:f})  // seg={seg:d} Singleton repair: to section[sec_ids[p]:d]")
             for seg in sects[sec_id]:
                 rec = self[seg]
+                if rec['r'] < 0.05:
+                    print(f"MIN DIA ENCOUNTERED: {seg:d}, {rec['r']:f}")
+                    rec['r'] = 0.05
                 hoc.append(f"  pt3dadd({rec['x']:f}, {rec['y']:f}, {rec['z']:f}, {rec['r']*2:f})   // seg={seg:d}")
             hoc.append('}')
             
@@ -370,5 +377,5 @@ if __name__ == '__main__':
     if len(sys.argv) < 1:
         exit()
     s = SWC(filename=Path(sys.argv[1]))
-    s.topology()
+    # s.topology()
     s.write_hoc(Path(sys.argv[1]).with_suffix('.hoc'))
