@@ -1,28 +1,16 @@
 #!/bin/bash
 
-#python model_run.py VCN_c08 -P initAN --model XM13 -r 1 --sgcmodel cochlea -S MS -a 1.0 --noparallel
-#python model_run.py VCN_c09 -P initAN -M mGBC -r 1 --sgcmodel cochlea -S MS -a 1.5 --noparallel
-#python model_run.py VCN_c09h -P initAN -M mGBC -r 1 --sgcmodel cochlea -S MS -a 1.5
-#python model_run.py VCN_c09nd -P initAN -M mGBC -r 1 --sgcmodel cochlea -S MS -a 1.5 --noparallel
-#python model_run.py VCN_c17 -P initAN -M mGBC -r 1 --sgcmodel cochlea -S MS -a 3.0 --noparallel
-#python model_run.py VCN_c18 -P initAN -M mGBC -r 1 --sgcmodel cochlea -S MS -a 3.0 --noparallel
-#python model_run.py VCN_c19 -P initAN -M mGBC -r 1 --sgcmodel cochlea -S MS -a 1.5 --noparallel
-#python model_run.py VCN_c20 -P initAN -M mGBC -r 1 --sgcmodel cochlea -S MS -a 1.5 --noparallel
-#python model_run.py VCN_c21 -P initAN -M mGBC -r 1 --sgcmodel cochlea -S MS -a 3.0 --noparallel
-#python model_run.py VCN_c22 -P initAN -M mGBC -r 1 --sgcmodel cochlea -S MS -a 3.0 --noparallel
+modstuffs="-r 50 --fmod 200. --dmod 100. --stimulus SAM"
+stimstuff="-f 16000. --dB 30"
+ANstuff=" --sgcmodel cochlea --SR MS"
+cellstuffs="--type Bushy --modeltype II -M XM13nacncoop -H"
+endbulbs="--inputpattern VCN_c10"
+endbulbs_self=" "
+inflation="--soma-autoinflate --dendrite-autoinflate"
 
-modstuffs="-r 20 --fmod 50. --depth 100. --stimulus SAM"
+python model_run.py VCN_c09 ${cellstuffs} ${ANstuff} ${stimstuff} ${endbulbs} ${modstuffs} ${inflation} -P runANPSTH --noparallel &
+python model_run.py VCN_c09 ${cellstuffs} ${ANstuff} ${stimstuff} ${endbulbs_self} ${modstuffs} ${inflation} -P runANPSTH --noparallel &
 
-python model_run.py VCN_c08 -T Bushy -M mGBC --sgcmodel cochlea --SR MS ${modstuffs}  -P runANPSTH --noparallel &
-python model_run.py VCN_c09 -T Bushy -M mGBC --sgcmodel cochlea --SR MS ${modstuffs}  -P runANPSTH -a 1.0 --noparallel &
-python model_run.py VCN_c09h -T Bushy -M mGBC --sgcmodel cochlea --SR MS ${modstuffs}  -P runANPSTH -a 1.5 --noparallel  &
-python model_run.py VCN_c09nd -T Bushy -M mGBC --sgcmodel cochlea --SR MS ${modstuffs}  -P runANPSTH -a 1.5 --noparallel  &
-python model_run.py VCN_c17 -T Bushy -M mGBC --sgcmodel cochlea --SR MS ${modstuffs}  -P runANPSTH -a 1.5 --noparallel  &
-python model_run.py VCN_c18 -T Bushy -M mGBC --sgcmodel cochlea --SR MS ${modstuffs}  -P runANPSTH -a 3.0 --noparallel  &
-python model_run.py VCN_c19 -T Bushy -M mGBC --sgcmodel cochlea --SR MS ${modstuffs}  -P runANPSTH -a 3.0 --noparallel  &
-python model_run.py VCN_c20 -T Bushy -M mGBC --sgcmodel cochlea --SR MS ${modstuffs}  -P runANPSTH -a 1.5 --noparallel  &
-python model_run.py VCN_c21 -T Bushy -M mGBC --sgcmodel cochlea --SR MS ${modstuffs}  -P runANPSTH -a 3.0 --noparallel  &
-python model_run.py VCN_c22 -T Bushy -M mGBC --sgcmodel cochlea --SR MS ${modstuffs}  -P runANPSTH -a 3.0 --noparallel
 
 wait
 echo ANPSTH generators complete

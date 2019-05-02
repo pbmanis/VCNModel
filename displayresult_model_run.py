@@ -16,6 +16,10 @@ AN_Result_VCN_c09_Syn006_N001_030dB_16000.0_MS.p
 from __future__ import print_function
 import os
 from pathlib import Path
+import matplotlib
+matplotlib.use('Qt4Agg')
+matplotlib.rcParams['text.usetex'] = False
+
 import matplotlib.pyplot as mpl
 import numpy as np
 import pickle
@@ -29,15 +33,15 @@ from cnmodel.util import vector_strength
 # import GIF_fit as GFit
 import vspfile
 
-import warnings
-warnings.filterwarnings("ignore")
+# import warnings
+# warnings.filterwarnings("ignore")
 
 class DisplayResult():
     def __init__(self):
         self.findfiles = False
 
         self.cellChoices = ['Bushy', 'TStellate', 'DStellate']
-        self.modelNameChoices = ['XM13', 'RM03', 'mGBC', 'XM13PasDend', 'Calyx', 'MNTB', 'L23Pyr']
+        self.modelNameChoices = ['XM13', 'RM03', 'mGBC', 'XM13PasDend', 'Calyx', 'MNTB', 'L23Pyr', 'XM13nacncoop']
         self.modelTypeChoices = ['II', 'II-I', 'I-II', 'I-c', 'I-t', 'II-o']
         self.SGCmodelChoices = ['Zilany', 'cochlea']  # cochlea is python model of Zilany data, no matlab, JIT computation; Zilany model creates matlab instance for every run.
         self.cmmrModeChoices = ['CM', 'CD', 'REF']  # comodulated, codeviant, reference
@@ -167,14 +171,19 @@ class DisplayResult():
         if self.Params['runProtocol'] == 'gifnoise':
             self.show_gifnoise()
 
-    def show_AN(self):
+    def show_AN(self, filename=None):
         print('Show an')
         # bulid plot layout
         d = {}
-        for p in self.Params['patterns']:  # for each cell/run get the data
-            h = open(self.fn[p], 'rb')
-            d[p] = pickle.load(h)
-            h.close()
+        # for p in self.Params['patterns']:  # for each cell/run get the data
+        #     h = open(self.fn[p], 'rb')
+        #     d[p] = pickle.load(h)
+        #     h.close()
+        if filename is not None:
+            with open(filename, 'rb') as fh:
+                print('opening specific file: ', filename)
+                d['c09'] = pickle.load(fh)
+            self.Params['patterns'] = ['c09']
         sizer = OrderedDict([('A', {'pos': [0.08, 0.4, 0.71, 0.22]}), ('B', {'pos': [0.55, 0.4, 0.71, 0.22]}),
                              ('C', {'pos': [0.08, 0.4, 0.39, 0.22]}), ('D', {'pos': [0.55, 0.4, 0.39, 0.22]}),
                              ('E', {'pos': [0.08, 0.4, 0.07, 0.22]}), ('F', {'pos': [0.55, 0.4, 0.07, 0.22]}),
@@ -196,14 +205,17 @@ class DisplayResult():
                 trial = d[pattern]['trials'][i]
                 w = trial['stimWaveform']
                 stb = trial['stimTimebase']
-                P.axdict['A'].plot(trial['time']/1000., trial['somaVoltage'], linewidth=0.5)
-                P.axdict['B'].plot(stb, w, linewidth=0.5)  # stimulus underneath
-                P.axdict['C'].plot(trial['spikeTimes']/1000., i*np.ones(len( trial['spikeTimes'])),
+                # print(trial['somaVoltage'])
+                P.axdict['A'].plot(trial['time']/1000., trial['somaVoltage'][0], linewidth=0.5)
+                print(stb)
+                print(w)
+                # P.axdict['B'].plot(stb, w, linewidth=0.5)  # stimulus underneath
+                P.axdict['C'].plot(trial['spikeTimes'][0]/1000., i*np.ones(len( trial['spikeTimes'][0])),
                         'o', markersize=2.5, color='b')
-                allt.append(trial['spikeTimes']/1000.)
+                allt.append(trial['spikeTimes'][0]/1000.)
                 inputs = len(trial['inputSpikeTimes'])
                 for k in range(inputs):
-                    tk = trial['inputSpikeTimes'][k]/1000.
+                    tk = trial['inputSpikeTimes'][0][k]/1000.
                     y = (i+0.1+k*0.05)*np.ones(len(tk))
                     P.axdict['E'].plot(tk, y, '|', markersize=2.5, color='r', linewidth=0.5)
             # allt = np.array(allt).ravel()
@@ -228,7 +240,7 @@ class DisplayResult():
         allst = []
         for trial in data['trials']:
             # print (trial)
-            allst.extend(data['trials'][trial]['spikeTimes']/1000.)
+            allst.extend(data['trials'][trial]['spikeTimes'][0]/1000.)
         allst = np.array(allst)
         allst = np.sort(allst)
             # combine all spikes into one array, plot PSTH
@@ -253,7 +265,7 @@ class DisplayResult():
                 tstring = ("SAM Tone: f0=%.3f at %3.1f dbSPL, fMod=%3.1f  dMod=%5.2f, cell CF=%.3f" %
                      (data['Params']['F0'], data['Params']['dB'], data['Params']['fmod'], data['Params']['dmod'], data['Params']['F0']))
                 print(tstring)
-                P.figure_handle.suptitle(tstring + '\n' + self.fn[self.Params['patterns'][0]].replace('_', '\_'), fontsize=9)
+                # P.figure_handle.suptitle(tstring + '\n' + self.fn[self.Params['patterns'][0]].replace('_', '\_'), fontsize=9)
            # print('spikes: ', spikesinwin)
             print((' Sound type: ', si['soundtype']))
             if len(spikesinwin) < 10:
@@ -280,10 +292,11 @@ class DisplayResult():
             t = 'Inflated'
         else:
             t = 'Original'
-        figname = f"{t:s}_{self.Params['patterns'][0]:s}_{self.Params['spirou']:s}.pdf"
-        P.figure_handle.suptitle(figname.replace('_', '\_'))
-        mpl.savefig(figname, dpi=300)  # rasterized to 300 dpi is ok for documentation.
-        mpl.close()
+        figname = str(self.fn) # f"{t:s}_{self.Params['patterns'][0]:s}_{self.Params['spirou']:s}.pdf"
+        # P.figure_handle.suptitle(figname.replace('_', '\_'))
+        mpl.savefig('figname_1.pdf')  # rasterized to 300 dpi is ok for documentation.
+        mpl.show()
+        # mpl.close()
 
 
 
@@ -426,7 +439,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Simulate activity in a reconstructed model cell',
                     argument_default=argparse.SUPPRESS,
                     fromfile_prefix_chars='@')
-    parser.add_argument(dest='cell', action='store',
+    parser.add_argument('--cell', dest='cell', action='store',
                    default=None,
                    help='Select the cell (no default)')
     parser.add_argument('--type', '-T', dest='cellType', action='store',
@@ -490,7 +503,16 @@ if __name__ == '__main__':
     parser.add_argument('--cmmrmode', type=str, default='CMR', dest = 'CMMRmode',
         choices=DR.cmmrModeChoices,
         help=('Specify mode (from: %s)' % DR.cmmrModeChoices))
-    
+
+    parser.add_argument('--soma-inflate', type=float, dest='soma_inflation', action='store', default=1.0,
+            help='Specify factor by which to inflate soma AREA')
+    parser.add_argument('--soma-autoinflate', action='store_true', dest='soma_autoinflate', default=False,
+            help='Automatically inflate soma based on table')
+    parser.add_argument('--dendrite-inflate', type=float, dest='dendrite_inflation', action='store', default=1.0,
+            help='Specify factor by which to inflate total dendritic AREA')
+    parser.add_argument('--dendrite-autoinflate', action='store_true', dest='dendrite_autoinflate', default=False,
+            help='Automatically inflate dendrite area based on table')
+                
     parser.add_argument('--spirou', type=str, dest='spirou', action='store', default='all',
             choices = DR.spirouChoices,
             help='Specify spirou experiment type.... ')
@@ -498,13 +520,30 @@ if __name__ == '__main__':
                     default=None, help='Select the synno')
     parser.add_argument('-t', '--threshold', dest='threshold', type=float, action='store',
                     default=0., help=('Spike detection threshold, mV'))
-                   
+    parser.add_argument('--last', action='store_true',  dest='lastfile', default=False,
+                help='Just the file in lastfile.txt')
+    parser.add_argument('-F', '--filename', type=str, default=None, dest='filename',
+                    help="just use a filename")
+
     args = vars(parser.parse_args())
 #    model.print_modelsetup()
-
+    print(args)
     for k in args.keys():
         DR.Params[k] = args[k]
-    
+        print('k: ', k)
+
+    print(args['lastfile'])
+    if args['filename']:
+        DR.filename = args['filename']
+        DR.show_AN(DR.filename)
+
+        exit()
+
+    elif args['lastfile']:
+        lf = Path('lastfile.txt').read_text()
+        DR.filename = lf
+        print('reading: ', DR.filename)
+        
     DR.make_filename(tag='delays')
     if os.path.isfile(DR.filename):
         print(('FOUND ofile: ', DR.filename))

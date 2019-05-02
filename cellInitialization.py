@@ -176,6 +176,7 @@ def restore_initial_conditions_state(cell, filename, electrode_site=None, reinit
     state = cell.hr.h.SaveState()
     
     stateFile.ropen(str(filename))
+    print('Initializing against: ', str(filename))
     try:
         state.fread(stateFile)
     except:

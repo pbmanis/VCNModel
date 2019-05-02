@@ -67,15 +67,17 @@ This table describes the ion channel densities relative to somatic densities,
 e.g., relative to REFERENCE densities in the table XM13_nacncoop_channels.
 and voltage shifts, for different compartments of the specified neuron,
 Conductances will be calculated from the Model derived from Xie and Manis 2013 for mouse
-
+Note:
+4/10/2019
+reduced dendrite Na to 0 (was 0.5). 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
                    axon           unmyelinatedaxon     myelinatedaxon     initialsegment    hillock     soma        dendrite         primarydendrite    secondarydendrite
                                                                                                                                                                                                       
-nacncoop_gbar      1.0 [1]        5.0 [1]              1.0 [1]            5.0 [1]           5.0 [1]     1.0 [1]     0.5 [1]          0.50 [1]           0.25 [1]       
+nacncoop_gbar      1.0 [1]        5.0 [1]              1.0 [1]            5.0 [1]           5.0 [1]     1.0 [1]     0.0 [1]          0.0 [1]            0.0 [1]       
 kht_gbar           1.0 [1]        2.0 [1]              0.01 [1]           2.0 [1]           2.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.25 [1]       
 klt_gbar           1.0 [1]        1.0 [1]              0.01 [1]           1.0 [1]           1.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.25 [1]       
-ihvcn_gbar         0.0 [1]        0.0 [1]              0.0 [1]            0.5 [1]           0.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.5 [1]       
-leak_gbar          1.0 [1]        0.25 [1]             0.25e-3 [1]        1.0 [1]           1.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.5 [1]       
+ihvcn_gbar         0.0 [1]        0.0 [1]              0.0 [1]            0.5 [1]           0.0 [1]     1.0 [1]     0.5[1]           0.5 [1]            0.5 [1]       
+leak_gbar          1.0 [1]        0.25 [1]             0.25e-3 [1]        1.0 [1]           1.0 [1]     1.0 [1]     5.0 [1]          0.5 [1]            0.5 [1]       
 leak_erev          -65. [1]       -65. [1]             -65. [1]           -65. [1]          -65. [1]    -65. [1]    -65. [1]         -65. [1]           -65. [1]      
 nacncoop_vshift    0.0  [1]       0.0  [1]             0.0 [1]            0.0  [1]          0.0  [1]    0.0 [1]     0.0 [1]          0.0 [1]            0.0 [1]       
 na_type            nacncoop       nacncoop             nacncoop           nacncoop          nacncoop    nacncoop    nacncoop            nacncoop              nacncoop
