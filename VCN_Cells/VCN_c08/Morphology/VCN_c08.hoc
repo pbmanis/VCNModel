@@ -1,8 +1,6 @@
 // Original file: /Users/pbmanis/Desktop/Python/VCNModel/VCN_Cells/VCN_c08/Morphology/VCN_c08.hoc
 // Coordinates Translated 
 // on: 2019-03-08 15:16:06
-objref undefined
-undefined = new SectionList()
 objref soma
 soma = new SectionList()
 objref axon
