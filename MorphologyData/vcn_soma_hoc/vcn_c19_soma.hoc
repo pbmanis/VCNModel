@@ -1,0 +1,17 @@
+objref soma
+soma = new SectionList()
+
+create sections[1]
+
+// this soma does not attach to anything  at sections[0](0)
+// this soma attaches to a dendrites and an axon at sections[0](1)
+
+access sections[0]
+soma.append()
+sections[0] {
+  pt3dadd(38.5955625, 90.29337109, 64.73962988, 12.8486314)
+  pt3dadd(41.66967578, 87.83098242, 66.79670508, 18.35526)
+  pt3dadd(46.56590039, 83.90866602, 70.44822168, 19.189588)
+  pt3dadd(47.72317236, 78.40942871, 71.46156445, 14.1365598)
+  pt3dadd(49.57879395, 76.3431582, 72.18081836, 12.0293338)
+}

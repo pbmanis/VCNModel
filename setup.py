@@ -1,23 +1,40 @@
-#python setup.py build_ext --inplace
-from distutils.core import setup
-from distutils.extension import Extension
-from Cython.Build import cythonize
-from Cython.Distutils import build_ext
+from setuptools import setup, find_packages
+import os
 
-# setup(
-#     ext_modules=cythonize("gif_mcurrent.pyx", extra_compile_args = ["-ffast-math"]),
-#     include_dirs=[numpy.get_include()]
-# )
-#
+# Use Semantic Versioning, http://semver.org/
+version_info = (0, 1, 0, '')
+__version__ = '%d.%d.%d%s' % version_info
 
 
-ext_modules=[ Extension("gif_mcurrent",
-              ["gif_mcurrent.pyx"],
-              libraries=["m"],
-              extra_compile_args = ["-ffast-math"])]
-
-setup(
-  name = "gif_mcurrent",
-  cmdclass = {"build_ext": build_ext},
-  ext_modules = ext_modules)
-  
+setup(name='VCN',
+      version=__version__,
+      description='VCN SBEM Cell modeling',
+      url='http://github.com/pbmanis/VCN_Model',
+      author='Paul B. Manis',
+      author_email='pmanis@med.unc.edu',
+      license='MIT',
+      packages=find_packages(include=['src*']),
+      install_requires=['matplotlib>=3.0', 'numpy>=1.1',
+          ],
+      zip_safe=False,
+      entry_points={
+          'console_scripts': [
+               'model_run=src.model_run:main',
+               'allgbcivs=src.all_gbc_ivs:main',
+               ],
+          # 'gui_scripts': [
+          #       'event_monger=src.event_monger:main',
+          # ]
+      },
+      classifiers = [
+             "Programming Language :: Python :: 3.6+",
+             "Development Status ::  Beta",
+             "Environment :: Console",
+             "Intended Audience :: Manis Lab",
+             "License :: MIT",
+             "Operating System :: OS Independent",
+             "Topic :: Software Development :: Tools :: Python Modules",
+             "Topic :: Computational Modeling :: Neuroscience",
+             ],
+    )
+      
