@@ -4,7 +4,6 @@ Run all gbc IV's as a batch
 
 
 """
-from __future__ import print_function
 import sys
 import os
 from pathlib import Path
@@ -76,6 +75,8 @@ if plotflag:
     P = PH.regular_grid(rows=6, cols=2, figsize=(6, 8), verticalspacing=0.04, panel_labels=list(sizer.keys()),
         margins={'leftmargin': 0.07, 'rightmargin': 0.05, 'topmargin': 0.2, 'bottommargin': 0.1})
 #PH.show_figure_grid(P.figure_handle)
+
+print(P.axdict.keys())
 
 
 gbc_names = [s[-2:] for s in sizer.keys()]
@@ -159,7 +160,7 @@ for n in gbc_names:
                 to_peak=True, tgap=tgap)
 
     RMA = RM.analysis_summary
-    
+    print('axis: ', cell_ax)
     if plotflag:
         fh = open(ivdatafile, 'rb')
         df = pickle.load(fh)
