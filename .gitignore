@@ -7,6 +7,11 @@ __pycache__/
 *.so
 *.o
 
+# simulation outputs
+*.p
+*.pkl
+*.dat
+
 # pdfs, pngs, bak, ppt, pptx
 *.pdf
 *.png
