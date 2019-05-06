@@ -1,0 +1,18 @@
+{
+"type": "Bushy",
+"model": "XM13",
+"modeltype": "II",
+"defaulthoc": "True",
+"protocol": "runANPSTH",
+"frequency": "16000.",
+"dB": "50",
+"stimulus": "SAM",
+"duration": "1.0",
+"fmod": "400.",
+"dmod": "100.",
+"SRType": "MS",
+"synapsetype": "multisite",
+"depression": "1",
+"sgcmodel": "cochlea",
+"reps": "1"
+}

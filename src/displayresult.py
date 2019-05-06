@@ -24,7 +24,7 @@ from collections import OrderedDict
 from cnmodel.util import sound
 import sac_campagnola as SAC
 import pycircstat as PCS
-import pylibrary.PlotHelpers as PH 
+import pylibrary.PlotHelpers as PH
 from cnmodel.util import vector_strength
 # import GIF_fit as GFit
 
@@ -34,7 +34,7 @@ warnings.filterwarnings("ignore")
 class DisplayResult():
     def __init__(self):
         self.findfiles = False
-        
+
         self.modeltypes = ['mGBC', 'XM13', 'RM03']
         self.runtypes = ['AN', 'an', 'IO', 'IV', 'iv', 'gifnoise']
         self.modetypes = ['find', 'singles', 'IO', 'multi']
@@ -47,13 +47,13 @@ class DisplayResult():
         self.Params['modetypes'] = 'singles'
         self.Params['threshold'] = 0.
         self.findfiles = False
-        
+
     def file_setup(self):
         if self.Params['filename'] is not 'None':
             self.fn['a'] = self.Params['filename']
             self.lookupfiles()
             return
-            
+
         if self.Params['modetype'] in ['multi']:
             # multiple cells
             self.Params['patterns'] = ['c%s' % p for p in self.Params['cell']]
@@ -66,31 +66,31 @@ class DisplayResult():
         for p in self.Params['patterns']:
             if self.Params['runtype'] in ['AN'] and self.Params['modetype'] not in ['IO']:
                 self.fn[p] = 'AN_Result_VCN_{0:s}_delays_{1:s}_N001_060dB_4000.0_FM40.0_DM050_HS.p'.format(p, self.Params['modeltype'])
-                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM250.0_DM100_HS.p'             
-           #     self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM250.0_DM100_MS_mean.p'             
-              #  self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM100.0_DM100_MS.p'             
-                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM300.0_DM100_MS_mean.p'             
-                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM300.0_DM100_MS_allmean.p'             
-                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N050_060dB_4000.0_FM400.0_DM050_MS_mean.p'             
-                #self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N050_060dB_4000.0_FM400.0_DM050_MS.p'             
-                #self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N050_060dB_4000.0_FM400.0_DM050_MS_allmean.p'             
+                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM250.0_DM100_HS.p'
+           #     self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM250.0_DM100_MS_mean.p'
+              #  self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM100.0_DM100_MS.p'
+                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM300.0_DM100_MS_mean.p'
+                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM300.0_DM100_MS_allmean.p'
+                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N050_060dB_4000.0_FM400.0_DM050_MS_mean.p'
+                #self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N050_060dB_4000.0_FM400.0_DM050_MS.p'
+                #self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N050_060dB_4000.0_FM400.0_DM050_MS_allmean.p'
             #  self.fn[p] = 'AN_Result_VCN_{0:s}_{1:s}_Syn{2:03d}_N001_030dB_16000.0_MS.p'.format(p, self.Params['modeltype'], self.Params['synno'])
                 self.bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/AN'.format(p)
-            
+
             elif self.Params['runtype']in ['AN'] and self.Params['modetype'] in ['IO']:
                 self.fn[p] = 'AN_Result_VCN_{0:s}_{1:s}_SynIO{2:03d}_N001_030dB_16000.0_MS.p'.format(p, self.Params['modeltype'], self.Params['synno'])
                 self.bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/AN'.format(p)
-        
+
             elif self.Params['runtype'] in ['IV']:
                 self.fn[p] = 'VCN_{0:s}_{1:s}.p'.format(p, self.Params['modeltype'])
                 self.bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/IV'.format(p)
-            
+
             elif self.Params['runtype'] in ['gifnoise']:
                 self.fn[p] = 'VCN_{0:s}_{1:s}_gifnoise.p'.format(p, self.Params['modeltype'])
                 self.bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/Noise'.format(p)
         self.lookupfiles()
         print(('Files: ', self.fn))
-        
+
     def lookupfiles(self):  # simply look for files
         if self.findfiles:
             for p in self.Params['patterns']:
@@ -113,7 +113,7 @@ class DisplayResult():
         if self.Params['runtype'] == 'gifnoise':
             self.show_gifnoise()
 
-    def show_AN(self):    
+    def show_AN(self):
         print('Show an')
         # bulid plot layout
         sizer = OrderedDict([('A', {'pos': [0.08, 0.4, 0.71, 0.22]}), ('B', {'pos': [0.55, 0.4, 0.71, 0.22]}),
@@ -132,18 +132,22 @@ class DisplayResult():
             h = open(os.path.join(self.bp[p], self.fn[p]))
             d[p] = pickle.load(h)
             h.close()
-
+        print(self.bp, self.fn)
+        with open(self.fn['a'], 'rb') as fh:
+            d = pickle.load(fh)
         # d[cell] has keys: ['inputSpikeTimes', 'somaVoltage', 'spikeTimes', 'time', 'dendriteVoltage', 'stimInfo', 'stimWaveform']
         sk = sizer.keys()
         print(d.keys())
-        si = d['c09']['Params']
+        si = d['Params']
         totaldur = si['pip_start'] + np.max(si['pip_start']) + si['pip_duration'] + si['pip_offduration']
+        self.Params['patterns'] = [1]
         for j, pattern in enumerate(self.Params['patterns']): # for all cells in the "pattern"
 
-            for i in range(len(d[pattern]['trials'])):  # for all trails in the measure.
-                trial = d[pattern]['trials'][i]
+            for i in range(len(d['trials'])):  # for all trails in the measure.
+                trial = d['trials'][i]
                 w = trial['stimWaveform']
                 stb = trial['stimTimebase']
+                print(trial['somaVoltage'])
                 P.axdict['A'].plot(trial['time']/1000., trial['somaVoltage'], linewidth=0.5)
                 P.axdict['B'].plot(stb, w, linewidth=0.5)  # stimulus underneath
                 P.axdict['C'].plot(trial['spikeTimes']/1000., i*np.ones(len( trial['spikeTimes'])),
@@ -166,7 +170,7 @@ class DisplayResult():
         P.axdict['F'].set_title('PSTH', fontsize=9)
         if si['soundtype'] == 'SAM':  # calculate vs and plot histogram
             # combine all spikes into one array, plot PSTH
-            data = d[pattern]
+            data = d
             allst = []
             for trial in data['trials']:
                 # print (trial)
@@ -176,7 +180,7 @@ class DisplayResult():
             # the histogram of the data
             P.axdict['F'].hist(allst, 100, normed=1, facecolor='blue', alpha=0.75)
             # print('allst: ', allst)
-            phasewin = [data['Params']['pip_start'][0] + 0.25*data['Params']['pip_duration'], 
+            phasewin = [data['Params']['pip_start'][0] + 0.25*data['Params']['pip_duration'],
                 data['Params']['pip_start'][0] + data['Params']['pip_duration']]
             # print (phasewin)
             spkin = allst[np.where(allst > phasewin[0])]
@@ -185,7 +189,7 @@ class DisplayResult():
             # set freq for VS calculation
             if si['soundtype'] == 'tone':
                 f0 = data['Params']['F0']
-                print ("Tone: f0=%.3f at %3.1f dbSPL, cell CF=%.3f" % 
+                print ("Tone: f0=%.3f at %3.1f dbSPL, cell CF=%.3f" %
                         (data['Params']['f0'], data['Params']['dB'], data['Params']['F0'] ))
             if si['soundtype'] == 'SAM':
                 f0 = data['Params']['fmod']
@@ -201,7 +205,7 @@ class DisplayResult():
             P.axdict['D'].hist(vs['ph'], bins=2*np.pi*np.arange(30)/30.)
             P.axdict['D'].set_xlim((0., 2*np.pi))
             P.axdict['D'].set_title('Phase (VS = {0:.3f})'.format(vs['r']), fontsize=9, horizontalalignment='center')
-                    
+
         P.figure_handle.savefig('AN_res.pdf')
         plt.show()
 
@@ -223,10 +227,10 @@ class DisplayResult():
         u = 2.0*np.pi/(1000.0/fmod)
         for j, pattern in enumerate(self.Params['patterns']):
             X = []
-            pars = {'twin': 500., 'binw': 1., 'ntestrep': 20, 
+            pars = {'twin': 500., 'binw': 1., 'ntestrep': 20,
                     'baseper': 1.0, 'stimdur': 800., 'delay': 100.,
                     'dur': 1000., 'ddur': 200.}
-            pars_x =     pars = {'twin': 500., 'binw': 1., 'ntestrep': 20, 
+            pars_x =     pars = {'twin': 500., 'binw': 1., 'ntestrep': 20,
                     'baseper': 1.0, 'stimdur': 800., 'delay': 100.,
                     'dur': 1000., 'ddur': 200.}
             x_spl = []
@@ -263,7 +267,7 @@ class DisplayResult():
             ycc, ccbins = sac.XAC(X0, X, pars_x, trialbased=True)
             ax[j][4].bar(ccbins[:-1], ycc)
             ax[j][4].set_xlim((-sacmax, sacmax))
-    
+
             # now cross-correlate data...
         #PH.nice_plot(ax.flatten().tolist())
         plt.show()
@@ -338,7 +342,7 @@ class DisplayResult():
 
 
 if __name__ == '__main__':
-    
+
     DR = DisplayResult()
     parser = argparse.ArgumentParser(description='Display model results')
     parser.add_argument(dest='cell', action='store', nargs='+', type=str,
@@ -356,12 +360,11 @@ if __name__ == '__main__':
                     default=0., help=('Spike detection threshold, mV'))
     parser.add_argument('-f', '--file', dest='filename', type=str,
                     default='None', help='Set File Name')
-                   
+
     args = vars(parser.parse_args())
 #    model.print_modelsetup()
 
     for k in args.keys():
         DR.Params[k] = args[k]
-    
+
     DR.show()
-        
