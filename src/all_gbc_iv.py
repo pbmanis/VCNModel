@@ -11,7 +11,7 @@ from collections import OrderedDict
 import datetime
 import numpy as np
 import matplotlib
-matplotlib.use('Qt4Agg')
+matplotlib.use('Qt5Agg')
 from matplotlib import rc
 rc('text', usetex=True)
 matplotlib.rcParams['pdf.fonttype'] = 42
@@ -30,7 +30,7 @@ RM = RmTauAnalysis.RmTauAnalysis()
 plotflag = True
 
 default_modelName = 'XM13nacncoop'
-#default_modelName = 'XM13'
+default_modelName = 'XM13'
 if len(sys.argv) > 1:
     modelName = sys.argv[1]
 else:
@@ -41,7 +41,7 @@ modelType = 'II'
 
 
 testing = False
-forcerun = True
+forcerun = False
 
 # set up plots
 l1 = 0.08
