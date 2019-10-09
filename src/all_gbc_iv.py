@@ -4,18 +4,19 @@ Run all gbc IV's as a batch
 
 
 """
-import sys
-import os
-from pathlib import Path
-from collections import OrderedDict
-import datetime
-import numpy as np
 import matplotlib
 matplotlib.use('Qt5Agg')
 from matplotlib import rc
 rc('text', usetex=True)
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
+
+import sys
+from pathlib import Path
+from collections import OrderedDict
+import datetime
+import numpy as np
+
 import pickle
 import matplotlib.pyplot as mpl
 import pylibrary.PlotHelpers as PH
@@ -23,6 +24,7 @@ import model_run as mrun
 from ephysanalysis import MakeClamps
 from ephysanalysis import RmTauAnalysis
 from ephysanalysis import SpikeAnalysis
+
 AR = MakeClamps.MakeClamps()
 SP = SpikeAnalysis.SpikeAnalysis()
 RM = RmTauAnalysis.RmTauAnalysis()
@@ -41,7 +43,7 @@ modelType = 'II'
 
 
 testing = False
-forcerun = False
+forcerun = True
 
 # set up plots
 l1 = 0.08
