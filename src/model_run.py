@@ -131,7 +131,7 @@ import json
 import numpy as np
 import timeit
 import matplotlib
-matplotlib.use('Qt4Agg')
+matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as mpl
 # from neuronvis.hoc_viewer import HocViewer
 
@@ -475,14 +475,14 @@ class ModelRun():
                 changes_c = data.add_table_data('XM13_channels_compartments', row_key='parameter', col_key='compartment',
                         species='mouse', model_type='II', data=CHAN.ChannelCompartments)
             elif self.Params['modelName'] == 'XM13_nacn':
-                import data_XM13nacn as CHAN
+                import model_data.data_XM13_nacn as CHAN
                 nach = 'nacn'
                 changes = data.add_table_data('XM13_nacn_channels', row_key='field', col_key='model_type', 
                                species='mouse', data=CHAN.ChannelData)
                 changes_c = data.add_table_data('XM13_nacn_channels_compartments', row_key='parameter', col_key='compartment',
                         species='mouse', model_type='II', data=CHAN.ChannelCompartments)
             elif self.Params['modelName'] == 'XM13_nabu':
-                import data_XM13nabu as CHAN
+                import model_data.data_XM13_nabu as CHAN
                 nach = 'nabu'
                 print('YAHOO nabu')
                 changes = data.add_table_data('XM13_nabu_channels', row_key='field', col_key='model_type', 
