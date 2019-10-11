@@ -132,7 +132,7 @@ import toml
 import numpy as np
 import timeit
 import matplotlib
-matplotlib.use('Qt4Agg')
+matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as mpl
 # from neuronvis.hoc_viewer import HocViewer
 
@@ -455,9 +455,8 @@ class ModelRun():
         self.cellID = Path(self.Params['cellID']).stem # os.path.splitext(self.Params['cellID'])[0]
 
         print('Morphology directory: ', self.morphDirectory)
-        print('use default hoc: ', self.Params['usedefaulthoc'])
-        if self.Params['usedefaulthoc']:
-            self.Params['hocfile'] = self.Params['cellID'] + '.hoc'
+        if self.Params['usedefaulthoc'] or self.Params['hocfile'] == None:
+            self.Params['hocfile'] = self.Params['cell'] + '.hoc'
         print('Hoc (structure) file: ', self.Params['hocfile'])
         print('Base directory: ', self.baseDirectory)
         filename = Path(self.baseDirectory, self.cellID, self.morphDirectory, self.Params['hocfile'])
@@ -466,12 +465,14 @@ class ModelRun():
         if self.Params['cellType'] in ['Bushy', 'bushy']:
             print('Creating a bushy cell (run_model) ')
             from cnmodel import data
-            if self.Params['modelName'] == 'XM13nacncoop':
-                import model_data.XM13nacncoop as CHAN
+            changes = None
+            nach = None  # uses default
+            if self.Params['modelName'] == 'XM13_nacncoop':
+                import model_data.data_XM13_nacncoop as CHAN
                 nach = 'nacncoop'
-                changes = data.add_table_data('XM13nacncoop_channels', row_key='field', col_key='model_type',
+                changes = data.add_table_data('XM13_nacncoop_channels', row_key='field', col_key='model_type',
                                species='mouse', data=CHAN.ChannelData)
-                changes_c = data.add_table_data('XM13nacncoop_channels_compartments', row_key='parameter', col_key='compartment',
+                changes_c = data.add_table_data('XM13_nacncoop_channels_compartments', row_key='parameter', col_key='compartment',
                         species='mouse', model_type='II', data=CHAN.ChannelCompartments)
             elif self.Params['modelName'] == 'XM13':
                 import model_data.data_XM13 as CHAN
@@ -480,23 +481,24 @@ class ModelRun():
                                species='mouse', data=CHAN.ChannelData)
                 changes_c = data.add_table_data('XM13_channels_compartments', row_key='parameter', col_key='compartment',
                         species='mouse', model_type='II', data=CHAN.ChannelCompartments)
-            elif self.Params['modelName'] == 'XM13nacn':
-                import data_XM13nacn as CHAN
+            elif self.Params['modelName'] == 'XM13_nacn':
+                import model_data.data_XM13_nacn as CHAN
                 nach = 'nacn'
-                changes = data.add_table_data('XM13nacn_channels', row_key='field', col_key='model_type',
+
+                changes = data.add_table_data('XM13_nacn_channels', row_key='field', col_key='model_type', 
                                species='mouse', data=CHAN.ChannelData)
-                changes_c = data.add_table_data('XM13nacn_channels_compartments', row_key='parameter', col_key='compartment',
+                changes_c = data.add_table_data('XM13_nacn_channels_compartments', row_key='parameter', col_key='compartment',
                         species='mouse', model_type='II', data=CHAN.ChannelCompartments)
-            elif self.Params['modelName'] == 'XM13nabu':
-                import data_XM13nabu as CHAN
+            elif self.Params['modelName'] == 'XM13_nabu':
+                import model_data.data_XM13_nabu as CHAN
                 nach = 'nabu'
-                print('YAHOO nabu')
-                changes = data.add_table_data('XM13nabu_channels', row_key='field', col_key='model_type',
+                changes = data.add_table_data('XM13_nabu_channels', row_key='field', col_key='model_type', 
                                species='mouse', data=CHAN.ChannelData)
-                changes_c = data.add_table_data('XM13nabu_channels_compartments', row_key='parameter', col_key='compartment',
+                changes_c = data.add_table_data('XM13_nabu_channels_compartments', row_key='parameter', col_key='compartment',
                         species='mouse', model_type='II', data=CHAN.ChannelCompartments)
-            data.report_changes(changes)
-            data.report_changes(changes_c)
+            if changes is not None:
+                data.report_changes(changes)
+                data.report_changes(changes_c)
             self.post_cell = cells.Bushy.create(morphology=str(filename), decorator=Decorator,
                     species=self.Params['species'],
                     modelName=self.Params['modelName'], modelType=self.Params['modelType'],

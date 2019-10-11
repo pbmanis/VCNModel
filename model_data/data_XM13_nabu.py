@@ -1,9 +1,9 @@
 """
 Data structures for model_run
-XM13 with nacn  channels
+XM13 with nabu  channels
 
 """
-#     nacn _vshift   4.3    [1]     4.3    [1]     4.3    [1]    4.3    [1]    4.3    [1]
+#     nabu _vshift   4.3    [1]     4.3    [1]     4.3    [1]    4.3    [1]    4.3    [1]
 
 ChannelData = u"""
 
@@ -19,19 +19,20 @@ ChannelData = u"""
     -----------------------------------------------------------------------------------------------------------------------------------
                    II             II-I           I-c           I-II          I-t       
                                                                            
-    nacn_gbar      1000.  [1]     1000.  [1]     3000.  [1]    1000.  [2]    3000.  [1] 
+    nabu_gbar      100.   [1]     100.  [1]      3000.  [1]    1000.  [2]    3000.  [1] 
     kht_gbar       58.0   [3]     58.0   [1]     500.0  [1]    150.0  [2]    500.0  [1] 
     klt_gbar       80.0   [1]     14.0   [1]     0.0    [1]    20.0   [2]    0.0    [1] 
     ka_gbar        0.0    [1]     0.0    [1]     0.0    [1]    0.0    [2]    125.0    [1] 
     ihvcn_gbar     30.0   [1]     30.0   [1]     18.0   [1]    2.0    [2]    18.0   [1] 
     leak_gbar      2.0    [1]     2.0    [1]     8.0    [1]    2.0    [2]    8.0    [1] 
     leak_erev      -65    [1]     -65    [1]     -65    [1]    -65    [2]    -65    [1] 
-    na_type        nacn   [1]     nacn   [1]     nacn   [1]    nacn   [1]    nacn   [1] 
+    na_type        nabu   [1]     nabu   [1]     nabu   [1]    nabu   [1]    nabu   [1] 
     ih_type        ihvcn  [1]     ihvcn  [1]     ihvcn  [1]    ihvcn  [2]    ihvcn  [1] 
     soma_Cap       26.0   [1]     26.0   [1]     25.0   [1]    26.0   [2]    25.0   [1] 
     e_k            -84    [1]     -84    [1]     -84    [1]    -84    [2]    -84    [1] 
     e_na           50.    [1]     50.    [1]     50.    [1]    50.    [2]    50.    [1] 
-    ih_eh          -43    [1]     -43    [1]     -43    [1]    -43    [2]    -43    [1] 
+    ih_eh          -43    [1]     -43    [1]     -43    [1]    -43    [2]    -43    [1]
+    nabu_vshift     10             10             10            10            10
 
     -----------------------------------------------------------------------------------------------------------------------------------
 
@@ -40,7 +41,7 @@ ChannelData = u"""
         Xie and Manis, 2013
         Age "adult", Temperature=34C
         Units are nS.
-        nacn_vshift: was 4.3 in Xie and Manis (2013) for T-stellate cells; 0 for bushy cells
+        nabu_vshift: was 4.3 in Xie and Manis (2013) for T-stellate cells; 0 for bushy cells
         Here reset to 0 for bushy cells
 
     [2] Rothman and Manis, 2003, model I-II
@@ -53,11 +54,11 @@ ChannelData = u"""
 
     """
 
-#    nacn _vshift    4.3  [2]   4.3 [2]              0.0 [2]            4.3 [2]           4.3 [2]     4.3 [2]     0.0  [2]         0.0  [2]            0.0 [2]
+#    nabu _vshift    4.3  [2]   4.3 [2]              0.0 [2]            4.3 [2]           4.3 [2]     4.3 [2]     0.0  [2]         0.0  [2]            0.0 [2]
 
 ChannelCompartments = u"""
 
-    This table describes the ion channel densities relative to somatic densities,
+    This table describes the ion channel densities **relative** to somatic densities,
     e.g., relative to REFERENCE densities in the table XM13_channels.
     and voltage shifts, for different compartments of the specified neuron,
     Conductances will be calculated from the Model derived from Xie and Manis 2013 for mouse
@@ -67,13 +68,13 @@ ChannelCompartments = u"""
     ------------------------------------------------------------------------------------------------------------------------------------------------------------------
                    axon       unmyelinatedaxon     myelinatedaxon     initialsegment    hillock     soma        dendrite         primarydendrite    secondarydendrite
 
-    nacn_gbar      3.0 [1]    15. [1]              0.0 [1]            0.0 [1]           9.0 [1]     2.5 [1]     0.5 [1]          0.25 [1]           0.25 [1]
+    nabu_gbar      3.0 [1]    15. [1]              0.0 [1]            0.0 [1]           9.0 [1]     2.5 [1]     0.5 [1]          0.25 [1]           0.25 [1]
     kht_gbar       1.0 [1]    1.0 [1]              0.01 [1]           2.0 [1]           1.0 [1]     1.0 [1]     1.0 [1]          0.5 [1]            0.25 [1]
     klt_gbar       1.0 [1]    1.0 [1]              0.01 [1]           1.0 [1]           1.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.25 [1]
     ihvcn_gbar     0.0 [1]    0.0 [1]              0.0 [1]            0.5 [1]           0.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.5 [1]
     leak_gbar      1.0 [1]    0.25 [1]             0.25e-3 [1]        1.0 [1]           1.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.5 [1]
     leak_erev      -65. [1]   -65. [1]             -65. [1]           -65. [1]          -65. [1]    -65. [1]    -65. [1]         -65. [1]           -65. [1]
-    na_type        nacn       nacn                 nacn               nacn              nacn        nacn        nacn             nacn               nacn  
+    na_type        nabu       nabu                 nabu               nabu              nabu        nabu        nabu             nabu               nabu  
     ih_type        ihvcn      ihvcn                ihvcn              ihvcn             ihvcn       ihvcn       ihvcn            ihvcn              ihvcn
     -------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

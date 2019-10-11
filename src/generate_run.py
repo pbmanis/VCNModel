@@ -300,11 +300,13 @@ class GenerateRun():
             return
         self.hf.h.tstop = maxt+self.runInfo.stimDelay
         print('PrepareRun: \n')
-        print('   maxt:     {:8.2f} ms'.format(maxt))
-        print('   delay:    {:8.2f} ms'.format(self.runInfo.stimDelay))
-        print('   duration: {:8.2f} ms'.format(self.runInfo.stimDur))
-        print('   tstop:    {:8.2f} ms'.format(self.hf.h.tstop))
-        print("   h.t:      {:8.2f} ms\n----------------\n".format(self.hf.h.t))
+        print(f'   maxt:     {maxt:8.2f} ms')
+        print(f'   delay:    {self.runInfo.stimDelay:8.2f} ms')
+        print(f'   duration: {self.runInfo.stimDur:8.2f} ms')
+        print(f'   tstop:    {self.hf.h.tstop:8.2f} ms')
+        print(f"   h.t:      {self.hf.h.t:8.2f} ms")
+        print(f"   h.dt      {self.hf.h.dt:8.2f} us")
+        print("\n----------------\n")
         self.monitor['time'].record(self.hf.h._ref_t)
         #self.hf.h.topology()
         #pg.show()
@@ -313,7 +315,7 @@ class GenerateRun():
 
     def doRun(self, filename=None, parMap=None, save=False, restore_from_file=False, initfile=None, workers=4):
         if verbose:
-            print('generat_run::doRun')
+            print('generate_run::doRun')
         (p, e) = os.path.splitext(filename)  # make sure filename is clean
         self.runInfo.filename = p  # change filename in structure, just name, no extension
         if parMap is None or len(parMap) == 0:

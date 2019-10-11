@@ -2,20 +2,20 @@
 """
 Run all gbc IV's as a batch
 
-
 """
-import sys
-import os
-from pathlib import Path
-from collections import OrderedDict
-import datetime
-import numpy as np
 import matplotlib
-matplotlib.use('Qt4Agg')
+matplotlib.use('Qt5Agg')
 from matplotlib import rc
 rc('text', usetex=True)
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
+
+import sys
+from pathlib import Path
+from collections import OrderedDict
+import datetime
+import numpy as np
+
 import pickle
 import matplotlib.pyplot as mpl
 import pylibrary.PlotHelpers as PH
@@ -23,13 +23,14 @@ import model_run as mrun
 from ephysanalysis import MakeClamps
 from ephysanalysis import RmTauAnalysis
 from ephysanalysis import SpikeAnalysis
+
 AR = MakeClamps.MakeClamps()
 SP = SpikeAnalysis.SpikeAnalysis()
 RM = RmTauAnalysis.RmTauAnalysis()
 
 plotflag = True
 
-default_modelName = 'XM13nacncoop'
+default_modelName = 'XM13_nacncoop'
 #default_modelName = 'XM13'
 if len(sys.argv) > 1:
     modelName = sys.argv[1]
@@ -177,7 +178,7 @@ for n in gbc_names:
                 unitNames={'x': 'ms', 'y': 'mV'}, font='Arial', fontsize=8)
     # P.axdict[cell_ax].title(toptitle, fontsize=7)
 if plotflag:
-    titletext = f"Model: {modelType:s}  Na Ch: {modelName:s} Scaling: {sinflate:s}_{dinflate:s}".replace('_', '\_')
+    titletext = f"Model: {modelType:s}  Na Ch: {modelName:s} Scaling: {sinflate:s}_{dinflate:s}" # .replace('_', '\_')
     P.figure_handle.suptitle(titletext, fontsize=9)
     print(str(outfile))
     mpl.savefig(outfile)

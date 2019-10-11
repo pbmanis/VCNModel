@@ -45,7 +45,7 @@ def init_model(cell, mode='iclamp', vinit=-65., restore_from_file=False, filenam
         Errors result in exceptions.
     
     """
-    print('initmodel')
+    # print('initmodel')
     if mode in ['vc', 'vclamp']:
         cell.hr.h.finitialize(vinit)  # this is sufficient for initialization in voltage clamp
         print('vclamp')
@@ -56,17 +56,17 @@ def init_model(cell, mode='iclamp', vinit=-65., restore_from_file=False, filenam
     # otherwise we are in current clamp
     # get state if one is specified
     if restore_from_file:
-        print('restore: ', filename)
+        print('restoring from: ', filename)
         restore_initial_conditions_state(cell, electrode_site=electrode_site, filename=filename, reinit=reinit)
         try:
-            print('init?: ')
+            print(f"init?: ", end='')
             cell.hr.h.frecord_init()  # try an intialization
         except:
-            raise ValueError('Unable to restore initial state')
-        print('init OK')
+            raise ValueError('\nUnable to restore initial state')
+        print(f'init OK')
         return True  # much easier here...
     
-    print('custom init')
+    # print('custom init')
     CU.custom_init(v_init=vinit)
     
     if electrode_site is not None:
