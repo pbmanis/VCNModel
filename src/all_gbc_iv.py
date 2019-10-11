@@ -2,7 +2,6 @@
 """
 Run all gbc IV's as a batch
 
-
 """
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -31,8 +30,8 @@ RM = RmTauAnalysis.RmTauAnalysis()
 
 plotflag = True
 
-default_modelName = 'XM13nacncoop'
-default_modelName = 'XM13'
+default_modelName = 'XM13_nacncoop'
+#default_modelName = 'XM13'
 if len(sys.argv) > 1:
     modelName = sys.argv[1]
 else:
@@ -179,7 +178,7 @@ for n in gbc_names:
                 unitNames={'x': 'ms', 'y': 'mV'}, font='Arial', fontsize=8)
     # P.axdict[cell_ax].title(toptitle, fontsize=7)
 if plotflag:
-    titletext = f"Model: {modelType:s}  Na Ch: {modelName:s} Scaling: {sinflate:s}_{dinflate:s}".replace('_', '\_')
+    titletext = f"Model: {modelType:s}  Na Ch: {modelName:s} Scaling: {sinflate:s}_{dinflate:s}" # .replace('_', '\_')
     P.figure_handle.suptitle(titletext, fontsize=9)
     print(str(outfile))
     mpl.savefig(outfile)

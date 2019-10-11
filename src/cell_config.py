@@ -1,4 +1,15 @@
-from __future__ import print_function
+
+"""
+Data sets are from George Spirou & Co. (Michael Morehead, Nathan Spencer, Matthew)
+
+This version **imports** data from an excel spreadsheet in VCN_Cells, such as:
+
+Dendrite Quality and Surface Areas_comparisons_pbm_15Mar2019_v2.xlsx
+
+When spreadsheets are updated with new data, we can just read them to build a new table.
+last modified: 11 Oct 2019  pbm
+"""
+
 """cell_config generates the configuration of synaptic inputs and devines a cell
 
 The synaptic input structure consists of a list of tuples.
@@ -29,22 +40,14 @@ if fraction of gmax is -1, then it is computed as the residual of the remaining 
 (this allows things like a big ending that crosses anatomically defined boundaries)
 """
 
-"""
-Data sets are from George Spirou & Co. (Michael Morehead, Nathan Spencer, Matthew)
 
-This version imports data from an excel spreadsheet in VCN_Cells:
-
-Dendrite Quality and Surface Areas_comparisons_pbm_15Mar2019_v2.xlsx
-
-
-"""
 from pathlib import Path
 import numpy as np
 import json
 from collections import OrderedDict
 import pandas as pd
 import matplotlib
-matplotlib.use('Qt4Agg')
+matplotlib.use('Qt5Agg')
 rcParams = matplotlib.rcParams
 rcParams['text.usetex'] = False
 rcParams['svg.fonttype'] = 'none' # No text as paths. Assume font installed.
@@ -55,7 +58,7 @@ import pylibrary.PlotHelpers as PH
 import scipy.stats
 
 datafile_default = Path('MorphologyData', 'Dendrite Quality and Surface Areas_comparisons_pbm_15Mar2019_v2.xlsx')
-
+datafile = datafile_default
 inputs = [f"Input {i+1:d}" for i in range(12)]  # input column labels
 
 synperum2 = 0.65 # average density of synapses, synapses per micron squared 
@@ -155,7 +158,10 @@ class CellConfig():
         return(inflateratio)
 
     def summarize_inputs(self):
-        P = PH.regular_grid(2, 3, order='columns', figsize=(10., 8), showgrid=False)
+        P = PH.regular_grid(2, 3, order='columnsfirst', figsize=(6, 4), showgrid=False,
+                verticalspacing=0.18, horizontalspacing=0.08,
+                margins={'leftmargin': 0.07, 'rightmargin': 0.05, 'topmargin': 0.06, 'bottommargin': 0.1},
+                labelposition=(-0.22, 1.0), parent_figure=None, panel_labels=['A', 'B', 'C', 'D', 'E', 'F'])
         ax = [P.axdict[x] for x in P.axdict.keys()]
      #   PH.nice_plot(ax)
         allendings = []
@@ -171,8 +177,8 @@ class CellConfig():
                     # print('not list or tuple: ', cell, s)
                     # allendings.append(s)
                     # cellendings[cell].append(s)
-
-        ax[0].set_title('All ending areas')
+        tsize = 9
+        ax[0].set_title('All ending areas', fontsize=tsize)
         ax[0].hist(allendings, bins=20)
         ax[0].set_ylim((0, 25))
         ax[0].set_ylabel('N')
@@ -195,21 +201,33 @@ class CellConfig():
                 maxsize.append(np.max(cellendings[cell]))
                 convergence.append(len(cellendings[cell]))
         print('convergence: ', convergence)
-
-        ax[1].set_title('Normalized by largest')
+        
+        ax[1].set_title('Normalized by largest', fontsize=tsize)
         ax[1].hist(normd, bins=20, range=(0,1.0), align='mid')
-        ax[1].set_xlabel('Area ($um^2$)')
+        ax[1].set_xlabel('Area Ratio')
         ax[1].set_ylabel('N')
+        PH.talbotTicks(ax[1], axes='xy',
+                   density=(1.0, 1.0), insideMargin=0.05, pointSize=10, 
+                   tickPlacesAdd={'x': 2, 'y': 0}, floatAdd={'x': 2, 'y': 0},
+                   axrange={'x':None, 'y':None})
 
-        ax[2].set_title('Ratio largest to next largest')
+        ax[2].set_title('Ratio largest to next largest', fontsize=tsize)
         ax[2].hist(ratio1, bins=10, range=(0,1.0), align='mid')
-        ax[2].set_xlabel('Area ($um^2$)')
+        ax[2].set_xlabel('Area Ratio')
+        PH.talbotTicks(ax[2], axes='xy',
+                   density=(1.0, 1.0), insideMargin=0.05, pointSize=10, 
+                   tickPlacesAdd={'x': 1, 'y': 0}, floatAdd={'x': 1, 'y': 0},
+                   axrange={'x':None, 'y':None})
 
-        ax[3].set_title('Ratio of mean to largest')
+        ax[3].set_title('Ratio of mean to largest', fontsize=tsize)
         ax[3].hist(ratio2, bins=10, range=(0,1.0), align='mid')
-        ax[3].set_xlabel('Area ($um^2$)')
+        ax[3].set_xlabel('Area Ratio')
+        PH.talbotTicks(ax[3], axes='xy',
+                   density=(1.0, 1.0), insideMargin=0.05, pointSize=10, 
+                   tickPlacesAdd={'x': 2, 'y': 0}, floatAdd={'x': 2, 'y': 0},
+                   axrange={'x':None, 'y':None})
 
-        ax[4].set_title('Convergence vs. mean size')
+        ax[4].set_title('Convergence vs. mean size', fontsize=tsize)
         ax[4].set_xlim((0., 200.))
         ax[4].set_xlabel('Area ($um^2$)')
         ax[4].set_ylim((0., 15.))  
@@ -222,7 +240,7 @@ class CellConfig():
         ax[4].plot(meansize, fit_fn(meansize), '--k')
 
 
-        ax[5].set_title('Convergence vs max size')
+        ax[5].set_title('Convergence vs max size', fontsize=tsize)
         fit = np.polyfit(maxsize, convergence, 1)
         fit_fn = np.poly1d(fit)
         r, p = scipy.stats.pearsonr(maxsize, convergence)

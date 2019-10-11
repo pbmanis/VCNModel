@@ -448,7 +448,7 @@ class ModelRun():
         self.cellID = Path(self.Params['cell']).stem # os.path.splitext(self.Params['cell'])[0]
         
         print('Morphology directory: ', self.morphDirectory)
-        if self.Params['usedefaulthoc']:
+        if self.Params['usedefaulthoc'] or self.Params['hocfile'] == None:
             self.Params['hocfile'] = self.Params['cell'] + '.hoc'
         print('Hoc (structure) file: ', self.Params['hocfile'])
         print('Base directory: ', self.baseDirectory)
