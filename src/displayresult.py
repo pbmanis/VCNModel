@@ -147,7 +147,6 @@ class DisplayResult():
                 trial = d['trials'][i]
                 w = trial['stimWaveform']
                 stb = trial['stimTimebase']
-                print(trial['somaVoltage'])
                 P.axdict['A'].plot(trial['time']/1000., trial['somaVoltage'], linewidth=0.5)
                 P.axdict['B'].plot(stb, w, linewidth=0.5)  # stimulus underneath
                 P.axdict['C'].plot(trial['spikeTimes']/1000., i*np.ones(len( trial['spikeTimes'])),
