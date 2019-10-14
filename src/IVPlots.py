@@ -2,7 +2,7 @@ __author__ = 'pbmanis'
 
 from collections import OrderedDict
 import matplotlib
-matplotlib.use('Qt4Agg')
+matplotlib.use('Qt5Agg')
 rcParams = matplotlib.rcParams
 rcParams['svg.fonttype'] = 'none' # No text as paths. Assume font installed.
 rcParams['pdf.fonttype'] = 42

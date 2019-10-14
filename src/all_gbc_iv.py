@@ -42,7 +42,7 @@ modelType = 'II'
 
 
 testing = False
-forcerun = True
+forcerun = False
 
 # set up plots
 l1 = 0.08
@@ -77,11 +77,12 @@ if plotflag:
         margins={'leftmargin': 0.07, 'rightmargin': 0.05, 'topmargin': 0.2, 'bottommargin': 0.1})
 #PH.show_figure_grid(P.figure_handle)
 
-print(P.axdict.keys())
+print('Models: ', P.axdict.keys())
 
 
 gbc_names = [s[-2:] for s in sizer.keys()]
 # gbc_names = ['16']
+gbc_names = ['09', '11', '17', '18']
 
 for n in gbc_names:
     if n == 'ne':
@@ -117,6 +118,8 @@ for n in gbc_names:
     print(M.Params['hocfile'])
     
     initf = M.Params['initIVStateFile']
+    if initf is None:
+        continue
     if not initf.is_file() or forcerun:
         print(f'creating new init file for cell, did not find {str(initf):s}')
         M.Params['runProtocol'] = 'initIV'

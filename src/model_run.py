@@ -159,7 +159,7 @@ class ModelRun():
 
         # use v2 files for model with rescaled soma
         self.cellChoices = ['Bushy', 'TStellate', 'DStellate']
-        self.modelNameChoices = ['XM13', 'XM13nacncoop', 'XM13nacn', 'RM03', 'mGBC', 'XM13PasDend', 'Calyx', 'MNTB', 'L23Pyr']
+        self.modelNameChoices = ['XM13', 'XM13_nacncoop', 'XM13_nacn', 'XM13_nabu', 'RM03', 'mGBC', 'XM13PasDend', 'Calyx', 'MNTB', 'L23Pyr']
         self.modelTypeChoices = ['II', 'II-I', 'I-II', 'I-c', 'I-t', 'II-o']
         self.SGCmodelChoices = ['Zilany', 'cochlea']  # cochlea is python model of Zilany data, no matlab, JIT computation; Zilany model creates matlab instance for every run.
         self.cmmrModeChoices = ['CM', 'CD', 'REF']  # comodulated, codeviant, reference
@@ -181,7 +181,7 @@ class ModelRun():
         # parsing the command line.
         # See the main code section (at the end of this file).
         self.Params = OrderedDict()
-        self.Params['cellID'] = self.cellID
+        self.Params['cell'] = self.cellID
         self.Params['AMPAScale'] = 1.0 # Use the default scale for AMPAR conductances
         self.Params['ANSynapseType'] = 'simple'  # or multisite
         self.Params['ANSynapticDepression'] = 0  # depression calculation is off by default
@@ -310,7 +310,7 @@ class ModelRun():
 
 
         """
-        self.cellID = Path(self.Params['cellID']).stem # os.path.splitext(self.Params['cellID'])[0]
+        self.cellID = Path(self.Params['cell']).stem # os.path.splitext(self.Params['cell'])[0]
         # pick up parameters that should be in both init and run filenames:
         # Run / init type independent parameters:
         namePars = f"{str(self.Params['modelName']):s}_{str(self.Params['modelType']):s}"
@@ -452,7 +452,10 @@ class ModelRun():
             self.idnum = par_map['id']
         else:
             self.idnum = 9999
-        self.cellID = Path(self.Params['cellID']).stem # os.path.splitext(self.Params['cellID'])[0]
+        print('cellid: ', self.Params['cell'])
+        if self.Params['cell'] is None:
+            return
+        self.cellID = Path(self.Params['cell']).stem # os.path.splitext(self.Params['cell'])[0]
 
         print('Morphology directory: ', self.morphDirectory)
         if self.Params['usedefaulthoc'] or self.Params['hocfile'] == None:
@@ -530,6 +533,8 @@ class ModelRun():
         if self.Params['soma_autoinflate']: # get values and inflate soma automatically to match mesh
             cconfig = cell_config.CellConfig()
             inflateratio = cconfig.get_soma_ratio(self.cellID)
+            if np.isnan(inflateratio):
+                raise ValueError("Soma Inflation Ration is not defined!")
             self.Params['soma_inflation'] = inflateratio
 
         if self.Params['soma_inflation'] != 1.0:
@@ -558,6 +563,8 @@ class ModelRun():
         if self.Params['dendrite_autoinflate']: # get values and inflate soma automatically to match mesh
             cconfig = cell_config.CellConfig()
             inflateratio = cconfig.get_dendrite_ratio(self.cellID)
+            if np.isnan(inflateratio):
+                raise ValueError("Dendrite Inflation Ration is not defined!")
             self.Params['dendrite_inflation'] = inflateratio
 
         if self.Params['dendrite_inflation'] != 1.0:
@@ -845,10 +852,10 @@ class ModelRun():
 
     def check_for_an_statefile(self):
         print('State file name: ', self.Params['initANStateFile'])
-        print('Cell: ', self.Params['cellID'])
+        print('Cell: ', self.Params['cell'])
         print('Base Directory: ', self.baseDirectory)
         print('Initialization Directory: ', self.initDirectory)
-        statefile = Path(self.baseDirectory, self.Params['cellID'],
+        statefile = Path(self.baseDirectory, self.Params['cell'],
                             self.initDirectory, self.Params['initANStateFile'])
         return(statefile.is_file())
 
@@ -1121,7 +1128,7 @@ class ModelRun():
             for n in range(len(allDendriteVoltages)):
                 for s in allDendriteVoltages[n].keys():
                     allDendriteVoltages[n][s] = np.array(allDendriteVoltages[n][s])
-        self.analysis_filewriter(self.Params['cellID'], result, tag='delays')
+        self.analysis_filewriter(self.Params['cell'], result, tag='delays')
         if self.Params['plotFlag']:
             print('plotting')
             self.plot_an(celltime, result)
@@ -1272,7 +1279,7 @@ class ModelRun():
                 'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'time': np.array(tresults[j]['time']),
                 'stimWaveform': stimWaveform, 'stimTimebase': stimTimebase}
 
-            self.analysis_filewriter(self.Params['cellID'], result[k], tag=tagname)
+            self.analysis_filewriter(self.Params['cell'], result[k], tag=tagname)
         if self.Params['plotFlag']:
             self.plot_an(celltime, result)
 
@@ -1382,7 +1389,7 @@ class ModelRun():
             result = {'stimInfo': stimInfo, 'spikeTimes': spikeTimes, 'inputSpikeTimes': inputSpikeTimes,
                 'somaVoltage': somaVoltage, 'dendriteVoltage': dendriteVoltage, 'time': np.array(tresults[j]['time'])}
 
-            self.analysis_filewriter(self.Params['cellID'], result, tag=tagname % k)
+            self.analysis_filewriter(self.Params['cell'], result, tag=tagname % k)
         if self.Params['plotFlag']:
             self.plot_an(celltime, result)
 
@@ -1834,7 +1841,7 @@ def main():
     parser = argparse.ArgumentParser(description='Simulate activity in a reconstructed model cell',
                     argument_default=argparse.SUPPRESS,
                     fromfile_prefix_chars='@')
-    parser.add_argument(dest='cellID', action='store',
+    parser.add_argument(dest='cell', action='store',
                    default=None,
                    help='Select the cell (no default)')
     parser.add_argument('--type', '-T', dest='cellType', action='store',

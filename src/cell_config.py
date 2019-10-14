@@ -57,7 +57,10 @@ import matplotlib.pyplot as mpl
 import pylibrary.PlotHelpers as PH
 import scipy.stats
 
-datafile_default = Path('MorphologyData', 'Dendrite Quality and Surface Areas_comparisons_pbm_15Mar2019_v2.xlsx')
+# datafile_default = Path('MorphologyData', 'Dendrite Quality and Surface Areas_comparisons_pbm_15Mar2019_v2.xlsx')
+# soma_area_data = 'Mesh Surface Area'
+datafile_default = Path('MorphologyData', 'Dendrite Quality and Surface Areas_comparisons_pbm_14Oct2019_v1.xlsx')
+soma_area_data = 'Mesh Soma Area Smoothed'
 datafile = datafile_default
 inputs = [f"Input {i+1:d}" for i in range(12)]  # input column labels
 
@@ -139,7 +142,7 @@ class CellConfig():
         if isinstance(cellID, str):
             cellnum = int(cellID[-2:])
         dcell = self.ASA[self.ASA['Cell Number'] == cellnum]
-        mesh_area = dcell['Mesh Surface Area'].values[0]
+        mesh_area = dcell[soma_area_data].values[0]
         hoc_soma_area = dcell['HOCSoma10'].values[0]
         inflateratio = mesh_area/hoc_soma_area
         print(f"Cell: {cellnum:02d}: Soma mesh area: {mesh_area:.2f}  Soma hoc area: {hoc_soma_area:.2f}  ", end='')
