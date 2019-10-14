@@ -1,6 +1,6 @@
 """
 Data structures for model_run
-XM13 with nacn  channels
+XM13 with cooperative nacn  channels
 
 """
 
@@ -31,7 +31,7 @@ ChannelData = u"""
     e_k               -84          [1]     -84         [1]     -84         [1]    -84          [2]    -84    [1] 
     e_na              50.          [1]     50.         [1]     50.         [1]    50.          [2]    50.    [1] 
     ih_eh             -43          [1]     -43         [1]     -43         [1]    -43          [2]    -43    [1] 
-    nacncoop_vshift   10.    [1]           10.    [1]          10.    [1]         10.    [1]          10.    [1]
+    nacncoop_vshift   0.     [1]           0.     [1]          0.     [1]         0.     [1]          0.     [1]
 
     -----------------------------------------------------------------------------------------------------------------------------------
 
@@ -73,7 +73,7 @@ ChannelCompartments = u"""
     leak_gbar          1.0 [1]    0.25 [1]             0.25e-3 [1]        1.0 [1]           1.0 [1]     1.0 [1]     0.5 [1]          0.5 [1]            0.5 [1]
     leak_erev          -65. [1]   -65. [1]             -65. [1]           -65. [1]          -65. [1]    -65. [1]    -65. [1]         -65. [1]           -65. [1]
     na_type            nacncoop   nacncoop             nacncoop           nacncoop          nacncoop    nacncoop    nacncoop         nacncoop           nacncoop  
-    nacncooop_vshift   10. [2]    10.[2]               10.[2]             10.[2]            10.[2]      10.[2]      10. [2]          10. [2]             10.[2]
+    nacncoop_vshift    0.  [2]    0. [2]               0. [2]             0. [2]            0. [2]      0. [2]      0.  [2]          0.  [2]             0. [2]
     ih_type            ihvcn      ihvcn                ihvcn              ihvcn             ihvcn       ihvcn       ihvcn            ihvcn              ihvcn
     -------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
