@@ -1,7 +1,9 @@
-#!/bin/bash
-#FILES="VCN_c08 VCN_c09 VCN_c09nd VCN_c11 VCN_c14 VCN_c16 VCN_c17 VCN_c18 VCN_c19 VCN_c20 VCN_c21 VCN_c22"
-model="XM13_nabu"
+# Example:
+# scripts/process_gbcIV.sh run all 
+#
+model="XM13_nacncoop"
 proto="runIV"
+FILES="VCN_c09 VCN_c11 VCN_c17 VCN_c18"
 case $1 in
  run)
     proto="runIV"
@@ -19,8 +21,7 @@ esac
 
 case $2 in
  all)
-    FILES="VCN_c08 VCN_c09 VCN_c11 VCN_c14 VCN_c16 VCN_c17 VCN_c18 VCN_c19 VCN_c20 VCN_c21 VCN_c22"
-    # FILES="VCN_c18 VCN_c19 VCN_c20 VCN_c21 VCN_c22"
+    FILES="VCN_c09 VCN_c11 VCN_c17 VCN_c18"
     ;;
  *)
     FILES=$2
@@ -60,24 +61,27 @@ if [[ "$proto" = "initIV" ]] || [[ "$proto" = "runIV" ]] ; then
     wait
     echo IV runs complete
 
-    for f in $FILES
-    do
-    	echo "Cell: <$f>"
-        echo "VCN_Cells/$f/Simulations/IV"
-        ls -lat VCN_Cells/$f/Simulations/IV
-        echo " "
-    done
+    # for f in $FILES
+    # do
+    #     echo "Cell: <$f>"
+    #     echo "VCN_Cells/$f/Simulations/IV"
+    #     ls -lat VCN_Cells/$f/Simulations/IV
+    #     echo " "
+    # done
 fi
 
+echo $proto
 if [[ "$proto" = "runIV" ]] || [[ "$proto" = "plot" ]] ; then
     python src/all_gbc_iv.py ${model}
 fi
-#
-if [[ "$proto" = 'list' ]] ; then
-    for f in $FILES
-    do
-        echo "Cell: <$f>"
-        ls -lat VCN_Cells/$f/Simulations/IV
-        echo " "
-    done
+
+if [[ "$proto" = 'list' ]]
+    then
+        echo $FILES
+        for f in $FILES
+        do
+            echo "Cell: <$f>"
+            ls -lat VCN_Cells/$f/Simulations/IV
+            echo " "
+        done
 fi
