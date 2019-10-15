@@ -41,7 +41,7 @@ class DisplayResult():
         self.findfiles = False
 
         self.cellChoices = ['Bushy', 'TStellate', 'DStellate']
-        self.modelNameChoices = ['XM13', 'RM03', 'mGBC', 'XM13PasDend', 'Calyx', 'MNTB', 'L23Pyr', 'XM13nacncoop']
+        self.modelNameChoices = ['XM13', 'XM13_nacn', 'RM03', 'mGBC', 'XM13PasDend', 'Calyx', 'MNTB', 'L23Pyr', 'XM13nacncoop']
         self.modelTypeChoices = ['II', 'II-I', 'I-II', 'I-c', 'I-t', 'II-o']
         self.SGCmodelChoices = ['Zilany', 'cochlea']  # cochlea is python model of Zilany data, no matlab, JIT computation; Zilany model creates matlab instance for every run.
         self.cmmrModeChoices = ['CM', 'CD', 'REF']  # comodulated, codeviant, reference
@@ -206,16 +206,16 @@ class DisplayResult():
                 w = trial['stimWaveform']
                 stb = trial['stimTimebase']
                 # print(trial['somaVoltage'])
-                P.axdict['A'].plot(trial['time']/1000., trial['somaVoltage'][0], linewidth=0.5)
+                P.axdict['A'].plot(trial['time']/1000., trial['somaVoltage'], linewidth=0.5)
                 print(stb)
                 print(w)
                 # P.axdict['B'].plot(stb, w, linewidth=0.5)  # stimulus underneath
-                P.axdict['C'].plot(trial['spikeTimes'][0]/1000., i*np.ones(len( trial['spikeTimes'][0])),
+                P.axdict['C'].plot(trial['spikeTimes']/1000., i*np.ones(len( trial['spikeTimes'])),
                         'o', markersize=2.5, color='b')
                 allt.append(trial['spikeTimes'][0]/1000.)
                 inputs = len(trial['inputSpikeTimes'])
                 for k in range(inputs):
-                    tk = trial['inputSpikeTimes'][0][k]/1000.
+                    tk = trial['inputSpikeTimes'][k]/1000.
                     y = (i+0.1+k*0.05)*np.ones(len(tk))
                     P.axdict['E'].plot(tk, y, '|', markersize=2.5, color='r', linewidth=0.5)
             # allt = np.array(allt).ravel()
@@ -240,7 +240,7 @@ class DisplayResult():
         allst = []
         for trial in data['trials']:
             # print (trial)
-            allst.extend(data['trials'][trial]['spikeTimes'][0]/1000.)
+            allst.extend(data['trials'][trial]['spikeTimes']/1000.)
         allst = np.array(allst)
         allst = np.sort(allst)
             # combine all spikes into one array, plot PSTH
@@ -434,7 +434,6 @@ class DisplayResult():
 
 if __name__ == '__main__':
     
-    DR = DisplayResult()
     parser = argparse.ArgumentParser(description='Display model results')
     parser = argparse.ArgumentParser(description='Simulate activity in a reconstructed model cell',
                     argument_default=argparse.SUPPRESS,
@@ -528,6 +527,9 @@ if __name__ == '__main__':
     args = vars(parser.parse_args())
 #    model.print_modelsetup()
     print(args)
+
+    DR = DisplayResult()
+
     for k in args.keys():
         DR.Params[k] = args[k]
         print('k: ', k)

@@ -99,14 +99,15 @@ class CellConfig():
 
         # print('dcell: ', dcell)
 
-    def makeDict(self, cell, velocity=3.0):
+    def makeDict(self, cell, velocity=3.0, areainflate=1.0):
         assert cell in self.VCN_Inputs
         indata = self.VCN_Inputs[cell][1]
         celltype = self.VCN_Inputs[cell][0]
         r = [None]*len(indata)
         for j, i in enumerate(indata):
-            r[j] = OrderedDict([('input', j+1), ('asa', i[0]),
-                ('nSyn', int(np.around(i[0]*synperum2))),
+            asa = i[0]*areainflate  # here is where we can control area by inflations from reference value
+            r[j] = OrderedDict([('input', j+1), ('asa', asa),
+                ('nSyn', int(np.around(asa*synperum2))),
                 ('delay', i[1]), ('SR', i[2]),
                 ("delay2", np.nansum([i[3],i[5]])*0.001/velocity),
                 ('axonLen', i[3]), ('axonR', i[4]),

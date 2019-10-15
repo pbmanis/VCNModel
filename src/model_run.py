@@ -200,6 +200,9 @@ class ModelRun():
         self.Params['soma_autoinflate'] = False  #
         self.Params['dendrite_inflation'] = 1.0
         self.Params['dendrite_autoinflate'] = False
+        self.Params['dendrite_fromsoma'] = False
+        self.Params['ASA_inflation'] = 1.0
+        self.Params['ASA_fromsoma'] = False
         self.Params['lambdaFreq'] = 2000.  # Hz for segment number
         self.Params['sequence'] = '' # sequence for run - may be string [start, stop, step]
         # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
@@ -318,6 +321,8 @@ class ModelRun():
             namePars += f"_soma={self.Params['soma_inflation']:.3f}"
         if self.Params['dendrite_inflation'] != 1.0:
             namePars += f"_dend={self.Params['dendrite_inflation']:.3f}"
+        if self.Params['ASA_inflation'] != 1.0:
+            namePars += f"_ASA={self.Params['ASA_inflation']:.3f}"
 
         if self.Params['runProtocol'] in ['initIV', 'initandrunIV', 'runIV']:
             if self.Params['initIVStateFile'] is None:
@@ -546,7 +551,7 @@ class ModelRun():
             origdiam = {}
             self.post_cell.computeAreas()
             a1 = np.sum(list(self.post_cell.areaMap['soma'].values()))
-            print('     Original Soma area: ', a1)
+            print(f'     Original Soma area: {a1:.2f}')
             for i, section in enumerate(list(soma_group)):
                 secobj = self.post_cell.all_sections['soma'][i]
                 origdiam[section] = secobj.diam
@@ -566,7 +571,11 @@ class ModelRun():
             if np.isnan(inflateratio):
                 raise ValueError("Dendrite Inflation Ration is not defined!")
             self.Params['dendrite_inflation'] = inflateratio
-
+        if self.Params['dendrite_fromsoma']:
+            self.Params['dendrite_inflation'] = self.Params['soma_inflation']
+        if self.Params['ASA_fromsoma']:
+            self.Params['ASA_inflation'] = self.Params['soma_inflation']
+        
         if self.Params['dendrite_inflation'] != 1.0:
             print('!!!!!   Inflating dendrite')
             dendrite_group = self.post_cell.all_sections['dendrite']
@@ -576,7 +585,7 @@ class ModelRun():
             origdiam = {}
             # self.post_cell.computeAreas()
             a1 = np.sum(list(self.post_cell.areaMap['dendrite'].values()))
-            print('     Original dendrite area: ', a1)
+            print(f'     Original dendrite area: {a1:.3f}')
             badsecs = []
             for i, section in enumerate(list(dendrite_group)):
                 secobj = self.post_cell.all_sections['dendrite'][i]
@@ -594,10 +603,11 @@ class ModelRun():
                 # print('      ratio:  ', section.diam/origdiam[section])
             self.post_cell.computeAreas()
             a2 = np.sum(list(self.post_cell.areaMap['dendrite'].values()))
-            print('     Revised dendrite area: ', a2, '  area ratio: ', a2/a1, '  original area: ', a1)
+            print(f"     Revised dendrite area: {a2:.2f},  area ratio: {a2/a1:.3f},  original area: {a1:.2f}")
 
             rtau = self.post_cell.compute_rmrintau(auto_initialize=True, vrange=[-80., -55.])
-            print(f"     New Rin after dendrite inflation: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e6:.2f}, RMP: {rtau['v']:.2f}")
+            print(f"     New Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e6:.2f}, RMP: {rtau['v']:.2f}")
+            # print(f"     New Rin after dendrite inflation: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e6:.2f}, RMP: {rtau['v']:.2f}")
             # for section in list(dendrite_group):
                 # print('      diam orig: ', origdiam[section])
                 # print('      diam new:  ', ssection.diam)
@@ -961,7 +971,7 @@ class ModelRun():
         else:
             fromdict = self.cellID
         cconfig = cell_config.CellConfig()
-        synapseConfig, celltype = cconfig.makeDict(fromdict)
+        synapseConfig, celltype = cconfig.makeDict(fromdict, self.Params['ASA_inflation'])
         self.start_time = time.time()
         # compute delays in a simple manner
         # assumption 3 meters/second conduction time
@@ -1525,7 +1535,6 @@ class ModelRun():
         debug = False
         if debug:
             print('hf.sec_groups : ', thisCell.sec_groups.keys())
-        if debug:
             print(thisCell.print_all_mechs())
         preCell = []
         synapse = []
@@ -1908,14 +1917,20 @@ def main():
     parser.add_argument('--spirou', type=str, dest='spirou', action='store', default='all',
             choices = model.spirouChoices,
             help='Specify spirou experiment type.... ')
-    parser.add_argument('--soma-inflate', type=float, dest='soma_inflation', action='store', default=1.0,
+    # Morphology
+    parser.add_argument('--soma_inflate', type=float, dest='soma_inflation', action='store', default=1.0,
             help='Specify factor by which to inflate soma AREA')
-    parser.add_argument('--soma-autoinflate', action='store_true', dest='soma_autoinflate', default=False,
+    parser.add_argument('--soma_autoinflate', action='store_true', dest='soma_autoinflate', default=False,
             help='Automatically inflate soma based on table')
-    parser.add_argument('--dendrite-inflate', type=float, dest='dendrite_inflation', action='store', default=1.0,
+    parser.add_argument('--dendrite_inflate', type=float, dest='dendrite_inflation', action='store', default=1.0,
             help='Specify factor by which to inflate total dendritic AREA')
-    parser.add_argument('--dendrite-autoinflate', action='store_true', dest='dendrite_autoinflate', default=False,
+    parser.add_argument('--dendrite_autoinflate', action='store_true', dest='dendrite_autoinflate', default=False,
             help='Automatically inflate dendrite area based on table')
+    parser.add_argument('--dendrite_from_soma', action='store_true', dest='dendrite_fromsoma', default=False,
+            help='Automatically inflate dendrite area based on soma inflation')
+    parser.add_argument('--ASA_from_soma', action='store_true', dest='ASA_fromsoma', default=False,
+            help='Automatically inflate dendrite area based on soma inflation')
+            
     parser.add_argument('--tagstring', type=str, default=None, dest='tagstring',
             help="Add a tag string to the output filename to distinguish it")
     parser.add_argument('-a', '--AMPAScale', type=float, default=1.0, dest='AMPAScale',
@@ -1958,46 +1973,41 @@ def main():
     #     help='List results to screen')
 
     args = parser.parse_args()
-    # parser2 = argparse.ArgumentParser(parents=[parser], add_help=False)
 
-    config = None
     if args.configfile is not None:
-        if '.json' in args.configfile:
-            # The escaping of "\t" in the config file is necesarry as
-            # otherwise Python will try to treat is as the string escape
-            # sequence for ASCII Horizontal Tab when it encounters it
-            # during json.load
-            config = json.load(open(args.configfile))
-            # parser2.set_defaults(**config)
-            # v = vars(parser)
-            # for arg in config:
-            #     # print('arg: ', arg, config[arg])
-            #     v[arg] = config[arg]
-        elif '.toml' in args.configfile:
-            config = toml.load(open(args.configfile))
-            # print('toml config: ', config)
-            # # parser2.set_defaults(**config)
-            # v = vars(parser)
-            # for arg in config:
-            #     print('arg: ', arg, config[arg])
-            #     parser[arg] = config[arg]
-            # print('toml parsed')
-    args = vars(parser.parse_args())
-
-    for k in args.keys():
-        if k in list(model.Params.keys()):
-            model.Params[k] = args[k]
+        config = None
+        if args.configfile is not None:
+            if '.json' in args.configfile:
+                # The escaping of "\t" in the config file is necesarry as
+                # otherwise Python will try to treat is as the string escape
+                # sequence for ASCII Horizontal Tab when it encounters it
+                # during json.load
+                config = json.load(open(args.configfile))
+            elif '.toml' in args.configfile:
+                config = toml.load(open(args.configfile))
+        
+        vargs = vars(args)  # reach into the dict to change values in namespace
+        for c in config:
+            if c in args:
+                print('c: ', c)
+                vargs[c] = config[c]
+    
+    # now copy into the model.Params structure
+    for key, value in vars(args).items():
+        if key in list(model.Params.keys()):
+            model.Params[key] = value
         else:
             raise ValueError(f'Parameter {k:s} is not in Params key list')
-    # now add the configs if there are any to add.
-    if config is not None:
-        for k in config.keys():
-            if k in list(model.Params.keys()):
-                model.Params[k] = config[k]
-            else:
-                raise ValueError(f'Parameter {k:s} is not in Params key list')
-    print('Params: ', model.Params)
 
+    # now add the configs if there are any to add.
+    # if config is not None:
+    #     for k in config.keys():
+    #         if k in list(model.Params.keys()):
+    #             model.Params[k] = config[k]
+    #         else:
+    #             raise ValueError(f'Parameter {k:s} is not in Params key list')
+    print('model_run Params: ', model.Params)
+    
     # print(model.Params['cell'])
     # if model.Params['hocfile'] == None: # just use the matching hoc file
     #     model.Params['hocfile'] = model.Params['cell'] + '.hoc'

@@ -42,7 +42,7 @@ modelType = 'II'
 
 
 testing = False
-forcerun = False
+forcerun = True
 
 # set up plots
 l1 = 0.08
@@ -97,8 +97,8 @@ for n in gbc_names:
     M.Params['Parallel'] = True
     M.Params['modelType'] = modelType
     M.Params['modelName'] = modelName
-    M.Params['soma_autoinflate'] = True
-    M.Params['dendrite_autoinflate'] = True
+    # M.Params['soma_autoinflate'] = True
+    # M.Params['dendrite_autoinflate'] = False
     M.Params['sequence'] = '[-1., 2.01, 0.2]'
     
     if M.Params['hocfile'] == None: # just use the matching hoc file
