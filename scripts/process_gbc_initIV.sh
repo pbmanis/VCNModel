@@ -3,14 +3,13 @@
 # do only cells with morphology
 # ONLY "A" grade cells with complete dendrites:
 FILES="VCN_c09 VCN_c11 VCN_c17 VCN_c18"
-model="XM13_nacncoop"
 proto="initIV"
 
 echo "running the individual initialization or IV protocols"
 for f in $FILES
 do
     echo $f
-    python src/model_run.py ${f} -H -P ${proto} -M ${model} --noparallel --soma-autoinflate &
+    python src/model_run.py ${f} -H -P ${proto} --configfile autoscale.toml &
 done
 # python model_run.py VCN_c08 -H --protocol initIV --model XM13 --noparallel &
 # python model_run.py VCN_c09 -H --protocol initIV --model mGBC --noparallel &

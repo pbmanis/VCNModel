@@ -1,7 +1,6 @@
 # Example:
 # scripts/process_gbcIV.sh run all 
 #
-model="XM13_nacncoop"
 proto="runIV"
 FILES="VCN_c09 VCN_c11 VCN_c17 VCN_c18"
 case $1 in
@@ -45,7 +44,7 @@ if [[ "$proto" = "initIV" ]] || [[ "$proto" = "runIV" ]] ; then
     for f in $FILES
     do
         echo $f
-        python src/model_run.py ${f} -H -P ${proto} -M ${model} ${PLOT} --soma-autoinflate --noparallel &
+        python src/model_run.py ${f} -H -P ${proto} ${PLOT} --configfile autoscale.toml &
     # python model_run.py VCN_c09 -P ${proto} -M ${model} --noparallel &
     # python model_run.py VCN_c11 -P ${proto} -M ${model} --noparallel &
     # python model_run.py VCN_c14 -P ${proto} -M ${model} --noparallel &
@@ -71,9 +70,9 @@ if [[ "$proto" = "initIV" ]] || [[ "$proto" = "runIV" ]] ; then
 fi
 
 echo $proto
-if [[ "$proto" = "runIV" ]] || [[ "$proto" = "plot" ]] ; then
-    python src/all_gbc_iv.py ${model}
-fi
+# if [[ "$proto" = "runIV" ]] || [[ "$proto" = "plot" ]] ; then
+#     python src/all_gbc_iv.py ${model}
+# fi
 
 if [[ "$proto" = 'list' ]]
     then
