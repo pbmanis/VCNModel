@@ -61,6 +61,7 @@ import scipy.stats
 # soma_area_data = 'Mesh Surface Area'
 datafile_default = Path('MorphologyData', 'Dendrite Quality and Surface Areas_comparisons_pbm_14Oct2019_v1.xlsx')
 soma_area_data = 'Mesh Soma Area Smoothed'
+cellsintable = [2, 5, 8, 9, 10, 11, 13, 14, 16, 17, 18, 19, 20, 21, 22, 24, 27, 29]
 datafile = datafile_default
 inputs = [f"Input {i+1:d}" for i in range(12)]  # input column labels
 
@@ -80,7 +81,7 @@ class CellConfig():
 
         self.VCN_Inputs = OrderedDict()
     
-        for cellnum in [2, 8, 9, 10, 11, 14, 16, 17, 18, 19, 20, 21, 22, 24, 27, 29]:
+        for cellnum in cellsintable:
             self.build_cell(cellnum)
             r, ct = self.makeDict(f"VCN_c{cellnum:02d}")
     
