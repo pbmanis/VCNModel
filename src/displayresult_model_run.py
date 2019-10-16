@@ -41,7 +41,7 @@ class DisplayResult():
         self.findfiles = False
 
         self.cellChoices = ['Bushy', 'TStellate', 'DStellate']
-        self.modelNameChoices = ['XM13', 'XM13_nacn', 'RM03', 'mGBC', 'XM13PasDend', 'Calyx', 'MNTB', 'L23Pyr', 'XM13nacncoop']
+        self.modelNameChoices = ['XM13', 'XM13_nacn', 'RM03', 'mGBC', 'XM13PasDend', 'Calyx', 'MNTB', 'L23Pyr', 'XM13_nacncoop']
         self.modelTypeChoices = ['II', 'II-I', 'I-II', 'I-c', 'I-t', 'II-o']
         self.SGCmodelChoices = ['Zilany', 'cochlea']  # cochlea is python model of Zilany data, no matlab, JIT computation; Zilany model creates matlab instance for every run.
         self.cmmrModeChoices = ['CM', 'CD', 'REF']  # comodulated, codeviant, reference
@@ -200,6 +200,10 @@ class DisplayResult():
         totaldur = si['pip_start'] + np.max(si['pip_start']) + si['pip_duration'] + si['pip_offduration']
         for j, pattern in enumerate(self.Params['patterns']): # for all cells in the "pattern"
 
+            print('pattern: ', pattern)
+            # print(d[pattern])
+            print('len d[pattern][trials]: ', len(d[pattern]['trials']))
+            print(d[pattern]['trials'].keys())
             allt = []
             for i in range(len(d[pattern]['trials'])):  # for all trails in the measure.
                 trial = d[pattern]['trials'][i]
@@ -433,6 +437,8 @@ class DisplayResult():
 
 
 if __name__ == '__main__':
+
+    DR = DisplayResult()
     
     parser = argparse.ArgumentParser(description='Display model results')
     parser = argparse.ArgumentParser(description='Simulate activity in a reconstructed model cell',
@@ -528,7 +534,6 @@ if __name__ == '__main__':
 #    model.print_modelsetup()
     print(args)
 
-    DR = DisplayResult()
 
     for k in args.keys():
         DR.Params[k] = args[k]

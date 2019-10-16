@@ -154,6 +154,7 @@ showCell = True
 
 
 
+
 class ModelRun():
     def __init__(self, args=None):
 
@@ -1253,14 +1254,14 @@ class ModelRun():
                 # run using pyqtgraph's parallel support
                 with MP.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
                     for j, x in tasker:
-                        tresults = self.single_an_run_single_input(post_cell, j, synapseConfig,
-                            stimInfo, preCell, self.an_setup_time)
+                                                     # post_cell, j, synapseConfig, stimInfo, seeds, preCell, an_setup_time
+                        tresults = self.single_an_run(post_cell, j, synapseConfig, stimInfo, seeds, preCell, self.an_setup_time)
                         tasker.results[j] = tresults
                 # retreive the data
             else:  # easier to debug
                 for j, N in enumerate(range(nReps)):
-                    tresults[j] = self.single_an_run_single_input(post_cell, j, synapseConfig,
-                            stimInfo, preCell, self.an_setup_time)
+                    tresults[j] = self.single_an_run(post_cell, j, synapseConfig,
+                            stimInfo, seeds, preCell, self.an_setup_time)
             spikeTimes = {}
             inputSpikeTimes = {}
             somaVoltage = {}
@@ -1403,98 +1404,110 @@ class ModelRun():
         if self.Params['plotFlag']:
             self.plot_an(celltime, result)
 
-    def single_an_run_fixed(self, post_cell, j, synapseConfig, stimInfo, preCell, an_setup_time):
-        """
-        Perform a single run with all AN input on the target cell turned off except for input j.
-
-        Parameters
-        ----------
-        hf : hoc_reader object
-            Access to neuron and file information
-
-        j : int
-            The input that will be active in this run
-
-        synapseConfig : dict
-            A dictionary with information about the synapse configuration to use.
-
-        stimInfo : dict
-            A dictionary whose elements include the stimulus delay
-
-        preCell : list
-            A list of the preCell hoc objects attached to the synapses
-
-        post_cell : cells object
-            The target cell
-
-        Returns
-        -------
-        anresult : dict
-            A dictionary containing 'Vsoma', 'Vdend', 'time', and the 'ANSpikeTimes'
-
-        """
-        print('\n*** single_an_run_fixed\n')
-
-        hf = post_cell.hr
-        try:
-            cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=self.Params['initANStateFile'])
-        except:
-            self.an_run(post_cell, make_an_intial_conditions=True)
-            print('return from an_run, initial conditions')
-            try:
-                cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=self.Params['initANStateFile'])
-            except:
-                raise ValueError('Failed initialization for cell: ', self.cellID)
-
-        # make independent inputs for each synapse
-        ANSpikeTimes = []
-        an0_time = time.time()
-        nrn_run_time = 0.
-        stim = {}
-        #
-        # Generate stimuli - they are always the same for every synaptic input, so just generate once
-        #
-        for i in range(len(preCell)):
-            preCell[i].set_spiketrain([10., 20., 30., 40., 50.])
-            ANSpikeTimes.append(preCell[i]._spiketrain)
-
-        an_setup_time += (time.time() - an0_time)
-        nrn_start = time.time()
-        self.allsecVec = OrderedDict()
-        if self.Params['save_all_sections']:  # just save soma sections        for section in list(g):
-            g = hf.sec_groups[group]
-            sec = hf.get_section(section)
-            self.allsecVec[sec.name()] = hf.h.Vector()
-            self.allsecVec[sec.name()].record(sec(0.5)._ref_v, sec=sec)  # recording of voltage all set up here
-
-        Vsoma = hf.h.Vector()
-        Vdend = hf.h.Vector()
-        rtime = hf.h.Vector()
-        if 'dendrite' in post_cell.all_sections and len(post_cell.all_sections['dendrite']) > 0:
-            dendsite = post_cell.all_sections['dendrite'][-1]
-            Vdend.record(dendsite(0.5)._ref_v, sec=dendsite)
-        else:
-            dendsite = None
-
-        Vsoma.record(post_cell.soma(0.5)._ref_v, sec=post_cell.soma)
-        rtime.record(hf.h._ref_t)
-        hf.h.finitialize()
-        hf.h.tstop = 50.
-        hf.h.t = 0.
-        hf.h.batch_save() # save nothing
-        hf.h.batch_run(hf.h.tstop, hf.h.dt, "an.dat")
-        nrn_run_time += (time.time() - nrn_start)
-        if dendsite == None:
-            Vdend = np.zeros_like(Vsoma)
-        anresult = {'Vsoma': np.array(Vsoma), 'Vdend': np.array(Vdend), 'time': np.array(rtime),
-                'ANSpikeTimes': ANSpikeTimes, 'stim': stim}
-
-        # print('all sec vecs: ', self.allsecVec.keys())
-        # print(' flag for all sections: ', self.Params['save_all_sections'])
-        if self.Params['save_all_sections']:
-            anresult['allsecVec'] = self.allsecVec
-
-        return anresult
+    # def single_an_run_fixed(self, post_cell, j, synapseConfig, stimInfo, preCell, an_setup_time):
+    #     """
+    #     Perform a single run with all AN input on the target cell turned off except for input j.
+    #
+    #     Parameters
+    #     ----------
+    #     hf : hoc_reader object
+    #         Access to neuron and file information
+    #
+    #     j : int
+    #         The input that will be active in this run
+    #
+    #     synapseConfig : dict
+    #         A dictionary with information about the synapse configuration to use.
+    #
+    #     stimInfo : dict
+    #         A dictionary whose elements include the stimulus delay
+    #
+    #     preCell : list
+    #         A list of the preCell hoc objects attached to the synapses
+    #
+    #     post_cell : cells object
+    #         The target cell
+    #
+    #     Returns
+    #     -------
+    #     anresult : dict
+    #         A dictionary containing 'Vsoma', 'Vdend', 'time', and the 'ANSpikeTimes'
+    #
+    #     """
+    #     print('\n*** single_an_run_fixed\n')
+    #     group = 'soma'
+    #     hf = post_cell.hr
+    #     try:
+    #         cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=self.Params['initANStateFile'])
+    #     except:
+    #         self.an_run(post_cell, make_an_intial_conditions=True)
+    #         print('return from an_run, initial conditions')
+    #         try:
+    #             cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=self.Params['initANStateFile'])
+    #         except:
+    #             raise ValueError('Failed initialization for cell: ', self.cellID)
+    #
+    #     # make independent inputs for each synapse
+    #     ANSpikeTimes = []
+    #     an0_time = time.time()
+    #     nrn_run_time = 0.
+    #     stim = {}
+    #     #
+    #     # Generate stimuli - they are always the same for every synaptic input, so just generate once
+    #     #
+    #     for i in range(len(preCell)):
+    #         preCell[i].set_spiketrain([10., 20., 30., 40., 50.])
+    #         ANSpikeTimes.append(preCell[i]._spiketrain)
+    #
+    #     an_setup_time += (time.time() - an0_time)
+    #     nrn_start = time.time()
+    #     self.allsecVec = OrderedDict()
+    #
+    #     if self.Params['save_all_sections']:
+    #         for group in post_cell.hr.sec_groups.keys(): # get morphological components
+    #             g = post_cell.hr.sec_groups[group]
+    #             for section in list(g):
+    #                 sec = post_cell.hr.get_section(section)
+    #                 self.allsecVec[sec.name()] = post_cell.hr.h.Vector()
+    #                 self.allsecVec[sec.name()].record(sec(0.5)._ref_v, sec=sec)  # recording of voltage all set up here
+    #
+    #
+    #
+    #     # if self.Params['save_all_sections']:  # just save soma sections        for section in list(g):
+    #    #      print(hf.sec_groups.keys())
+    #    #      g = hf.sec_groups[group]
+    #    #      sec = hf.get_section(section)
+    #    #      self.allsecVec[sec.name()] = hf.h.Vector()
+    #    #      self.allsecVec[sec.name()].record(sec(0.5)._ref_v, sec=sec)  # recording of voltage all set up here
+    #
+    #     Vsoma = hf.h.Vector()
+    #     Vdend = hf.h.Vector()
+    #     rtime = hf.h.Vector()
+    #     if 'dendrite' in post_cell.all_sections and len(post_cell.all_sections['dendrite']) > 0:
+    #         dendsite = post_cell.all_sections['dendrite'][-1]
+    #         Vdend.record(dendsite(0.5)._ref_v, sec=dendsite)
+    #     else:
+    #         dendsite = None
+    #
+    #     Vsoma.record(post_cell.soma(0.5)._ref_v, sec=post_cell.soma)
+    #     rtime.record(hf.h._ref_t)
+    #     hf.h.finitialize()
+    #     hf.h.tstop = 50.
+    #     hf.h.t = 0.
+    #     hf.h.batch_save() # save nothing
+    #     hf.h.batch_run(hf.h.tstop, hf.h.dt, "an.dat")
+    #     nrn_run_time += (time.time() - nrn_start)
+    #     if dendsite == None:
+    #         Vdend = np.zeros_like(Vsoma)
+    #     anresult = {'Vsoma': np.array(Vsoma), 'Vdend': np.array(Vdend), 'time': np.array(rtime),
+    #             'ANSpikeTimes': ANSpikeTimes, 'stim': stim, 'stimTimebase': np.array(rtime)}
+    #
+    #     # print('all sec vecs: ', self.allsecVec.keys())
+    #     # print(' flag for all sections: ', self.Params['save_all_sections'])
+    #     if self.Params['save_all_sections']:
+    #         anresult['allsecVec'] = self.allsecVec
+    #
+    #       return anresult
 
 
     def configure_cell(self, thisCell, synapseConfig, celltype, stimInfo):
