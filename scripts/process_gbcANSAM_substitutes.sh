@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mod_params="-r 50 --fmod 100. --dmod 50. --stimulus SAM"
+mod_params="-r 20 --fmod 100. --dmod 50. --stimulus SAM"
 stim_params="-f 4000. --dB 40"
 AN_params=" --sgcmodel cochlea --SR MS"
 # cellstuffs="--type Bushy --modeltype II -M XM13nacncoop -H"
@@ -13,12 +13,12 @@ AN_params=" --sgcmodel cochlea --SR MS"
 # python model_run.py VCN_c09 ${cellstuffs} ${AN_params} ${stim_params} ${endbulbs_self} ${mod_params} ${inflation} -P runANPSTH --noparallel &
 
 
-FILES="VCN_c09 VCN_c11 VCN_c17 VCN_c18"
+FILES="VCN_c02 VCN_c05 VCN_c10 VCN_c13"
 for f in $FILES
 do
     echo "Cell: $f"
-    python vcnmodel/model_run.py $f --protocol initAN -${mod_params} ${stim_params} ${AN_params} --configfile autoscale.toml &
-    python vcnmodel/model_run.py $f --protocol runANPSTH -${mod_params} ${stim_params} ${AN_params} --configfile autoscale.toml &
+    python vcnmodel/model_run.py VCN_c17 -i $f --protocol initAN -${mod_params} ${stim_params} ${AN_params} --configfile autoscale.toml &
+    python vcnmodel/model_run.py VCN_c17 -i $f --protocol runANPSTH -${mod_params} ${stim_params} ${AN_params} --configfile autoscale.toml &
 done
 wait
 echo ANPSTH generators complete

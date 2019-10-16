@@ -26,16 +26,16 @@ FILES="VCN_c09 VCN_c11 VCN_c17 VCN_c18"
 for f in $FILES
 do
     echo "Cell: $f"
-    python src/model_run.py $f --protocol runANPSTH -r 50 -d 40 -f 4000. --sgcmodel cochlea -S MS --configfile autoscale.toml &
+    python vcnmodel/model_run.py $f --protocol runANPSTH -r 50 -d 40 -f 4000. --sgcmodel cochlea -S MS --configfile autoscale.toml &
 done
 wait
-echo ANPSTH generators complete
+echo ANPSTH generators complete for $f
 
-for f in $FILES
-do
-	echo "Cell: <$f>"
-    ls -lat VCN_Cells/$f/Simulations/AN/AN_Result*
-    echo " "
-done
+# for f in $FILES
+# do
+#     echo "Cell: <$f>"
+#     ls -lat VCN_Cells/$f/Simulations/AN/AN_Result*
+#     echo " "
+# done
 
 

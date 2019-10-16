@@ -14,7 +14,7 @@ FILES="VCN_c09 VCN_c11 VCN_c17 VCN_c18"
 for f in $FILES
 do
 	echo "Cell: <$f>"
-    python src/model_run.py $f --protocol initAN -r 50 -d 40 -f 4000. --sgcmodel cochlea -S MS --configfile autoscale.toml &
+    python vcnmodel/model_run.py $f --protocol initAN -r 50 -d 40 -f 4000. --sgcmodel cochlea -S MS --configfile autoscale.toml &
 done
 wait
 echo "AN initiation complete"
