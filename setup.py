@@ -2,18 +2,18 @@ from setuptools import setup, find_packages
 import os
 
 # Use Semantic Versioning, http://semver.org/
-version_info = (0, 1, 0, '')
+version_info = (0, 2, 0, '')
 __version__ = '%d.%d.%d%s' % version_info
 
 
-setup(name='VCN',
+setup(name='vcnmodel',
       version=__version__,
       description='VCN SBEM Cell modeling',
       url='http://github.com/pbmanis/VCN_Model',
       author='Paul B. Manis',
       author_email='pmanis@med.unc.edu',
       license='MIT',
-      packages=find_packages(include=['src*']),
+      packages=find_packages('vcnmodel'),
       install_requires=['matplotlib>=3.0', 'numpy>=1.1',
           ],
       zip_safe=False,
