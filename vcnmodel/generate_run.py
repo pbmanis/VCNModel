@@ -501,6 +501,7 @@ class GenerateRun():
         pickle.dump({'basename': self.basename,
                      'runInfo': self.runInfo.todict(),
                      'modelPars': mp,
+                     'Params': self.params,
                      'Results': [{k:x.todict()} for k,x in self.results.items()]
                     }, pfout)
                      
