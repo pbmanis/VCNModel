@@ -44,17 +44,8 @@ if [[ "$proto" = "initIV" ]] || [[ "$proto" = "runIV" ]] ; then
     for f in $FILES
     do
         echo $f
-        python src/model_run.py ${f} -H -P ${proto} ${PLOT} --configfile autoscale.toml &
-    # python model_run.py VCN_c09 -P ${proto} -M ${model} --noparallel &
-    # python model_run.py VCN_c11 -P ${proto} -M ${model} --noparallel &
-    # python model_run.py VCN_c14 -P ${proto} -M ${model} --noparallel &
-    # python model_run.py VCN_c16 -P ${proto} -M ${model} --noparallel &
-    # python model_run.py VCN_c17 -P ${proto} -M ${model} --noparallel &
-    # python model_run.py VCN_c18 -P ${proto} -M ${model} --noparallel &
-    # python model_run.py VCN_c19 -P ${proto} -M ${model} --noparallel &
-    # python model_run.py VCN_c20 -P ${proto} -M ${model} --noparallel &
-    # python model_run.py VCN_c21 -P ${proto} -M ${model} --noparallel &
-    # python model_run.py VCN_c22 -P ${proto} -M ${model} --noparallel &
+        python src/model_run.py $f -H -P initIV ${PLOT} --noparallel --configfile autoscale.toml &
+        python src/model_run.py $f -H -P ${proto} ${PLOT} --noparallel --configfile autoscale.toml &
     done
 
     wait

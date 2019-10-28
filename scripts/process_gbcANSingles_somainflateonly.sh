@@ -8,11 +8,11 @@ for f in $FILES
 do
     echo "Cell: $f, self inputs"
     python vcnmodel/model_run.py $f --protocol initAN -H \
-         ${mod_params} ${stim_params} ${AN_params} --configfile autoscale.toml\
+         ${mod_params} ${stim_params} ${AN_params} --configfile autoscale_somaonly.toml\
              --saveall
 
     python vcnmodel/model_run.py $f --protocol runANSingles -H \
-         ${mod_params} ${stim_params} ${AN_params} --configfile autoscale.toml\
+         ${mod_params} ${stim_params} ${AN_params} --configfile autoscale_somaonly.toml\
              --saveall
 done
 wait

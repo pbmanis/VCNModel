@@ -23,10 +23,14 @@
 # python model_run.py VCN_c21 --protocol runANPSTH --model mGBC -r 50 --sgcmodel cochlea -S MS -a 3.0 --noparallel &
 # python model_run.py VCN_c22 --protocol runANPSTH --model mGBC -r 50 --sgcmodel cochlea -S MS -a 3.0 --noparallel &
 FILES="VCN_c02 VCN_c05 VCN_c10 VCN_c13"
+((seed = 100))
+((reps = 50))
 for f in $FILES
 do
     echo "Cell: $f"
-    python src/model_run.py VCN_c17 -i $f --protocol runANPSTH -r 50 -d 40 -f 4000. --sgcmodel cochlea -S MS --configfile autoscale.toml &
+    python src/model_run.py VCN_c09 -H- i $f --protocol initAN --seed $seed -r $reps -d 30 -f 16000. --sgcmodel cochlea -S MS --configfile autoscale.toml &
+    python src/model_run.py VCN_c09 -H -i $f --protocol runANPSTH --seed $seed -r $reps -d 30 -f 16000. --sgcmodel cochlea -S MS --configfile autoscale.toml &
+    ((seed = seed + 1))
 done
 wait
 echo ANPSTH generators complete

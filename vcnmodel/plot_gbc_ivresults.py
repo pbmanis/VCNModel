@@ -18,11 +18,12 @@ import pylibrary.PlotHelpers as PH
 
 
 gbc_names = ['08', '09', '11', '14', '16', '17', '18', '19', '20', '21', '22', 'None']
-P = PH.regular_grid(4, 3, figsize=(6,8), panel_labels=gbc_names, labelposition=(0.05, 0.95),
+gbc_names = ['09', '11', '17', '18', 'None']
+P = PH.regular_grid(2, 2, figsize=(6,8), panel_labels=gbc_names, labelposition=(0.05, 0.95),
     margins={'leftmargin': 0.07, 'rightmargin': 0.05, 'topmargin': 0.12, 'bottommargin': 0.1},)
 chan = '_'  # for certainity in selection, include trailing underscore in this designation
 
-default_modelName = 'XM13nacncoop'
+default_modelName = 'XM13_nacncoop'
 #default_modelName = 'XM13'
 if len(sys.argv) > 1:
     modelName = sys.argv[1]
@@ -82,8 +83,11 @@ for gbc in gbc_names:
     ftime = ivdatafile.stat().st_mtime
     print('  File time: ', datetime.datetime.fromtimestamp(ftime).strftime('%H:%M:%S %d-%b-%Y'))
     AR.read_pfile(ivdatafile)
+    # for i in range(AR.traces.shape[0]):
+    #     mpl.plot(AR.time_base, AR.traces[i])
+    # mpl.show()
     bridge_offset = 0.0
-    threshold = -40.
+    threshold = -32.
     tgap = 0.  # gap before fittoign taum
         # print(self.AR.tstart, self.AR.tend)
     RM.setup(AR, SP, bridge_offset=bridge_offset)
@@ -99,7 +103,7 @@ for gbc in gbc_names:
                 to_peak=True, tgap=tgap)
 
     RMA = RM.analysis_summary
-    
+    print(RMA)
     fh = open(ivdatafile, 'rb')
     df = pickle.load(fh)
     r = df['Results'][0]
@@ -116,7 +120,7 @@ for gbc in gbc_names:
     ftname = str(ivdatafile.name)
     ip = ftname.find('_II_')+4
     ftname = ftname[:ip]+'...\n'+ftname[ip:]
-    toptitle = f"{ftname:s}\nRin={RMA['Rin']:.1f} Mohm  Taum={RMA['taum']*1e3:.2f} ms"
+    toptitle = f"{ftname:s}" # "\nRin={RMA['Rin']:.1f} Mohm  Taum={RMA['taum']*1e3:.2f} ms"
     P.axdict[gbc].set_title(toptitle, fontsize=5)
 
 if chan == '_':
