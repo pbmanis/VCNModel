@@ -5,4 +5,7 @@ soma_autoinflate=true
 dendrite_autoinflate=false
 ASA_fromsoma=true
 dendrite_fromsoma=true
-noparallel=true
+sgc_model='cochlea'
+SRType='MS'
+
+# noparallel=true

@@ -44,8 +44,8 @@ if [[ "$proto" = "initIV" ]] || [[ "$proto" = "runIV" ]] ; then
     for f in $FILES
     do
         echo $f
-        python src/model_run.py $f -H -P initIV ${PLOT} --noparallel --configfile autoscale.toml &
-        python src/model_run.py $f -H -P ${proto} ${PLOT} --noparallel --configfile autoscale.toml &
+        python vcnmodel/model_run.py $f -H -P initIV ${PLOT}  --configfile autoscale.toml
+        python vcnmodel/model_run.py $f -H -P ${proto} ${PLOT}  --configfile autoscale.toml
     done
 
     wait
@@ -65,13 +65,13 @@ echo $proto
 #     python src/all_gbc_iv.py ${model}
 # fi
 
-if [[ "$proto" = 'list' ]]
-    then
-        echo $FILES
-        for f in $FILES
-        do
-            echo "Cell: <$f>"
-            ls -lat VCN_Cells/$f/Simulations/IV
-            echo " "
-        done
-fi
+# if [[ "$proto" = 'list' ]]
+#     then
+#         echo $FILES
+#         for f in $FILES
+#         do
+#             echo "Cell: <$f>"
+#             ls -lat VCN_Cells/$f/Simulations/IV
+#             echo " "
+#         done
+# fi

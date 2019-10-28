@@ -1,14 +1,18 @@
 import sys
+import time
 import argparse
+import numpy as np
 from collections import OrderedDict
 import cnmodel.cells as cells
+from pylibrary.Params import Params
 import json
 import toml
 
 
 class ModelParams():
     def __init__(self):
-
+        self.parser = None
+        
         self.cellID = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
         
         self.cellChoices = ['Bushy', 'TStellate', 'DStellate']
@@ -18,18 +22,20 @@ class ModelParams():
         self.cmmrModeChoices = ['CM', 'CD', 'REF']  # comodulated, codeviant, reference
         self.SRChoices = ['LS', 'MS', 'HS', 'fromcell']  # AN SR groups (assigned across all inputs)
         self.protocolChoices = ['initIV', 'testIV', 'runIV', 'initandrunIV',
-                                'initAN', 'runANPSTH', 'runANIO', 'runANSingles', 'runANOmitOne',
+                                'initAN', 'runANPSTH', 'runANIO', 'runANSingles',
                                 'gifnoise']
         self.soundChoices = ['tonepip', 'noise', 'stationaryNoise', 'SAM', 'CMMR']
         self.speciesChoices = ['mouse', 'guineapig']
-        self.spirouChoices = ['all', 'max=mean', 'all=mean']
+        self.spirouChoices = ['all', 'max=mean', 'all=mean', 'removelargest', 'largestonly']
         self.ANSynapseChoices = ['simple', 'multisite']
 
         self.cellmap = {'bushy': cells.bushy, 'tstellate': cells.tstellate, 'dstellate': cells.dstellate}
         self.srname = ['LS', 'MS', 'HS']  # runs 0-2, not starting at 0
         
         
-        
+        # set up the Params data structure. This should hold everything that might be modified
+        # or need to be known when running the model.
+        #
         self.Params = OrderedDict()
         self.Params['cell'] = self.cellID
         self.Params['AMPAScale'] = 1.0 # Use the default scale for AMPAR conductances
@@ -38,6 +44,8 @@ class ModelParams():
         self.Params['initIVStateFile'] = None # 'IVneuronState_%s.dat'
         self.Params['initANStateFile'] = None # 'ANneuronState_%s.dat'
         self.Params['simulationFilename'] = None
+        self.Params['shortSimulationFilename'] = None
+        self.Params['simPath'] = None
         self.Params['hocfile'] = None
         self.Params['usedefaulthoc'] = False
         self.Params['cellType'] = self.cellChoices[0]
@@ -59,7 +67,9 @@ class ModelParams():
         self.Params['SRType'] = self.SRChoices[2]
         # self.Params['SR'] = self.Params['SRType']  # actually used SR: this might be cell-defined, rather than entirely specified from the command line
         self.Params['inputPattern'] = None # ID of cellinput pattern (same as cellID): for substitute input patterns.
-        self.Params['spirou'] = 'all'
+        self.Params['synno'] = None  # for selection of single synaptic inputs
+        self.Params['lastfile'] = None
+        self.Params['Spirou'] = 'all'
         self.Params['runProtocol'] = self.protocolChoices[2]  # testIV is default because it is fast and should be run often
         self.Params['nReps'] = 1
         self.Params['seed'] = 100 # always the same start - avoids lots of recomutation
@@ -98,10 +108,80 @@ class ModelParams():
         self.Params['commandline'] = ''  # store command line on run
         self.Params['checkcommand'] = False
         self.Params['configfile'] = None
-        self.Params['tagstring'] = ''
+        self.Params['tagstring'] = None
+        
+        
+        # set some defaults for modelPar
+        self.Params['modelPar'] = {
+            'axon': False,
+            'cellClass': None,
+            'dendrites': False,
+            'hillock': False,
+            'initialsegment': False,
+            'modelName': None,
+            'modelType': 'II',
+            'morphology': None,
+            'myelinatedaxon': False,
+            'na': None,
+            'name': None,
+            'pumps': False,
+            'soma': True,
+            'species': 'mouse',
+            'temperature': 34.0,
+            'ttx': False,
+            'unmyelinatedaxon': False,
+        }
+
+        # runinfo parameters are filled by generate_run at the initialization of a single trace run
+        self.Params['runInfo'] = Params(
+                              folder="Simulations",
+                              fileName='Normal',
+                              runName='Run',
+                              manipulation="Canonical",
+                              preMode="cc",
+                              postMode='cc',
+                              TargetCellType='', # celltype, # valid are "Bushy", "Stellate", "MNTB"
+                              electrodeSection=None, #electrodeSection,
+                              dendriticElectrodeSection=None, # dendriticElectrodeSection,
+                              dendriticSectionDistance=100., # microns.
+                              celsius=37,  # set the temperature.
+                              nStim=1,
+                              stimFreq=200.,  # hz
+                              stimInj={'pulse': np.linspace(-1., 1.00, 11, endpoint=True)}, # iRange,  # nA, a list of test levels for current clamp
+                              stimDur=100.0,  # msec
+                              stimDelay=5.0,  # msec
+                              stimPost=3.0,  # msec
+                              vnStim=1,
+                              vstimFreq=200.,  # hz
+                              vstimInj=50,  # mV amplitude of step (from holding)
+                              vstimDur=50.0,  # msec
+                              vstimDelay=2.0,  # msec
+                              vstimPost=3.0,  # msec
+                              vstimHolding=-60, # holding, mV
+                              gif_i0 =  self.Params['gif_i0'],
+                              gif_sigma =  self.Params['gif_sigma'],
+                              gif_fmod =  self.Params['gif_fmod'],
+                              gif_tau =  self.Params['gif_tau'],
+                              gif_dur =  self.Params['gif_dur'],
+                              gif_skew =  self.Params['gif_skew'],
+                              runTime = time.asctime(),  # store date and time of run
+                              inFile=None,
+                              # 'ANFiles/AN10000Hz.txt', # if this is not None, then we will use these spike times...
+                              inFileRep=1,  # which rep to use (or array of reps)
+                              spikeTimeList={},  # Dictionary of spike times
+                              v_init = -61.0,  # from Rothman type II model - not appropriate in all cases
+                              useSaveState = True # useSavedState,  # use the saved state.
+        )
 
 
-    def parser(self):
+    def build_parser(self):
+        """
+        Set up the command line parser for running the model
+        This include both verbs for running different types of protocols, and
+        parameters that define the cell scaffold (structure, channels) that is being run
+        The parameters in this file should also appear in the Params data structure (dict) for the class
+        """
+        
         parser = argparse.ArgumentParser(description='Simulate activity in a reconstructed model cell',
                         argument_default=argparse.SUPPRESS,
                         fromfile_prefix_chars='@')
@@ -171,9 +251,9 @@ class ModelParams():
                 choices=self.cmmrModeChoices,
                 help=('Specify mode (from: %s)' % self.cmmrModeChoices))
 
-        parser.add_argument('--spirou', type=str, dest='spirou', action='store', default='all',
+        parser.add_argument('--Spirou', type=str, dest='Spirou', action='store', default='all',
                 choices = self.spirouChoices,
-                help='Specify spirou experiment type.... ')
+                help='Specify Spirou experiment type.... ')
         # Morphology
         parser.add_argument('--soma_inflate', type=float, dest='soma_inflation', action='store', default=1.0,
                 help='Specify factor by which to inflate soma AREA')
@@ -228,8 +308,14 @@ class ModelParams():
         #     help='Print extra information during analysis')
         #  parser.add_argument('-l', '--list', action="store_true", default=False, dest = 'list_results',
         #     help='List results to screen')
+        self.parser = parser
 
-        args = parser.parse_args()
+    def parse_parser(self):
+        if self.parser is None:
+            self.build_parser()
+            
+        
+        args = self.parser.parse_args()
 
         if args.configfile is not None:
             config = None
@@ -248,13 +334,15 @@ class ModelParams():
                 if c in args:
                     print('c: ', c)
                     vargs[c] = config[c]
-    
+        
+        self.cmdargs = args  # just save these
+        
         # now copy into the model.Params structure
         for key, value in vars(args).items():
             if key in list(self.Params.keys()):
                 self.Params[key] = value
             else:
-                raise ValueError(f'Parameter {k:s} is not in Params key list')
+                raise ValueError(f'Parameter {key:s} is not in Params key list')
 
         # now add the configs if there are any to add.
         # if config is not None:
@@ -263,7 +351,7 @@ class ModelParams():
         #             model.Params[k] = config[k]
         #         else:
         #             raise ValueError(f'Parameter {k:s} is not in Params key list')
-        print('model_run Params: ', self.Params)
+        print('Params: ', self.Params)
     
         # print(model.Params['cell'])
         # if model.Params['hocfile'] == None: # just use the matching hoc file

@@ -17,7 +17,7 @@ from __future__ import print_function
 import os
 from pathlib import Path
 import matplotlib
-matplotlib.use('Qt4Agg')
+matplotlib.use('Qt5Agg')
 matplotlib.rcParams['text.usetex'] = False
 
 import matplotlib.pyplot as mpl
@@ -26,49 +26,35 @@ import pickle
 import argparse
 from collections import OrderedDict
 from cnmodel.util import sound
+from ephysanalysis import MakeClamps
+from ephysanalysis import RmTauAnalysis
+from ephysanalysis import SpikeAnalysis
 import sac_campagnola as SAC
 import pycircstat as PCS
 import pylibrary.PlotHelpers as PH 
 from cnmodel.util import vector_strength
 # import GIF_fit as GFit
 import vspfile
+import vcnmodel.model_params as model_params
 
-# import warnings
-# warnings.filterwarnings("ignore")
+MPAR = model_params.ModelParams()
+AR = MakeClamps.MakeClamps()
+SP = SpikeAnalysis.SpikeAnalysis()
+RM = RmTauAnalysis.RmTauAnalysis()
+
 
 class DisplayResult():
     def __init__(self):
         self.findfiles = False
 
-        self.cellChoices = ['Bushy', 'TStellate', 'DStellate']
-        self.modelNameChoices = ['XM13', 'XM13_nacn', 'RM03', 'mGBC', 'XM13PasDend', 'Calyx', 'MNTB', 'L23Pyr', 'XM13_nacncoop']
-        self.modelTypeChoices = ['II', 'II-I', 'I-II', 'I-c', 'I-t', 'II-o']
-        self.SGCmodelChoices = ['Zilany', 'cochlea']  # cochlea is python model of Zilany data, no matlab, JIT computation; Zilany model creates matlab instance for every run.
-        self.cmmrModeChoices = ['CM', 'CD', 'REF']  # comodulated, codeviant, reference
-        self.SRChoices = ['LS', 'MS', 'HS', 'fromcell']  # AN SR groups (assigned across all inputs)
-        self.protocolChoices = ['initIV', 'testIV', 'runIV', 'initAN', 'runANPSTH', 'runANIO', 'runANSingles', 'runANOmitOne', 'gifnoise']
-        self.soundChoices = ['tonepip', 'noise', 'stationaryNoise', 'SAM', 'CMMR']
-        self.speciesChoices = ['mouse', 'guineapig']
-        self.spirouChoices = ['all', 'max=mean', 'all=mean']
-        self.ANSynapseChoices = ['simple', 'multisite']
-
+        self.Params = MPAR.Params
+        
         self.modetypes = ['find', 'singles', 'IO', 'multi']
         self.Params = OrderedDict()
         self.fn = {}  # filename
         self.bp = {}  # base path
         self.ID = ''
         self.tag = 'delays'
-        self.Params['modetype'] = 'singles'
-        self.Params['modelName'] = 'XM13'
-        self.Params['modelType'] = 'II'
-        self.Params['runProtocol'] = 'AN'
-        self.Params['threshold'] = 0.
-        self.Params['depression'] = 0
-        self.Params['SR'] = 'MS'
-        self.Params['pdf'] = None
-        self.Params['soma_inflation'] = 1.0
-        self.Params['dendrite_inflation'] = 1.0
-        self.Params['noplot'] = False
         self.findfiles = False
         self.vspfile = 'VS.p'
 
@@ -87,6 +73,7 @@ class DisplayResult():
             simmode = 'AN'
         else:
             simmode = 'IV'
+
         outPath = Path('VCN_Cells', f"{p:s}", 'Simulations/', simmode)
         self.bp[p] = 'VCN_Cells/{0:s}/Simulations/AN'.format(p)
         # print(('bp: ', self.Params['cell'], self.bp))
@@ -114,7 +101,7 @@ class DisplayResult():
         else:
             fn += f"_{self.Params['SR']:2s}.p"
             ofile = Path(outPath, fn)
-        print('outpuath: ', outPath)
+        print('outPath: ', outPath)
         self.fn[p] = ofile
         self.filename = ofile
                 
@@ -182,7 +169,7 @@ class DisplayResult():
         if filename is not None:
             with open(filename, 'rb') as fh:
                 print('opening specific file: ', filename)
-                d['c09'] = pickle.load(fh)
+                AR.read_pfile(filename)
             self.Params['patterns'] = ['c09']
         sizer = OrderedDict([('A', {'pos': [0.08, 0.4, 0.71, 0.22]}), ('B', {'pos': [0.55, 0.4, 0.71, 0.22]}),
                              ('C', {'pos': [0.08, 0.4, 0.39, 0.22]}), ('D', {'pos': [0.55, 0.4, 0.39, 0.22]}),
@@ -195,33 +182,44 @@ class DisplayResult():
         P.resize(sizer)  # perform positioning magic
 
         # d[cell] has keys: ['inputSpikeTimes', 'somaVoltage', 'spikeTimes', 'time', 'dendriteVoltage', 'stimInfo', 'stimWaveform']
-        sk = sizer.keys()
-        si = d[self.Params['patterns'][0]]['Params']
-        totaldur = si['pip_start'] + np.max(si['pip_start']) + si['pip_duration'] + si['pip_offduration']
-        for j, pattern in enumerate(self.Params['patterns']): # for all cells in the "pattern"
+        with(open(filename, 'rb')) as fh:
+            df = pickle.load(fh)
 
-            print('pattern: ', pattern)
-            # print(d[pattern])
-            print('len d[pattern][trials]: ', len(d[pattern]['trials']))
-            print(d[pattern]['trials'].keys())
-            allt = []
-            for i in range(len(d[pattern]['trials'])):  # for all trails in the measure.
-                trial = d[pattern]['trials'][i]
-                w = trial['stimWaveform']
-                stb = trial['stimTimebase']
-                # print(trial['somaVoltage'])
-                P.axdict['A'].plot(trial['time']/1000., trial['somaVoltage'], linewidth=0.5)
-                print(stb)
-                print(w)
-                # P.axdict['B'].plot(stb, w, linewidth=0.5)  # stimulus underneath
-                P.axdict['C'].plot(trial['spikeTimes']/1000., i*np.ones(len( trial['spikeTimes'])),
-                        'o', markersize=2.5, color='b')
-                allt.append(trial['spikeTimes'][0]/1000.)
-                inputs = len(trial['inputSpikeTimes'])
-                for k in range(inputs):
-                    tk = trial['inputSpikeTimes'][k]/1000.
-                    y = (i+0.1+k*0.05)*np.ones(len(tk))
-                    P.axdict['E'].plot(tk, y, '|', markersize=2.5, color='r', linewidth=0.5)
+        sk = sizer.keys()
+        si = df['Params']
+        totaldur = si['pip_start'] + np.max(si['pip_start']) + si['pip_duration'] + si['pip_offduration']
+        
+        r = df['Results'][0]
+
+        for trial in range(len(df['Results'])):
+            ds = df['Results'][trial]
+            k0 = list(df['Results'][trial].keys())[0]
+            dx = ds[k0]['monitor']
+            P.axdict['A'].plot(dx['time'], dx['postsynapticV'], linewidth=1.0)
+            P.axdict["A"].set_xlim(0., 150.)
+            P.axdict['A'].set_ylim(-200., 50.)
+        # for j, pattern in enumerate(self.Params['patterns']): # for all cells in the "pattern"
+        #     print('pattern: ', pattern)
+        #     allt = []
+        #     for i in range(len(d[pattern]['Results'])):  # for all trials in the measure.
+        #         trial_k = list(d[pattern]['Results'][i].keys())[0]  # single value in dict
+        #         trial_d = d[pattern]['Results'][i][trial_k]
+        #         print('trail: ', trial_d)
+        #         w = trial['i_stim0']
+        #         stb = trial['time']
+        #         # print(trial['somaVoltage'])
+        #         P.axdict['A'].plot(trial['time']/1000., trial['somaVoltage'], linewidth=0.5)
+        #         print(stb)
+        #         print(w)
+        #         # P.axdict['B'].plot(stb, w, linewidth=0.5)  # stimulus underneath
+        #         P.axdict['C'].plot(trial['spikeTimes']/1000., i*np.ones(len( trial['spikeTimes'])),
+        #                 'o', markersize=2.5, color='b')
+        #         allt.append(trial['spikeTimes'][0]/1000.)
+        #         inputs = len(trial['inputSpikeTimes'])
+        #         for k in range(inputs):
+        #             tk = trial['inputSpikeTimes'][k]/1000.
+        #             y = (i+0.1+k*0.05)*np.ones(len(tk))
+        #             P.axdict['E'].plot(tk, y, '|', markersize=2.5, color='r', linewidth=0.5)
             # allt = np.array(allt).ravel()
             # # print(allt)
             # P.axdict['F'].hist(allt, range=(0., totaldur))
@@ -240,7 +238,7 @@ class DisplayResult():
         P.axdict['C'].set_title('Bushy Spike Raster', fontsize=9)
         P.axdict['F'].set_title('PSTH', fontsize=9)
         # combine all spikes into one array, plot PSTH
-        data = d[pattern]
+        data = df['Results'] #d[pattern]
         allst = []
         for trial in data['trials']:
             # print (trial)
@@ -367,23 +365,21 @@ class DisplayResult():
         #PH.nice_plot(ax.flatten().tolist())
         mpl.show()
 
-    def show_IV(self):
+    def show_IV(self,  filename):
             fig, ax = mpl.subplots(2,1)
             a = ax.ravel()
             d = {}
-            for p in self.Params['patterns']:
-                h = open(os.path.join(self.bp[p], self.fn[p]))
-                d[p] = pickle.load(h)
-                h.close()
-            print(('pattern: ',self.Params['patterns']))
-            for j, pattern in enumerate(self.Params['patterns']):
-                for k in range(len(d[pattern]['Results'])):
-                    k0 = d[pattern]['Results'][k]
-                    rkey = k0.keys()[0]
-                    v = k0[rkey]['monitor']['postsynapticV']
-                    a[0].plot(k0[rkey]['monitor']['time'], v, linewidth=0.5)
-                    inj = k0[rkey]['monitor']['postsynapticI']
-                    a[1].plot(k0[rkey]['monitor']['time'], inj)
+
+            with(open(Path(filename), 'rb')) as fh:
+                d = pickle.load(fh)
+            for k in range(len(d['Results'])):
+                k0 = d['Results'][k]
+                # print(k0)
+                rkey = list(k0.keys())[0]
+                v = k0[rkey]['monitor']['postsynapticV']
+                a[0].plot(k0[rkey]['monitor']['time'], v, linewidth=0.5)
+                inj = k0[rkey]['monitor']['postsynapticI']
+                a[1].plot(k0[rkey]['monitor']['time'], inj)
 
             mpl.show()
 
@@ -434,128 +430,48 @@ class DisplayResult():
     #                 #GF.GIF.plotParameters()
     #         mpl.show()
     #         exit(0)
-
-
-if __name__ == '__main__':
-
+def main():
     DR = DisplayResult()
-    
-    parser = argparse.ArgumentParser(description='Display model results')
-    parser = argparse.ArgumentParser(description='Simulate activity in a reconstructed model cell',
-                    argument_default=argparse.SUPPRESS,
-                    fromfile_prefix_chars='@')
-    parser.add_argument('--cell', dest='cell', action='store',
-                   default=None,
-                   help='Select the cell (no default)')
-    parser.add_argument('--type', '-T', dest='cellType', action='store',
-                   default='Bushy', choices=DR.cellChoices,
-                   help='Define the cell type (default: Bushy)')
-    parser.add_argument('--model', '-M', dest='modelName', action='store',
-                   default='XM13', choices=DR.modelNameChoices,
-                   help='Define the model type (default: XM13)')
-    parser.add_argument('--modeltype', dest='modelType', action='store',
-                   default='II', choices=DR.modelTypeChoices,
-                   help='Define the model type (default: XM13)')
-    parser.add_argument('--sgcmodel', type=str, dest='SGCmodelType', action='store',
-                   default='Zilany', choices=DR.SGCmodelChoices,
-                   help='Define the SGC model type (default: Zilany)')
-    parser.add_argument('--protocol', '-P', dest='runProtocol', action='store',
-                   default='runIV', choices=DR.protocolChoices,
-                   help='Protocol to use for simulation (default: IV)')
-    parser.add_argument('-H', action='store_true', dest='usedefaulthoc',
-                  help='Use default hoc file for this cell')
-    parser.add_argument('--hocfile', dest='hocfile', action='store',
-                  default=None,
-                  help='hoc file to use for simulation (default is the selected "cell".hoc)')
-    parser.add_argument('--inputpattern', '-i', type=str, dest='inputPattern', action='store',
-                  default=None,
-                  help='cell input pattern to use (substitute) from cell_config.py')
-    parser.add_argument('--stimulus', '-s', type=str, dest='soundtype', action='store',
-                   default='tonepip', choices=DR.soundChoices,
-                   help='Define the stimulus type (default: tonepip)')
-    parser.add_argument('--check', '-/', action='store_true', default=False, dest='checkcommand',
-                   help='Only check command line for valid input; do not run model')
-    parser.add_argument('--noplot', action='store_false', default=False, dest='noplot',
-                   help='Suppress plots')
-    parser.add_argument('--inflation', type=float, dest='inflationfactor', default=1.0,
-                help='select inflation factor')
-                   
-    # lowercase options are generally parameter settings:
-    parser.add_argument('-d', '--dB', type=float, default=30., dest='dB',
-        help='Set sound intensity dB SPL (default 30)')
-    parser.add_argument('-f', '--frequency', type=float, default=4000., dest='F0',
-        help='Set tone frequency, Hz (default 4000)')
-    parser.add_argument('--duration', type=float, default=0.1, dest='pip_duration',
-        help='Set sound stimulus duration (sec; default 0.1)')
-    parser.add_argument('-r', '--reps', type=int, default=1, dest = 'nReps',
-        help='# repetitions')
-    parser.add_argument('-S', '--SRType', type=str, default='HS', dest = 'SRType',
-        choices=DR.SRChoices,
-        help=('Specify SR type (from: %s)' % DR.SRChoices))
-    parser.add_argument('--synapsetype', type=str, default='multisite', dest = 'ANSynapseType',
-        choices=DR.ANSynapseChoices,
-        help=('Specify AN synpase type (from: %s)' % DR.ANSynapseChoices))
-    parser.add_argument('--depression', type=int, default=0, dest = 'ANSynapticDepression',
-        choices=[0, 1],
-        help=('Specify AN depression flag for multisite synapses (from: %s)' % str([0, 1])))
-        
-    parser.add_argument('--fmod', type=float, default=20, dest = 'fmod',
-        help='Set SAM modulation frequency')
-    parser.add_argument('--dmod', type=float, default=100., dest = 'dmod',
-        help='Set SAM modulation depth (in percent)')
-    parser.add_argument('--S2M', type=float, default=0, dest = 'signalToMasker',
-        help='Signal to Masker ratio (dB)')
-    parser.add_argument('--cmmrmode', type=str, default='CMR', dest = 'CMMRmode',
-        choices=DR.cmmrModeChoices,
-        help=('Specify mode (from: %s)' % DR.cmmrModeChoices))
-
-    parser.add_argument('--soma-inflate', type=float, dest='soma_inflation', action='store', default=1.0,
-            help='Specify factor by which to inflate soma AREA')
-    parser.add_argument('--soma-autoinflate', action='store_true', dest='soma_autoinflate', default=False,
-            help='Automatically inflate soma based on table')
-    parser.add_argument('--dendrite-inflate', type=float, dest='dendrite_inflation', action='store', default=1.0,
-            help='Specify factor by which to inflate total dendritic AREA')
-    parser.add_argument('--dendrite-autoinflate', action='store_true', dest='dendrite_autoinflate', default=False,
-            help='Automatically inflate dendrite area based on table')
-                
-    parser.add_argument('--spirou', type=str, dest='spirou', action='store', default='all',
-            choices = DR.spirouChoices,
-            help='Specify spirou experiment type.... ')
+    MPAR.build_parser()
+    parser = MPAR.parser
     parser.add_argument('-n', '--synno', dest='synno', action='store',
                     default=None, help='Select the synno')
     parser.add_argument('-t', '--threshold', dest='threshold', type=float, action='store',
                     default=0., help=('Spike detection threshold, mV'))
     parser.add_argument('--last', action='store_true',  dest='lastfile', default=False,
                 help='Just the file in lastfile.txt')
-    parser.add_argument('-F', '--filename', type=str, default=None, dest='filename',
+    parser.add_argument('-F', '--filename', type=str, default=None, dest='simulationFilename',
                     help="just use a filename")
-
-    args = vars(parser.parse_args())
-#    model.print_modelsetup()
-    print(args)
-
-
-    for k in args.keys():
-        DR.Params[k] = args[k]
-        print('k: ', k)
-
-    print(args['lastfile'])
-    if args['filename']:
-        DR.filename = args['filename']
-        DR.show_AN(DR.filename)
+    
+    MPAR.parse_parser()
+#     args = vars(parser.parse_args())
+# #    model.print_modelsetup()
+#     print(args)
+#
+#
+#     for k in args.keys():
+#         DR.Params[k] = args[k]
+#         print('k: ', k)
+#
+    # print(args['lastfile'])
+    print(MPAR.cmdargs)
+    if MPAR.cmdargs.simulationFilename is not None:
+        DR.show_IV(filename=MPAR.Params['simulationFilename'])
 
         exit()
+    #
+    # elif args['lastfile']:
+    #     lf = Path('lastfile.txt').read_text()
+    #     DR.filename = lf
+    #     print('reading: ', DR.filename)
+    #
+    # DR.make_filename(tag='delays')
+    # if os.path.isfile(DR.filename):
+    #     print(('FOUND ofile: ', DR.filename))
+    #     DR.show(pattern=[DR.Params['cell']])
+    # else:
+    #     print(('NOT FOUND: ', DR.filename))
 
-    elif args['lastfile']:
-        lf = Path('lastfile.txt').read_text()
-        DR.filename = lf
-        print('reading: ', DR.filename)
-        
-    DR.make_filename(tag='delays')
-    if os.path.isfile(DR.filename):
-        print(('FOUND ofile: ', DR.filename))
-        DR.show(pattern=[DR.Params['cell']])
-    else:
-        print(('NOT FOUND: ', DR.filename))
-    #DR.show()
-        
+
+if __name__ == '__main__':
+    main()

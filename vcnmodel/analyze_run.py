@@ -4,6 +4,9 @@ __author__ = 'pbmanis'
 Perform analysis of IVs from model_run
 Provides basic analysis
 
+
+Note: really should use the ephysanalysis module routines to do this analysis.
+
 """
 import os
 import pickle

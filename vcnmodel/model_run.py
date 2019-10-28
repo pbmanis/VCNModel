@@ -40,6 +40,13 @@ VCN_Cells/   # top level for data
             IV/  # results from IV simulations
             AN/  # results from AN simulations
 
+Usage:
+Note that the command structure and the Params dictionary are now defined in
+model_params.py for clarity.
+Although this is the main entry point, the code here focusses on
+setup of the cell(s) and the
+execution of different protocols, rather than maintenance of
+the control parameters.
 
 usage: model_run.py [-h] [--type {Bushy,TStellate,DStellate}]
                     [--model {XM13,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}]
@@ -119,11 +126,13 @@ python model_run.py VCN_c18 --hoc gbc18_w_axon_rescaled.hoc --protocol runIV --m
 """
 
 import sys
+import pathlib
 from pathlib import Path
 import os
 import errno
 import pickle
 import time
+from datetime import datetime
 import argparse
 from collections import OrderedDict
 import pprint
@@ -153,8 +162,9 @@ import pyqtgraph.multiprocess as MP
 
 showCell = True
 
+# All of the parameters should be defined in model_params
 
-MP = model_params.ModelParams()
+MPAR = model_params.ModelParams()
 
 class ModelRun():
     def __init__(self, Params, args=None):
@@ -172,7 +182,7 @@ class ModelRun():
         #                         'gifnoise']
         # self.soundChoices = ['tonepip', 'noise', 'stationaryNoise', 'SAM', 'CMMR']
         # self.speciesChoices = ['mouse', 'guineapig']
-        # self.spirouChoices = ['all', 'max=mean', 'all=mean']
+        # self.SpirouChoices = ['all', 'max=mean', 'all=mean']
         # self.ANSynapseChoices = ['simple', 'multisite']
         #
         # self.cellmap = {'bushy': cells.bushy, 'tstellate': cells.tstellate, 'dstellate': cells.dstellate}
@@ -188,8 +198,7 @@ class ModelRun():
         self.morphDirectory = 'Morphology'
         self.initDirectory = 'Initialization'
         self.simDirectory = 'Simulations'
-        print(self.Params.keys())
-        print(dir(self))
+        self.simFilename = None
 
     def print_modelsetup(self):
         """
@@ -241,12 +250,12 @@ class ModelRun():
         """
         Define program-wide file names (used also in cell_initialization and generate_run) one time for consistencye
 
-        This routine generates two names:
+        This routine generates three names:
             1. The name of the initizlization file. This name includes the model name, the model type (for that name),
                 soma and dendrite inflation factors if relevenat. Other parameters can be added if needed
             2. The name of the simulation data file. This name is similar to the initizlizaiton name, but may include
                 information about the type of run, stimuli, etc.
-
+            3. The "shortSimulationFilename", which is a unix datetime stamp, with a prefix.
 
         """
         self.cellID = Path(self.Params['cell']).stem # os.path.splitext(self.Params['cell'])[0]
@@ -268,12 +277,15 @@ class ModelRun():
                 self.Params['initIVStateFile'] = Path(ivinitdir, fn)
             print('IV Initialization file: ', self.Params['initIVStateFile'])
             self.mkdir_p(ivinitdir) # confirm existence of that file
+            self.Params['shortSimulationFilename'] = f"IV_Result_{self.cellID:s}"
 
         if self.Params['runProtocol'] in ['initandrunIV', 'runIV']:
             outPath = Path('VCN_Cells', self.cellID, self.simDirectory, 'IV')
+            self.Params['simPath'] = outPath
             self.mkdir_p(outPath) # confirm that output path exists
             self.Params['simulationFilename'] = Path(outPath, f"{self.cellID:s}_pulse_{namePars:s}_monitor.p")
             print('Simulation filename: ', self.Params['simulationFilename'])
+            self.Params['shortSimulationFilename'] = f"IV_Result_{self.cellID:s}"
 
         if self.Params['runProtocol'].startswith('runAN') or self.Params['runProtocol'] == 'initAN' or self.Params['runProtocol'] == 'runANSingles':
             if self.Params['inputPattern'] is None:
@@ -289,15 +301,17 @@ class ModelRun():
                 print('AN Initialization file: ', self.Params['initANStateFile'])
 
             outPath = Path('VCN_Cells', self.cellID, self.simDirectory, 'AN')
+            print('OUTPATH: ', outPath)
+            self.Params['simPath'] = outPath
             self.mkdir_p(outPath) # confirm that output path exists
             addarg = namePars
-            if self.Params['spirou'] == 'all':
+            if self.Params['Spirou'] == 'all':
                 addarg += '_all'
-            elif self.Params['spirou'] == 'max=mean':
+            elif self.Params['Spirou'] == 'max=mean':
                 addarg = '_mean'
-            elif self.Params['spirou'] == 'all=mean':
+            elif self.Params['Spirou'] == 'all=mean':
                 addarg = '_allmean'
-            print('soundtype: ', self.Params['soundtype'])
+            # print('soundtype: ', self.Params['soundtype'])
             fn = f"AN_Result_{self.cellID:s}_inp={inputs:s}_{addarg:s}_{self.Params['ANSynapseType']:s}"
             fn += f"_{self.Params['nReps']:03d}_{self.Params['soundtype']:s}"
             fn += f"_{int(self.Params['dB']):03d}dB_{self.Params['F0']:06.1f}"
@@ -309,8 +323,20 @@ class ModelRun():
                 fn += f"_{self.Params['SRType']:2s}.p"
                 ofile = Path(outPath, fn)
             self.Params['simulationFilename'] = ofile
+        
+            self.Params['shortSimulationFilename'] = f"AN_Result_{self.cellID:s}"
 
+        self.simFilename = self.make_output_path(prefix=self.Params['shortSimulationFilename'])
 
+    def make_output_path(self, prefix):
+        t = datetime.now()
+        ending = '.p'
+        if self.Params['tagstring'] is not None:
+            ending = "_" + self.Params['tagstring'] + '.p'
+        # print('simpath: ', self.Params['simPath'])
+        fname = str(Path(self.Params['simPath'], f"{prefix:s}_{t.strftime('%Y-%m-%d-%H%M%S-%f'):s}")) + ending
+        return fname
+        
 
     def set_spontaneousrate(self, spont_rate_type):
         """
@@ -691,13 +717,14 @@ class ModelRun():
         if self.Params['verbose']:
             print('iv_run: calling generateRun', self.post_cell.i_test_range)
         # parse i_test_range and pass it here
-        if self.Params['sequence'] is '':
+        if self.Params['sequence'] is '' or self.Params['sequence'] is None or len(self.Params['sequence']) == 0:
             if isinstance(self.post_cell.i_test_range, dict):  # not defined, use default for the cell type
                 iinjValues = self.post_cell.i_test_range
             else:  # if it was a list, try to put the list into the pulse range
                 iinjValues = {'pulse': self.post_cell.i_test_range}
         else:
             iinjValues = {'pulse': eval(self.Params['sequence'])}
+            
         self.R = GenerateRun(self.post_cell, idnum=self.idnum, celltype=self.Params['cellType'],
                              starttime=None,
                              electrodeSection=self.electrodeSection,
@@ -706,7 +733,7 @@ class ModelRun():
                              plotting = self.Params['plotFlag'],
                              params=self.Params,
                              )
-        self.R.runInfo.folder = Path('VCN_Cells', self.cellID, self.simDirectory, 'IV')
+        self.Params['runInfo'].folder = Path('VCN_Cells', self.cellID, self.simDirectory, 'IV')
         if self.Params['verbose']:
             print('iv_run: calling do_run')
         nworkers = self.Params['nWorkers']
@@ -781,7 +808,7 @@ class ModelRun():
                              params=self.Params)
         # ivinitfile = Path(self.baseDirectory, self.cellID,
         #                         self.initDirectory, self.Params['initIVStateFile'])
-        self.R.runInfo.folder = Path('VCN_Cells', self.cellID, self.simDirectory, 'Noise')
+        self.Params['runInfo'].folder = Path('VCN_Cells', self.cellID, self.simDirectory, 'Noise')
         if self.Params['verbose']:
             print('noise_run: calling do_run')
         nworkers = self.Params['nWorkers']
@@ -841,7 +868,7 @@ class ModelRun():
 
     def get_synapses(self, synapses):
         gMax = np.zeros(len(synapses))  # total g for each synapse
-        nSyn = np.zeros(len(synapses))  # # sites each synapse
+        nSyn = np.zeros(len(synapses))  # # sites in each synapse
         ngMax = np.zeros(len(synapses))
         # print('# syn: ', len(synapses))
         if self.Params['ANSynapseType'] == 'simple':
@@ -859,20 +886,120 @@ class ModelRun():
                 # print('i nsyn gmax nmdagmax  : ', i, nSyn[i], gMax[i], ngMax[i])
         return (gMax, ngMax, nSyn)
 
-    def set_synapse(self, synapse, gampa, gnmda):
+    def set_synapse(self, synapse, gampa=None, gnmda=None):
+        """
+        Parameters
+        ----------
+        synapse : a instance of a synapse object
+                not the list of synapses... 
+        
+        gampa : float (default: None)
+            new value for the AMPA conductance
+
+        gnmda : float (default: None)
+            new value for the NMDA conductance
+        """
+        
         totalg = 0.
-        if self.Params['ANSynapseType'] == 'simple':
-            synapse.psd.terminal.netcon.weight[0] = gampa
-            return
-        # multisite:
-        for p in synapse.psd.ampa_psd:
-            p.gmax = gampa
-            totalg = totalg + p.gmax
+        if gampa is not None:
+            if self.Params['ANSynapseType'] == 'simple':
+                synapse.psd.terminal.netcon.weight[0] = gampa
+                return
+            # multisite:
+            for p in synapse.psd.ampa_psd:
+                p.gmax = gampa
+                totalg = totalg + p.gmax
         totaln = 0.
-        for p in synapse.psd.nmda_psd:
-            p.gmax = gnmda
-            totaln = totaln + p.gmax
+        if gnmda is not None:
+            for p in synapse.psd.nmda_psd:
+                p.gmax = gnmda
+                totaln = totaln + p.gmax
         # print('total ampa, nmda: ', totalg, totaln)
+
+
+    def experiments_on_synapses(self, synapses):
+        """
+        manipulate syanptic strengths to test hypotheses here.
+        
+        Parameters
+        ----------
+        synapses : list of cnmodel synapses (no default)
+        
+        """
+
+        # change the strength of the all of the synapses by the same amount
+        if self.Params['AMPAScale'] != 1.0:
+            allsf = self.Params['AMPAScale']
+            gMax, ngMax, nSyn = self.get_synapses(synapses)
+            for i in range(len(nSyn)):
+                gMax[i] = gMax[i] * allsf
+                ngMax[i] = ngMax[i] * allsf
+                self.set_synapse(synapses[i], gMax[i]/nSyn[i], ngMax[i]/nSyn[i])
+
+        if self.Params['Spirou'] in ['all', None]:  # do not change anything
+            return
+
+        # Spirou experiments:
+        # 1. set the largest synaptic strength to the mean of the rest of the synapses
+        if self.Params['Spirou'] in ['max=mean']:
+            print('Spirou Experiment 1: Setting largest to mean of all inputs')
+            gMax, gnMax, nSyn = self.get_synapses(synapses)
+
+            meangmax = np.mean(gMax)  # mean conductance each synapse
+            meangnmax = np.mean(gnMax)
+            imaxgmax = np.argmax(gMax)  # synapse with largest conductance
+            print('    ', self.Params['Spirou'])
+            print('    AMPA: mean, gmax, imax: ', meangmax, gMax, imaxgmax)
+            print('    NMDA: mean, gnmax: ', meangnmax, gnMax)
+
+            gMax[imaxgmax] = meangmax
+            gnMax[imaxgmax] = meangnmax
+            self.set_synapse(synapse[imaxgmax], meangmax/nSyn[imaxgmax], meangnmax/nSyn[imaxgmax])
+
+        # 2. set all of the synaptic strengths to the mean synaptic strength
+        elif self.Params['Spirou'] in ['all=mean']:
+            print('Spirou Experiment 2: Setting all synapses to mean of all inputs')
+            print('setting ALL to the mean of all inputs (no variance)')
+            gMax, gnMax, nSyn = self.get_synapses(synapse)
+
+            meangmax = np.mean(gMax)  # mean conductance each synapse
+            meangnmax = np.mean(gnMax)
+            imaxgmax = np.argmax(gMax)  # synapse with largest conductance
+            print(self.Params['Spirou'])
+            print('AMPA: mean, gmax, imax: ', meangmax, gMax, imaxgmax)
+            print('NMDA: mean, gnmax: ', gampa=meangnmax, gnmda=gnMax)
+
+            gMax[imaxgmax] = meangmax
+            gnMax[imaxgmax] = meangnmax
+            for i in range(len(synapses)):
+                self.set_synapse(synapses[i], gampa=meangmax/nSyn[i], gnmda=meangnmax/nSyn[i])
+
+        # 3. set the largest synaptic conductance to 0
+        elif self.Params['Spirou'] in ['removelargest']:
+            print('Spirou Experiment 3: Remove the largest input')
+            gMax, gnMax, nSyn = self.get_synapses(synapses)
+
+            imaxgmax = np.argmax(gMax)  # synapse with largest conductance
+            print('AMPA: imax: ', imaxgmax)
+            print('AMPA, NMDA gmax: ', gMax[imaxgmax], gnMax[imaxgmax])
+            self.set_synapse(synapses[imaxgmax], gampa=0., gnmda=0.)
+
+        # 4. set the all synpases *except* the largest to 0
+        elif self.Params['Spirou'] in ['largestonly']:
+            print('Spirou Experiment 3: Remove all EXCEPT the largest input')
+            gMax, gnMax, nSyn = self.get_synapses(synapses)
+
+            imaxgmax = np.argmax(gMax)  # synapse with largest conductance
+            print('AMPA: imax: ', imaxgmax)
+            print('AMPA, NMDA gmax: ', gMax[imaxgmax], gnMax[imaxgmax])
+            for i in range(len(synapses)):
+                if i == imaxgmax:
+                    continue
+                self.set_synapses(synapsesia[i], gampa=0., gnmda=0.)
+
+        else:
+            raise ValueError(f"Spirou experiment {self.Params['Spirou']:s} is not implemented")
+
 
     def an_run(self, post_cell, verify=False, make_an_intial_conditions=False):
         """
@@ -920,7 +1047,7 @@ class ModelRun():
         threshold = self.Params['threshold'] # spike threshold, mV
 
         stimInfo = self.Params
-        preCell, synapse, self.electrode_site = self.configure_cell(post_cell, synapseConfig, celltype, stimInfo)
+        preCell, synapses, self.electrode_site = self.configure_cell(post_cell, synapseConfig, celltype, stimInfo)
 
         # see if we need to save the cell state now.
         if make_an_intial_conditions:
@@ -936,14 +1063,11 @@ class ModelRun():
 
         seeds = self.compute_seeds(nReps, synapseConfig)
         stimInfo['seeds'] = seeds  # keep the seed values too.
-        # spikeTimes = {}
-        # inputSpikeTimes = {}
-        # somaVoltage = {}
-        # dendriteVoltage = {}
         celltime = []
-        # stim = {}
-        # stimWaveform = {}
         allDendriteVoltages = {}  # Saving of all dendrite voltages is controlled by --saveall flag
+
+        self.experiments_on_synapses(synapses)  # manipulate synaptic strengths in various ways
+
         self.setup_time = time.time() - self.start_time
         self.nrn_run_time = 0.0
         self.an_setup_time = 0.
@@ -953,59 +1077,6 @@ class ModelRun():
         tresults = [None]*len(TASKS)
         result = {}
 
-        # manipulate syanptic strengths to test hypotheses here.
-        allsf = self.Params['AMPAScale']
-        gMax, ngMax, nSyn = self.get_synapses(synapse)
-        for i in range(len(nSyn)):
-            gMax[i] = gMax[i] * allsf
-            ngMax[i] = ngMax[i] * allsf
-            self.set_synapse(synapse[i], gMax[i]/nSyn[i], ngMax[i]/nSyn[i])
-
-        if self.Params['spirou'] in ['max=mean']:
-            print('setting largest to mean of all inputs')
-            gMax, gnMax, nSyn = self.get_synapses(synapse)
-
-            meangmax = np.mean(gMax)  # mean conductance each synapse
-            meangnmax = np.mean(gnMax)
-            imaxgmax = np.argmax(gMax)  # synapse with largest conductance
-            print(self.Params['spirou'])
-            print('AMPA: mean, gmax, imax: ', meangmax, gMax, imaxgmax)
-            print('NMDA: mean, gnmax: ', meangnmax, gnMax)
-
-            gMax[imaxgmax] = meangmax
-            gnMax[imaxgmax] = meangnmax
-            self.set_synapse(synapse[imaxgmax], meangmax/nSyn[imaxgmax], meangnmax/nSyn[imaxgmax])
-            print('revised values:')
-            self.get_synapses(synapse)
-            # for i, s in enumerate(synapse):
-            #     if i == imaxgmax:
-            #         p.gmax = gMax[i]/nSyn[i]  # except the chosen one
-            # for p in s.psd.ampa_psd:
-            #     gMax[i] = p.gmax
-            #     print('revised gmax i : ', i, gMax[i])
-        if self.Params['spirou'] in ['all=mean']:
-            print('setting ALL to the mean of all inputs (no variance)')
-            gMax, gnMax, nSyn = self.get_synapses(synapse)
-
-            meangmax = np.mean(gMax)  # mean conductance each synapse
-            meangnmax = np.mean(gnMax)
-            imaxgmax = np.argmax(gMax)  # synapse with largest conductance
-            print(self.Params['spirou'])
-            print('AMPA: mean, gmax, imax: ', meangmax, gMax, imaxgmax)
-            print('NMDA: mean, gnmax: ', meangnmax, gnMax)
-
-            gMax[imaxgmax] = meangmax
-            gnMax[imaxgmax] = meangnmax
-            for i in range(len(synapse)):
-                self.set_synapse(synapse[i], meangmax/nSyn[i], meangnmax/nSyn[i])
-            print('revised values:')
-            self.get_synapses(synapse)
-            # for i, s in enumerate(synapse):
-            #     if i == imaxgmax:
-            #         p.gmax = gMax[i]/nSyn[i]  # except the chosen one
-            # for p in s.psd.ampa_psd:
-            #     gMax[i] = p.gmax
-            #     print('revised gmax i : ', i, gMax[i])
 
         # run using pyqtgraph's parallel support
         if self.Params['Parallel']:
@@ -1078,6 +1149,7 @@ class ModelRun():
         if self.Params['plotFlag']:
             print('plotting')
             self.plot_an(celltime, result)
+
 
 
     def an_run_singles(self, post_cell, exclude=False, verify=False):
@@ -1492,13 +1564,13 @@ class ModelRun():
             if stimInfo['SRType'] is 'fromcell':  # use the one in the table
                 preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=syn['SR']))
                 preCell[-1]._synapsetype = self.Params['ANSynapseType']
-                stimInfo['SR'] = self.srname[syn[2]] # use and report value from table
+                stimInfo['SR'] = MPAR.srname[syn[2]] # use and report value from table
             else:
                 try:
-                    srindex = self.srname.index(stimInfo['SRType'])
+                    srindex = MPAR.srname.index(stimInfo['SRType'])
                     print('Retrieved index {:d} with SR type {:s}'.format(srindex, stimInfo['SRType']))
                 except:
-                    raise ValueError('SR type "%s" not found in Sr type list' % stimInfo['SRType'])
+                    raise ValueError('SR type "%s" not found in Sr type list' % stimInfo['SRType'], MPAR.srname)
 
                 preCell.append(cells.DummySGC(cf=stimInfo['F0'], sr=srindex))  # override
             if self.Params['verbose']:
@@ -1745,12 +1817,6 @@ class ModelRun():
         # results with be a dict with params, stiminfo, and trials as keys
         print('\n*** analysis_filewriter\n')
 
-        results['Params'] = self.Params  # include all the parameters of the run too
-        # clean up Parame to remove PosixPath from filenames
-        for v in ['initIVStateFile', 'initANStateFile', 'simulationFilename', 'hocfile']:
-            results['Params'][v] = str(results['Params'][v])
-        results['trials'] = result
-        results['mode'] = res_mode
         fout = self.Params['simulationFilename']  # base name created by make-filename - do not overwrite
         if len(tag) > 0:
             fout = Path(str(fout).replace('_all_', '_'+tag+'_'))
@@ -1759,10 +1825,19 @@ class ModelRun():
             fp = fout.parent
             fnb = str(fnb) + '_' + self.Params['tagstring']+'.p'
             fout = Path(fp, fnb)
-        with open(fout, 'wb') as fh:
+
+        results['Params'] = self.Params  # include all the parameters of the run too
+
+        # clean up Params to remove PosixPath from filenames
+        for v in list(results['Params'].keys()):
+            #['initIVStateFile', 'initANStateFile', 'simulationFilename', 'hocfile']:
+            if isinstance(results['Params'][v], pathlib.PosixPath):
+                results['Params'][v] = str(results['Params'][v])
+        results['Results'] = result
+        results['mode'] = res_mode
+        with open(self.simFilename, 'wb') as fh:
             pickle.dump(results, fh)
-        print(f"**** Model output written to: ****\n   {str(fout):s}")
-        self.ANFilename = str(fout)  # save most rexent value
+        print(f"**** Model output written to: ****\n   {str(self.simFilename):s}")
 
     def get_hoc_file(self, hf):
         if hf.file_loaded is False:
@@ -1793,9 +1868,10 @@ class ModelRun():
 
 def main():
     curdir = Path.cwd()
-    MP.parser()
+    MPAR.build_parser()
+    MPAR.parse_parser()
 
-    model = ModelRun(MP.Params)  # create instance of the model
+    model = ModelRun(MPAR.Params)  # create instance of the model
 
 
     if not model.Params['checkcommand']:
