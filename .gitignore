@@ -3,6 +3,13 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# temporary ipy/jupyter notebooks
+Untitled*.ipynb
+
+# different temporary visualazation files
+*.obj
+*.mtl
+
 .DS_Store
 
 # C extensions
