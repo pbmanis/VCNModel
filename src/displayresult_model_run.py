@@ -58,7 +58,7 @@ class DisplayResult():
         self.bp = {}  # base path
         self.ID = ''
         self.tag = 'delays'
-        self.Params['modetype'] = 'singles'
+        self.Params['modeltype'] = 'singles'
         self.Params['modelName'] = 'XM13'
         self.Params['modelType'] = 'II'
         self.Params['runProtocol'] = 'AN'

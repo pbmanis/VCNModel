@@ -8,16 +8,19 @@ import matplotlib
 matplotlib.use('Qt5Agg')
 
 files =["VCN_c09","VCN_c11", "VCN_c17", "VCN_c18"]
-
+reps = 20
+db = 30
+freq = 16000.
+ch='nacncoop'
 normalPSTHdatasets = {
 'VCN_c09':
-'VCN_Cells/VCN_c09/Simulations/AN/AN_Result_VCN_c09_inp=self_XM13_II_soma=1.514_dend=1.514_ASA=1.514_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
+f'VCN_Cells/VCN_c09/Simulations/AN/AN_Result_VCN_c09_inp=self_XM13_{ch:s}_II_soma=1.514_dend=1.514_ASA=1.514_delays_multisite_{reps:03d}_tonepip_{db:03d}dB_{fr:.1f}_MS.p',
 'VCN_c11':
-'VCN_Cells/VCN_c11/Simulations/AN/AN_Result_VCN_c11_inp=self_XM13_II_soma=1.458_dend=1.458_ASA=1.458_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
+f'VCN_Cells/VCN_c11/Simulations/AN/AN_Result_VCN_c11_inp=self_XM13_{ch:s}_II_soma=1.458_dend=1.458_ASA=1.458_delays_multisite_{reps:03d}_tonepip_{db:03d}dB_{fr:.1f}_MS.p',
 'VCN_c17':
-'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=self_XM13_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
+f'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=self_XM13_{ch:s}_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_{reps:03d}_tonepip_{db:03d}dB_{fr:.1f}_MS.p',
 'VCN_c18':
-'VCN_Cells/VCN_c18/Simulations/AN/AN_Result_VCN_c18_inp=self_XM13_II_soma=1.502_dend=1.502_ASA=1.502_delays_multisite_050_tonepip_040dB_4000.0_MS.p'
+f'VCN_Cells/VCN_c18/Simulations/AN/AN_Result_VCN_c18_inp=self_XM13_{ch:s}_II_soma=1.502_dend=1.502_ASA=1.502_delays_multisite_{reps:03d}_tonepip_{db:03d}dB_{fr:.1f}_p'
 }
 
 """
@@ -25,13 +28,13 @@ Substituions for the input pattern. Using 17 as the target
 """
 subsPSTHdatasets = {
 'VCN_c17a':
-'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c02_XM13_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
+'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c02_XM13_{ch:s}_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
 'VCN_c17b':
-'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c05_XM13_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
+'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c05_XM13_{ch:s}_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
 'VCN_c17c':
-'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c10_XM13_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
+'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c10_XM13_{ch:s}_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
 'VCN_c17d':
-'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c13_XM13_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
+'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c13_XM13_{ch:s}_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
 }
 
 # latest = {}
@@ -50,7 +53,7 @@ subsPSTHdatasets = {
 #     latest[files[j]] = fn[i]
 #
 latest = normalPSTHdatasets
-latest = subsPSTHdatasets
+# latest = subsPSTHdatasets
 print(latest)
 
 re_inp = re.compile('inp=(VCN_c[0-9]{2})')

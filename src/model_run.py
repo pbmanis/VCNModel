@@ -890,7 +890,8 @@ class ModelRun():
 
         Returns
         -------
-        seeds : numpy array
+        
+        s : numpy array
             A 2-D numpy array (nReps, len(synapseConfig)) containing the seeds for each run and
             each synapse.
         """
@@ -1907,6 +1908,8 @@ def main():
             help='Set sound stimulus duration (sec; default 0.1)')
     parser.add_argument('-r', '--reps', type=int, default=1, dest = 'nReps',
             help='# repetitions')
+    parser.add_argument('--seed', type=int, default=1, dest='seed',
+            help='AN starting seed')
     parser.add_argument('-S', '--SRType', type=str, default='HS', dest = 'SRType',
             choices=model.SRChoices,
             help=('Specify SR type (from: %s)' % model.SRChoices))
