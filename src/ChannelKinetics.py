@@ -19,7 +19,7 @@ import numpy as np
 import nrnlibrary
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
-import pylibrary.Utility as Util
+import pylibrary.utility as Util
 faulthandler.enable()
 
 h.load_file('stdrun.hoc')

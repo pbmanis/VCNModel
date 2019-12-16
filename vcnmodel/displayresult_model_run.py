@@ -31,7 +31,7 @@ from ephysanalysis import RmTauAnalysis
 from ephysanalysis import SpikeAnalysis
 import sac_campagnola as SAC
 import pycircstat as PCS
-import pylibrary.PlotHelpers as PH 
+import pylibrary.plotting.plothelpers as PH 
 from cnmodel.util import vector_strength
 # import GIF_fit as GFit
 import vspfile

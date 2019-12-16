@@ -2,7 +2,7 @@ from pathlib import Path
 import pickle
 import string
 import numpy as np
-import pylibrary.PlotHelpers as PH
+import pylibrary.plotting.plothelpers as PH
 import re
 import matplotlib
 matplotlib.use('Qt5Agg')

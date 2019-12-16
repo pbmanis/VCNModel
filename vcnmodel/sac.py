@@ -30,7 +30,7 @@
 
 import numpy as np
 import pyqtgraph as pg
-import pylibrary.pyqtgraphPlotHelpers as pgh
+import pylibrary.plotting.pyqtgraph_plothelpers as pgh
 
 
 class SAC(object):

@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 from collections import OrderedDict
 import cnmodel.cells as cells
-from pylibrary.Params import Params
+from pylibrary.params import Params
 import json
 import toml
 

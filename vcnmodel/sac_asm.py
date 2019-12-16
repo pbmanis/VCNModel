@@ -108,5 +108,5 @@ if __name__ == '__main__':
     import pyqtgraph as pg
     bins = np.arange(-max_dif-0.5, max_dif+1.5)
     pg.plot(bins, hist, stepMode=True, fillBrush='y', fillLevel=0)
-    import pylibrary.pyqtgraphPlotHelpers as pgh
+    import pylibrary.plotting.pyqtgraph_plothelpers as pgh
     pgh.show()

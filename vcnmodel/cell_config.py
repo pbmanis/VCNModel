@@ -54,7 +54,7 @@ rcParams['svg.fonttype'] = 'none' # No text as paths. Assume font installed.
 rcParams['pdf.fonttype'] = 42
 rcParams['ps.fonttype'] = 42
 import matplotlib.pyplot as mpl
-import pylibrary.PlotHelpers as PH
+import pylibrary.plotting.plothelpers as PH
 import scipy.stats
 
 # datafile_default = Path('MorphologyData', 'Dendrite Quality and Surface Areas_comparisons_pbm_15Mar2019_v2.xlsx')

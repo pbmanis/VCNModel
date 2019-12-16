@@ -18,7 +18,7 @@ import numpy as np
 
 import pickle
 import matplotlib.pyplot as mpl
-import pylibrary.PlotHelpers as PH
+import pylibrary.plotting.plothelpers as PH
 import model_run as mrun
 from ephysanalysis import MakeClamps
 from ephysanalysis import RmTauAnalysis

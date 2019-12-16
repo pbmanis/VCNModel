@@ -14,7 +14,7 @@ RM = RmTauAnalysis.RmTauAnalysis()
 from matplotlib import rc
 rc('text', usetex=False)
 import matplotlib.pyplot as mpl
-import pylibrary.PlotHelpers as PH
+import pylibrary.plotting.plothelpers as PH
 
 
 gbc_names = ['08', '09', '11', '14', '16', '17', '18', '19', '20', '21', '22', 'None']

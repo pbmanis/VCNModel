@@ -22,7 +22,7 @@ from collections import OrderedDict
 from cnmodel.util.stim import make_pulse # makestim
 import vcnmodel.NoiseTrainingGen as NG
 #from NoiseTrainingGen.NoiseGen import generator
-from pylibrary.Params import Params
+from pylibrary.params import Params
 import vcnmodel.IVPlots as IVP
 import vcnmodel.analyze_run as ar
 import vcnmodel.cellInitialization as cellInit

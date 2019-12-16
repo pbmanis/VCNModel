@@ -7,18 +7,18 @@ import sys
 import os.path
 import pickle
 import argparse
-import pylibrary.Utility as pu  # access to spike finder routine
+import pylibrary.utility as pu  # access to spike finder routine
 import time
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
-import pylibrary.pyqtgraphPlotHelpers as pgh
+import pylibrary.plotting.pyqtgraph_plothelpers as pgh
 import analyze_run as ar
 import calyxPlots as cp
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
-import pylibrary.PlotHelpers as PH
+import pylibrary.plotting.plothelpers as PH
 from collections import OrderedDict
 import seaborn
 from matplotlib import rc

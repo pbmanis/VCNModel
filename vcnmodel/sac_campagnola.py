@@ -31,7 +31,7 @@ from __future__ import print_function
 
 import numpy as np
 import pyqtgraph as pg
-import pylibrary.pyqtgraphPlotHelpers as pgh
+import pylibrary.plotting.pyqtgraph_plothelpers as pgh
 import sac_asm
 
 

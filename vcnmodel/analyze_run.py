@@ -11,7 +11,7 @@ Note: really should use the ephysanalysis module routines to do this analysis.
 import os
 import pickle
 import numpy as np
-import pylibrary.Utility as pu
+import pylibrary.utility as pu
 from lmfit import Model
 from lmfit.models import ExponentialModel
 

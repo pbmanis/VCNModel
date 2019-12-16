@@ -16,8 +16,8 @@ from cnmodel.util import sound
 import sac_campagnola as SAC
 import os.path
 import pycircstat as PCS
-import pylibrary.PlotHelpers as PH
-import pylibrary.Utility as pu
+import pylibrary.plotting.plothelpers as PH
+import pylibrary.utility as pu
 import spikestatistics as SPKS
 import cell_config
 from collections import OrderedDict
