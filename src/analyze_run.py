@@ -8,7 +8,7 @@ Provides basic analysis
 import os
 import pickle
 import numpy as np
-import pylibrary.utility as pu
+import pylibrary.tools.utility as pu
 from lmfit import Model
 from lmfit.models import ExponentialModel
 

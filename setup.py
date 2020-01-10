@@ -21,6 +21,7 @@ setup(name='vcnmodel',
           'console_scripts': [
                'model_run=src.model_run:main',
                'allgbcivs=src.all_gbc_ivs:main',
+               'show_swc=src.util.show_swc:main',
                ],
           # 'gui_scripts': [
           #       'event_monger=src.event_monger:main',

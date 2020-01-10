@@ -21,7 +21,7 @@ from collections import OrderedDict
 from cnmodel.util.stim import make_pulse # makestim
 import src.NoiseTrainingGen as NG
 #from NoiseTrainingGen.NoiseGen import generator
-from pylibrary.params import Params
+from pylibrary.tools.params import Params
 import src.IVPlots as IVP
 import src.analyze_run as ar
 import src.cellInitialization as cellInit
