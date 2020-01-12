@@ -1,31 +1,63 @@
-from __future__ import print_function
 """
 Provides analysis and display for several formats of model_run results
+
+
+usage: analysis.py [-h] [-a {psth,iv,singles,omit,io,voltage}] [-r NREPS]
+                   [-t THRESHOLD] [-s {LS,MS,HS}] [--respike] [-m MODEL]
+                   cell
+
+Analyze protocols from a reconstructed model cell
+
+positional arguments:
+  cell                  Select the cell (no default)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -a {psth,iv,singles,omit,io,voltage}, --analysis {psth,iv,singles,omit,io,voltage}
+                        Specify an analysis
+  -r NREPS, --reps NREPS
+                        # repetitions in file (filename)
+  -t THRESHOLD, --threshold THRESHOLD
+                        # Spike threshold for recalculating spikes (mV).
+                        Negative numbers must be quoted with a leading space:
+                        " -30."
+  -s {LS,MS,HS}, --SR {LS,MS,HS}
+                        Select SR group (default is None)
+  --respike             recompute spikes from Vm waveforms (default: False)
+  -m MODEL, --model MODEL
+                        recompute spikes from Vm waveforms (default: False)
+
+pbm 2017-2019
 """
+
+from __future__ import print_function
 
 import sys
 import os.path
 import pickle
 import argparse
-import pylibrary.Utility as pu  # access to spike finder routine
 import time
-import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui
-import pylibrary.pyqtgraphPlotHelpers as pgh
-import analyze_run as ar
-import calyxPlots as cp
 import numpy as np
+from matplotlib import rc
+rc('text', usetex=False)
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
-import pylibrary.PlotHelpers as PH
 from collections import OrderedDict
+
 import seaborn
-from matplotlib import rc
-rc('text', usetex=False)
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtGui
+
+
+import pylibrary.Utility as pu  # access to spike finder routine
+
+import pylibrary.pyqtgraphPlotHelpers as pgh
+import analyze_run as ar
+# import calyxPlots as cp
+import pylibrary.PlotHelpers as PH
 import cell_config as CFG
 import analyze_run
-
 
 
 baseName = 'VCN_Cells'
@@ -40,7 +72,7 @@ excsynfile_template = 'AN_Result_{0:s}_{1:4s}_{2:4s}_ExcludeSyn{3:03d}_N{4:03d}_
 synIOfile_template = 'AN_Result_{0:s}_{1:4s}_SynIO{2:03d}_N{3:03d}_030db_400.0_{4:2s}.p'
 
 # list of cells that we know about
-all_cells = ['09', '09h', '09nd', '17',   '18',    '19', '20', '21', '22']
+all_cells = ['09', '09h', '09nd', '17', '18', '19', '20', '21', '22']
 
 def clean_spiketimes(spikeTimes, mindT=0.7):
     """

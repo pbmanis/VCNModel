@@ -1,5 +1,3 @@
-from __future__ import print_function
-__author__ = 'pbmanis'
 """
 GenerateRun is a class that sets up for a run after the cell has been decorated with channels.
 It requires the celltype, and a section where the electrode will be inserted.
@@ -7,33 +5,38 @@ The stimulus in current clamp can consist of single pulses or pulse trains. cd i
 channelDecorator, which is also used to set the current range level for IV's.
 Code for reading externally generated spike trains from a file is also included.
 Methods:
-    doRun(filename) will execute the run. The resulting plot will have the filename text at the top.
-    doRun calls 3 private methods, _prepareRun, _initializeRun, and _executeRun, which respectively,
+    do_run(filename) will execute the run. The resulting plot will have the filename text at the top.
+    do_run calls 3 private methods, _prepare_run, _initializeRun, and _execute_run, which respectively,
     set up the stimuli, initialize the state of the model, and then run the model, generating a plot
 February 2014, Paul B. Manis UNC Chapel Hill
 """
+
+from __future__ import print_function
+__author__ = 'pbmanis'
 
 import os
 import numpy as np
 from pathlib import Path
 import copy
 from datetime import datetime
-from collections import OrderedDict
-from cnmodel.util.stim import make_pulse # makestim
-import vcnmodel.NoiseTrainingGen as NG
-#from NoiseTrainingGen.NoiseGen import generator
-from pylibrary.Params import Params
-import vcnmodel.IVPlots as IVP
-import vcnmodel.analyze_run as ar
-import vcnmodel.cellInitialization as cellInit
 import time
 import csv
 import pickle
+import errno
+import signal
+from collections import OrderedDict
+
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 import pyqtgraph.multiprocess as mproc
-import errno
-import signal
+
+from pylibrary.tools.params import Params
+from cnmodel.util.stim import make_pulse # makestim
+import vcnmodel.NoiseTrainingGen as NG
+#from NoiseTrainingGen.NoiseGen import generator
+import vcnmodel.IVPlots as IVP
+import vcnmodel.analyze_run as ar
+import vcnmodel.cellInitialization as cellInit
 
 
 verbose = False # use this for testing.
@@ -144,7 +147,7 @@ class GenerateRun():
             else:
                 raise
 
-    def makeFileName(self, filename=None, subdir=None):
+    def make_filename(self, filename=None, subdir=None):
         self.params['runInfo'].filename = filename
         if self.startTime is None:
             self.dtime = time.strftime("%y.%m.%d-%H.%M.%S")
@@ -162,7 +165,7 @@ class GenerateRun():
         #self.basename = os.path.join(folder, filename + self.dtime)
         self.basename = os.path.join(folder, filename)
 
-    def _prepareRun(self, inj=None):
+    def _prepare_run(self, inj=None):
         """
         (private method)
         Control a single run of the model with updated display of the voltages, etc.
@@ -173,7 +176,7 @@ class GenerateRun():
         generation of stimuli and monitoring of voltages and currents
         """
         if verbose:
-            print('_prepareRun')
+            print('_prepare_run')
         for group in self.hf.sec_groups.keys(): # get morphological components
             if not self.saveAllSections:  # just save soma sections
                 if group.rsplit('[')[0] == 'soma':
@@ -295,13 +298,13 @@ class GenerateRun():
         #pg.show()
         #self.hf.h('access %s' % self.hf.get_section(self.electrode_site).name())
 
-    def doRun(self, filename=None, parMap=None, save=False, restore_from_file=False, initfile=None, workers=4):
+    def do_run(self, filename=None, parMap=None, save=False, restore_from_file=False, initfile=None, workers=4):
         if verbose:
-            print('generate_run::doRun')
+            print('generate_run::do_run')
         (p, e) = os.path.splitext(filename)  # make sure filename is clean
         self.params['runInfo'].filename = p  # change filename in structure, just name, no extension
         if parMap is None or len(parMap) == 0:
-            self.makeFileName(filename = self.params['runInfo'].filename) # base name pluse underscore
+            self.make_filename(filename = self.params['runInfo'].filename) # base name pluse underscore
         else:
             mstr = '_'
             for k in parMap.keys():
@@ -310,10 +313,10 @@ class GenerateRun():
                 mstr += k + '_'
             #if 'id' in parMap.keys():
             #    mstr += 'ID%04d_' % parMap['id']
-            self.makeFileName(self.params['runInfo'].filename + mstr )
+            self.make_filename(self.params['runInfo'].filename + mstr )
 
         if verbose:
-            print('genrate_run::doRun: basename is = {:s}'.format(self.basename))
+            print('genrate_run::do_run: basename is = {:s}'.format(self.basename))
         #self.hf.update() # make sure channels are all up to date
         self.results={}
         
@@ -324,7 +327,7 @@ class GenerateRun():
             ipulses = [0]
         nLevels = len(ipulses)
         nWorkers = workers
-        # print(f"doRun: initfile = {str(initfile):s}")
+        # print(f"do_run: initfile = {str(initfile):s}")
         TASKS = [s for s in range(nLevels)]
         tresults = [None]*len(TASKS)
         runner = [None]*nLevels
@@ -333,10 +336,10 @@ class GenerateRun():
         with mproc.Parallelize(enumerate(TASKS), results=tresults, workers=nWorkers) as tasker:
             for i, x in tasker:
                 inj = ipulses[i]
-                self._prepareRun(inj=inj) # build the recording arrays
+                self._prepare_run(inj=inj) # build the recording arrays
                 self.run_initialized = cellInit.init_model(self.cell, mode='iclamp', restore_from_file=restore_from_file, 
                     filename=initfile)
-                tr = {'r': self._executeRun(), 'i': inj} # now you can do the run
+                tr = {'r': self._execute_run(), 'i': inj} # now you can do the run
                 tasker.results[i] = tr
         
         self.results = OrderedDict()
@@ -348,46 +351,46 @@ class GenerateRun():
             if self.plotting:
                 if k == 0:
                     self.mons = self.results[i].monitor.keys()
-                    self.plotRun(self.results[i], init=True)
+                    self.plot_run(self.results[i], init=True)
                 else:
-                    self.plotRun(self.results[i], init=False)
+                    self.plot_run(self.results[i], init=False)
         if self.params['runInfo'].postMode in ['cc', 'iclamp']:
             if verbose:
-                print ('doRun, calling IV')
+                print ('do_run, calling IV')
             self.arun = ar.AnalyzeRun(self.results) # create an instance of the class with the data
             self.arun.IV()  # compute the IV on the data
             self.IVResult = self.arun.IVResult
             if verbose:
-                print ('doRun, back from IV')
+                print ('do_run, back from IV')
             if save == 'monitor':
-                self.saveRuns(save='monitor')
+                self.save_runs(save='monitor')
             if verbose:
-                print('doRun: ivresult is: {:32}'.format(self.IVResult))
+                print('do_run: ivresult is: {:32}'.format(self.IVResult))
             if self.plotting:
-                self.plotFits('Soma', self.IVResult['taufit'], c='r')
-                self.plotFits('Soma', self.IVResult['ihfit'], c='b')
+                self.plot_fits('Soma', self.IVResult['taufit'], c='r')
+                self.plot_fits('Soma', self.IVResult['ihfit'], c='b')
                 #print (dir(self.ivplots))
                 self.ivplts.show()
         if self.params['runInfo']['postMode'] in ['gifnoise']:
             self.IVResult = None
             if save == 'monitor':
-                self.saveRuns('gifnoise')
+                self.save_runs('gifnoise')
 
-    def testRun(self, title='testing...', initfile=None):
+    def test_run(self, title='testing...', initfile=None):
         if initfile is None:
-            raise ValueError('generate_run:testRun needs initfile name')
-        self._prepareRun(inj=0.0)
+            raise ValueError('generate_run:test_run needs initfile name')
+        self._prepare_run(inj=0.0)
         self.run_initialized = cellInit.init_model(self.cell, filename=initfile, restore_from_file=True)
         self.hf.h.t = 0.
         self.hf.h.tstop = 10
         #self.hf.h.run()
-        self._executeRun(testPlot=True)
+        self._execute_run(testPlot=True)
         pg.mkQApp()
         pl = pg.plot(np.array(self.monitor['time']), np.array(self.monitor['postsynapticV']))
         pl.setTitle(title)
         QtGui.QApplication.instance().exec_()
 
-    def _executeRun(self, testPlot=False):
+    def _execute_run(self, testPlot=False):
         """
         (private method)
         After prepare_run and the initialization, this routine actually calls the run method in hoc
@@ -395,7 +398,7 @@ class GenerateRun():
         Inputs: flag to put up a test plot....
         """
         if verbose:
-            print('_executeRun')
+            print('_execute_run')
         assert self.run_initialized == True
         print(f'Starting Vm at electrode site: {self.electrode_site.v:6.2f}')
         
@@ -433,10 +436,10 @@ class GenerateRun():
                          distanceMap = self.hf.distanceMap,
         )
         if verbose:
-            print('    _executeRun completed')
+            print('    _execute_run completed')
         return results
 
-    def saveRun(self, results):
+    def save_run(self, results):
         """
         Save the result of a single run to disk. Results must be a Param structure, which we turn into
          a dictionary...
@@ -461,7 +464,7 @@ class GenerateRun():
                      pfout)
         # pfout.close()
 
-    def saveRuns(self, save=None):
+    def save_runs(self, save=None):
         """
         Save the result of multiple runs to disk. Results is in a dictionary,
         each element of which is a Param structure, which we then turn into
@@ -511,12 +514,12 @@ class GenerateRun():
             # for i in range(len(self.swellAxonMap)):
             #     plot.plot(ts, vs[i])
 
-    def plotRun(self, results, init=True, show=False):
+    def plot_run(self, results, init=True, show=False):
         if init:
             self.ivplts = IVP.IVPlots(title=self.filename, mode='mpl')
         self.ivplts.plotResults(results.todict(), self.params['runInfo'].todict(), somasite=self.mons)
         if show:
             self.ivplts.show()
 
-    def plotFits(self, panel, x, c='g'):
+    def plot_fits(self, panel, x, c='g'):
         self.ivplts.plotFit(panel, x[0], x[1], c)

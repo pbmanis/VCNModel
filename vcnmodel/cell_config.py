@@ -54,7 +54,7 @@ rcParams['svg.fonttype'] = 'none' # No text as paths. Assume font installed.
 rcParams['pdf.fonttype'] = 42
 rcParams['ps.fonttype'] = 42
 import matplotlib.pyplot as mpl
-import pylibrary.PlotHelpers as PH
+import pylibrary.plotting.plothelpers as PH
 import scipy.stats
 
 # datafile_default = Path('MorphologyData', 'Dendrite Quality and Surface Areas_comparisons_pbm_15Mar2019_v2.xlsx')
@@ -84,9 +84,9 @@ class CellConfig():
     
         for cellnum in cellsintable:
             self.build_cell(cellnum)
-            r, ct = self.makeDict(f"VCN_c{cellnum:02d}")
+            r, ct = self.make_dict(f"VCN_c{cellnum:02d}")
     
-        self.printCellInputs(self.VCN_Inputs)
+        self.print_cell_inputs(self.VCN_Inputs)
 
     def build_cell(self, cellnum):
         dcell = self.ASA[self.ASA['Cell-Inputs'] == cellnum]
@@ -101,7 +101,7 @@ class CellConfig():
 
         # print('dcell: ', dcell)
 
-    def makeDict(self, cell, velocity=3.0, areainflate=1.0):
+    def make_dict(self, cell, velocity=3.0, areainflate=1.0):
         assert cell in self.VCN_Inputs
         indata = self.VCN_Inputs[cell][1]
         celltype = self.VCN_Inputs[cell][0]
@@ -118,10 +118,10 @@ class CellConfig():
             ])
         return r, celltype
 
-    def printCellInputs_json(self, r):
+    def print_cell_inputs_json(self, r):
         print(json.dumps(r, indent=4))
 
-    def printCellInputs(self, r):
+    def print_cell_inputs(self, r):
         chs = 'Cell ID, ASA, nsyn(calculated), delay, SRgroup, delay2, axonlength, branch length, syntype, postlocation'
         cht = chs.split(', ')
         slen = max([len(c) for c in cht]) + 2

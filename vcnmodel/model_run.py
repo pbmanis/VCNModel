@@ -1,15 +1,13 @@
 #!/usr/bin/env python
-from __future__ import print_function
-
-__author__ = 'pbmanis'
 """
 model_run.py
 
 Run a model based on a hoc structure, decorating the structure with ion channels and synapses.
 
-Requires:
-Python 2.7.13 (anaconda distribution)
-Neuron7.4 (neuron.yale.edu)
+Requires
+--------
+Python 3.5 (anaconda distribution)
+Neuron7.7 (neuron.yale.edu)
 pyqtgraph (Campagnola, from github)
 neuronvis (Campagnola/Manis, from github)
 cnmodel (Campagnola/Manis, from github)
@@ -21,8 +19,16 @@ vcnmodel parts:
 cochlea # Rudniki python implementation of Zilany model
 thorns  # required for cochlea
 
+History
+-------
+Originally developed for Xie and Manis, 2013. 
+VCN_Model split in 2014 for reconstructed neurons
+cnmodel integration added 2016
+Ability to handle multiple cnmodel data blocks, May 2019
+refactored (all command parser and parameter information moved to model_parameters.py) 10-2019
 
-Expects the following directory structure:
+Expects the following directory structure
+-----------------------------------------
 (example)
 VCN_Cells/   # top level for data
     cell_ID/    # VCN_c18, for example (first argument in call should be this directory name)
@@ -40,7 +46,8 @@ VCN_Cells/   # top level for data
             IV/  # results from IV simulations
             AN/  # results from AN simulations
 
-Usage:
+Usage
+-----
 Note that the command structure and the Params dictionary are now defined in
 model_params.py for clarity.
 Although this is the main entry point, the code here focusses on
@@ -48,20 +55,29 @@ setup of the cell(s) and the
 execution of different protocols, rather than maintenance of
 the control parameters.
 
-usage: model_run.py [-h] [--type {Bushy,TStellate,DStellate}]
-                    [--model {XM13,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}]
-                    [--sgcmodel {Zilany,cochlea}]
-                    [--protocol {initIV,testIV,runIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}]
-                    [--hoc HOCFILE] [--inputpattern INPUTPATTERN]
-                    [--stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}]
-                    [-d DB] [-f F0] [-r NREPS] [-S {LS,MS,HS,fromcell}]
-                    [--fmod FMOD] [--depth DMOD] [--S2M SIGNALTOMASKER]
-                    [--cmmrmode {CM,CD,REF}] [-a AMPASCALE] [--allmodes]
-                    [--sequence SEQUENCE] [--plot] [--workers NWORKERS]
-                    [--noparallel] [--auto] [--verbose] [--gifi GIF_I0]
-                    [--gifsigma GIF_SIGMA] [--giffmod GIF_FMOD]
-                    [--giftau GIF_TAU] [--gifdur GIF_DUR]
-                    cell
+usage: model_run [-h] [--type {Bushy,TStellate,DStellate}]
+                 [--model {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}]
+                 [--modeltype {II,II-I,I-II,I-c,I-t,II-o}]
+                 [--sgcmodel {Zilany,cochlea}]
+                 [--protocol {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}]
+                 [-H] [--hocfile HOCFILE] [--inputpattern INPUTPATTERN]
+                 [--stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}]
+                 [--check] [--configfile CONFIGFILE] [-d DB] [-f F0]
+                 [--duration PIP_DURATION] [-r NREPS] [--seed SEED]
+                 [-S {LS,MS,HS,fromcell}] [--synapsetype {simple,multisite}]
+                 [--depression {0,1}] [--fmod FMOD] [--dmod DMOD]
+                 [--S2M SIGNALTOMASKER] [--cmmrmode {CM,CD,REF}]
+                 [--spirou {all,max=mean,all=mean}]
+                 [--soma_inflate SOMA_INFLATION] [--soma_autoinflate]
+                 [--dendrite_inflate DENDRITE_INFLATION]
+                 [--dendrite_autoinflate] [--dendrite_from_soma]
+                 [--ASA_from_soma] [--tagstring TAGSTRING] [-a AMPASCALE]
+                 [--allmodes] [--sequence SEQUENCE] [--plot]
+                 [--workers NWORKERS] [--noparallel] [--auto] [--saveall]
+                 [--verbose] [--gifi GIF_I0] [--gifsigma GIF_SIGMA]
+                 [--giffmod GIF_FMOD] [--giftau GIF_TAU] [--gifdur GIF_DUR]
+                 [--gifskew GIF_SKEW]
+                 cell
 
 Simulate activity in a reconstructed model cell
 
@@ -72,32 +88,64 @@ optional arguments:
   -h, --help            show this help message and exit
   --type {Bushy,TStellate,DStellate}, -T {Bushy,TStellate,DStellate}
                         Define the cell type (default: Bushy)
-  --model {XM13,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}, -M {XM13,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}
+  --model {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}, -M {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}
+                        Define the model type (default: XM13)
+  --modeltype {II,II-I,I-II,I-c,I-t,II-o}
                         Define the model type (default: XM13)
   --sgcmodel {Zilany,cochlea}
                         Define the SGC model type (default: Zilany)
-  --protocol {initIV,testIV,runIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}, -P {initIV,testIV,runIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}
+  --protocol {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}, -P {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}
                         Protocol to use for simulation (default: IV)
-  --hoc HOCFILE, -H HOCFILE
-                        hoc file to use for simulation (default is the
+  -H, --defaulthoc      Use default hoc file for this cell
+  --hocfile HOCFILE     hoc file to use for simulation (default is the
                         selected "cell".hoc)
-  --inputpattern INPUTPATTERN
+  --inputpattern INPUTPATTERN, -i INPUTPATTERN
                         cell input pattern to use (substitute) from
                         cell_config.py
-  --stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}
+  --stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}, -s {tonepip,noise,stationaryNoise,SAM,CMMR}
                         Define the stimulus type (default: tonepip)
+  --check, -/           Only check command line for valid input; do not run
+                        model
+  --configfile CONFIGFILE
+                        Read a formatted configuration file (JSON, TOML) for
+                        commands
   -d DB, --dB DB        Set sound intensity dB SPL (default 30)
   -f F0, --frequency F0
                         Set tone frequency, Hz (default 4000)
+  --duration PIP_DURATION
+                        Set sound stimulus duration (sec; default 0.1)
   -r NREPS, --reps NREPS
                         # repetitions
+  --seed SEED           AN starting seed
   -S {LS,MS,HS,fromcell}, --SRType {LS,MS,HS,fromcell}
                         Specify SR type (from: ['LS', 'MS', 'HS', 'fromcell'])
+  --synapsetype {simple,multisite}
+                        Specify AN synapse type (from: ['simple',
+                        'multisite'])
+  --depression {0,1}    Specify AN depression flag for multisite synapses
+                        (from: [0, 1])
   --fmod FMOD           Set SAM modulation frequency
-  --depth DMOD          Set SAM modulation depth (in percent)
+  --dmod DMOD           Set SAM modulation depth (in percent)
   --S2M SIGNALTOMASKER  Signal to Masker ratio (dB)
   --cmmrmode {CM,CD,REF}
                         Specify mode (from: ['CM', 'CD', 'REF'])
+  --spirou {all,max=mean,all=mean}
+                        Specify spirou experiment type....
+  --soma_inflate SOMA_INFLATION
+                        Specify factor by which to inflate soma AREA
+  --soma_autoinflate    Automatically inflate soma based on table
+  --dendrite_inflate DENDRITE_INFLATION
+                        Specify factor by which to inflate total dendritic
+                        AREA
+  --dendrite_autoinflate
+                        Automatically inflate dendrite area based on table
+  --dendrite_from_soma  Automatically inflate dendrite area based on soma
+                        inflation
+  --ASA_from_soma       Automatically inflate dendrite area based on soma
+                        inflation
+  --tagstring TAGSTRING
+                        Add a tag string to the output filename to distinguish
+                        it
   -a AMPASCALE, --AMPAScale AMPASCALE
                         Set AMPAR conductance scale factor (default 1.0)
   --allmodes            Force run of all modes (CMR, CMD, REF) for stimulus
@@ -110,20 +158,27 @@ optional arguments:
   --noparallel          Use parallel or not (default: True)
   --auto                Force auto initialization if reading the state fails
                         in initialization
+  --saveall             Save data from all sections in model
   --verbose             Print out extra stuff for debugging
   --gifi GIF_I0         Set Noise for GIF current level (default 0 nA)
   --gifsigma GIF_SIGMA  Set Noise for GIF variance (default 0.2 nA)
   --giffmod GIF_FMOD    Set Noise for GIF fmod (default 0.2 Hz)
   --giftau GIF_TAU      Set Noise for GIF tau (default 0.3 ms)
   --gifdur GIF_DUR      Set Noise for GIF duration (default 10 s)
+  --gifskew GIF_SKEW    Set Noise for GIF to have skewed distribution (0 =
+                        normal)
 
-Example:
+Example
+-------
 Set up initialization:
 python model_run.py VCN_c18 --hoc gbc18_w_axon_rescaled.hoc --protocol initIV --model XM13
 Then run model:
 python model_run.py VCN_c18 --hoc gbc18_w_axon_rescaled.hoc --protocol runIV --model XM13
 
 """
+
+from __future__ import print_function
+__author__ = 'pbmanis'
 
 import sys
 import pathlib
@@ -143,7 +198,9 @@ import timeit
 import matplotlib
 matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as mpl
-# from neuronvis.hoc_viewer import HocViewer
+
+import pyqtgraph as pg
+import pyqtgraph.multiprocess as MP
 
 import vcnmodel.cell_config as cell_config
 import vcnmodel.model_params as model_params
@@ -154,16 +211,11 @@ from cnmodel import cells
 from cnmodel.util import sound
 from cnmodel.decorator import Decorator
 from cnmodel import data as DATA
-import pylibrary.Utility as pu  # access to a spike finder routine
-import pyqtgraph as pg
-import pyqtgraph.multiprocess as MP
-# import pylibrary.pyqtgraphPlotHelpers as pgh
-
+import pylibrary.tools.utility as pu  # access to a spike finder routine
 
 showCell = True
 
 # All of the parameters should be defined in model_params
-
 MPAR = model_params.ModelParams()
 
 class ModelRun():
@@ -275,6 +327,7 @@ class ModelRun():
                 ivinitdir = Path(self.baseDirectory, self.cellID,
                                     self.initDirectory)
                 self.Params['initIVStateFile'] = Path(ivinitdir, fn)
+            self.Params['simPath'] = ivinitdir
             print('IV Initialization file: ', self.Params['initIVStateFile'])
             self.mkdir_p(ivinitdir) # confirm existence of that file
             self.Params['shortSimulationFilename'] = f"IV_Result_{self.cellID:s}"
@@ -330,10 +383,13 @@ class ModelRun():
 
     def make_output_path(self, prefix):
         t = datetime.now()
+        print(prefix)
+        print('sim: ', self.Params['simPath'])
         ending = '.p'
         if self.Params['tagstring'] is not None:
             ending = "_" + self.Params['tagstring'] + '.p'
         # print('simpath: ', self.Params['simPath'])
+        print('ending: ', ending)
         fname = str(Path(self.Params['simPath'], f"{prefix:s}_{t.strftime('%Y-%m-%d-%H%M%S-%f'):s}")) + ending
         return fname
         
@@ -622,7 +678,7 @@ class ModelRun():
         if self.Params['runProtocol'] in ['runANPSTH', 'runANSingles']:
             self.Params['run_duration'] = self.Params['pip_duration'] + np.sum(self.Params['pip_start']) + self.Params['pip_offduration']
 
-        if self.Params['runProtocol'] in ['initIV', 'initandrunIV']:
+        elif self.Params['runProtocol'] in ['initIV', 'initandrunIV']:
             if self.Params['verbose']:
                 print('run_model: protocol is initIV')
             # ivinitfile = Path(self.baseDirectory, self.cellID,
@@ -638,12 +694,12 @@ class ModelRun():
                filename=self.Params['initIVStateFile'], electrode_site=self.electrode_site)
             print(f'Ran to get initial state for {self.post_cell.hr.h.t:.1f} msec')
 
-        if self.Params['runProtocol'] in ['runIV', 'initandrunIV']:
+        elif self.Params['runProtocol'] in ['runIV', 'initandrunIV']:
             if self.Params['verbose']:
                 print('Run IV')
             self.iv_run()
 
-        if self.Params['runProtocol'] == 'testIV':
+        elif self.Params['runProtocol'] == 'testIV':
             if self.Params['verbose']:
                 print( 'test_init')
             # ivinitfile = Path(self.baseDirectory, self.cellID,
@@ -660,34 +716,36 @@ class ModelRun():
             self.R.testRun(initfile=self.Params['initIVStateFile'])
             return  # that is ALL, never make testIV/init and then keep running.
 
-        if self.Params['runProtocol'] == 'runANPSTH':
+        elif self.Params['runProtocol'] == 'runANPSTH':
             if self.Params['verbose']:
                 print('ANPSTH')
             self.an_run(self.post_cell)
 
-        if self.Params['runProtocol'] == 'initAN':
+        elif self.Params['runProtocol'] == 'initAN':
             if self.Params['verbose']:
                 print('Init AN')
             self.an_run(self.post_cell, make_an_intial_conditions=True)
 
-        if self.Params['runProtocol'] == 'runANIO':
+        elif self.Params['runProtocol'] == 'runANIO':
             if self.Params['verbose']:
                 print('Run AN IO')
             self.an_run_IO(self.post_cell)
 
-        if self.Params['runProtocol'] == 'runANSingles':
+        elif self.Params['runProtocol'] == 'runANSingles':
             if self.Params['verbose']:
                 print('ANSingles')
             self.an_run_singles(self.post_cell)
 
-        if self.Params['runProtocol'] == 'runANOmitOne':
+        elif self.Params['runProtocol'] == 'runANOmitOne':
             if self.Params['verbose']:
                 print('ANOmitOne')
             self.an_run_singles(self.post_cell, exclude=True)
 
-        if self.Params['runProtocol'] == 'gifnoise':
+        elif self.Params['runProtocol'] == 'gifnoise':
             self.noise_run()
 
+        else:
+            raise ValueError(f"Argument to run protoocl not recognized: {self.Params['runProtocol']:s}")
         # if showCell:
         #     print(dir(self.post_cell))
         #     self.render = HocViewer(self.post_cell.hr)
@@ -741,7 +799,7 @@ class ModelRun():
         if self.Params['Parallel'] == False:
             nworkers = 1
 #        print('Number of workers available on this machine: ', nworkers)
-        self.R.doRun(self.Params['hocfile'], parMap=iinjValues, save='monitor',
+        self.R.do_run(self.Params['hocfile'], parMap=iinjValues, save='monitor',
             restore_from_file=True, initfile=self.Params['initIVStateFile'],
             workers=nworkers)
         if self.Params['verbose']:
@@ -816,7 +874,7 @@ class ModelRun():
         if self.Params['Parallel'] == False:
             nworkers = 1
 #        print('Number of workers available on this machine: ', nworkers)
-        self.R.doRun(self.Params['hocfile'], parMap=par_map, save='monitor', restore_from_file=True,
+        self.R.do_run(self.Params['hocfile'], parMap=par_map, save='monitor', restore_from_file=True,
             initfile=self.Params['initIVStateFile'],
             workers=nworkers)
         if self.Params['verbose']:
@@ -976,7 +1034,7 @@ class ModelRun():
 
         # 3. set the largest synaptic conductance to 0
         elif self.Params['Spirou'] in ['removelargest']:
-            print('Spirou Experiment 3: Remove the largest input')
+            print('Spirou Experiment 3: Remove the ONLY the largest input')
             gMax, gnMax, nSyn = self.get_synapses(synapses)
 
             imaxgmax = np.argmax(gMax)  # synapse with largest conductance
@@ -1004,7 +1062,7 @@ class ModelRun():
     def an_run(self, post_cell, verify=False, make_an_intial_conditions=False):
         """
         Establish AN inputs to soma, and run the model.
-        Requires a synapseConfig list of dicts from cell_config.makeDict()
+        Requires a synapseConfig list of dicts from cell_config.make_dict()
         each list element represents an AN fiber (SGC cell) with:
             (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high],
                     type (e or i), segment and segment location)
@@ -1034,7 +1092,7 @@ class ModelRun():
         else:
             fromdict = self.cellID
         cconfig = cell_config.CellConfig()
-        synapseConfig, celltype = cconfig.makeDict(fromdict, self.Params['ASA_inflation'])
+        synapseConfig, celltype = cconfig.make_dict(fromdict, self.Params['ASA_inflation'])
         self.start_time = time.time()
         # compute delays in a simple manner
         # assumption 3 meters/second conduction time
@@ -1151,7 +1209,6 @@ class ModelRun():
             self.plot_an(celltime, result)
 
 
-
     def an_run_singles(self, post_cell, exclude=False, verify=False):
         """
         Establish AN inputs to soma, and run the model.
@@ -1184,14 +1241,14 @@ class ModelRun():
         print('\n****singles****\n')
         self.start_time = time.time()
         # cconfig = cell_config.CellConfig()
-        # synapseConfig, celltype = cconfig.makeDict(self.cellID)
+        # synapseConfig, celltype = cconfig.make_dict(self.cellID)
         if self.Params['inputPattern'] is not None:
             fromdict = self.Params['inputPattern']
             print('Cell id: %s  using input pattern: %s' % (self.cellID, fromdict))
         else:
             fromdict = self.cellID
         cconfig = cell_config.CellConfig()
-        synapseConfig, celltype = cconfig.makeDict(fromdict)
+        synapseConfig, celltype = cconfig.make_dict(fromdict)
         nReps = self.Params['nReps']
         threshold = self.Params['threshold'] # spike threshold, mV
 
@@ -1332,7 +1389,7 @@ class ModelRun():
         print('\n*** an_run_IO\n')
         self.start_time = time.time()
         cconfig = cell_config.CellConfig()
-        synapseConfig, celltype = cconfig.makeDict(self.cellID)
+        synapseConfig, celltype = cconfig.make_dict(self.cellID)
         nReps = self.Params['nReps']
         threshold = self.Params['threshold'] # spike threshold, mV
 
@@ -1872,7 +1929,6 @@ def main():
     MPAR.parse_parser()
 
     model = ModelRun(MPAR.Params)  # create instance of the model
-
 
     if not model.Params['checkcommand']:
         model.Params['Icmds'] = '[-2.0, 2.0, 0.5]'
