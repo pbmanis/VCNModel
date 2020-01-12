@@ -19,9 +19,9 @@ setup(name='vcnmodel',
       zip_safe=False,
       entry_points={
           'console_scripts': [
-               'model_run=src.model_run:main',
-               'allgbcivs=src.all_gbc_ivs:main',
-               'show_swc=src.util.show_swc:main',
+               'model_run=vcnmodel.model_run:main',
+               'allgbcivs=vcnmodel.all_gbc_ivs:main',
+               'show_swc=vcnmodel.util.show_swc:main',
                ],
           # 'gui_scripts': [
           #       'event_monger=src.event_monger:main',
