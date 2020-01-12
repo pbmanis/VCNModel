@@ -144,10 +144,10 @@ from cnmodel import cells
 from cnmodel.util import sound
 from cnmodel.decorator import Decorator
 from cnmodel import data as DATA
-import pylibrary.Utility as pu  # access to a spike finder routine
+import pylibrary.tools.utility as pu  # access to a spike finder routine
 import pyqtgraph as pg
 import pyqtgraph.multiprocess as MP
-# import pylibrary.pyqtgraphPlotHelpers as pgh
+# import pylibrary.plotting.pyqtgraph_plothelpers as pgh
 
 
 showCell = True

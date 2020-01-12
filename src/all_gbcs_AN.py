@@ -11,7 +11,7 @@ from pathlib import Path
 import matplotlib
 matplotlib.use('Qt4Agg')
 import matplotlib.pyplot as mpl
-import pylibrary.PlotHelpers as PH
+import pylibrary.plotting.plothelpers as PH
 from matplotlib import rc
 rc('text', usetex=False)
 import pickle

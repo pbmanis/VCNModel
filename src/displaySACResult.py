@@ -11,7 +11,7 @@ from cnmodel.util import sound
 import sac_campagnola as SAC
 import os.path
 import pycircstat as PCS
-import pylibrary.PlotHelpers as PH
+import pylibrary.plotting.plothelpers as PH
 
 pattern_list = ['c18', 'c08', 'c09', 'no']
 patterns =  pattern_list #[0] # ['no']

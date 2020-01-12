@@ -420,7 +420,7 @@ def printCellInputs(r):
 
 def summarize_inputs():
     import matplotlib.pyplot as mpl
-    import pylibrary.PlotHelpers as PH
+    import pylibrary.plotting.plothelpers as PH
     P = PH.regular_grid(2, 3, order='columns', figsize=(10., 8), showgrid=False)
     ax = [P.axdict[x] for x in P.axdict.keys()]
     print(ax)

@@ -13,8 +13,8 @@ from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
 import numpy as np
 import pickle
-import pylibrary.pyqtgraphPlotHelpers as pgPH
-import pylibrary.PlotHelpers as PH  # matplotlib
+import pylibrary.plotting.pyqtgraph_plothelpers as pgPH
+import pylibrary.plotting.plothelpers as PH  # matplotlib
 import src.analyze_run as ar
 import pprint
 import os, sys
