@@ -9,7 +9,7 @@ echo "running the individual initialization or IV protocols"
 for f in $FILES
 do
     echo $f
-    python src/model_run.py ${f} -H -P ${proto} --configfile autoscale.toml &
+    python vcnmodel/model_run.py ${f} -H -P ${proto} --configfile autoscale.toml &
 done
 # python model_run.py VCN_c08 -H --protocol initIV --model XM13 --noparallel &
 # python model_run.py VCN_c09 -H --protocol initIV --model mGBC --noparallel &
