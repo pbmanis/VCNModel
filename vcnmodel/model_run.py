@@ -327,19 +327,27 @@ class ModelRun():
 
         if self.Params['runProtocol'] in ['initIV', 'initandrunIV', 'runIV']:
             if self.Params['initIVStateFile'] is None:
-                fn = f"IVneuronState_{namePars:s}.dat"
+                fn = f"IVneuronState_{namePars:s}"
                 ivinitdir = Path(self.baseDirectory, self.cellID,
                                     self.initDirectory)
-                self.Params['initIVStateFile'] = Path(ivinitdir, fn)
+                if self.Params['tagstring'] is not None:
+                    self.Params['initIVStateFile'] = Path(ivinitdir, f"{str(fn):s}_{self.Params['tagstring']:s}").with_suffix('.dat')
+                else:
+                    self.Params['initIVStateFile'] = Path(ivinitdir, fn).with_suffix('.dat')
             print('IV Initialization file: ', self.Params['initIVStateFile'])
             self.mkdir_p(ivinitdir) # confirm existence of that file
 
         if self.Params['runProtocol'] in ['initandrunIV', 'runIV']:
             outPath = Path('VCN_Cells', self.cellID, self.simDirectory, 'IV')
             self.mkdir_p(outPath) # confirm that output path exists
-            self.Params['simulationFilename'] = Path(outPath, f"{self.cellID:s}_pulse_{namePars:s}_monitor.p")
+            fout = self.Params['simulationFilename']  # base name created by make-filename - do not overwrite
+            print('fout: ', fout)
+            if self.Params['tagstring'] is not None:
+                self.Params['simulationFilename'] = Path(outPath, f"{self.cellID:s}_pulse_{namePars:s}_monitor_{self.Params['tagstring']:s}.p")
+            else:
+                self.Params['simulationFilename'] = Path(outPath, f"{self.cellID:s}_pulse_{namePars:s}_monitor.p")
             print('Simulation filename: ', self.Params['simulationFilename'])
-
+        
         if self.Params['runProtocol'].startswith('runAN') or self.Params['runProtocol'] == 'initAN' or self.Params['runProtocol'] == 'runANSingles':
             if self.Params['inputPattern'] is None:
                 inputs = 'self'
@@ -404,21 +412,22 @@ class ModelRun():
 
     def mkdir_p(self, path):
         try:
-            Path.mkdir(path, exist_ok=True)
+            Path.mkdir(path, parents=True, exist_ok=True)
         except:
             raise FileNotFoundError(f"Cannot create path: {str(path):s}")
 
     def fix_singlets(self, h):
         badsecs = []
-        for sec in h.allsec():
+        for i, sec in enumerate(h.allsec()):
             if sec.n3d() == 1:
                 badsecs.append(sec)
                 # print(f'Fixing Singlet Section: {str(sec):s}')
                 # print(dir(sec))
                 parent = sec.parentseg()
-                if parent is None:
+                if parent is None and i > 0:  # first section might not have a parent... obviously
                     raise ValueError(f"Section: {str(sec):s} does not have a parent, and this must be fixed manually")
-
+                if i == 0 and parent is None:
+                    continue
                 # print(f'    Section connected to {str(parent):s} ')
                 nparentseg = parent.sec.n3d() - 1
                 x = parent.sec.x3d(nparentseg)
@@ -449,8 +458,6 @@ class ModelRun():
             Nothing
 
         """
-        # if self.Params['ANSynapseType'] == 'simple':
-        #     raise ValueError('model_run:: Simple AN synapses are not fully implemented in this version')
 
         if self.Params['verbose']:
             print('run_model entry')
@@ -466,10 +473,14 @@ class ModelRun():
         print('Morphology directory: ', self.morphDirectory)
         if self.Params['usedefaulthoc'] or self.Params['hocfile'] == None:
             self.Params['hocfile'] = self.Params['cell'] + '.hoc'
-        print('Hoc (structure) file: ', self.Params['hocfile'])
-        print('Base directory: ', self.baseDirectory)
         filename = Path(self.baseDirectory, self.cellID, self.morphDirectory, self.Params['hocfile'])
-
+        print(self.Params['hocfile'])
+        print('base hoc file: ', filename)
+        print('hocx file: ', filename.with_suffix('.hocx'))
+        if filename.with_suffix('.hocx').is_file():  # change to preferred if available
+            filename = filename.with_suffix('.hocx')
+        print('Using hoc file: ', filename)
+        
         # instantiate cells
         if self.Params['cellType'] in ['Bushy', 'bushy']:
             print('Creating a bushy cell (run_model) ')
@@ -1837,7 +1848,10 @@ class ModelRun():
         hf.sec_groups.keys()
         if len(hf.sec_groups) > 1: # multiple names, so assign colors to structure type
             self.section_colors = {}
+            print(len(self.hg.colorMap))
+            print(len(list(hf.sec_groups.keys())))
             for i, s in enumerate(hf.sec_groups.keys()):
+                print(s)
                 self.section_colors[s] = self.hg.colorMap[i]
 #        else: # single section name, assign colors to SectionList types:
 #        self.section_colors={'axon': 'r', 'heminode': 'g', 'stalk':'y', 'branch': 'b', 'neck': 'brown',
@@ -1989,7 +2003,9 @@ def main():
     #     help='List results to screen')
 
     args = parser.parse_args()
-
+    if args.hocfile is not None:
+        args.usedefaulthoc = False
+    
     if args.configfile is not None:
         config = None
         if args.configfile is not None:
@@ -2022,8 +2038,8 @@ def main():
     #             model.Params[k] = config[k]
     #         else:
     #             raise ValueError(f'Parameter {k:s} is not in Params key list')
-    print('model_run Params: ', model.Params)
-    
+    print(json.dumps(model.Params, indent=4))  # pprint doesn't work well with ordered dicts
+   
     # print(model.Params['cell'])
     # if model.Params['hocfile'] == None: # just use the matching hoc file
     #     model.Params['hocfile'] = model.Params['cell'] + '.hoc'
