@@ -7,9 +7,9 @@ from pathlib import Path
 import datetime
 import matplotlib
 matplotlib.use('Qt4Agg')
-from ephysanalysis import MakeClamps
-from ephysanalysis import RmTauAnalysis
-from ephysanalysis import SpikeAnalysis
+from ephys.ephysanalysis import MakeClamps
+from ephys.ephysanalysis import RmTauAnalysis
+from ephys.ephysanalysis import SpikeAnalysis
 AR = MakeClamps.MakeClamps()
 SP = SpikeAnalysis.SpikeAnalysis()
 RM = RmTauAnalysis.RmTauAnalysis()
@@ -22,6 +22,7 @@ import pylibrary.plotting.plothelpers as PH
 
 gbc_names = ['08', '09', '11', '14', '16', '17', '18', '19', '20', '21', '22', 'None']
 gbc_names = ['09', '11', '17', '18', 'None']
+gbc_names = ['06', 'None', 'None', 'None']
 P = PH.regular_grid(2, 2, figsize=(6,8), panel_labels=gbc_names, labelposition=(0.05, 0.95),
     margins={'leftmargin': 0.07, 'rightmargin': 0.05, 'topmargin': 0.12, 'bottommargin': 0.1},)
 chan = '_'  # for certainity in selection, include trailing underscore in this designation
@@ -35,8 +36,8 @@ else:
 if len(modelName) > 4:
     chan = modelName[4:]+'_'
     modelName = modelName[:4]
-soma = True
-dend = True
+soma = False
+dend = False
 stitle="unknown scaling"
 
 for gbc in gbc_names:
