@@ -10,7 +10,7 @@ __pycache__/
 # temporary ipy/jupyter notebooks
 Untitled*.ipynb
 
-# different temporary visualazation files
+# different temporary visualization files
 *.obj
 *.mtl
 
