@@ -20,7 +20,7 @@ setup(name='vcnmodel',
       entry_points={
           'console_scripts': [
                'model_run=vcnmodel.model_run:main',
-               'allgbcivs=vcnmodel.all_gbc_ivs:main',
+               'allgbcivs=vcnmodel.all_gbc_iv:main',
                'show_swc=vcnmodel.util.show_swc:main',
                'hocswcmap = vcnmodel.util.hoc_swc_sectionmap:main',
                ],
