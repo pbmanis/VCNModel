@@ -24,9 +24,6 @@ setup(name='vcnmodel',
                'show_swc=vcnmodel.util.show_swc:main',
                'hocswcmap = vcnmodel.util.hoc_swc_sectionmap:main',
                ],
-          # 'gui_scripts': [
-          #       'event_monger=src.event_monger:main',
-          # ]
       },
       classifiers = [
              "Programming Language :: Python :: 3.6+",
