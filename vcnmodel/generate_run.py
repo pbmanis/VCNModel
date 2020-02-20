@@ -22,8 +22,8 @@ from cnmodel.util.stim import make_pulse # makestim
 import vcnmodel.NoiseTrainingGen as NG
 #from NoiseTrainingGen.NoiseGen import generator
 from pylibrary.tools.params import Params
-import vcnmodel.IVPlots as IVP
-import vcnmodel.analyze_run as ar
+import vcnmodel.plotters.IVPlots as IVP
+import vcnmodel.analyzers.analyze_run as ar
 import vcnmodel.cellInitialization as cellInit
 import time
 import csv
