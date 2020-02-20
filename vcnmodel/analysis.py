@@ -1,6 +1,8 @@
 from __future__ import print_function
 """
 Provides analysis and display for several formats of model_run results
+
+
 """
 
 import sys
@@ -24,7 +26,7 @@ import seaborn
 from matplotlib import rc
 rc('text', usetex=False)
 import cell_config as CFG
-import analyze_run
+import vcnmodel.analyzers.analyze_run as analyze_run
 
 
 
@@ -531,13 +533,13 @@ def parse_cmdline():
 if __name__ == '__main__':
     
     cmds = parse_cmdline()
-
+    basename = Path('../VCN-SBEM-Data', baseName)
     if cmds['analysis'] == 'psth':
-        infile = os.path.join(baseName, cmds['cell'], 'Simulations/AN', 
+        infile = Path(baseName, cmds['cell'], 'Simulations/AN', 
             filename_template.format(cmds['cell'], modeltype, int(cmds['nReps']), cmds['SR']))
         plotPSTH(infile, cmds)
     if cmds['analysis'] == 'voltage':
-        infile = os.path.join(baseName, cmds['cell'], 'Simulations/AN',
+        infile = Path(baseName, cmds['cell'], 'Simulations/AN',
             filename_template.format(cmds['cell'], modeltype, int(cmds['nReps']), cmds['SR']))
         plotVm(infile, cmds)
 
@@ -546,12 +548,12 @@ if __name__ == '__main__':
             fn = cmds['cell'] + '.p'
         else:
             fn = cmds['cell'] + '_' + cmds['model'] + '.p'
-        infile = os.path.join(baseName, cmds['cell'], 'Simulations/IV', '%s' % fn)
+        infile = Path(baseName, cmds['cell'], 'Simulations/IV', '%s' % fn)
         plotIV(cmds['cell'], infile)
     elif cmds['analysis'] in ['io']:
         plotIO(cmds)
     elif cmds['analysis'] in ['singles', 'omit']:
-        inpath = os.path.join(baseName, cmds['cell'], 'Simulations/AN')
+        inpath = Path(baseName, cmds['cell'], 'Simulations/AN')
         plotSingles(inpath, cmds)
     plt.show()
 

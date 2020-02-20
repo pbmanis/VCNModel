@@ -250,7 +250,7 @@ class ModelRun():
         self.Params['checkcommand'] = False
         self.Params['configfile'] = None
         self.Params['tagstring'] = ''
-        self.baseDirectory = 'VCN_Cells'
+        self.baseDirectory = Path('../VCN-SBEM-Data', 'VCN_Cells')
         self.morphDirectory = 'Morphology'
         self.initDirectory = 'Initialization'
         self.simDirectory = 'Simulations'
