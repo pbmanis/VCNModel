@@ -26,7 +26,7 @@ import vcnmodel.sac_campagnola as SAC
 import pylibrary.plotting.plothelpers as PH
 import pylibrary.tools.utility as pu
 import vcnmodel.spikestatistics as SPKS
-import vcnmodel.cell_config
+import vcnmodel.cell_config as cell_config
 
 re_c10 = re.compile('_inp=VCN_c10_')
 re_self = re.compile('_inp=self_')

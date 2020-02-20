@@ -1,6 +1,10 @@
 __author__ = 'pbmanis'
 
+import pprint
+import os, sys
 from collections import OrderedDict
+import numpy as np
+import pickle
 import matplotlib
 matplotlib.use('Qt5Agg')
 rcParams = matplotlib.rcParams
@@ -11,13 +15,9 @@ import matplotlib.pyplot as mpl
 
 from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
-import numpy as np
-import pickle
 import pylibrary.plotting.pyqtgraph_plothelpers as pgPH
 import pylibrary.plotting.plothelpers as PH  # matplotlib
-import vcnmodel.analyze_run as ar
-import pprint
-import os, sys
+import vcnmodel.analyzers.analyze_run as AR
 
 pg.setConfigOption('background', 'w')  # set background to white
 pg.setConfigOption('foreground', 'k')
@@ -224,7 +224,7 @@ if __name__ == "__main__":
         cp.plotResults(d['Results'], d['runinfo'])
     if isinstance(d['Results'], list):
         for i in range(len(d['Results'])):
-            arun = ar.AnalyzeRun(d['Results'][i]) # create an instance of the class with the data
+            arun = AR.AnalyzeRun(d['Results'][i]) # create an instance of the class with the data
             arun.IV()  # compute the IV on the data
             cp.plotFit('Soma', arun.IVResult['taufit'][0], arun.IVResult['taufit'][1], c='r')
             cp.plotFit('Soma', arun.IVResult['ihfit'][0], arun.IVResult['ihfit'][1], c='b')
