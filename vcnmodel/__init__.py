@@ -11,6 +11,6 @@ import vcnmodel.cellInitialization
 
 from . import analyzers
 from . import plotters
-from . import simulators
+# from . import simulators
 from . import tests
 from . import util

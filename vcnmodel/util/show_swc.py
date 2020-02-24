@@ -9,7 +9,7 @@ import matplotlib.pyplot as mpl
 import pandas as pd
 import argparse
 
-import vcnmodel.util.swc_to_hoc
+import neuronvis.swc_to_hoc
 import neuronvis.hocRender as HR
 from mayavi import mlab
 

@@ -27,8 +27,9 @@ def merge_pdfs(datatype, outname=None):
     for r in rdrs:  # close the files... though the merger might also do this
         r.close()
 
-
-if __name__ == '__main__':
+def main():
     for datatype in ['Original', 'Inflated']:
         merge_pdfs(datatype, outname=Path(f"{datatype:s}_PSTH.pdf"))
-    
+
+if __name__ == '__main__':
+    main()

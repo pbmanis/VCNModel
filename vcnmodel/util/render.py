@@ -8,7 +8,7 @@ import os
 import pyqtgraph as pg
 from cnmodel import cells
 from cnmodel.decorator import Decorator
-from neuronvis import HocViewer
+from neuronvis.hoc_viewer import HocViewer
 
 
 class Render():

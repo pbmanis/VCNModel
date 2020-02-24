@@ -8,8 +8,8 @@ model_run.py
 Run a model based on a hoc structure, decorating the structure with ion channels and synapses.
 
 Requires:
-Python 2.7.13 (anaconda distribution)
-Neuron7.4 (neuron.yale.edu)
+Python 3.7 (anaconda distribution)
+Neuron7.7 (neuron.yale.edu)
 pyqtgraph (Campagnola, from github)
 neuronvis (Campagnola/Manis, from github)
 cnmodel (Campagnola/Manis, from github)
@@ -115,6 +115,10 @@ Set up initialization:
 python model_run.py VCN_c18 --hoc gbc18_w_axon_rescaled.hoc --protocol initIV --model XM13
 Then run model:
 python model_run.py VCN_c18 --hoc gbc18_w_axon_rescaled.hoc --protocol runIV --model XM13
+
+Where should we look for data?
+
+wheres_the_data.toml
 
 """
 
@@ -250,10 +254,18 @@ class ModelRun():
         self.Params['checkcommand'] = False
         self.Params['configfile'] = None
         self.Params['tagstring'] = ''
-        self.baseDirectory = Path('../VCN-SBEM-Data', 'VCN_Cells')
+        self.baseDirectory = Path('../VCN-SBEM-Data', 'VCN_Cells')  # try a default one, but read from toml file
         self.morphDirectory = 'Morphology'
         self.initDirectory = 'Initialization'
         self.simDirectory = 'Simulations'
+        
+        where_is_data = Path('wheres_my_data.toml')
+        if where_is_data.is_file():
+            datapaths  = toml.load('wheres_my_data.toml')
+        else:
+            datapaths = {'datapath': '.'} # "here"
+        self.baseDirectory = datapaths['baseDirectory']
+        
 
 
     def print_modelsetup(self):
@@ -338,7 +350,7 @@ class ModelRun():
             self.mkdir_p(ivinitdir) # confirm existence of that file
 
         if self.Params['runProtocol'] in ['initandrunIV', 'runIV']:
-            outPath = Path('VCN_Cells', self.cellID, self.simDirectory, 'IV')
+            outPath = Path(self.baseDirectory, self.cellID, self.simDirectory, 'IV')
             self.mkdir_p(outPath) # confirm that output path exists
             fout = self.Params['simulationFilename']  # base name created by make-filename - do not overwrite
             print('fout: ', fout)
@@ -361,7 +373,7 @@ class ModelRun():
                 self.mkdir_p(aninitdir) # confirm existence of that file
                 print('AN Initialization file: ', self.Params['initANStateFile'])
 
-            outPath = Path('VCN_Cells', self.cellID, self.simDirectory, 'AN')
+            outPath = Path(self.baseDirectory, self.cellID, self.simDirectory, 'AN')
             self.mkdir_p(outPath) # confirm that output path exists
             addarg = namePars
             if self.Params['spirou'] == 'all':
@@ -782,7 +794,7 @@ class ModelRun():
                              plotting = self.Params['plotFlag'],
                              params=self.Params,
                              )
-        self.R.runInfo.folder = Path('VCN_Cells', self.cellID, self.simDirectory, 'IV')
+        self.R.runInfo.folder = Path(self.baseDirectory, self.cellID, self.simDirectory, 'IV')
         if self.Params['verbose']:
             print('iv_run: calling do_run')
         nworkers = self.Params['nWorkers']
@@ -857,7 +869,7 @@ class ModelRun():
                              params=self.Params)
         # ivinitfile = Path(self.baseDirectory, self.cellID,
         #                         self.initDirectory, self.Params['initIVStateFile'])
-        self.R.runInfo.folder = Path('VCN_Cells', self.cellID, self.simDirectory, 'Noise')
+        self.R.runInfo.folder = Path(self.baseDirectory, self.cellID, self.simDirectory, 'Noise')
         if self.Params['verbose']:
             print('noise_run: calling do_run')
         nworkers = self.Params['nWorkers']
