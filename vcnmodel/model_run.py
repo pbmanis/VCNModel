@@ -209,6 +209,7 @@ class ModelRun():
         self.Params['ASA_inflation'] = 1.0
         self.Params['ASA_fromsoma'] = False
         self.Params['lambdaFreq'] = 2000.  # Hz for segment number
+        self.Params['dendriteelectrodedendrite'] = 'Proximal_Dendrite'
         self.Params['sequence'] = '' # sequence for run - may be string [start, stop, step]
         # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
         self.Params['SRType'] = self.SRChoices[2]
@@ -602,32 +603,36 @@ class ModelRun():
         
         if self.Params['dendrite_inflation'] != 1.0:
             print('!!!!!   Inflating dendrite')
-            dendrite_group = self.post_cell.all_sections['dendrite']
-            # print(' Section in dendrite group: ', dendrite_group)
             rtau = self.post_cell.compute_rmrintau(auto_initialize=True, vrange=[-80., -55.])
             print(f"     Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e6:.2f}, RMP: {rtau['v']:.2f}")
-            origdiam = {}
-            # self.post_cell.computeAreas()
-            a1 = np.sum(list(self.post_cell.areaMap['dendrite'].values()))
-            print(f'     Original dendrite area: {a1:.3f}')
-            badsecs = []
-            for i, section in enumerate(list(dendrite_group)):
-                secobj = self.post_cell.all_sections['dendrite'][i]
-                if secobj.diam > 100.:
-                    print('? bad diam: ', secobj.diam, secobj)
-                    badsecs.append(secobj)
-                origdiam[section] = secobj.diam
-                section.diam = origdiam[section] * self.Params['dendrite_inflation']
-                # print(f"      section diam old, nes:  {section.diam:.3f}")
-                # print(f"      ratio:     {section.diam/origdiam[section]:.3f}")
-                #
-                # print('      diam orig: ', origdiam[section], section)
-                section.diam = float(origdiam[section] * 1.05) # self.Params['dendrite_inflation']
-                # print('      diam new:  ', section.diam)
-                # print('      ratio:  ', section.diam/origdiam[section])
-            self.post_cell.computeAreas()
-            a2 = np.sum(list(self.post_cell.areaMap['dendrite'].values()))
-            print(f"     Revised dendrite area: {a2:.2f},  area ratio: {a2/a1:.3f},  original area: {a1:.2f}")
+            dendrite_names = ['Proximal_Dendrite', 'Distal_Dendrite', 'Dendritic_Hub', 'Dendritic_Swelling']
+            for den in dendrite_names:
+                if den not in list(self.post_cell.areaMap.keys()):
+                    continue
+                dendrite_group = self.post_cell.all_sections[den]
+                # print(' Section in dendrite group: ', dendrite_group)
+                origdiam = {}
+                # self.post_cell.computeAreas()
+                a1 = np.sum(list(self.post_cell.areaMap[den].values()))
+                print(f'     Original dendrite type {den:s}  area: {a1:.3f}')
+                badsecs = []
+                for i, section in enumerate(list(dendrite_group)):
+                    secobj = self.post_cell.all_sections[den][i]
+                    if secobj.diam > 100.:
+                        print('? bad diam: ', secobj.diam, secobj)
+                        badsecs.append(secobj)
+                    origdiam[section] = secobj.diam
+                    section.diam = origdiam[section] * self.Params['dendrite_inflation']
+                    # print(f"      section diam old, nes:  {section.diam:.3f}")
+                    # print(f"      ratio:     {section.diam/origdiam[section]:.3f}")
+                    #
+                    # print('      diam orig: ', origdiam[section], section)
+                    section.diam = float(origdiam[section] * 1.05) # self.Params['dendrite_inflation']
+                    # print('      diam new:  ', section.diam)
+                    # print('      ratio:  ', section.diam/origdiam[section])
+                self.post_cell.computeAreas()
+                a2 = np.sum(list(self.post_cell.areaMap[den].values()))
+                print(f"     Revised {den:s} area: {a2:.2f},  area ratio: {a2/a1:.3f},  original area: {a1:.2f}")
 
             rtau = self.post_cell.compute_rmrintau(auto_initialize=True, vrange=[-80., -55.])
             print(f"     New Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e6:.2f}, RMP: {rtau['v']:.2f}")
@@ -656,9 +661,10 @@ class ModelRun():
         self.get_hoc_file(self.post_cell.hr)
 
         try:
-            dendritic_electrode = list(self.post_cell.hr.sec_groups['dendrite'])[0]
+            dendritic_electrode = list(
+                self.post_cell.hr.sec_groups[self.Params['dendriteelectrodedendrite']])[0]
             self.dendriticelectrode_site = self.post_cell.hr.get_section(dendritic_electrode)
-            self.dendriticElectrodeSection = 'dendrite'
+            self.dendriticElectrodeSection = self.Params['dendriteelectrodedendrite']
         except:
             dendritic_electrode = list(self.post_cell.hr.sec_groups['soma'])[0]
             self.dendriticelectrode_site = self.post_cell.hr.get_section(dendritic_electrode)
@@ -924,7 +930,7 @@ class ModelRun():
             startingseed = self.Params['seed']
             seeds = np.arange(0, nReps*len(synapseConfig)).reshape((nReps, len(synapseConfig)))
             seeds = seeds + startingseed
-        print('AN Seeds: ', seeds)
+        # print('AN Seeds: ', seeds)
 
         return seeds
 
