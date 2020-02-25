@@ -44,6 +44,7 @@ if fraction of gmax is -1, then it is computed as the residual of the remaining 
 from pathlib import Path
 import numpy as np
 import json
+import toml
 from collections import OrderedDict
 import pandas as pd
 import matplotlib
@@ -59,10 +60,12 @@ import scipy.stats
 
 # datafile_default = Path('MorphologyData', 'Dendrite Quality and Surface Areas_comparisons_pbm_15Mar2019_v2.xlsx')
 # soma_area_data = 'Mesh Surface Area'
-datafile_default = Path('../VCN-SBEM-Data', 'MorphologyData', 'VCN', 'Dendrite Quality and Surface Areas_comparisons_pbm_14Oct2019_v1.xlsx')
+config = toml.load(open('wheres_my_data.toml', 'r'))
+dendqual = Path(config['baseDataDirectory'], config['dendriteQualityFile'])
+
 soma_area_data = 'Mesh Soma Area Smoothed'
 cellsintable = [2, 5, 8, 9, 10, 11, 13, 14, 16, 17, 18, 19, 20, 21, 22, 24, 27, 29]
-datafile = datafile_default
+datafile = dendqual
 inputs = [f"Input {i+1:d}" for i in range(12)]  # input column labels
 
 synperum2 = 0.65 # average density of synapses, synapses per micron squared 
@@ -74,7 +77,7 @@ class CellConfig():
     def __init__(self, datafile=None):
         self.synperum2 = synperum2
         if datafile is None:
-            datafile = datafile_default
+            datafile = dendqual
         self.datafile = datafile
         with open(datafile, 'rb') as fh:
             self.ASA = pd.read_excel(fh, 'Sheet1')
