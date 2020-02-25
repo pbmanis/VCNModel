@@ -7,5 +7,5 @@ ASA_fromsoma=true
 dendrite_fromsoma=true
 sgc_model='cochlea'
 SRType='MS'
-
+noparallel=true
 # noparallel=true
