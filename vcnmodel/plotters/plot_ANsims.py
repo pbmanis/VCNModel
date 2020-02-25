@@ -2,41 +2,70 @@ from pathlib import Path
 import pickle
 import string
 import numpy as np
-import pylibrary.plotting.plothelpers as PH
 import re
+import toml
+import pandas as pd
 import matplotlib
 matplotlib.use('Qt5Agg')
 
+import pylibrary.plotting.plothelpers as PH
+
+import vcnmodel.cell_config as CellConf
+
+config = toml.load(open('wheres_my_data.toml', 'r'))
+dendqual = Path(config['baseDataDirectory'], config['dendriteQualityFile'])
+
+with open(dendqual, 'rb') as fh:
+    ASA = pd.read_excel(fh, 'Sheet1')
+
+CC = CellConf.CellConfig() # get configuration methods
+    
 def main():
     files =["VCN_c09","VCN_c11", "VCN_c17", "VCN_c18"]
-    reps = 20
+    substinput ={'VCN_c17a': 'VCN_c02', 'VCN_c17b': 'VCN_c05', 'VCN_c17c': 'VCN_c10', 'VCN_c17d': 'VCN_c13'}
+    reps = 50
     db = 30
     freq = 16000.
     ch='nacncoop'
-    normalPSTHdatasets = {
-    'VCN_c09':
-    f'VCN_Cells/VCN_c09/Simulations/AN/AN_Result_VCN_c09_inp=self_XM13_{ch:s}_II_soma=1.514_dend=1.514_ASA=1.514_delays_multisite_{reps:03d}_tonepip_{db:03d}dB_{fr:.1f}_MS.p',
-    'VCN_c11':
-    f'VCN_Cells/VCN_c11/Simulations/AN/AN_Result_VCN_c11_inp=self_XM13_{ch:s}_II_soma=1.458_dend=1.458_ASA=1.458_delays_multisite_{reps:03d}_tonepip_{db:03d}dB_{fr:.1f}_MS.p',
-    'VCN_c17':
-    f'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=self_XM13_{ch:s}_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_{reps:03d}_tonepip_{db:03d}dB_{fr:.1f}_MS.p',
-    'VCN_c18':
-    f'VCN_Cells/VCN_c18/Simulations/AN/AN_Result_VCN_c18_inp=self_XM13_{ch:s}_II_soma=1.502_dend=1.502_ASA=1.502_delays_multisite_{reps:03d}_tonepip_{db:03d}dB_{fr:.1f}_p'
-    }
+    srate = 'MS'
+    normalPSTHdatasets = {}
+    for cellID in files:  # programatically build file names from the configuration for each cell
+          somaInflate = CC.get_soma_ratio(cellID)
+          dendInflate = CC.get_dendrite_ratio(cellID)
+          print(f"Soma, dend ratios: {cellID:s} : {somaInflate:.4f} {dendInflate:4f}")
+          normalPSTHdatasets[cellID] = f"VCN_Cells/{cellID:s}/Simulations/AN/AN_Result_{cellID:s}_inp=self_XM13_{ch:s}_II"
+          normalPSTHdatasets[cellID] += f"_soma={somaInflate:.3f}_dend={somaInflate:.3f}_ASA={somaInflate:.3f}"
+          normalPSTHdatasets[cellID] += f"_delays_multisite_{reps:03d}_tonepip_{db:03d}dB_{freq:.1f}_MS.p"
+    print(normalPSTHdatasets)
+    # exit()
 
     """
     Substituions for the input pattern. Using 17 as the target
     """
-    subsPSTHdatasets = {
-    'VCN_c17a':
-    'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c02_XM13_{ch:s}_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
-    'VCN_c17b':
-    'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c05_XM13_{ch:s}_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
-    'VCN_c17c':
-    'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c10_XM13_{ch:s}_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
-    'VCN_c17d':
-    'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c13_XM13_{ch:s}_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
-    }
+    # subsPSTHdatasets = {
+    # 'VCN_c17a':
+    # 'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c02_XM13_{ch:s}_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
+    # 'VCN_c17b':
+    # 'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c05_XM13_{ch:s}_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
+    # 'VCN_c17c':
+    # 'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c10_XM13_{ch:s}_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
+    # 'VCN_c17d':
+    # 'VCN_Cells/VCN_c17/Simulations/AN/AN_Result_VCN_c17_inp=VCN_c13_XM13_{ch:s}_II_soma=1.344_dend=1.344_ASA=1.344_delays_multisite_050_tonepip_040dB_4000.0_MS.p',
+    # }
+    db = 40
+    freq = 4000.0
+    subsPSTHdatasets = {}
+    for cellIDn in list(substinput.keys()):  # programatically build file names from the configuration for each cell
+          print('cellidn: ', cellIDn)
+          cellID = cellIDn[:-1] # trim lettter off 
+          print('cellid: ', cellID)
+          omaInflate = CC.get_soma_ratio(cellID)
+          dendInflate = CC.get_dendrite_ratio(cellID)
+          # print(f"Soma, dend ratios: {cellID:s} : {somaInflate:.4f} {dendInflate:4f}")
+          subsPSTHdatasets[cellID] = f"VCN_Cells/{cellID:7s}/Simulations/AN/AN_Result_{cellID:7s}_inp={substinput[cellIDn]:s}_XM13_{ch:s}_II"
+          subsPSTHdatasets[cellID] += f"_soma={somaInflate:.3f}_dend={somaInflate:.3f}_ASA={somaInflate:.3f}"
+          subsPSTHdatasets[cellID] += f"_delays_multisite_{reps:03d}_tonepip_{db:03d}dB_{freq:.1f}_MS.p"
+    print(subsPSTHdatasets)
 
     # latest = {}
     # for j, f in enumerate(files):
@@ -82,11 +111,11 @@ def main():
     names = list(latest.keys())
     for ifx, fx in enumerate(latest):
         filename = latest[fx]
-        # print(filename)
+        filename = Path('/Users/pbmanis/Desktop/Python/VCN-SBEM-Data', filename)# print(filename)
         if fx is None:
             continue
         if not Path(filename).is_file():
-            print(f'File: {filename:s} was not found')
+            print(f'File: {str(filename):s} was not found')
             continue
         with open(filename, 'rb') as fh:
             print('opening specific file: ', filename)

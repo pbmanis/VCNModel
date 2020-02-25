@@ -82,7 +82,7 @@ print('Models: ', P.axdict.keys())
 
 gbc_names = [s[-2:] for s in sizer.keys()]
 # gbc_names = ['16']
-gbc_names = ['09', '11', '17', '18']
+# gbc_names = ['09', '11', '17', '18']
 
 for n in gbc_names:
     if n == 'ne':
