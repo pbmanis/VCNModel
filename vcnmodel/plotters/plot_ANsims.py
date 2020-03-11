@@ -15,8 +15,8 @@ import vcnmodel.cell_config as CellConf
 config = toml.load(open('wheres_my_data.toml', 'r'))
 dendqual = Path(config['baseDataDirectory'], config['dendriteQualityFile'])
 
-with open(dendqual, 'rb') as fh:
-    ASA = pd.read_excel(fh, 'Sheet1')
+# with open(dendqual, 'rb') as fh:
+#     ASA = pd.read_excel(fh, 'Sheet1')
 
 CC = CellConf.CellConfig() # get configuration methods
     

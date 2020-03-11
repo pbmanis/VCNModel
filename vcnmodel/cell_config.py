@@ -63,8 +63,24 @@ import scipy.stats
 config = toml.load(open('wheres_my_data.toml', 'r'))
 dendqual = Path(config['baseDataDirectory'], config['dendriteQualityFile'])
 
-soma_area_data = 'Mesh Soma Area Smoothed'
-cellsintable = [2, 5, 8, 9, 10, 11, 13, 14, 16, 17, 18, 19, 20, 21, 22, 24, 27, 29]
+# specify the name of the columns in the excel sheet
+# these keep getting edited and changing
+
+dataset = 'new-3-2020' # or 'old'
+if dataset == 'old':
+    hocsomarecons = "HOC10"
+    hoddendrecons = "HOC Dendrite Area"
+    soma_area_data = 'Mesh Soma Area Smoothed'  # old
+    dend_area_data = 'Mesh Dendrite Area'
+elif dataset == 'new-3-2020':  # with split spreadsheet
+    hocsomarecons = "New 10-section recons"
+    hocdendrecons = "Original reconstructions"
+    soma_area_data = 'Surface Area'
+    dend_area_data = 'Surface Area (uM)'
+else:
+    raise ValueError("cell_config: Data set must be either 'new-3-2020', 'old'")
+
+cellsintable = [2, 5, 6, 8, 9, 10, 11, 13, 14, 16, 17, 18, 19, 20, 21, 22, 24, 27, 29, 30]
 datafile = dendqual
 inputs = [f"Input {i+1:d}" for i in range(12)]  # input column labels
 
@@ -80,8 +96,10 @@ class CellConfig():
             datafile = dendqual
         self.datafile = datafile
         with open(datafile, 'rb') as fh:
-            self.ASA = pd.read_excel(fh, 'Sheet1')
-
+            self.SDSummary = pd.read_excel(fh, 'SomaDendrite_Summary', skiprows=3)
+        with open(datafile, 'rb') as fh:
+            self.ASA = pd.read_excel(fh, 'Input_ASA', skiprows=3)
+        
         self.VCN_Inputs = OrderedDict()
     
         for cellnum in cellsintable:
@@ -98,9 +116,9 @@ class CellConfig():
             inasa = dcell[i].values
             if pd.isnull(inasa):  # skip empty entries
                 continue
-            # build table:
+            if len(inasa) == 0:
+                continue
             self.VCN_Inputs[celln][1].append([(float(inasa)), 0., 2., np.nan, np.nan, np.nan, np.nan, 'AN', {'soma': [0, 0.5, 1.0]}])
-
         # print('dcell: ', dcell)
 
     def makeDict(self, cell, velocity=3.0, areainflate=1.0):
@@ -146,9 +164,9 @@ class CellConfig():
     def get_soma_ratio(self, cellID):
         if isinstance(cellID, str):
             cellnum = int(cellID[-2:])
-        dcell = self.ASA[self.ASA['Cell Number'] == cellnum]
+        dcell = self.SDSummary[self.SDSummary['Cell Number'] == cellnum]
         mesh_area = dcell[soma_area_data].values[0]
-        hoc_soma_area = dcell['HOCSoma10'].values[0]
+        hoc_soma_area = dcell[hocsomarecons].values[0]
         inflateratio = mesh_area/hoc_soma_area
         print(f"Cell: {cellnum:02d}: Soma mesh area: {mesh_area:.2f}  Soma hoc area: {hoc_soma_area:.2f}  ", end='')
         print(f"      Soma Inflation ratio: {inflateratio:.3f}")
@@ -157,11 +175,11 @@ class CellConfig():
     def get_dendrite_ratio(self, cellID):
         if isinstance(cellID, str):
             cellnum = int(cellID[-2:])
-        dcell = self.ASA[self.ASA['Cell Number'] == cellnum]
-        mesh_area = dcell['Mesh Dendrite Area'].values[0]
-        hoc_soma_area = dcell['HOC Dendrite Area'].values[0]
-        inflateratio = mesh_area/hoc_soma_area
-        print(f"Cell: {cellnum:02d}: Dendrite mesh area: {mesh_area:.2f}  HOC Dendrite area: {hoc_soma_area:.2f}  ", end='')
+        dcell = self.SDSummary[self.SDSummary['Cell Number'] == cellnum]
+        mesh_area = dcell[dend_area_data].values[0]
+        hoc_dend_area = dcell[hocdendrecons].values[0]
+        inflateratio = mesh_area/hoc_dend_area
+        print(f"Cell: {cellnum:02d}: Dendrite mesh area: {mesh_area:.2f}  HOC Dendrite area: {hoc_dend_area:.2f}  ", end='')
         print(f" Dendrite Inflation ratio: {inflateratio:.3f}")
         return(inflateratio)
 
@@ -202,6 +220,8 @@ class CellConfig():
     
 
         for cell in cellendings.keys():
+                if len(cellendings[cell]) == 0:  # missing data in table
+                    continue
                 normd.extend(cellendings[cell]/np.max(cellendings[cell]))
                 ratio1.append(cellendings[cell][1]/cellendings[cell][0])
                 ratio2.append(np.mean(cellendings[cell])/cellendings[cell][0])

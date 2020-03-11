@@ -51,7 +51,7 @@ class IVPlots():
         #self.win.resize(800,600)
         #self.win.nextRow()
         #self.GL = pg.GraphicsLayoutWidget(parent=self.win)
-        self.lo.addLabel('Cell: {0:s}'.format(title), colspan=9, size='12pt')
+        self.lo.addLabel(f"Cell: {title:s}", colspan=9, size='12pt')
         self.plots = {}
         for i in range(1, 6):
             self.plots['p%d' % i] = None
