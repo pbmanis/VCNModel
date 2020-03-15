@@ -720,7 +720,7 @@ class ModelRun:
             cconfig = cell_config.CellConfig()
             inflateratio = cconfig.get_soma_ratio(self.cellID)
             if np.isnan(inflateratio):
-                raise ValueError("Soma Inflation Ration is not defined!")
+                raise ValueError(f"Soma Inflation Ratio is not defined for cell {self.cellID:s}")
             self.Params["soma_inflation"] = inflateratio
 
         if self.Params["soma_inflation"] != 1.0:
@@ -753,8 +753,12 @@ class ModelRun:
             print(
                 f"     New Rin after somatic inflation: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
             )
+        if self.Params["ASA_fromsoma"]:
+            self.Params["ASA_inflation"] = self.Params["soma_inflation"]
 
-        if self.Params[
+        if self.Params["dendrite_fromsoma"]:
+            self.Params["dendrite_inflation"] = self.Params["soma_inflation"]
+        elif self.Params[
             "dendrite_autoinflate"
         ]:  # get values and inflate soma automatically to match mesh
             cprint("c", "Dendrite Autoinflation")
@@ -763,11 +767,7 @@ class ModelRun:
             if np.isnan(inflateratio):
                 raise ValueError("Dendrite Inflation Ration is not defined!")
             self.Params["dendrite_inflation"] = inflateratio
-        if self.Params["dendrite_fromsoma"]:
-            self.Params["dendrite_inflation"] = self.Params["soma_inflation"]
-        if self.Params["ASA_fromsoma"]:
-            self.Params["ASA_inflation"] = self.Params["soma_inflation"]
-
+        
         if self.Params["dendrite_inflation"] != 1.0:
             print("!!!!!   Inflating dendrite")
             rtau = self.post_cell.compute_rmrintau(
@@ -780,8 +780,12 @@ class ModelRun:
                 "Proximal_Dendrite",
                 "Distal_Dendrite",
                 "Dendritic_Hub",
-                "Dendritic_Swelling",
+                "Dendritic_Swelling"
+                "dend",
+                "proximaldendrite",
+                "distandendrite",
             ]
+            orig_den_area = self.post_cell.computeAreas()
             for den in dendrite_names:
                 if den not in list(self.post_cell.areaMap.keys()):
                     continue
@@ -789,29 +793,22 @@ class ModelRun:
                 # print(' Section in dendrite group: ', dendrite_group)
                 origdiam = {}
                 # self.post_cell.computeAreas()
-                a1 = np.sum(list(self.post_cell.areaMap[den].values()))
-                print(f"     Original dendrite type {den:s}  area: {a1:.3f}")
+                dendtypearea = np.sum(list(self.post_cell.areaMap[den].values()))
+                print(f"     Original dendrite type: {den:s}  area= {dendtypearea:.3f}")
                 badsecs = []
                 for i, section in enumerate(list(dendrite_group)):
                     secobj = self.post_cell.all_sections[den][i]
-                    if secobj.diam > 100.0:
-                        print("? bad diam: ", secobj.diam, secobj)
-                        badsecs.append(secobj)
-                    origdiam[section] = secobj.diam
-                    section.diam = origdiam[section] * self.Params["dendrite_inflation"]
-                    # print(f"      section diam old, nes:  {section.diam:.3f}")
-                    # print(f"      ratio:     {section.diam/origdiam[section]:.3f}")
-                    #
-                    # print('      diam orig: ', origdiam[section], section)
-                    section.diam = float(
-                        origdiam[section] * 1.05
-                    )  # self.Params['dendrite_inflation']
-                    # print('      diam new:  ', section.diam)
-                    # print('      ratio:  ', section.diam/origdiam[section])
+                    for pt in range(secobj.n3d()):
+                        dia3 = secobj.diam3d(pt)
+                        if dia3 > 100.0:
+                            print("? bad diam: ", secobj.diam, secobj)
+                            badsecs.append(secobj)
+                        else:
+                            self.post_cell.hr.h.pt3dchange(pt, dia3*self.Params["dendrite_inflation"], sec=secobj)
                 self.post_cell.computeAreas()
                 a2 = np.sum(list(self.post_cell.areaMap[den].values()))
                 print(
-                    f"     Revised {den:s} area: {a2:.2f},  area ratio: {a2/a1:.3f},  original area: {a1:.2f}"
+                    f"     Revised {den:s} area: {a2:.2f},  area ratio: {a2/a1:.3f},  original area: {dendtypearea:.2f}"
                 )
 
             rtau = self.post_cell.compute_rmrintau(

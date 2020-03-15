@@ -68,13 +68,13 @@ dendqual = Path(config['baseDataDirectory'], config['dendriteQualityFile'])
 
 dataset = 'new-3-2020' # or 'old'
 if dataset == 'old':
-    hocsomarecons = "HOC10"
+    hocsomarecons =  "HOC10"
     hoddendrecons = "HOC Dendrite Area"
     soma_area_data = 'Mesh Soma Area Smoothed'  # old
     dend_area_data = 'Mesh Dendrite Area'
 elif dataset == 'new-3-2020':  # with split spreadsheet
-    hocsomarecons = "New 10-section recons"
-    hocdendrecons = "Original reconstructions"
+    hocsomarecons = "Hoc_Soma_3-15-2020" #"New 10-section recons"
+    hocdendrecons = "Hoc_Dend_3-15-2020" # "Original reconstructions"
     soma_area_data = 'Surface Area'
     dend_area_data = 'Surface Area (uM)'
 else:
@@ -87,7 +87,7 @@ inputs = [f"Input {i+1:d}" for i in range(12)]  # input column labels
 synperum2 = 0.65 # average density of synapses, synapses per micron squared 
                  # Original value, from Spriou measurements in MNTB.
                  # value confirmed in 5 VCN gBCs (0.68, leaving largest out)
-                 # 0.729 with all 5
+                 # 0.729 with all 5.
 
 class CellConfig():
     def __init__(self, datafile=None):
@@ -165,6 +165,8 @@ class CellConfig():
         if isinstance(cellID, str):
             cellnum = int(cellID[-2:])
         dcell = self.SDSummary[self.SDSummary['Cell Number'] == cellnum]
+        # print(dcell.columns)
+        # print(hocsomarecons)
         mesh_area = dcell[soma_area_data].values[0]
         hoc_soma_area = dcell[hocsomarecons].values[0]
         inflateratio = mesh_area/hoc_soma_area
