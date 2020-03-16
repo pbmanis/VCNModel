@@ -16,6 +16,12 @@ import os
 import re
 
 import os.path
+
+try:
+  basestring
+except NameError:
+  basestring = str
+ 
 class HocReader(object):
     """
     Provides useful methods for reading hoc structures.
@@ -270,7 +276,16 @@ class HocReader(object):
         """
         return self.sec_groups[name]
 
-
+    def find_sec_group(self, secname):
+        """
+        Find which group a section belongs to
+        """
+        for group in self.sec_groups:
+            secs = self.get_section_group(group)
+            if secname in secs:
+                return group
+        return None
+        
     def get_section_lists(self):
         """
         Search through all of the hoc variables to find those that are "SectionLists"
