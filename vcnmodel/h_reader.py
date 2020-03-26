@@ -1,6 +1,10 @@
 from __future__ import print_function
 __author__ = 'pbmanis'
-
+from pathlib import Path
+import collections
+import numpy as np
+import os
+import re
 
 try:
     from neuron import h
@@ -9,13 +13,7 @@ try:
 except:
     HAVE_NEURON=False
 
-import collections
-import numpy as np
 
-import os
-import re
-
-import os.path
 
 try:
   basestring
@@ -32,18 +30,20 @@ class HocReader(object):
     def __init__(self, hoc):
         self.file_loaded = False
         if isinstance(hoc, basestring):
-            fullfile = os.path.join(os.getcwd(), hoc)
-            if not os.path.isfile(fullfile):
-                raise Exception("File not found: %s" % (fullfile))
-            success = neuron.h.load_file(1, fullfile)
+            fullfile = Path(os.getcwd(), hoc)
+            neuron.h.hoc_stdout('/dev/null')  # prevent junk from printing while reading the file
+            success = neuron.h.load_file(str(fullfile))
+            neuron.h.hoc_stdout()
             if success == 0: # indicates failure to read the file
-                raise NameError("Found file, but NEURON load failed: %s" % (fullfile))
+                raise NameError("Found file, but NEURON load failed: %s" % (str(fullfile)))
+            print('loaded')
             self.file_loaded = True
             self.h = h # save a copy of the hoc object itself.
-        else:
+        elif isinstance(hoc, object):
             self.h = hoc # just use the passed argument
             self.file_loaded = True
-
+        else:
+            raise ValueError("HocReader(h_reader): require filename or hoc object")
         # geometry containers
         self.edges = None
         self.vertexes = None
