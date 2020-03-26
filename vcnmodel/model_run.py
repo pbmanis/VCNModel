@@ -146,6 +146,7 @@ import vcnmodel.cell_config as cell_config
 import neuronvis.hoc_graphics as hoc_graphics
 from vcnmodel.generate_run import GenerateRun
 import vcnmodel.cellInitialization as cellInit
+from vcnmodel.adjust_areas import AdjustAreas
 from cnmodel import cells
 from cnmodel.util import sound
 from cnmodel.decorator import Decorator
@@ -328,7 +329,7 @@ class ModelRun:
             print("{:18s} = {:12}".format(p, self.Params[p]))
         print("-----------")
 
-    def set_celltype(self, cellType):
+    def set_celltype(self, cellType: str):
         """
         Set the cell Type, as requested. The cell type must be in the cell choices
 
@@ -343,15 +344,12 @@ class ModelRun:
 
         """
         if cellType not in self.cellChoices:
-            print(
-                "Celltype must be one of: {:s}. Got: {:s}".format(
-                    ", ".join(self.cellChoices), cellType
-                )
-            )
+            choices = str(self.cellChoices)
+            print(f"Celltype must be one of: {choices:s}. Got: {cellType:s}")
             exit()
         self.Params["cellType"] = cellType
 
-    def set_model_name(self, model_name):
+    def set_model_name(self, model_name: str):
         """
         Set the model Type, as requested. The model type must be in the model choices
 
@@ -365,7 +363,7 @@ class ModelRun:
             Nothing
 
         """
-        if model_name not in self.modelNameChoices:
+        if model_name not in self.modfelNameChoices:
             print(
                 "Model type must be one of: {:s}. Got: {:s}".format(
                     ", ".join(self.modelNameChoices), model_type
@@ -394,6 +392,8 @@ class ModelRun:
         namePars = (
             f"{str(self.Params['modelName']):s}_{str(self.Params['modelType']):s}"
         )
+        print('inflations: ', self.Params["soma_inflation"], self.Params["dendrite_inflation"])
+
         if self.Params["soma_inflation"] != 1.0:
             namePars += f"_soma={self.Params['soma_inflation']:.3f}"
         if self.Params["dendrite_inflation"] != 1.0:
@@ -408,12 +408,12 @@ class ModelRun:
                 if self.Params["tagstring"] is not None:
                     self.Params["initIVStateFile"] = Path(
                         ivinitdir, f"{str(fn):s}_{self.Params['tagstring']:s}"
-                    ).with_suffix(".dat")
-                else:
-                    self.Params["initIVStateFile"] = Path(ivinitdir, fn).with_suffix(
-                        ".dat"
                     )
-            print("IV Initialization file: ", self.Params["initIVStateFile"])
+                else:
+                    self.Params["initIVStateFile"] = Path(ivinitdir, fn)
+            if  not self.Params["initIVStateFile"].suffix == '.dat':
+                self.Params["initIVStateFile"] = Path(str(self.Params["initIVStateFile"]) + '.dat')
+            cprint('cyan', "IV Initialization file:  {str(self.Params['initIVStateFile']):s}")
             self.mkdir_p(ivinitdir)  # confirm existence of that file
 
         if self.Params["runProtocol"] in ["initandrunIV", "runIV"]:
@@ -471,8 +471,13 @@ class ModelRun:
                 fn += f"_{self.Params['SRType']:2s}.p"
                 ofile = Path(outPath, fn)
             self.Params["simulationFilename"] = ofile
+            if  not self.Params["simulationFilename"].suffix == '.dat':
+                self.Params["simulationFilename"] = Path(str(self.Params["simulationFilename"]) + '.dat')
+        
+        cprint('r', f"Output simulation file: {str(self.Params['simulationFilename']):s}")
+        # exit()
 
-    def set_spontaneousrate(self, spont_rate_type):
+    def set_spontaneousrate(self, spont_rate_type: int):
         """
         Set the SR, overriding SR in the cell_config file. The SR type must be in the SR choices
 
@@ -495,19 +500,19 @@ class ModelRun:
             exit()
         self.Params["SRType"] = spont_rate_type
 
-    def set_starttime(self, starttime):
+    def set_starttime(self, starttime: float):
         """
         store the start time...
         """
         self.Params["StartTime"] = starttime
 
-    def mkdir_p(self, path):
+    def mkdir_p(self, path: [str, Path]):
         try:
             Path.mkdir(path, parents=True, exist_ok=True)
         except:
             raise FileNotFoundError(f"Cannot create path: {str(path):s}")
 
-    def fix_singlets(self, h):
+    def fix_singlets(self, h: object):
         badsecs = []
         for i, sec in enumerate(h.allsec()):
             if sec.n3d() == 1:
@@ -539,15 +544,15 @@ class ModelRun:
         # if len(badsecs) == 0:
         #     print('no more bad sections')
 
-    def setup_model(self, par_map=None):
+    def setup_model(self, par_map: dict = None):
         """
         Main entry routine for running all models
         here we set up the model, assigning various parameters, and dealing
-        with various morphological manipulations.
+        with various morphological manipulations such as inflating areas.
 
         Parameters
         ----------
-        par_map : dict (default: empty)
+        par_map : dict (default: None)
             A dictionary of parameters, passed to models that are run (not used).
 
         Returns
@@ -562,7 +567,7 @@ class ModelRun:
             self.idnum = par_map["id"]
         else:
             self.idnum = 9999
-        print(f"cellid: {self.Params['cell']:s}")
+        print(f"Cell ID: {self.Params['cell']:s}")
         if self.Params["cell"] is None:
             return
         self.cellID = Path(
@@ -702,7 +707,9 @@ class ModelRun:
             raise ValueError(f"cell type {self.Params['cellType']:s} not implemented")
 
         # Set up run parameters
-        print(f"Requested temperature (deg C): {self.post_cell.status['temperature']:.2f}")
+        print(
+            f"Requested temperature (deg C): {self.post_cell.status['temperature']:.2f}"
+        )
         self.post_cell.hr.h.celsius = self.post_cell.status[
             "temperature"
         ]  # this is set by prepareRun in generateRun. Only place it should be changed
@@ -720,32 +727,25 @@ class ModelRun:
             cconfig = cell_config.CellConfig()
             inflateratio = cconfig.get_soma_ratio(self.cellID)
             if np.isnan(inflateratio):
-                raise ValueError(f"Soma Inflation Ratio is not defined for cell {self.cellID:s}")
+                raise ValueError(
+                    f"Soma Inflation Ratio is not defined for cell {self.cellID:s}"
+                )
             self.Params["soma_inflation"] = inflateratio
 
         if self.Params["soma_inflation"] != 1.0:
             print("!!!!!   Inflating soma")
-            soma_group = self.post_cell.all_sections["soma"]
-            print(" Section in soma group: ", soma_group)
             rtau = self.post_cell.compute_rmrintau(
                 auto_initialize=True, vrange=[-80.0, -60.0]
             )
             print(
                 f"     Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
             )
-            origdiam = {}
-            self.post_cell.computeAreas()
-            a1 = np.sum(list(self.post_cell.areaMap["soma"].values()))
-            print(f"     Original Soma area: {a1:.2f}")
-            for i, section in enumerate(list(soma_group)):
-                secobj = self.post_cell.all_sections["soma"][i]
-                origdiam[section] = secobj.diam
-                section.diam = origdiam[section] * self.Params["soma_inflation"]
-                # print(f"      section diam old,:  {section.diam:.3f}")
-                # print(f"      ratio:     {section.diam/origdiam[section]:.3f}")
-            self.post_cell.computeAreas()
-            a2 = np.sum(list(self.post_cell.areaMap["soma"].values()))
-            print(f"      Revised Soma area: {a2:.2f}  area ratio: {a2/a1:.3f}")
+            # origdiam = {}
+            AdjA = AdjustAreas(method='pt3d')
+            AdjA.sethoc_fromCNcell(self.post_cell)
+            # AdjArea.sethoc_fromstring(hdata=hocstruct2)
+            pt3d = AdjA.adjust_by_diamater(sectypes = ['soma', 'Soma'], inflateRatio=inflateratio)
+            AdjA.plot_areas(pt3d)
 
             rtau = self.post_cell.compute_rmrintau(
                 auto_initialize=True, vrange=[-80.0, -60.0]
@@ -767,7 +767,7 @@ class ModelRun:
             if np.isnan(inflateratio):
                 raise ValueError("Dendrite Inflation Ration is not defined!")
             self.Params["dendrite_inflation"] = inflateratio
-        
+
         if self.Params["dendrite_inflation"] != 1.0:
             print("!!!!!   Inflating dendrite")
             rtau = self.post_cell.compute_rmrintau(
@@ -780,36 +780,16 @@ class ModelRun:
                 "Proximal_Dendrite",
                 "Distal_Dendrite",
                 "Dendritic_Hub",
-                "Dendritic_Swelling"
-                "dend",
+                "Dendritic_Swelling" "dend",
                 "proximaldendrite",
                 "distandendrite",
             ]
-            orig_den_area = self.post_cell.computeAreas()
-            for den in dendrite_names:
-                if den not in list(self.post_cell.areaMap.keys()):
-                    continue
-                dendrite_group = self.post_cell.all_sections[den]
-                # print(' Section in dendrite group: ', dendrite_group)
-                origdiam = {}
-                # self.post_cell.computeAreas()
-                dendtypearea = np.sum(list(self.post_cell.areaMap[den].values()))
-                print(f"     Original dendrite type: {den:s}  area= {dendtypearea:.3f}")
-                badsecs = []
-                for i, section in enumerate(list(dendrite_group)):
-                    secobj = self.post_cell.all_sections[den][i]
-                    for pt in range(secobj.n3d()):
-                        dia3 = secobj.diam3d(pt)
-                        if dia3 > 100.0:
-                            print("? bad diam: ", secobj.diam, secobj)
-                            badsecs.append(secobj)
-                        else:
-                            self.post_cell.hr.h.pt3dchange(pt, dia3*self.Params["dendrite_inflation"], sec=secobj)
-                self.post_cell.computeAreas()
-                a2 = np.sum(list(self.post_cell.areaMap[den].values()))
-                print(
-                    f"     Revised {den:s} area: {a2:.2f},  area ratio: {a2/a1:.3f},  original area: {dendtypearea:.2f}"
-                )
+
+            AdjA = AdjustAreas()
+            AdjA.sethoc_fromCNcell(self.post_cell)
+            # AdjArea.sethoc_fromstring(hdata=hocstruct2)
+            pt3d = AdjA.by_pt3d_dia(sectypes = dendrite_names, inflateRatio=inflateratio)
+            AdjA.plot_areas(pt3d)
 
             rtau = self.post_cell.compute_rmrintau(
                 auto_initialize=True, vrange=[-80.0, -55.0]
@@ -821,11 +801,11 @@ class ModelRun:
             # for section in list(dendrite_group):
             # print('      diam orig: ', origdiam[section])
             # print('      diam new:  ', ssection.diam)
-            for sec in badsecs:
-                print("? bad diam: ", sec.diam, sec)
-            print("# bad: ", len(badsecs))
-            if len(badsecs) > 0:
-                exit()
+            # for sec in badsecs:
+           #      print("? bad diam: ", sec.diam, sec)
+           #  print("# bad: ", len(badsecs))
+           #  if len(badsecs) > 0:
+           #      exit()
 
         for group in list(self.post_cell.hr.sec_groups.keys()):
             g = self.post_cell.hr.sec_groups[group]
@@ -861,7 +841,7 @@ class ModelRun:
                 print("Listing par_map (run_model): ", par_map)
             self.post_cell.hr.h.topology()
 
-        self.post_cell.set_d_lambda(freq=self.Params["lambdaFreq"])
+        self.post_cell.set_nseg(freq=self.Params["lambdaFreq"])
 
         # handle the following protocols:
         # ['initIV', 'initAN', 'runIV', 'run', 'runANSingles', 'gifnoise']
@@ -869,8 +849,9 @@ class ModelRun:
         self._make_filenames()  # make filenames AFTER all manipulations of the cell
 
         self.setup = True
+        exit()
 
-    def run_model(self, par_map=None):
+    def run_model(self, par_map: dict = None):
         if not self.setup:
             self.setup_model(par_map=par_map)
         if self.Params["runProtocol"] in ["runANPSTH", "runANSingles"]:
@@ -968,7 +949,7 @@ class ModelRun:
         #     cylinder.set_group_colors(self.section_colors, alpha=0.8, mechanism=['nav11', 'gbar'])
         #     pg.show()
 
-    def iv_run(self, par_map=None):
+    def iv_run(self, par_map: dict = None):
         """
         Main entry routine for running all IV (current-voltage relationships with somatic electrode)
 
@@ -1090,7 +1071,7 @@ class ModelRun:
         }
         return self.IVSummary
 
-    def noise_run(self, par_map={}):
+    def noise_run(self, par_map: dict = {}):
         """
         Main entry routine for running noise into cell current injection (for generating GIF models)
 
@@ -1155,7 +1136,7 @@ class ModelRun:
         )
         return statefile.is_file()
 
-    def compute_seeds(self, nReps, synapseConfig):
+    def compute_seeds(self, nReps: int, synapseConfig: list):
         """
         Generate the seeds for the AN runs
 
@@ -1192,7 +1173,10 @@ class ModelRun:
 
         return seeds
 
-    def get_synapses(self, synapses):
+    def get_synapses(self, synapses: list):
+        """
+        Get values of settings in synapses
+        """
         gMax = np.zeros(len(synapses))  # total g for each synapse
         nSyn = np.zeros(len(synapses))  # # sites each synapse
         ngMax = np.zeros(len(synapses))
@@ -1212,7 +1196,7 @@ class ModelRun:
                 # print('i nsyn gmax nmdagmax  : ', i, nSyn[i], gMax[i], ngMax[i])
         return (gMax, ngMax, nSyn)
 
-    def set_synapse(self, synapse, gampa, gnmda):
+    def set_synapse(self, synapse: list, gampa: float, gnmda: float):
         totalg = 0.0
         if self.Params["ANSynapseType"] == "simple":
             synapse.psd.terminal.netcon.weight[0] = gampa
@@ -1227,7 +1211,12 @@ class ModelRun:
             totaln = totaln + p.gmax
         # print('total ampa, nmda: ', totalg, totaln)
 
-    def an_run(self, post_cell, verify=False, make_an_intial_conditions=False):
+    def an_run(
+        self,
+        post_cell: object,
+        verify: bool = False,
+        make_an_intial_conditions: bool = False,
+    ):
         """
         Establish AN inputs to soma, and run the model.
         Requires a synapseConfig list of dicts from cell_config.makeDict()
@@ -1510,7 +1499,7 @@ class ModelRun:
             print("plotting")
             self.plot_an(celltime, result)
 
-    def an_run_singles(self, post_cell, exclude=False, verify=False):
+    def an_run_singles(self, post_cell: object, exclude=False, verify=False):
         """
         Establish AN inputs to soma, and run the model.
         synapseConfig: list of tuples
@@ -2498,7 +2487,8 @@ def main():
         help='hoc file to use for simulation (default is the selected "cell".hoc)',
     )
     parser.add_argument(
-        "-F", "--full",
+        "-F",
+        "--full",
         dest="fullhocfile",
         action="store_true",
         default=False,
