@@ -500,7 +500,8 @@ class GenerateRun():
         del mp['decorator']
         pickle.dump({'basename': self.basename,
                      'runInfo': self.runInfo.todict(),
-                     'modelPars': mp,
+                     'modelPars': mp,  # some specific parameters to this run
+                     'Params': self.params,  # all the parameters that were passed
                      'Results': [{k:x.todict()} for k,x in self.results.items()]
                     }, pfout)
                      
