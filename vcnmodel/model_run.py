@@ -743,9 +743,8 @@ class ModelRun:
             # origdiam = {}
             AdjA = AdjustAreas(method='pt3d')
             AdjA.sethoc_fromCNcell(self.post_cell)
-            # AdjArea.sethoc_fromstring(hdata=hocstruct2)
-            pt3d = AdjA.adjust_by_diamater(sectypes = ['soma', 'Soma'], inflateRatio=inflateratio)
-            AdjA.plot_areas(pt3d)
+            pt3d = AdjA.adjust_diameters(sectypes = ['soma', 'Soma'], inflateRatio=inflateratio)
+            # AdjA.plot_areas(pt3d)
 
             rtau = self.post_cell.compute_rmrintau(
                 auto_initialize=True, vrange=[-80.0, -60.0]
@@ -787,9 +786,8 @@ class ModelRun:
 
             AdjA = AdjustAreas()
             AdjA.sethoc_fromCNcell(self.post_cell)
-            # AdjArea.sethoc_fromstring(hdata=hocstruct2)
-            pt3d = AdjA.by_pt3d_dia(sectypes = dendrite_names, inflateRatio=inflateratio)
-            AdjA.plot_areas(pt3d)
+            pt3d = AdjA.adjust_diameters(sectypes = dendrite_names, inflateRatio=inflateratio)
+            # AdjA.plot_areas(pt3d)  # just to take a look at the adjustment
 
             rtau = self.post_cell.compute_rmrintau(
                 auto_initialize=True, vrange=[-80.0, -55.0]
@@ -849,7 +847,7 @@ class ModelRun:
         self._make_filenames()  # make filenames AFTER all manipulations of the cell
 
         self.setup = True
-        exit()
+
 
     def run_model(self, par_map: dict = None):
         if not self.setup:
