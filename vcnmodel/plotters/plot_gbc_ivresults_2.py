@@ -23,7 +23,7 @@ import pylibrary.plotting.plothelpers as PH
 def main():
     gbc_names = ['08', '09', '11', '14', '16', '17', '18', '19', '20', '21', '22', 'None']
     gbc_names = ['09', '11', '17', '18', 'None']
-    gbc_names = ['06', 'None', 'None', 'None']
+    gbc_names = ['17', 'None', 'None', 'None']
     P = PH.regular_grid(2, 2, figsize=(6,8), panel_labels=gbc_names, labelposition=(0.05, 0.95),
         margins={'leftmargin': 0.07, 'rightmargin': 0.05, 'topmargin': 0.12, 'bottommargin': 0.1},)
     chan = '_'  # for certainity in selection, include trailing underscore in this designation
@@ -37,22 +37,28 @@ def main():
     if len(modelName) > 4:
         chan = modelName[4:]+'_'
         modelName = modelName[:4]
-    soma = False
-    dend = False
+    soma = True
+    dend = True
     stitle="unknown scaling"
-
+    
     for gbc in gbc_names:
-        basefn = f"VCN_Cells/VCN_c{gbc:2s}/Simulations/IV/IV_Result_VCN_c{gbc:2s}"
+        basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:2s}/Simulations/IV/"
         # ivdatafile = Path(f"VCN_Cells/VCN_c{gbc:2s}/Simulations/IV/VCN_c{gbc:2s}_pulse_XM13{chan:s}_II_soma=*_monitor.p")
-        fng = list(Path('.').glob(basefn+'*.p'))
-
+        print(list(Path(basefn).glob('*.p')))
+        print(basefn)
+        print(f"search for:  VCN_c{gbc:2s}_pulse_*.p")
+        fng = list(Path(basefn).glob(f'VCN_c{gbc:2s}_pulse_*.p'))
+        print('fng: ', fng)
         ivdatafile = None
         print('\nConditions: soma= ', soma, '  dend=', dend)
         for fn in fng:
             fnp = Path(fn)
+            print("checking file: ", fn)
             with(open(fnp, 'rb')) as fh:
                 d = pickle.load(fh)
+            print(d.keys())
             par = d['Params']
+            print(par)
             if soma and dend:
                 if par['soma_inflation'] > 0 and par['dendrite_inflation'] > 0.:
                     ivdatafile = Path(fn)
