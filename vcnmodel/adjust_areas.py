@@ -4,19 +4,20 @@ a specific value.
 This class was designed to "inflate" the areas of swc/hoc
 representations of reconstructed neurons to match the area
 measured with hihger resolution serial-blockface EM reconstructions.
-This steip is required because the swc/hoc representation is a smoothed
+This step is required because the swc/hoc representation is a smoothed
 cylinderical version of a rather convoluted (or crenulated) cell surface,
 and therefore underestimates the actual membrane area.
 
-The procedure adjusts the areas of each section for a set of 
+The procedure adjusts the areas of each *section* for a set of 
 named processes (e.g., ['apical_dendrite', 'basal_dendrite']) by
 applying a fixed scale factor to the diameter of each pt3d object
 in that section. Because NEURON then readjustes the area
 calculation the final inflation factor (a single, positive real number)
-the inflation scale factor may differ slightly for each section. The
+may differ slightly for each section. The
 differendes are most prominent for very small diameter sections, but 
-also appear for larger sections. Therefore, the procedure does the
-adjustment iteratively until the area is inflated by the desired factor,
+also appears for larger sections. Therefore, the procedure does the
+adjustment iteratively until the total area of the named structure(s)
+is inflated by the desired factor,
 and changes less than a specified epsilon between two successive adjustments.
 
 In the days of coronavirus, March 2020, Sunset Beach, NC.
@@ -146,7 +147,7 @@ class AdjustAreas:
     hoc reconstructed files using pt3d data.
     """
     def __init__(self, method='pt3d'):
-        self.method = method  # wheter to compute areas from pt3d data,  or segment data
+        self.method = method  # option of wheter to compute areas from pt3d data, or segment data
         if self.method == 'pt3d':
             self.areafunc = self.segareasec
             self.adjust_dia_func = self.adjust_pt3d_dia
@@ -155,9 +156,16 @@ class AdjustAreas:
             self.adjust_dia_func = self.adjust_seg_dia
 
         else:
-            raise ValueError('AdjustAReas: userpted must be one of pt3d, segment')
+            raise ValueError("AdjustAReas: the method must be one of ['pt3d', 'segment']")
 
     def sethoc_fromCNcell(self, cell):
+        """
+        Get the hoc information from a cnmodel cell object
+        
+        Parameters
+        -----------
+        cell : cnmodel cell object
+        """
         self.cell = cell
         self.HR = cell.hr
         for s in self.cell.hr.h.allsec():
@@ -256,47 +264,51 @@ class AdjustAreas:
         for seg in sec.allseg():
             seg.diam *= sf
 
-    def adjust_segment_dia_areamatch(
-        self, sec: object, sf: float, eps: float = 1e-4
-    ):
-        """
-        This function expands the surface area of a section by a
-        specific fractional amount. Because of the way that the
-        areas are calculated, we focus on using the pt3d area
-        sums before they are converted to neuron sections, then
-        compute the areas from the  sumo of the individual segmentes
-        in the section. The routine is iterative as the calculation
-        as done in neuron is not always predicable.
-        """
+    # def adjust_segment_dia_areamatch(
+    #     self, sec: object, sf: float, eps: float = 1e-4
+    # ):
+    #     """
+    #     This function expands the surface area of a section by a
+    #     specific fractional amount. Because of the way that the
+    #     areas are calculated, we focus on using the pt3d area
+    #     sums before they are converted to neuron sections, then
+    #     compute the areas from the  sumo of the individual segmentes
+    #     in the section. The routine is iterative as the calculation
+    #     as done in neuron is not always predicable.
+    #     """
+    #
+    #     if sf == 1.0:
+    #         return
+    #     section_area = self.areafunc(sec)  # starting value
+    #     target_area = section_area * sf
+    #     n = 0
+    #     while np.fabs(target_area - section_area) > eps:
+    #         ratio = target_area / section_area
+    #         if ratio < 0.01:
+    #             print("Inflation failed: ratio: ", ratio, section_area, target_area, n)
+    #             exit()
+    #         self.adjust_seg_dia(sec, ratio)
+    #         section_area = self.areafunc(sec)
+    #         n += 1
+    #         # print(f"n: {n:d} section area: {section_area:.3f}  target  area: {target_area:.3f}")
+    #     # print(f"sec: {str(sec):s}  iters: {n:d}")
 
-        if sf == 1.0:
-            return
-        section_area = self.areafunc(sec)  # starting value
-        target_area = section_area * sf
-        n = 0
-        while np.fabs(target_area - section_area) > eps:
-            ratio = target_area / section_area
-            if ratio < 0.01:
-                print("Inflation failed: ratio: ", ratio, section_area, target_area, n)
-                exit()
-            self.adjust_seg_dia(sec, ratio)
-            section_area = self.areafunc(sec)
-            n += 1
-            # print(f"n: {n:d} section area: {section_area:.3f}  target  area: {target_area:.3f}")
-        # print(f"sec: {str(sec):s}  iters: {n:d}")
-
-    def adjust_pt3d_dia_areamatch(
+    def adjust_dia_areamatch(
         self, sec: object, sf: float, eps: float = 1e-4,
 
     ):
         """
         This function expands the surface area of a section by a
-        specific fractional amount. Because of the way that the
-        areas are calculated, we focus on using the pt3d area
+        specific fractional amount by manipulating all of the
+        pt3d diameters in the section.
+        In other words, because of the way neuron calculates
+        the areas, we focus on using the pt3d area
         sums before they are converted to neuron sections, then
         compute the areas from the  sumo of the individual segmentes
         in the section. The routine is iterative as the calculation
         as done in neuron is not always predicable.
+        Noe that self.areafunc is set by the method specified in the
+        class instantiation.
         """
 
         if sf == 1.0:
@@ -335,7 +347,7 @@ class AdjustAreas:
             if sectype in sectypes:
                 adj_data["Areas3D"].append(self.areafunc(sec))
                 h.pt3dconst(1, sec=sec)
-                self.adjust_adj_data_dia_areamatch(sec, inflateRatio)
+                self.adjust_dia_areamatch(sec, inflateRatio)
                 adj_data["Areas3DInflated"].append(self.areafunc(sec))
                 adj_data["Diams"].append(sec.diam)
                 adj_data["Lengths"].append(sec.L)
@@ -429,8 +441,7 @@ class AdjustAreas:
         f.colorbar(scp, ax=ax[3])
         unity = np.arange(dmin, dmax)
         scaled = unity * pt3d["InflateRatio"]
-        unity = unity * 1.65
-        ax[3].plot(np.arange(len(unity)), unity, "c--", linewidth=0.25)
+        # ax[3].plot(np.arange(len(unity)), unity, "c--", linewidth=0.25)
         ax[3].plot(np.arange(len(scaled)), scaled, "k--", linewidth=0.25)
         ax[3].set_ylabel("3d Area inflated")
         ax[3].set_xlabel("3D Area before inflation")
