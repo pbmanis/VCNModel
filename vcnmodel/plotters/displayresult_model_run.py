@@ -86,7 +86,7 @@ class DisplayResult():
             simmode = 'AN'
         else:
             simmode = 'IV'
-        outPath = Path('VCN_Cells', f"{p:s}", 'Simulations/', simmode)
+        outPath = Path('/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells', f"{p:s}", 'Simulations/', simmode)
         self.bp[p] = 'VCN_Cells/{0:s}/Simulations/AN'.format(p)
         # print(('bp: ', self.Params['cell'], self.bp))
         # if self.Params['soundtype'] in ['SAM', 'sam']:
