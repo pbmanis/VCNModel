@@ -60,7 +60,8 @@ def allgbcs():# set up plots
     yp = np.flipud(yp)
     # print ('yp:', yp)
     lpos = [0.5, 0.95]
-    gradeA = [2, 5, 6, 9, 10, 11, 13,  24, 29, 30]  # 17 fails
+    gradeA = [2, 5, 6, 9, 10, 11, 13,  17, 24, 29, 30]  # 17 fails
+    # gradeA = [17]
     cellnames = [f"VCN_c{k:02d}" for k in gradeA]
 
 
@@ -104,8 +105,8 @@ def allgbcs():# set up plots
         M.Params["Parallel"] = True
         M.Params["modelType"] = modelType
         M.Params["modelName"] = modelName
-        # M.Params['soma_autoinflate'] = True
-        # M.Params['dendrite_autoinflate'] = False
+        M.Params['soma_autoinflate'] = True
+        M.Params['dendrite_autoinflate'] = False
         M.Params["sequence"] = "[-1., 2.01, 0.2]"
 
         if M.Params["hocfile"] == None:  # just use the matching hoc file
