@@ -36,7 +36,7 @@ from neuron import h
 import vcnmodel.cell_config as cell_config
 from vcnmodel import h_reader
 import pylibrary.tools.cprint as CP
-
+from cnmodel import cells
 cprint = CP.cprint
 
 """
@@ -157,6 +157,29 @@ class AdjustAreas:
 
         else:
             raise ValueError("AdjustAReas: the method must be one of ['pt3d', 'segment']")
+        
+        # default names for dendries and somas
+        # def plot_areas(ax, xdend, a1, a2):
+        self.dendrites = [
+            "maindend",
+            "dend",
+            "dendrite",
+            "primarydendrite",
+            "Proximal_Dendrite",
+            "secdend",
+            "secondarydendrite",
+            "Distal_Dendrite",
+            "Dendritic_Hub",
+            "Dendritic_Swelling",
+            "Basal_Dendrite",
+            "Apical_Dendrite",
+        ]
+
+        self.somas = [
+            "soma",
+            "Soma",
+        ]
+        
 
     def sethoc_fromCNcell(self, cell):
         """
@@ -167,8 +190,15 @@ class AdjustAreas:
         cell : cnmodel cell object
         """
         self.cell = cell
+        if self.cell.areaMap is None:
+            self.cell.computeAreas()
+        ta = 0.
+        for s in self.dendrites:
+            for a in self.cell.areaMap[s]:
+                ta += self.cell.areaMap[s][a]
+        print('dendrite total area: ', ta)
         self.HR = cell.hr
-        for s in self.cell.hr.h.allsec():
+        for s in self.HR.h.allsec():
             s.Ra = 150.0
         S = SetNSegs(self.HR.h)
         S.set_nseg(freq=1000.0, d_lambda=0.025, minimum=3)  # perform d_lambda adjustment on structure
@@ -187,7 +217,11 @@ class AdjustAreas:
             s.Ra = 150.0
         S = SetNSegs(self.HR.h)
         S.set_nseg(freq=1000.0, d_lambda=0.025, minimum=3)  # perform d_lambda adjustment on structure
-
+        # print(self.HR.get_section_prefixes())
+        # for s in self.HR.h.allsec():
+        #     print('adja sethoc_fromfile:', self.HR.get_sec_info(s))
+        # exit()
+        
     def sethoc_fromstring(self, hdata:str):
         """
         Read a reconstruction from a string
@@ -223,7 +257,7 @@ class AdjustAreas:
 
         print(f"sf: {sf:.2f}  a1: {a1:.3f}  a2: {a2:.3f}  a2/a1: {a2/a1:.2f}")
 
-    def segareasec(self, sec: object, name: str = "original"):
+    def segareasec(self, sec: object) -> float:
         """
         Sum up the areas of all the _segments_ in a section
 
@@ -235,8 +269,8 @@ class AdjustAreas:
             area += seg.area()
         # print(f'{name:s} area: {area:.3f} ')
         return area
-    
-    def pt3dareasec(self, sec: object, name: str = "original"):
+            
+    def pt3dareasec(self, sec: object) -> float:
        """
        Sum up the areas of all the pt3d pieces in a section
 
@@ -328,12 +362,13 @@ class AdjustAreas:
 
             # print(f"section area: {section_area:.3f}  target  area: {target_area:.3f}")
             n += 1
-        print(f"sec: {str(sec):s}  iters: {n:d}")
+        # print(f"sec: {str(sec):s}  iters: {n:d}")
 
-    def adjust_diameters(self, sectypes:list, inflateRatio:float):
+    def adjust_diameters(self, sectypes:list, inflateRatio:float, verbose:bool=False) -> dict:
 
         adj_data = {  # data structure
             "Areas3D": [],
+            "AreaMap": [],
             "Areas3DInflated": [],
             "InflateRatio": inflateRatio,
             "Diams": [],
@@ -341,11 +376,18 @@ class AdjustAreas:
             "n3d": [],
             "sectypes": [],
         }
+        missedtypes = []
+        usedtypes = []
+        # self.HR.h.topology()
+        # print([s for s in self.HR.h.allsec()])
         for secname, sec in self.HR.sections.items():
             sectype = self.HR.find_sec_group(secname)
+            if verbose:
+                cprint('r', (secname, sectype))
             # print(f"sec: {str(sec):>14s} {sectype:>20s}  n={sec.nseg:>3d} L={sec.L:8.1f}  D={sec.diam:7.3f}  (L/nsec: {sec.L/sec.nseg:>6.2f})")
             if sectype in sectypes:
                 adj_data["Areas3D"].append(self.areafunc(sec))
+                adj_data["AreaMap"].append(self.cell.areaMap[sectype][sec])
                 h.pt3dconst(1, sec=sec)
                 self.adjust_dia_areamatch(sec, inflateRatio)
                 adj_data["Areas3DInflated"].append(self.areafunc(sec))
@@ -353,18 +395,64 @@ class AdjustAreas:
                 adj_data["Lengths"].append(sec.L)
                 adj_data["n3d"].append(sec.n3d())
                 adj_data["sectypes"].append(sectype)
-
+                usedtypes.append(sectype)
+            else:
+                missedtypes.append(sectype)
+        # adj_data["AreaMap"][
+        if verbose:
+            cprint('c', f"doing sectypes: {str(set(sectypes)):s}")
+            cprint('c', f"used sectypes: {str(set(usedtypes)):s}")
+        cprint('y', f"Skipped sections named: {str(set(missedtypes)):s}")
         if self.method:
             print("\nChanging the areas by changing adj_data diams")
         else:
             print("\nChanging the areas by changing segment diams")
-            
-        print(f"inflated area: {np.sum(adj_data['Areas3DInflated']):10.2f} ")
+        print(f"     Cell AreaMap (cnmodel:cells) : {np.sum(adj_data['AreaMap']):10.2f} ")
+        print(f"     Original area (segareased:)  : {np.sum(adj_data['Areas3D']):10.2f} ")
+        print(f"     Inflated area (adjarea )     : {np.sum(adj_data['Areas3DInflated']):10.2f} ")
+        cnarea = self.getCNcellArea(sectypes=sectypes)
+        print(f"     CN inflated area: {cnarea:10.2f} ")
+        
         print(
             f"Infl factor: {np.sum(adj_data['Areas3DInflated'])/np.sum(adj_data['Areas3D']):6.3f} (should be: {adj_data['InflateRatio']:6.3f})"
         )
 
         return adj_data
+
+    def get_hoc_area(self, sectypes:list):
+        hocarea = []
+        for secname, sec in self.HR.sections.items():
+            sectype = self.HR.find_sec_group(secname)
+            # print(f"sec: {str(sec):>14s} {sectype:>20s}  n={sec.nseg:>3d} L={sec.L:8.1f}  D={sec.diam:7.3f}  (L/nsec: {sec.L/sec.nseg:>6.2f})")
+            if sectype in sectypes:
+                hocarea.append(self.areafunc(sec))
+ 
+        return(np.sum(hocarea))
+ 
+    def getCNcellArea(self, sectypes:list, verbose:bool=False) -> float:
+        if verbose:
+            print('sectypes: ', sectypes)
+        hocarea = []
+        hoc_secarea = []
+        self.cell.distances()
+        self.cell.computeAreas()  # make sure we have updated
+        for secname, sec in self.HR.sections.items():
+            sectype = self.HR.find_sec_group(secname)
+            # print(f"sec: {str(sec):>14s} {sectype:>20s}  n={sec.nseg:>3d} L={sec.L:8.1f}  D={sec.diam:7.3f}  (L/nsec: {sec.L/sec.nseg:>6.2f})")
+            if sectype in sectypes:
+                secarea = self.cell.areaMap[sectype][sec]
+                section_area = self.areafunc(sec)
+                hocarea.append(secarea)
+                hoc_secarea.append(section_area)
+                if verbose:
+                    print(f"adding area from : {sectype:20s} = {secarea:8.3f} [{section_area:8.3f}]", end='')
+                    print(f" (cumul: {np.sum(hocarea):8.3f} [{str(sec):s}]", end='')
+                    print(f" sec L*diam area: {np.pi*sec.L*sec.diam:8.3f}")
+            if sectype == self.cell.somaname:
+                self.cell.set_soma_size_from_Section(sec)  # make sure this is updated
+ 
+        print(f"Section area: {np.sum(hoc_secarea):8.3f}")
+        return(np.sum(hocarea))      
 
     def plot_areas(self, pt3d: dict):
 
@@ -626,32 +714,13 @@ def by_section_diam(fn, cname: str):
     )
 
 
-# def plot_areas(ax, xdend, a1, a2):
-dendrites = [
-    "maindend",
-    "dend",
-    "dendrite",
-    "primarydendrite",
-    "Proximal_Dendrite",
-    "secdend",
-    "secondarydendrite",
-    "Distal_Dendrite",
-    "Dendritic_Hub",
-    "Dendritic_Swelling",
-    "Basal_Dendrite",
-    "Apical_Dendrite",
-]
-
-somas = [
-    "soma",
-    "Soma",
-]
 
 
 def recon_hoc():
-    cname = "VCN_c17"
+    cname = "VCN_c02"
     basepath = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
-    cell = f"{cname:s}/Morphology/{cname:s}_Full.hocx"
+    cell = f"{cname:s}/Morphology/{cname:s}.hocx"
+    cell = f"{cname:s}/Morphology/{cname:s}_Full.hoc"
     fn = Path(basepath, cell)
     print(fn.is_file())
     cconfig = cell_config.CellConfig()
@@ -659,9 +728,19 @@ def recon_hoc():
     dinflateratio = cconfig.get_dendrite_ratio(cname)
 
     AdjArea = AdjustAreas(method='pt3d')
-    AdjArea.sethoc_fromfile(fn)
+    post_cell = cells.Bushy.create(
+        morphology=str(fn),
+        # decorator=Decorator,
+        species="mouse",
+        modelType="II",
+        modelName="XM13",
+    )
+    AdjArea.sethoc_fromCNcell(post_cell)
     # AdjArea.sethoc_fromstring(hdata=hocstruct2)
-    pt3d = AdjArea.adjust_diameters(sectypes = dendrites, inflateRatio=dinflateratio)
+    AdjArea.cell.print_soma_info()
+    pt3d = AdjArea.adjust_diameters(sectypes = AdjArea.dendrites, inflateRatio=dinflateratio)
+    pt3d = AdjArea.adjust_diameters(sectypes = AdjArea.somas, inflateRatio=sinflateratio)
+    AdjArea.cell.print_soma_info()
     AdjArea.plot_areas(pt3d)
 
 
