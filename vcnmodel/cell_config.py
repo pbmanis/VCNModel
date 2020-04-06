@@ -73,10 +73,10 @@ if dataset == 'old':
     soma_area_data = 'Mesh Soma Area Smoothed'  # old
     dend_area_data = 'Mesh Dendrite Area'
 elif dataset == 'new-3-2020':  # with split spreadsheet
-    hocsomarecons = "Hoc_Soma_3-15-2020" #"New 10-section recons"
-    hocdendrecons = "Hoc_Dend_3-15-2020" # "Original reconstructions"
-    soma_area_data = 'Surface Area'
-    dend_area_data = 'Surface Area (uM)'
+    hocsomarecons = "Hoc_Soma_Full_4-03-2020" # "Hoc_Soma_3-15-2020" #"New 10-section recons"
+    hocdendrecons = "Hoc_Dend_Full_4-03-2020" # "Hoc_Dend_3-15-2020" # "Original reconstructions"
+    soma_area_data = 'Somatic Surface Area'
+    dend_area_data = 'Dendritic Surface Area'
 else:
     raise ValueError("cell_config: Data set must be either 'new-3-2020', 'old'")
 
@@ -95,10 +95,11 @@ class CellConfig():
         if datafile is None:
             datafile = dendqual
         self.datafile = datafile
+        print(config)
         with open(datafile, 'rb') as fh:
-            self.SDSummary = pd.read_excel(fh, 'SomaDendrite_Summary', skiprows=3)
+            self.SDSummary = pd.read_excel(fh, config['SomaAndDendriteData'], skiprows=3)
         with open(datafile, 'rb') as fh:
-            self.ASA = pd.read_excel(fh, 'Input_ASA', skiprows=3)
+            self.ASA = pd.read_excel(fh, config['asaData'], skiprows=0)
         
         self.VCN_Inputs = OrderedDict()
     
