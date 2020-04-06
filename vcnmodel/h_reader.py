@@ -36,7 +36,7 @@ class HocReader(object):
             neuron.h.hoc_stdout()
             if success == 0: # indicates failure to read the file
                 raise NameError("Found file, but NEURON load failed: %s" % (str(fullfile)))
-            print('loaded')
+
             self.file_loaded = True
             self.h = h # save a copy of the hoc object itself.
         elif isinstance(hoc, object):
@@ -107,6 +107,7 @@ class HocReader(object):
              'soma': ['soma[0]']}
         """
         prefixes = {}
+
         regex = re.compile('(?P<prefix>\w+)\[(\d*)\]')
         for sec_name in self.sections:
             g = regex.match(sec_name)
@@ -159,7 +160,7 @@ class HocReader(object):
                 raise
 
 
-        print(gmech)
+        # print(gmech)
         if len(gmech) == 0:
             gmech = 0.
         return np.mean(gmech)
