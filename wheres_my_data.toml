@@ -1,4 +1,12 @@
+# filenames and paths
 baseDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
 baseDataDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/MorphologyData/VCN"
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_pbm_14Oct2019_v1.xlsx'
-dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_6_March_2020.xlsx'
+#dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_6_March_2020.xlsx'
+dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_2_April_2020.xlsx'
+
+# names of excel tabs in the dendrite quality file
+asaDataOriginal = "Input_ASA_FromASAProtocol(Holco"
+asaData = "Input_ASA_FromautoASA.py"
+SomaAndDendriteData = "SomaDendrite_Summary"
+
