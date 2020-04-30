@@ -84,29 +84,37 @@ cellsintable = [2, 5, 6, 8, 9, 10, 11, 13, 14, 16, 17, 18, 19, 20, 21, 22, 24, 2
 datafile = dendqual
 inputs = [f"Input {i+1:d}" for i in range(12)]  # input column labels
 
-synperum2 = 0.65 # average density of synapses, synapses per micron squared 
+# synperum2 = 0.65 # average density of synapses, synapses per micron squared
                  # Original value, from Spriou measurements in MNTB.
                  # value confirmed in 5 VCN gBCs (0.68, leaving largest out)
                  # 0.729 with all 5.
 
+synperum2 = 0.799   # new numbers from synapse counting: value is average of 15
+                    # terminals from 9 cells in the VCN (Matthew Kersting)
+                    # std is 0.109
+
 class CellConfig():
-    def __init__(self, datafile=None):
+    def __init__(self, datafile=None, verbose=True):
+
         self.synperum2 = synperum2
         if datafile is None:
             datafile = dendqual
         self.datafile = datafile
-        print(config)
+        if verbose:
+            print('CellConfig: configuration dict: ')
         with open(datafile, 'rb') as fh:
             self.SDSummary = pd.read_excel(fh, config['SomaAndDendriteData'], skiprows=3)
+        
         with open(datafile, 'rb') as fh:
             self.ASA = pd.read_excel(fh, config['asaData'], skiprows=0)
         
         self.VCN_Inputs = OrderedDict()
     
         for cellnum in cellsintable:
+            # print('cellnum: ', cellnum)
             self.build_cell(cellnum)
             r, ct = self.makeDict(f"VCN_c{cellnum:02d}")
-    
+    # print(self.VCN_Inputs)
         self.printCellInputs(self.VCN_Inputs)
 
     def build_cell(self, cellnum):
@@ -152,15 +160,20 @@ class CellConfig():
             ch += sfmt
         
         print(f"{ch:s}")  # header
-        for v in list(self.VCN_Inputs.keys()):
-            t = "{0:<{1}s}".format(v, slen)
-            for inp in self.VCN_Inputs[v][1]:
-                if isinstance(inp, tuple):
-                    t += "{0:{1}.1f}".format(inp[0], slen)
+        for v in list(r.keys()):
+            t = f"{v:<{slen}s}"
+            # print(r[v])
+            for inp in r[v][1]:
+                # print('inp: ', inp)
+                if isinstance(inp, tuple) or isinstance(inp, list):
+                    # print('tu, li')
+                    t += f"{inp[0]:{slen}.1f}"
                 elif isinstance(inp, float):
-                    t += "{0:{1}.1f}".format(inp, slen)
+                    t += f"{inp:{slen}.1f}"
                 else:
-                    t += "{0:^{1}s}".format(str(inp), slen)
+                    t += f"{str(inp):^{slen}s}"
+            print(t)
+
 
     def get_soma_ratio(self, cellID):
         if isinstance(cellID, str):

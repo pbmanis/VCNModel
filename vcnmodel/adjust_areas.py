@@ -714,10 +714,8 @@ def by_section_diam(fn, cname: str):
     )
 
 
-
-
 def recon_hoc():
-    cname = "VCN_c02"
+    cname = "VCN_c09"
     basepath = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
     cell = f"{cname:s}/Morphology/{cname:s}.hocx"
     cell = f"{cname:s}/Morphology/{cname:s}_Full.hoc"
@@ -738,8 +736,8 @@ def recon_hoc():
     AdjArea.sethoc_fromCNcell(post_cell)
     # AdjArea.sethoc_fromstring(hdata=hocstruct2)
     AdjArea.cell.print_soma_info()
-    pt3d = AdjArea.adjust_diameters(sectypes = AdjArea.dendrites, inflateRatio=dinflateratio)
     pt3d = AdjArea.adjust_diameters(sectypes = AdjArea.somas, inflateRatio=sinflateratio)
+    pt3d = AdjArea.adjust_diameters(sectypes = AdjArea.dendrites, inflateRatio=dinflateratio)
     AdjArea.cell.print_soma_info()
     AdjArea.plot_areas(pt3d)
 
