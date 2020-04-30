@@ -354,16 +354,14 @@ class ModelRun:
                 )
             cprint(
                 "cyan",
-                "IV Initialization file:  {str(self.Params.initIVStateFile):s}",
+                f"IV Initialization file:  {str(self.Params.initIVStateFile):s}",
             )
             self.mkdir_p(ivinitdir)  # confirm existence of that file
-
+        print('RUNPROTOCOL: ', self.RunInfo.runProtocol)
         if self.RunInfo.runProtocol in ["initandrunIV", "runIV"]:
             outPath = Path(self.baseDirectory, self.cellID, self.simDirectory, "IV")
             self.mkdir_p(outPath)  # confirm that output path exists
-            fout = self.Params[
-                "simulationFilename"
-            ]  # base name created by make-filename - do not overwrite
+            fout = self.Params.simulationFilename  # base name created by make-filename - do not overwrite
             print("fout: ", fout)
             if self.Params.tagstring is not None:
                 self.Params.simulationFilename = Path(
@@ -768,25 +766,19 @@ class ModelRun:
                     print("Ra: ", self.post_cell.hr.get_section(section).Ra)
 
         electrode_section = list(self.post_cell.hr.sec_groups["soma"])[0]
-        self.electrode_site = self.post_cell.hr.get_section(electrode_section)
-        self.electrodeSection = "soma"
+        self.RunInfo.electrodeSection = self.post_cell.hr.get_section(electrode_section)
+        self.RunInfo.electrodeSectionName = "soma"
         self.hg = hoc_graphics
         self.get_hoc_file(self.post_cell.hr)
 
-        try:
-            dendritic_electrode = list(
-                self.post_cell.hr.sec_groups[self.Params.dendriteelectrodedendrite]
-            )[0]
-            self.dendriticelectrode_site = self.post_cell.hr.get_section(
-                dendritic_electrode
-            )
-            self.dendriticElectrodeSection = self.Params.dendriteelectrodedendrite
-        except:
-            dendritic_electrode = list(self.post_cell.hr.sec_groups["soma"])[0]
-            self.dendriticelectrode_site = self.post_cell.hr.get_section(
-                dendritic_electrode
-            )
-            self.dendriticElectrodeSection = "soma"
+        # if self.RunInfo.dendriticElectrodeSection is not None:
+        #     dendritic_sites = list(
+        #         self.post_cell.hr.sec_groups[self.Params.dendriteelectrodedendrite]
+        #     )[0]
+        #     self.dendriticelectrode_site = self.post_cell.hr.get_section(
+        #         dendritic_electrode
+        #     )
+        #     self.dendriticElectrodeSection = self.Params.dendriteelectrodedendrite
 
         if self.Params.verbose:
             if par_map is not None:
@@ -818,21 +810,17 @@ class ModelRun:
             # ivinitfile = Path(self.baseDirectory, self.cellID,
             #                     self.initDirectory, self.Params.initIVStateFile)
             self.R = GenerateRun(
+                self.Params,
+                self.RunInfo,
                 self.post_cell,
                 idnum=self.idnum,
-                celltype=self.Params.cellType,
                 starttime=None,
-                electrodeSection=self.electrodeSection,
-                dendriticElectrodeSection=self.dendriticElectrodeSection,
-                iRange=self.post_cell.i_test_range,
-                plotting=self.Params.plotFlag,
-                params=self.Params,
             )
             cellInit.get_initial_condition_state(
                 self.post_cell,
                 tdur=self.Params.initialization_time,
                 filename=self.Params.initIVStateFile,
-                electrode_site=self.electrode_site,
+                electrode_site=self.R.electrode_site,
             )
             print(f"Ran to get initial state for {self.post_cell.hr.h.t:.1f} msec")
 
@@ -847,15 +835,11 @@ class ModelRun:
             # ivinitfile = Path(self.baseDirectory, self.cellID,
             #                     self.initDirectory, self.Params.initIVStateFile)
             self.R = GenerateRun(
+                self.Params,
+                self.RunInfo,
                 self.post_cell,
                 idnum=self.idnum,
-                celltype=self.Params.cellType,
                 starttime=None,
-                electrodeSection=self.electrodeSection,
-                dendriticElectrodeSection=self.dendriticElectrodeSection,
-                iRange=self.post_cell.irange,
-                plotting=self.Params.plotFlag,
-                params=self.params,
             )
             cellInit.test_initial_conditions(
                 self.post_cell,
@@ -921,27 +905,23 @@ class ModelRun:
         if self.Params.verbose:
             print("iv_run: calling generateRun", self.post_cell.i_test_range)
         # parse i_test_range and pass it here
-        if self.Params.sequence is "":
+        if self.RunInfo.sequence is "":
             if isinstance(
                 self.post_cell.i_test_range, dict
             ):  # not defined, use default for the cell type
-                iinjValues = self.post_cell.i_test_range
+                self.RunInfo.stimInj = self.post_cell.i_test_range
             else:  # if it was a list, try to put the list into the pulse range
-                iinjValues = {"pulse": self.post_cell.i_test_range}
+                self.RunInfo.stimInj = {"pulse": self.post_cell.i_test_range}
         else:
-            iinjValues = {"pulse": eval(self.Params.sequence)}
+            self.RunInfo.stimInj = {"pulse": eval(self.Params.sequence)}
         self.R = GenerateRun(
+            self.Params,
+            self.RunInfo,
             self.post_cell,
             idnum=self.idnum,
-            celltype=self.Params.cellType,
             starttime=None,
-            electrodeSection=self.electrodeSection,
-            dendriticElectrodeSection=self.dendriticElectrodeSection,
-            iRange=iinjValues,
-            plotting=self.Params.plotFlag,
-            params=self.Params,
         )
-        self.R.runInfo.folder = Path(
+        self.R.RunInfo.folder = Path(
             self.baseDirectory, self.cellID, self.simDirectory, "IV"
         )
         if self.Params.verbose:
@@ -953,7 +933,7 @@ class ModelRun:
         #        print('Number of workers available on this machine: ', nworkers)
         self.R.doRun(
             self.Params.hocfile,
-            parMap=iinjValues,
+            parMap=self.RunInfo.stimInj,
             save="monitor",
             restore_from_file=True,
             initfile=self.Params.initIVStateFile,
@@ -1013,7 +993,7 @@ class ModelRun:
             "basefile": self.R.basename,
             "par_map": par_map,
             "ID": self.idnum,
-            "sequence": iinjValues,
+            "sequence": self.RunInfo.stimInj,
             "Vm": np.mean(self.R.IVResult["Vm"]),
             "Rin": self.R.IVResult["Rinss"],
             "taum": taum_mean,
@@ -1041,15 +1021,11 @@ class ModelRun:
         print("noise_run: starting")
         # parse i_test_range and pass it here
         self.R = GenerateRun(
+            self.Params,
+            self.RunInfo,
             self.post_cell,
             idnum=self.idnum,
-            celltype=self.Params.cellType,
             starttime=None,
-            electrodeSection=self.electrodeSection,
-            dendriticElectrodeSection=self.dendriticElectrodeSection,
-            stimtype="gifnoise",
-            plotting=self.Params.plotFlag,
-            params=self.Params,
         )
         # ivinitfile = Path(self.baseDirectory, self.cellID,
         #                         self.initDirectory, self.Params.initIVStateFile)

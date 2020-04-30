@@ -77,7 +77,7 @@ class Params:
 
     setup: bool = False  # true once we have setup the cell and filenames
     cellID: str = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
-    cell: object = None
+    cell: object = None  # model instance (neuron/hoc)
     AMPAScale: float = 1.0  # Use the default scale for AMPAR conductances
     ANSynapseType: str = "simple"  # or multisite
     ANSynapticDepression: int = 0  # depression calculation is off by default
@@ -159,7 +159,7 @@ class Params:
 # runinfo parameters are filled by generate_run at the initialization of a single trace run
 def definj():
     return{
-        "pulse": np.linspace(-1.0, 1.00, 11, endpoint=True)
+        "pulse": np.linspace(-1.0, 1.00, 3, endpoint=True)
     }
 
 def defstarts():
@@ -182,9 +182,10 @@ class RunInfo:
     preMode: str = "cc"
     postMode: str = "cc"
     TargetCellType: str = ""  # celltype, # valid are "Bushy", "Stellate", "MNTB"
-    electrodeSection = None  # electrodeSection,
-    dendriticElectrodeSection = None  # dendriticElectrodeSection,
-    dendriticSectionDistance = 100.0  # microns.
+    electrodeSection:Union[object, str, None] = None  # electrodeSection
+    electrodeSectionName:str = None
+    dendriticElectrodeSection:Union[object, str, None] = None  # dendriticElectrodeSection,
+    dendriticSectionDistance:float = 100.0  # microns.
 
     nReps: int = 1
     seeds: list = field(default_factory = defemptylist)
