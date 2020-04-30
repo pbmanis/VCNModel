@@ -41,20 +41,29 @@ VCN_Cells/   # top level for data
             AN/  # results from AN simulations
 
 
-usage: model_run.py [-h] [--type {Bushy,TStellate,DStellate}]
-                    [--model {XM13,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}]
-                    [--sgcmodel {Zilany,cochlea}]
-                    [--protocol {initIV,testIV,runIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}]
-                    [--hoc HOCFILE] [--inputpattern INPUTPATTERN]
-                    [--stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}]
-                    [-d DB] [-f F0] [-r NREPS] [-S {LS,MS,HS,fromcell}]
-                    [--fmod FMOD] [--depth DMOD] [--S2M SIGNALTOMASKER]
-                    [--cmmrmode {CM,CD,REF}] [-a AMPASCALE] [--allmodes]
-                    [--sequence SEQUENCE] [--plot] [--workers NWORKERS]
-                    [--noparallel] [--auto] [--verbose] [--gifi GIF_I0]
-                    [--gifsigma GIF_SIGMA] [--giffmod GIF_FMOD]
-                    [--giftau GIF_TAU] [--gifdur GIF_DUR]
-                    cell
+usage: model_run [-h] [--type {Bushy,TStellate,DStellate}]
+                 [--model {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}]
+                 [--modeltype {II,II-I,I-II,I-c,I-t,II-o}]
+                 [--sgcmodel {Zilany,cochlea}]
+                 [--protocol {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}]
+                 [-H] [--hocfile HOCFILE] [-F] [--inputpattern INPUTPATTERN]
+                 [--stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}]
+                 [--check] [-C CONFIGFILE] [-d DB] [-f F0]
+                 [--duration PIP_DURATION] [-r NREPS] [--seed SEED]
+                 [-S {LS,MS,HS,fromcell}] [--synapsetype {simple,multisite}]
+                 [--depression {0,1}] [--fmod FMOD] [--dmod DMOD]
+                 [--S2M SIGNALTOMASKER] [--cmmrmode {CM,CD,REF}]
+                 [--spirou {all,max=mean,all=mean}]
+                 [--soma_inflate SOMA_INFLATION] [--soma_autoinflate]
+                 [--dendrite_inflate DENDRITE_INFLATION]
+                 [--dendrite_autoinflate] [--dendrite_from_soma]
+                 [--ASA_from_soma] [--tagstring TAGSTRING] [-a AMPASCALE]
+                 [--allmodes] [--sequence SEQUENCE] [--plot]
+                 [--workers NWORKERS] [--noparallel] [--auto] [--saveall]
+                 [--verbose] [--gifi GIF_I0] [--gifsigma GIF_SIGMA]
+                 [--giffmod GIF_FMOD] [--giftau GIF_TAU] [--gifdur GIF_DUR]
+                 [--gifskew GIF_SKEW]
+                 cell
 
 Simulate activity in a reconstructed model cell
 
@@ -65,32 +74,66 @@ optional arguments:
   -h, --help            show this help message and exit
   --type {Bushy,TStellate,DStellate}, -T {Bushy,TStellate,DStellate}
                         Define the cell type (default: Bushy)
-  --model {XM13,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}, -M {XM13,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}
+  --model {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}, -M {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}
+                        Define the model type (default: XM13)
+  --modeltype {II,II-I,I-II,I-c,I-t,II-o}
                         Define the model type (default: XM13)
   --sgcmodel {Zilany,cochlea}
                         Define the SGC model type (default: Zilany)
-  --protocol {initIV,testIV,runIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}, -P {initIV,testIV,runIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}
+  --protocol {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}, -P {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}
                         Protocol to use for simulation (default: IV)
-  --hoc HOCFILE, -H HOCFILE
-                        hoc file to use for simulation (default is the
+  -H, --defaulthoc      Use default hoc file for this cell
+  --hocfile HOCFILE     hoc file to use for simulation (default is the
                         selected "cell".hoc)
-  --inputpattern INPUTPATTERN
+  -F, --full            Use "full" hoc file as in "VCN_c02_Full.hoc instead of
+                        VCN_c02.hoc")
+  --inputpattern INPUTPATTERN, -i INPUTPATTERN
                         cell input pattern to use (substitute) from
                         cell_config.py
-  --stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}
+  --stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}, -s {tonepip,noise,stationaryNoise,SAM,CMMR}
                         Define the stimulus type (default: tonepip)
+  --check, -/           Only check command line for valid input; do not run
+                        model
+  -C CONFIGFILE, --configfile CONFIGFILE
+                        Read a formatted configuration file (JSON, TOML) for
+                        commands
   -d DB, --dB DB        Set sound intensity dB SPL (default 30)
   -f F0, --frequency F0
                         Set tone frequency, Hz (default 4000)
+  --duration PIP_DURATION
+                        Set sound stimulus duration (sec; default 0.1)
   -r NREPS, --reps NREPS
                         # repetitions
+  --seed SEED           AN starting seed
   -S {LS,MS,HS,fromcell}, --SRType {LS,MS,HS,fromcell}
                         Specify SR type (from: ['LS', 'MS', 'HS', 'fromcell'])
+  --synapsetype {simple,multisite}
+                        Specify AN synapse type (from: ['simple',
+                        'multisite'])
+  --depression {0,1}    Specify AN depression flag for multisite synapses
+                        (from: [0, 1])
   --fmod FMOD           Set SAM modulation frequency
-  --depth DMOD          Set SAM modulation depth (in percent)
+  --dmod DMOD           Set SAM modulation depth (in percent)
   --S2M SIGNALTOMASKER  Signal to Masker ratio (dB)
   --cmmrmode {CM,CD,REF}
                         Specify mode (from: ['CM', 'CD', 'REF'])
+  --spirou {all,max=mean,all=mean}
+                        Specify spirou experiment type....
+  --soma_inflate SOMA_INFLATION
+                        Specify factor by which to inflate soma AREA
+  --soma_autoinflate    Automatically inflate soma based on table
+  --dendrite_inflate DENDRITE_INFLATION
+                        Specify factor by which to inflate total dendritic
+                        AREA
+  --dendrite_autoinflate
+                        Automatically inflate dendrite area based on table
+  --dendrite_from_soma  Automatically inflate dendrite area based on soma
+                        inflation
+  --ASA_from_soma       Automatically inflate dendrite area based on soma
+                        inflation
+  --tagstring TAGSTRING
+                        Add a tag string to the output filename to distinguish
+                        it
   -a AMPASCALE, --AMPAScale AMPASCALE
                         Set AMPAR conductance scale factor (default 1.0)
   --allmodes            Force run of all modes (CMR, CMD, REF) for stimulus
@@ -103,13 +146,15 @@ optional arguments:
   --noparallel          Use parallel or not (default: True)
   --auto                Force auto initialization if reading the state fails
                         in initialization
+  --saveall             Save data from all sections in model
   --verbose             Print out extra stuff for debugging
   --gifi GIF_I0         Set Noise for GIF current level (default 0 nA)
   --gifsigma GIF_SIGMA  Set Noise for GIF variance (default 0.2 nA)
   --giffmod GIF_FMOD    Set Noise for GIF fmod (default 0.2 Hz)
   --giftau GIF_TAU      Set Noise for GIF tau (default 0.3 ms)
   --gifdur GIF_DUR      Set Noise for GIF duration (default 10 s)
-
+  --gifskew GIF_SKEW    Set Noise for GIF to have skewed distribution (0 =
+                        normal)
 Example:
 Set up initialization:
 python model_run.py VCN_c18 --hoc gbc18_w_axon_rescaled.hoc --protocol initIV --model XM13
@@ -126,6 +171,7 @@ import sys
 from pathlib import Path
 import os
 import errno
+import copy
 import pickle
 import time
 import argparse
@@ -165,8 +211,99 @@ cprint = CP.cprint
 
 
 class ModelRun:
-    def __init__(self, args=None):
+    def __init__(self, args:[object, None]=None):
 
+        self.init_flags()
+        self.init_parameters()
+
+    def init_parameters(self):
+        # The following are initial values. Some values of some of these are replaced after
+        # parsing the command line.
+        # See the main code section (at the end of this file).
+        self.Params = OrderedDict()
+        self.Params["cell"] = self.cellID
+        self.Params["AMPAScale"] = 1.0  # Use the default scale for AMPAR conductances
+        self.Params["ANSynapseType"] = "simple"  # or multisite
+        self.Params[
+            "ANSynapticDepression"
+        ] = 0  # depression calculation is off by default
+        self.Params["initIVStateFile"] = None  # 'IVneuronState_%s.dat'
+        self.Params["initANStateFile"] = None  # 'ANneuronState_%s.dat'
+        self.Params["simulationFilename"] = None
+        self.Params["hocfile"] = None
+        self.Params["fullhocfile"] = False
+        self.Params["usedefaulthoc"] = False
+        self.Params["cellType"] = self.cellChoices[0]
+        self.Params["modelName"] = self.modelNameChoices[0]
+        self.Params["modelType"] = self.modelTypeChoices[0]
+        self.Params["SGCmodelType"] = self.SGCmodelChoices[0]
+        self.Params["species"] = self.speciesChoices[0]
+        self.Params["Ra"] = 150.0  # ohm.cm
+        self.Params["dt"] = 0.025  # dt integration rate, ms
+        self.Params["soma_inflation"] = 1.0  # factor to multiply soma section areas by
+        self.Params["soma_autoinflate"] = False  #
+        self.Params["dendrite_inflation"] = 1.0
+        self.Params["dendrite_autoinflate"] = False
+        self.Params["dendrite_fromsoma"] = False
+        self.Params["ASA_inflation"] = 1.0
+        self.Params["ASA_fromsoma"] = False
+        self.Params["lambdaFreq"] = 2000.0  # Hz for segment number
+        self.Params["dendriteelectrode"] = "Proximal_Dendrite"
+        self.Params[
+            "sequence"
+        ] = ""  # sequence for run - may be string [start, stop, step]
+        # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
+        self.Params["SRType"] = self.SRChoices[2]
+        # self.Params['SR'] = self.Params['SRType']  # actually used SR: this might be cell-defined, rather than entirely specified from the command line
+        self.Params[
+            "inputPattern"
+        ] = None  # ID of cellinput pattern (same as cellID): for substitute input patterns.
+        self.Params["spirou"] = "all"
+        self.Params["runProtocol"] = self.protocolChoices[
+            2
+        ]  # testIV is default because it is fast and should be run often
+        self.Params["nReps"] = 1
+        self.Params["seed"] = 100  # always the same start - avoids lots of recomutation
+        # in production, vary this or set to None for random values
+        self.Params[
+            "initialization_time"
+        ] = 50.0  # nominal time to let system settle, in msec
+        self.Params["run_duration"] = 0.25  # in sec
+        self.Params["soundtype"] = "SAM"  # or 'tonepip'
+        self.Params["pip_duration"] = 0.1  # duration in seconds for tone pip
+        self.Params["pip_start"] = [0.1]  # start (delay to start of pip)
+        self.Params["pip_offduration"] = 0.05  # time after pip ends to keep running
+        self.Params["Fs"] = 100e3  # cochlea/zilany model rate
+        self.Params["F0"] = 16000.0  # stimulus frequency
+        self.Params["dB"] = 30.0  # in SPL
+        self.Params["RF"] = 2.5e-3  # rise-fall time
+        self.Params["fmod"] = 20  # hz, modulation if SAM
+        self.Params["dmod"] = 0  # percent if SAM
+        self.Params["threshold"] = -35
+        self.Params["signalToMasker"] = 0.0
+        self.Params["CMMRmode"] = "CM"
+        self.Params["all_modes"] = False
+        # parameters for generating a noise signal to generating GIF model of cell
+        self.Params["gif_i0"] = 0.0  # base current level
+        self.Params["gif_sigma"] = 0.5  # std of noise
+        self.Params["gif_fmod"] = 0.2  # mod in Hz
+        self.Params["gif_tau"] = 3.0  # tau, msec
+        self.Params["gif_dur"] = 10.0  # seconds
+        self.Params["gif_skew"] = 0.0  # a in scipy.skew
+
+        # general control parameters
+        self.Params["plotFlag"] = False
+        self.Params["auto_initialize"] = False
+        self.Params["nWorkers"] = 8
+        self.Params["Parallel"] = True
+        self.Params["verbose"] = False
+        self.Params["save_all_sections"] = False
+        self.Params["commandline"] = ""  # store command line on run
+        self.Params["checkcommand"] = False
+        self.Params["configfile"] = None
+        self.Params["tagstring"] = ""
+
+    def init_flags(self):
         # use v2 files for model with rescaled soma
         self.cellChoices = ["Bushy", "TStellate", "DStellate"]
         self.modelNameChoices = [
@@ -222,104 +359,17 @@ class ModelRun:
         self.setup = (
             False  # require setup ahead of run - but setup can be done separately
         )
-
-        # The following are initial values. Some values of some of these are replaced after
-        # parsing the command line.
-        # See the main code section (at the end of this file).
-        self.Params = OrderedDict()
-        self.Params["cell"] = self.cellID
-        self.Params["AMPAScale"] = 1.0  # Use the default scale for AMPAR conductances
-        self.Params["ANSynapseType"] = "simple"  # or multisite
-        self.Params[
-            "ANSynapticDepression"
-        ] = 0  # depression calculation is off by default
-        self.Params["initIVStateFile"] = None  # 'IVneuronState_%s.dat'
-        self.Params["initANStateFile"] = None  # 'ANneuronState_%s.dat'
-        self.Params["simulationFilename"] = None
-        self.Params["hocfile"] = None
-        self.Params["fullhocfile"] = False
-        self.Params["usedefaulthoc"] = False
-        self.Params["cellType"] = self.cellChoices[0]
-        self.Params["modelName"] = self.modelNameChoices[0]
-        self.Params["modelType"] = self.modelTypeChoices[0]
-        self.Params["SGCmodelType"] = self.SGCmodelChoices[0]
-        self.Params["species"] = self.speciesChoices[0]
-        self.Params["Ra"] = 150.0  # ohm.cm
-        self.Params["soma_inflation"] = 1.0  # factor to multiply soma section areas by
-        self.Params["soma_autoinflate"] = False  #
-        self.Params["dendrite_inflation"] = 1.0
-        self.Params["dendrite_autoinflate"] = False
-        self.Params["dendrite_fromsoma"] = False
-        self.Params["ASA_inflation"] = 1.0
-        self.Params["ASA_fromsoma"] = False
-        self.Params["lambdaFreq"] = 2000.0  # Hz for segment number
-        self.Params["dendriteelectrodedendrite"] = "Proximal_Dendrite"
-        self.Params[
-            "sequence"
-        ] = ""  # sequence for run - may be string [start, stop, step]
-        # spontaneous rate (in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
-        self.Params["SRType"] = self.SRChoices[2]
-        # self.Params['SR'] = self.Params['SRType']  # actually used SR: this might be cell-defined, rather than entirely specified from the command line
-        self.Params[
-            "inputPattern"
-        ] = None  # ID of cellinput pattern (same as cellID): for substitute input patterns.
-        self.Params["spirou"] = "all"
-        self.Params["runProtocol"] = self.protocolChoices[
-            2
-        ]  # testIV is default because it is fast and should be run often
-        self.Params["nReps"] = 1
-        self.Params["seed"] = 100  # always the same start - avoids lots of recomutation
-        # in production, vary this or set to None for random values
-        self.Params[
-            "initialization_time"
-        ] = 50.0  # nominal time to let system settle, in msec
-        self.Params["run_duration"] = 0.25  # in sec
-        self.Params["soundtype"] = "SAM"  # or 'tonepip'
-        self.Params["pip_duration"] = 0.1  # duration in seconds for tone pip
-        self.Params["pip_start"] = [0.1]  # start (delay to start of pip)
-        self.Params["pip_offduration"] = 0.05  # time after pip ends to keep running
-        self.Params["Fs"] = 100e3  # cochlea/zilany model rate
-        self.Params["F0"] = 16000.0  # stimulus frequency
-        self.Params["dB"] = 30.0  # in SPL
-        self.Params["RF"] = 2.5e-3  # rise-fall time
-        self.Params["fmod"] = 20  # hz, modulation if SAM
-        self.Params["dmod"] = 0  # percent if SAM
-        self.Params["threshold"] = -35
-        self.Params["signalToMasker"] = 0.0
-        self.Params["CMMRmode"] = "CM"
-        self.Params["all_modes"] = False
-        # parameters for generating a noise signal to generating GIF model of cell
-        self.Params["gif_i0"] = 0.0  # base current level
-        self.Params["gif_sigma"] = 0.5  # std of noise
-        self.Params["gif_fmod"] = 0.2  # mod in Hz
-        self.Params["gif_tau"] = 3.0  # tau, msec
-        self.Params["gif_dur"] = 10.0  # seconds
-        self.Params["gif_skew"] = 0.0  # a in scipy.skew
-
-        # general control parameters
-        self.Params["plotFlag"] = False
-        self.Params["auto_initialize"] = False
-        self.Params["nWorkers"] = 8
-        self.Params["Parallel"] = True
-        self.Params["verbose"] = False
-        self.Params["save_all_sections"] = False
-        self.Params["commandline"] = ""  # store command line on run
-        self.Params["checkcommand"] = False
-        self.Params["configfile"] = None
-        self.Params["tagstring"] = ""
-        self.baseDirectory = Path(
-            "../VCN-SBEM-Data", "VCN_Cells"
-        )  # try a default one, but read from toml file
-        self.morphDirectory = "Morphology"
-        self.initDirectory = "Initialization"
-        self.simDirectory = "Simulations"
-
         where_is_data = Path("wheres_my_data.toml")
         if where_is_data.is_file():
             datapaths = toml.load("wheres_my_data.toml")
         else:
-            datapaths = {"datapath": "."}  # "here"
+            datapaths = {"baseDirectory": Path(
+            "../VCN-SBEM-Data", "VCN_Cells")
+        }  # "here"
         self.baseDirectory = datapaths["baseDirectory"]
+        self.morphDirectory = "Morphology"
+        self.initDirectory = "Initialization"
+        self.simDirectory = "Simulations"
 
     def print_modelsetup(self):
         """
@@ -392,7 +442,11 @@ class ModelRun:
         namePars = (
             f"{str(self.Params['modelName']):s}_{str(self.Params['modelType']):s}"
         )
-        print('inflations: ', self.Params["soma_inflation"], self.Params["dendrite_inflation"])
+        print(
+            "inflations: ",
+            self.Params["soma_inflation"],
+            self.Params["dendrite_inflation"],
+        )
 
         if self.Params["soma_inflation"] != 1.0:
             namePars += f"_soma={self.Params['soma_inflation']:.3f}"
@@ -411,9 +465,14 @@ class ModelRun:
                     )
                 else:
                     self.Params["initIVStateFile"] = Path(ivinitdir, fn)
-            if  not self.Params["initIVStateFile"].suffix == '.dat':
-                self.Params["initIVStateFile"] = Path(str(self.Params["initIVStateFile"]) + '.dat')
-            cprint('cyan', "IV Initialization file:  {str(self.Params['initIVStateFile']):s}")
+            if not self.Params["initIVStateFile"].suffix == ".dat":
+                self.Params["initIVStateFile"] = Path(
+                    str(self.Params["initIVStateFile"]) + ".dat"
+                )
+            cprint(
+                "cyan",
+                "IV Initialization file:  {str(self.Params['initIVStateFile']):s}",
+            )
             self.mkdir_p(ivinitdir)  # confirm existence of that file
 
         if self.Params["runProtocol"] in ["initandrunIV", "runIV"]:
@@ -471,10 +530,14 @@ class ModelRun:
                 fn += f"_{self.Params['SRType']:2s}.p"
                 ofile = Path(outPath, fn)
             self.Params["simulationFilename"] = ofile
-            if  not self.Params["simulationFilename"].suffix == '.dat':
-                self.Params["simulationFilename"] = Path(str(self.Params["simulationFilename"]) + '.dat')
-        
-        cprint('r', f"Output simulation file: {str(self.Params['simulationFilename']):s}")
+            # if not self.Params["simulationFilename"].suffix == ".dat":
+#                 self.Params["simulationFilename"] = Path(
+#                     str(self.Params["simulationFilename"]) + ".dat"
+#                 )
+
+        cprint(
+            "r", f"Output simulation file: {str(self.Params['simulationFilename']):s}"
+        )
         # exit()
 
     def set_spontaneousrate(self, spont_rate_type: int):
@@ -560,6 +623,14 @@ class ModelRun:
             Nothing
 
         """
+        dendrite_names = [
+            "Proximal_Dendrite",
+            "Distal_Dendrite",
+            "Dendritic_Hub",
+            "Dendritic_Swelling" "dend",
+            "proximaldendrite",
+            "distandendrite",
+        ]
 
         if self.Params["verbose"]:
             print(f"run_model entry")
@@ -600,7 +671,7 @@ class ModelRun:
             changes = None
             nach = None  # uses default
             if self.Params["modelName"] == "XM13_nacncoop":
-                import model_data.data_XM13_nacncoop as CHAN
+                from vcnmodel.model_data import data_XM13_nacncoop as CHAN
 
                 nach = "nacncoop"
                 changes = data.add_table_data(
@@ -706,6 +777,15 @@ class ModelRun:
         else:
             raise ValueError(f"cell type {self.Params['cellType']:s} not implemented")
 
+        AdjA = AdjustAreas()
+        AdjA.sethoc_fromCNcell(self.post_cell)
+        hoc_somaarea = AdjA.get_hoc_area(["soma"])
+        hoc_dendritearea = AdjA.get_hoc_area(dendrite_names)
+        cprint(
+            "y",
+            f"HOC: Soma area: {hoc_somaarea:.2f}  Dendrite Area: {hoc_dendritearea:.2f}",
+        )
+
         # Set up run parameters
         print(
             f"Requested temperature (deg C): {self.post_cell.status['temperature']:.2f}"
@@ -741,9 +821,11 @@ class ModelRun:
                 f"     Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
             )
             # origdiam = {}
-            AdjA = AdjustAreas(method='pt3d')
+            AdjA = AdjustAreas(method="pt3d")
             AdjA.sethoc_fromCNcell(self.post_cell)
-            pt3d = AdjA.adjust_diameters(sectypes = ['soma', 'Soma'], inflateRatio=inflateratio)
+            pt3d = AdjA.adjust_diameters(
+                sectypes=["soma", "Soma"], inflateRatio=inflateratio
+            )
             # AdjA.plot_areas(pt3d)
 
             rtau = self.post_cell.compute_rmrintau(
@@ -775,18 +857,12 @@ class ModelRun:
             print(
                 f"     Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e6:.2f}, RMP: {rtau['v']:.2f}"
             )
-            dendrite_names = [
-                "Proximal_Dendrite",
-                "Distal_Dendrite",
-                "Dendritic_Hub",
-                "Dendritic_Swelling" "dend",
-                "proximaldendrite",
-                "distandendrite",
-            ]
 
             AdjA = AdjustAreas()
             AdjA.sethoc_fromCNcell(self.post_cell)
-            pt3d = AdjA.adjust_diameters(sectypes = dendrite_names, inflateRatio=inflateratio)
+            pt3d = AdjA.adjust_diameters(
+                sectypes=dendrite_names, inflateRatio=inflateratio
+            )
             # AdjA.plot_areas(pt3d)  # just to take a look at the adjustment
 
             rtau = self.post_cell.compute_rmrintau(
@@ -800,10 +876,10 @@ class ModelRun:
             # print('      diam orig: ', origdiam[section])
             # print('      diam new:  ', ssection.diam)
             # for sec in badsecs:
-           #      print("? bad diam: ", sec.diam, sec)
-           #  print("# bad: ", len(badsecs))
-           #  if len(badsecs) > 0:
-           #      exit()
+        #      print("? bad diam: ", sec.diam, sec)
+        #  print("# bad: ", len(badsecs))
+        #  if len(badsecs) > 0:
+        #      exit()
 
         for group in list(self.post_cell.hr.sec_groups.keys()):
             g = self.post_cell.hr.sec_groups[group]
@@ -847,7 +923,6 @@ class ModelRun:
         self._make_filenames()  # make filenames AFTER all manipulations of the cell
 
         self.setup = True
-
 
     def run_model(self, par_map: dict = None):
         if not self.setup:
@@ -1381,7 +1456,6 @@ class ModelRun:
                     tasker.results[j] = tresults
             # retreive the data
             for j, N in enumerate(range(nReps)):
-
                 celltime.append(tresults[j]["time"])  # (self.time)
                 spikeTimes = pu.findspikes(
                     tresults[j]["time"],
@@ -2176,7 +2250,6 @@ class ModelRun:
             raise ValueError(
                 "StimInfo sound type %s not implemented" % stimInfo["soundtype"]
             )
-
         stimWaveform = stim.generate()
         stimTimebase = stim.time
         for i, syn in enumerate(synapseConfig):
@@ -2230,6 +2303,7 @@ class ModelRun:
         post_cell.hr.h.tstop = stimInfo["run_duration"] * 1000.0
         post_cell.hr.h.t = 0.0
         post_cell.hr.h.batch_save()  # save nothing
+        post_cell.hr.h.dt = self.Params['dt']
         post_cell.hr.h.batch_run(post_cell.hr.h.tstop, post_cell.hr.h.dt, "an.dat")
         nrn_run_time += time.time() - nrn_start
         if dendsite == None:
@@ -2333,8 +2407,7 @@ class ModelRun:
             tag to insert in filename string
         """
         k = list(result.keys())
-        # result can be either a dict, in which case this is one result to write,
-        # or it can be a dict, in which case, each key is a repetition.
+        # result will be a dict; each key is a repetition/run.
         requiredKeys = [
             "stimInfo",
             "spikeTimes",
@@ -2356,6 +2429,7 @@ class ModelRun:
         # results with be a dict with params, stiminfo, and trials as keys
         print("\n*** analysis_filewriter\n")
 
+        results['basename'] = self.Params["simulationFilename"]
         results["Params"] = self.Params  # include all the parameters of the run too
         # clean up Parame to remove PosixPath from filenames
         for v in [
@@ -2365,7 +2439,9 @@ class ModelRun:
             "hocfile",
         ]:
             results["Params"][v] = str(results["Params"][v])
-        results["trials"] = result
+        results['runInfo'] = None  # lazy, all info is in "params" 
+        results['modelPars'] = copy.deepcopy(self.post_cell.status)
+        results["Results"] = result
         results["mode"] = res_mode
         fout = self.Params[
             "simulationFilename"
