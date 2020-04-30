@@ -7,7 +7,11 @@ dendrite_autoinflate=false  # inflate the dendrite by the table
 ASA_fromsoma=true  # inflate the asa by the same amount as the soma
 dendrite_fromsoma=false  # if true, inflate the dendrite the same as the soma
 sgc_model='cochlea'  # which sgc model to run
-SRType='MS'
+SRType='HS'
+r=1
+d=50.0
+f=4000.0
+
 noparallel=true  # better for debugging
 
 # noparallel=true
