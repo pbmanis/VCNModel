@@ -249,6 +249,7 @@ class ModelRun:
         self.initDirectory = "Initialization"
         self.simDirectory = "Simulations"
 
+
     def print_modelsetup(self):
         """
         Print out all of the parameters in the model
@@ -678,8 +679,6 @@ class ModelRun:
         print("Ra (ohm.cm) = {:8.1f}".format(self.post_cell.hr.h.Ra))
         print(f"Specified Temperature = {self.post_cell.hr.h.celsius:8.1f} degC ")
 
-        # for sec in self.post_cell.hr.h.allsec():
-        #     print ('self.post_cell.hr.h: ', sec)
         self.fix_singlets(self.post_cell.hr.h)
         if self.Params.soma_autoinflate:  # get values and inflate soma automatically to match mesh
             cprint("c", "Soma Autoinflation")
@@ -747,15 +746,6 @@ class ModelRun:
             print(
                 f"     New Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e6:.2f}, RMP: {rtau['v']:.2f}"
             )
-            # print(f"     New Rin after dendrite inflation: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e6:.2f}, RMP: {rtau['v']:.2f}")
-            # for section in list(dendrite_group):
-            # print('      diam orig: ', origdiam[section])
-            # print('      diam new:  ', ssection.diam)
-            # for sec in badsecs:
-        #      print("? bad diam: ", sec.diam, sec)
-        #  print("# bad: ", len(badsecs))
-        #  if len(badsecs) > 0:
-        #      exit()
 
         for group in list(self.post_cell.hr.sec_groups.keys()):
             g = self.post_cell.hr.sec_groups[group]
@@ -797,6 +787,18 @@ class ModelRun:
     def run_model(self, par_map: dict = None):
         if not self.Params.setup:
             self.setup_model(par_map=par_map)
+        
+        dispatcher = {
+            "initIV": self.initIV,
+            "runIV": self.iv_run,
+            "testIV": self.testIV,
+            "initAN": self.an_run, #(self.post_cell, make_an_intial_conditions=True),
+            "runANPSTH": self.an_run,
+            "runANIO": self.an_run_IO,
+            "runANSingles": self.an_run_singles,
+            "runANOmitOne": self.an_run_singles,#.(self.post_cell, exclude=True),
+            "gifnoise": self.noise_run,
+        }
         if self.RunInfo.runProtocol in ["runANPSTH", "runANSingles"]:
             self.RunInfo.run_duration = (
                 self.RunInfo.pip_duration
@@ -804,85 +806,39 @@ class ModelRun:
                 + self.RunInfo.pip_offduration
             )
 
-        if self.RunInfo.runProtocol in ["initIV", "initandrunIV"]:
-            if self.Params.verbose:
-                print("run_model: protocol is initIV")
-            # ivinitfile = Path(self.baseDirectory, self.cellID,
-            #                     self.initDirectory, self.Params.initIVStateFile)
-            self.R = GenerateRun(
-                self.Params,
-                self.RunInfo,
-                self.post_cell,
-                idnum=self.idnum,
-                starttime=None,
-            )
-            cellInit.get_initial_condition_state(
-                self.post_cell,
-                tdur=self.Params.initialization_time,
-                filename=self.Params.initIVStateFile,
-                electrode_site=self.R.electrode_site,
-            )
-            print(f"Ran to get initial state for {self.post_cell.hr.h.t:.1f} msec")
+        dispatcher[self.RunInfo.runProtocol]()
 
-        if self.RunInfo.runProtocol in ["runIV", "initandrunIV"]:
-            if self.Params.verbose:
-                print("Run IV")
-            self.iv_run()
+    def initIV(self):
+        self.R = GenerateRun(
+            self.Params,
+            self.RunInfo,
+            self.post_cell,
+            idnum=self.idnum,
+            starttime=None,
+        )
+        cellInit.get_initial_condition_state(
+            self.post_cell,
+            tdur=self.Params.initialization_time,
+            filename=self.Params.initIVStateFile,
+            electrode_site=self.R.electrode_site,
+        )
+        print(f"Ran to get initial state for {self.post_cell.hr.h.t:.1f} msec")
 
-        if self.RunInfo.runProtocol == "testIV":
-            if self.Params.verbose:
-                print("test_init")
-            # ivinitfile = Path(self.baseDirectory, self.cellID,
-            #                     self.initDirectory, self.Params.initIVStateFile)
-            self.R = GenerateRun(
-                self.Params,
-                self.RunInfo,
-                self.post_cell,
-                idnum=self.idnum,
-                starttime=None,
-            )
-            cellInit.test_initial_conditions(
-                self.post_cell,
-                filename=self.Params.initIVStateFile,
-                electrode_site=self.electrode_site,
-            )
-            self.R.testRun(initfile=self.Params.initIVStateFile)
-            return  # that is ALL, never make testIV/init and then keep running.
-
-        if self.RunInfo.runProtocol == "runANPSTH":
-            if self.Params.verbose:
-                print("ANPSTH")
-            self.an_run(self.post_cell)
-
-        if self.RunInfo.runProtocol == "initAN":
-            if self.Params.verbose:
-                print("Init AN")
-            self.an_run(self.post_cell, make_an_intial_conditions=True)
-
-        if self.RunInfo.runProtocol == "runANIO":
-            if self.Params.verbose:
-                print("Run AN IO")
-            self.an_run_IO(self.post_cell)
-
-        if self.RunInfo.runProtocol == "runANSingles":
-            if self.Params.verbose:
-                print("ANSingles")
-            self.an_run_singles(self.post_cell)
-
-        if self.RunInfo.runProtocol == "runANOmitOne":
-            if self.Params.verbose:
-                print("ANOmitOne")
-            self.an_run_singles(self.post_cell, exclude=True)
-
-        if self.RunInfo.runProtocol == "gifnoise":
-            self.noise_run()
-
-        # if showCell:
-        #     print(dir(self.post_cell))
-        #     self.render = HocViewer(self.post_cell.hr)
-        #     cylinder=self.render.draw_cylinders()
-        #     cylinder.set_group_colors(self.section_colors, alpha=0.8, mechanism=['nav11', 'gbar'])
-        #     pg.show()
+    def testIV(self):
+        self.R = GenerateRun(
+            self.Params,
+            self.RunInfo,
+            self.post_cell,
+            idnum=self.idnum,
+            starttime=None,
+        )
+        cellInit.test_initial_conditions(
+            self.post_cell,
+            filename=self.Params.initIVStateFile,
+            electrode_site=self.R.electrode_site,
+        )
+        self.R.testRun(initfile=self.Params.initIVStateFile)
+        return  # that is ALL, never make testIV/init and then keep running.
 
     def iv_run(self, par_map: dict = None):
         """
@@ -902,17 +858,8 @@ class ModelRun:
         """
         print("iv_run: starting")
         start_time = timeit.default_timer()
-        if self.Params.verbose:
-            print("iv_run: calling generateRun", self.post_cell.i_test_range)
-        # parse i_test_range and pass it here
-        if self.RunInfo.sequence is "":
-            if isinstance(
-                self.post_cell.i_test_range, dict
-            ):  # not defined, use default for the cell type
-                self.RunInfo.stimInj = self.post_cell.i_test_range
-            else:  # if it was a list, try to put the list into the pulse range
-                self.RunInfo.stimInj = {"pulse": self.post_cell.i_test_range}
-        else:
+
+        if self.RunInfo.sequence is not "":  # replace sequence?
             self.RunInfo.stimInj = {"pulse": eval(self.Params.sequence)}
         self.R = GenerateRun(
             self.Params,
@@ -1140,7 +1087,6 @@ class ModelRun:
 
     def an_run(
         self,
-        post_cell: object,
         verify: bool = False,
         make_an_intial_conditions: bool = False,
     ):
@@ -1190,7 +1136,7 @@ class ModelRun:
         nReps = self.RunInfo.nReps
         threshold = self.RunInfo.threshold  # spike threshold, mV
 
-        preCell, synapse, self.electrode_site = self.configure_cell(
+        preCell, synapse, self.R.electrode_site = self.configure_cell(
             post_cell, synapseConfig = synapseConfig, celltype=celltype
         )
 
@@ -1203,14 +1149,14 @@ class ModelRun:
                 post_cell,
                 tdur=self.Params.initialization_time,
                 filename=self.Params.initANStateFile,
-                electrode_site=self.electrode_site,
+                electrode_site=self.R.electrode_site,
                 reinit=self.Params.auto_initialize,
             )
             print("TESTING; statefile = ", self.Params.initANStateFile)
             cellInit.test_initial_conditions(
                 post_cell,
                 filename=self.Params.initANStateFile,
-                electrode_site=self.electrode_site,
+                electrode_site=self.R.electrode_site,
             )
             return
 
@@ -1463,7 +1409,7 @@ class ModelRun:
         nReps = self.RunInfo.nReps
         threshold = self.RunInfo.threshold  # spike threshold, mV
 
-        preCell, synapse, self.electrode_site = self.configure_cell(
+        preCell, synapse, self.R.electrode_site = self.configure_cell(
             post_cell, synapseConfig, celltype
         )
 
@@ -1650,7 +1596,7 @@ class ModelRun:
         nReps = self.RunInfo.nReps
         threshold = self.RunInfo.threshold  # spike threshold, mV
 
-        preCell, synapse, self.electrode_site = self.configure_cell(
+        preCell, synapse, self.R.electrode_site = self.configure_cell(
             post_cell, synapseConfig, celltype
         )
 
@@ -1777,114 +1723,9 @@ class ModelRun:
         if self.Params.plotFlag:
             self.plot_an(celltime, result)
 
-    # def single_an_run_fixed(self, post_cell, j, synapseConfig, stimInfo, preCell, an_setup_time):
-    #     """
-    #     Perform a single run with all AN input on the target cell turned off except for input j.
-    #
-    #     Parameters
-    #     ----------
-    #     hf : hoc_reader object
-    #         Access to neuron and file information
-    #
-    #     j : int
-    #         The input that will be active in this run
-    #
-    #     synapseConfig : dict
-    #         A dictionary with information about the synapse configuration to use.
-    #
-    #     stimInfo : dict
-    #         A dictionary whose elements include the stimulus delay
-    #
-    #     preCell : list
-    #         A list of the preCell hoc objects attached to the synapses
-    #
-    #     post_cell : cells object
-    #         The target cell
-    #
-    #     Returns
-    #     -------
-    #     anresult : dict
-    #         A dictionary containing 'Vsoma', 'Vdend', 'time', and the 'ANSpikeTimes'
-    #
-    #     """
-    #     print('\n*** single_an_run_fixed\n')
-    #     group = 'soma'
-    #     hf = post_cell.hr
-    #     try:
-    #         cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=self.Params.initANStateFile)
-    #     except:
-    #         self.an_run(post_cell, make_an_intial_conditions=True)
-    #         print('return from an_run, initial conditions')
-    #         try:
-    #             cellInit.restore_initial_conditions_state(post_cell, electrode_site=None, filename=self.Params.initANStateFile)
-    #         except:
-    #             raise ValueError('Failed initialization for cell: ', self.cellID)
-    #
-    #     # make independent inputs for each synapse
-    #     ANSpikeTimes = []
-    #     an0_time = time.time()
-    #     nrn_run_time = 0.
-    #     stim = {}
-    #     #
-    #     # Generate stimuli - they are always the same for every synaptic input, so just generate once
-    #     #
-    #     for i in range(len(preCell)):
-    #         preCell[i].set_spiketrain([10., 20., 30., 40., 50.])
-    #         ANSpikeTimes.append(preCell[i]._spiketrain)
-    #
-    #     an_setup_time += (time.time() - an0_time)
-    #     nrn_start = time.time()
-    #     self.allsecVec = OrderedDict()
-    #
-    #     if self.Params.save_all_sections:
-    #         for group in post_cell.hr.sec_groups.keys(): # get morphological components
-    #             g = post_cell.hr.sec_groups[group]
-    #             for section in list(g):
-    #                 sec = post_cell.hr.get_section(section)
-    #                 self.allsecVec[sec.name()] = post_cell.hr.h.Vector()
-    #                 self.allsecVec[sec.name()].record(sec(0.5)._ref_v, sec=sec)  # recording of voltage all set up here
-    #
-    #
-    #
-    #     # if self.Params.save_all_sections:  # just save soma sections        for section in list(g):
-    #    #      print(hf.sec_groups.keys())
-    #    #      g = hf.sec_groups[group]
-    #    #      sec = hf.get_section(section)
-    #    #      self.allsecVec[sec.name()] = hf.h.Vector()
-    #    #      self.allsecVec[sec.name()].record(sec(0.5)._ref_v, sec=sec)  # recording of voltage all set up here
-    #
-    #     Vsoma = hf.h.Vector()
-    #     Vdend = hf.h.Vector()
-    #     rtime = hf.h.Vector()
-    #     if 'dendrite' in post_cell.all_sections and len(post_cell.all_sections['dendrite']) > 0:
-    #         dendsite = post_cell.all_sections['dendrite'][-1]
-    #         Vdend.record(dendsite(0.5)._ref_v, sec=dendsite)
-    #     else:
-    #         dendsite = None
-    #
-    #     Vsoma.record(post_cell.soma(0.5)._ref_v, sec=post_cell.soma)
-    #     rtime.record(hf.h._ref_t)
-    #     hf.h.finitialize()
-    #     hf.h.tstop = 50.
-    #     hf.h.t = 0.
-    #     hf.h.batch_save() # save nothing
-    #     hf.h.batch_run(hf.h.tstop, hf.h.dt, "an.dat")
-    #     nrn_run_time += (time.time() - nrn_start)
-    #     if dendsite == None:
-    #         Vdend = np.zeros_like(Vsoma)
-    #     anresult = {'Vsoma': np.array(Vsoma), 'Vdend': np.array(Vdend), 'time': np.array(rtime),
-    #             'ANSpikeTimes': ANSpikeTimes, 'stim': stim, 'stimTimebase': np.array(rtime)}
-    #
-    #     # print('all sec vecs: ', self.allsecVec.keys())
-    #     # print(' flag for all sections: ', self.Params.save_all_sections)
-    #     if self.Params.save_all_sections:
-    #         anresult['allsecVec'] = self.allsecVec
-    #
-    #       return anresult
-
     def configure_cell(self, thisCell:object, synapseConfig:dict, celltype:str):
         """
-        Configure the cell. This routine builds the cell in Neuron, adds presynaptic inputs
+        Configure the cell. This routine builds the cell in NEURON, adds presynaptic inputs
         as described in the synapseConfig, and configures those according to parameters in
         self.Params and self.RunInfo.
 
