@@ -22,4 +22,4 @@ wait
 
 echo IV runs complete
 # with "A", we do all cells in grade A
-python vcnmodel/plotters/plot_gbc_ivresults_2.py "A" -s
+#python vcnmodel/plotters/plot_gbc_ivresults_2.py "A" -s

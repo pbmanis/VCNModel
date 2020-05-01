@@ -32,6 +32,7 @@ runtypes = ["AN", "an", "IO", "IV", "iv", "gifnoise"]
 
 def grAList():
     return [2, 5, 6, 9, 10, 11, 13, 17, 24, 29, 30]
+    
 @dataclass
 class PData:
     gradeA: list = field(default_factory = grAList)
@@ -42,7 +43,7 @@ class PData:
 
 def main():
     PD = PData()
-    
+    stimmode = 'IV'
     parser = argparse.ArgumentParser(description="Plot GBC results")
     parser.add_argument(
         dest="cell",
@@ -109,7 +110,7 @@ def main():
     chan = "_"  # for certainity in selection, include trailing underscore in this designation
 
     modelName = args.modeltype
-    print('Scaline: ', args.scaled)
+    print('Scaling: ', args.scaled)
     if args.scaled:
         PD.soma_inflate = True
         PD.dend_inflate = True
@@ -123,18 +124,20 @@ def main():
     dts = datetime.datetime.strptime(changedate,"%Y-%m-%d-%H:%M") 
     changetimestamp = datetime.datetime.timestamp(dts)
     for gbc in PD.gradeA:
-        basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:02d}/Simulations/IV/"
-        pgbc = f"VCN_c{gbc:02d}"
-        # ivdatafile = Path(f"VCN_Cells/VCN_c{gbc:2s}/Simulations/IV/VCN_c{gbc:2s}_pulse_XM13{chan:s}_II_soma=*_monitor.p")
-        # print(list(Path(basefn).glob('*.p')))
-        # print(basefn)
-        print(f"search for:  VCN_c{gbc:02d}_pulse_*.p")
-        fng = list(Path(basefn).glob(f"VCN_c{gbc:02d}_pulse_*.p"))
+        basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:02d}/Simulations/{stimmode:s}/"
+        if stimmode == 'IV':
+            pgbc = f"VCN_c{gbc:02d}"
+            name_start = f"VCN_c{gbc:02d}_pulse_*.p"
+        elif stimmode == 'AN':
+            name_start = f"AN_Result_VCN_c{gbc:02d}_*.p"
+            
+        print(f"search for:  {name_start:s}")
+        fng = list(Path(basefn).glob(name_start))
 
         times = np.zeros(len(fng))
         for i, f in enumerate(fng):
             times[i] = f.stat().st_mtime
-        # pick most recent
+        # pick most recent file = this should be better managed (master file information)
         ix = np.argmax(times)
         fng = [fng[ix]]
             
@@ -143,7 +146,7 @@ def main():
         for fn in fng: 
             fnp = Path(fn)
             fns = str(fn)
-            # print(fnp.is_file())
+
             if not fnp.is_file():
                 print(f"file: {str(fnp):s} NOT FOUND")
                 continue
@@ -158,7 +161,7 @@ def main():
             print('file mode: ', filemode)
             with (open(fnp, "rb")) as fh:
                 d = pickle.load(fh)
-            print(d.keys())
+            # print(d.keys())
             # if "Params" not in list(d.keys()):
   #               print("File missing Params; need to re-run")
   #               continue
@@ -269,7 +272,7 @@ def main():
         ftname = str(ivdatafile.name)
         ip = ftname.find("_II_") + 4
         ftname = ftname[:ip] + "...\n" + ftname[ip:]
-        toptitle = f"{ftname:s}\nRin={RMA['Rin']:.1f} Mohm  Taum={RMA['taum']:.2f} ms"
+        toptitle = f"{ftname:s}\nRin={RMA['Rin']:.1f} Mohm  Taum={RMA['taum']:.2f} ms\n{timestamp_str:s}"
         P.axdict[pgbc].set_title(toptitle, fontsize=5)
 
     if chan == "_":

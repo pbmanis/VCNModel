@@ -540,30 +540,30 @@ class GenerateRun:
             print("    _executeRun completed")
         return results
 
-    def saveRun(self, results):
-        """
-        Save the result of a single run to disk. Results must be a Param structure, which we turn into
-         a dictionary...
-        """
-        print("Saving single run to: ")
-        fn = "{0:s}_{1:s}.p".format(self.basename, self.cell.status["modelType"])
-        print("     ", fn)
-        pfout = open(fn, "wb")
-        mp = copy.deepcopy(self.cell.status)
-        del mp["decorator"]
-        self.cleanNeuronObjs()  # in runinfo
-        pickle.dump(
-            {
-                "basename": self.basename,
-                "runInfo": self.RunInfo,
-                "modelPars": mp,
-                "self.Params": self.Params,
-                "Results": results,
-                "IVResults": self.IVResult,
-            },  # analysis results specific for IV
-            pfout,
-        )
-        pfout.close()
+    # def saveRun(self, results):
+    #     """
+    #     Save the result of a single run to disk. Results must be a Param structure, which we turn into
+    #      a dictionary...
+    #     """
+    #     print("Saving single run to: ")
+    #     fn = "{0:s}_{1:s}.p".format(self.basename, self.cell.status["modelType"])
+    #     print("     ", fn)
+    #     pfout = open(fn, "wb")
+    #     mp = copy.deepcopy(self.cell.status)
+    #     del mp["decorator"]
+    #     self.cleanNeuronObjs()  # in runinfo
+    #     pickle.dump(
+    #         {
+    #             "basename": self.basename,
+    #             "runInfo": self.RunInfo,
+    #             "modelPars": mp,
+    #             "Params": self.Params,
+    #             "Results": results,
+    #             "IVResults": self.IVResult,
+    #         },  # analysis results specific for IV
+    #         pfout,
+    #     )
+    #     pfout.close()
 
     def saveRuns(self, save=None):
         """
