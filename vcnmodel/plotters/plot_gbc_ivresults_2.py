@@ -6,8 +6,12 @@ import argparse
 import pickle
 from pathlib import Path
 import datetime
+import dataclasses
+from dataclasses import dataclass, field
+import numpy as np
 import matplotlib
 
+import vcnmodel.model_params
 from ephys.ephysanalysis import MakeClamps
 from ephys.ephysanalysis import RmTauAnalysis
 from ephys.ephysanalysis import SpikeAnalysis
@@ -26,9 +30,19 @@ modeltypes = ["mGBC", "XM13", "RM03", "XM13_nacncoop"]
 runtypes = ["AN", "an", "IO", "IV", "iv", "gifnoise"]
 # modetypes = ['find', 'singles', 'IO', 'multi']
 
+def grAList():
+    return [2, 5, 6, 9, 10, 11, 13, 17, 24, 29, 30]
+@dataclass
+class PData:
+    gradeA: list = field(default_factory = grAList)
+    default_modelName:str = "XM13_nacncoop"
+    soma_inflate:bool = True
+    dend_inflate:bool = True
+    basepath:str = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
 
 def main():
-
+    PD = PData()
+    
     parser = argparse.ArgumentParser(description="Plot GBC results")
     parser.add_argument(
         dest="cell",
@@ -66,17 +80,16 @@ def main():
     )
     args = parser.parse_args()
 
-    # gbc_names = [cn for cn in args.cell]
+    # PD.gradeA = [cn for cn in args.cell]
     print('args.cell: ', args.cell)
     if args.cell[0] == "A":
-        # list the grade A cells
-        gbc_names = ["02", "05", "06", "09", "10", "11", "13", "17", "24", "30", "31"]
+        pass # (all grade a cells defined in pd dataclass)
+    else:
+        PD.gradeA = [args.cell]
+    rows, cols = PH.getLayoutDimensions(len(PD.gradeA))
 
-    rows, cols = PH.getLayoutDimensions(len(gbc_names))
-
-
-    plabels = [f"VCN_c{g:2s}" for g in gbc_names]
-    for i in range(rows*cols-len(gbc_names)):
+    plabels = [f"VCN_c{g:02d}" for g in PD.gradeA]
+    for i in range(rows*cols-len(PD.gradeA)):
         plabels.append(f"empty{i:d}")
 
     P = PH.regular_grid(
@@ -96,61 +109,102 @@ def main():
     chan = "_"  # for certainity in selection, include trailing underscore in this designation
 
     modelName = args.modeltype
+    print('Scaline: ', args.scaled)
     if args.scaled:
-        soma = True
-        dend = True
+        PD.soma_inflate = True
+        PD.dend_inflate = True
     else:
-        soma = False
-        dend = False
+        PD.soma_inflate = False
+        PD.dend_inflate = False
 
     stitle = "unknown scaling"
-
-    for gbc in gbc_names:
-        basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:2s}/Simulations/IV/"
-        pgbc = f"VCN_c{gbc:2s}"
+    # trip filemode based on date of simulatoin
+    changedate = "2020-04-29-12:00"
+    dts = datetime.datetime.strptime(changedate,"%Y-%m-%d-%H:%M") 
+    changetimestamp = datetime.datetime.timestamp(dts)
+    for gbc in PD.gradeA:
+        basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:02d}/Simulations/IV/"
+        pgbc = f"VCN_c{gbc:02d}"
         # ivdatafile = Path(f"VCN_Cells/VCN_c{gbc:2s}/Simulations/IV/VCN_c{gbc:2s}_pulse_XM13{chan:s}_II_soma=*_monitor.p")
         # print(list(Path(basefn).glob('*.p')))
         # print(basefn)
-        print(f"search for:  VCN_c{gbc:2s}_pulse_*.p")
-        fng = list(Path(basefn).glob(f"VCN_c{gbc:2s}_pulse_*.p"))
-        print("fng: ", fng)
+        print(f"search for:  VCN_c{gbc:02d}_pulse_*.p")
+        fng = list(Path(basefn).glob(f"VCN_c{gbc:02d}_pulse_*.p"))
+
+        times = np.zeros(len(fng))
+        for i, f in enumerate(fng):
+            times[i] = f.stat().st_mtime
+        # pick most recent
+        ix = np.argmax(times)
+        fng = [fng[ix]]
+            
         ivdatafile = None
-        print("\nConditions: soma= ", soma, "  dend=", dend)
-        for fn in fng:
+        print("\nConditions: soma= ", PD.soma_inflate, "  dend=",PD.dend_inflate)
+        for fn in fng: 
             fnp = Path(fn)
-            print(fnp.is_file())
+            fns = str(fn)
+            # print(fnp.is_file())
             if not fnp.is_file():
                 print(f"file: {str(fnp):s} NOT FOUND")
                 continue
-            print("checking file: ", fn)
+            mtime = fnp.stat().st_mtime
+            timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d-%H:%M')
+            print(f"Checking file: {fnp.name:s} [{timestamp_str:s}]")
+            # print(mtime, changetimestamp)
+            if mtime > changetimestamp:
+                filemode = 'vcnmodel.v1'
+            else:
+                filemode = 'vcnmodel.v0'
+            print('file mode: ', filemode)
             with (open(fnp, "rb")) as fh:
                 d = pickle.load(fh)
-            if "Params" not in list(d.keys()):
-                print("File missing Params; need to re-run")
-                continue
+            print(d.keys())
+            # if "Params" not in list(d.keys()):
+  #               print("File missing Params; need to re-run")
+  #               continue
             # print(d.keys())
-            par = d["Params"]
-            # print(par)
-            if soma and dend:
+            if filemode in ['vcnmodel.v0']:
+                # print(d['runInfo'].keys())
+                par = d['runInfo']
+                par['soma_inflation'] = False
+                par['dendrite_inflation'] = False
+                if fns.find('soma=') > -1:
+                    par['soma_inflation'] = True
+                if fns.find('dend=') > -1:
+                    par['dendrite_inflation'] = True
+                par["soma_autoinflate"] = False
+                par["dendrite_autoinflate"] = False
+            elif filemode in ['vcnmodel.v1']:
+                try:
+                    par = d["Params"]
+                except:
+                    try:
+                        par = d["self.Params"]
+                    except:
+                        raise ValueError("File missing Params; need to re-run")
+                if isinstance(par, vcnmodel.model_params.Params):
+                    par = dataclasses.asdict(par)
+            print(par)
+            if PD.soma_inflate and PD.dend_inflate:
                 if par["soma_inflation"] > 0 and par["dendrite_inflation"] > 0.0:
                     ivdatafile = Path(fn)
                     stitle = "Soma and Dend scaled"
                     print(stitle)
                     break
-            elif soma and not dend:
+            elif PD.soma_inflate and not PD.dend_inflate:
                 if par["soma_inflation"] > 0 and par["dendrite_inflation"] < 0.0:
                     ivdatafile = Path(fn)
                     stitle = "Soma only scaled"
                     print(stitle)
                     break
-            elif dend and not soma:
+            elif PD.dend_inflate and not PD.soma_inflate:
                 if par["soma_inflation"] < 0 and par["dendrite_inflation"] > 0.0:
                     ivdatafile = Path(fn)
                     stitle = "Dend only scaled"
                     print(stitle)
                     break
             elif not par["soma_autoinflate"] and not par["dendrite_autoinflate"]:
-                print("\nConditions x: soma= ", soma, "  dend=", dend)
+                print("\nConditions x: soma= ", PD.soma_inflate, "  dend=", PD.dend_inflate)
                 ivdatafile = Path(fn)
                 stitle = "No scaling (S, D)"
                 print(stitle)
@@ -166,16 +220,11 @@ def main():
         if not ivdatafile.is_file():
             print("no file? : ", str(ivdatafile))
             continue
-        # ftime = ivdatafile.stat().st_mtime
-        # print('  File time: ', datetime.datetime.fromtimestamp(ftime).strftime('%H:%M:%S %d-%b-%Y'))
-        AR.read_pfile(ivdatafile)
-        # for i in range(AR.traces.shape[0]):
-        #     mpl.plot(AR.time_base, AR.traces[i])
-        # mpl.show()
+        
+        AR.read_pfile(ivdatafile, filemode=filemode)
         bridge_offset = 0.0
         threshold = -32.0
         tgap = 0.0  # gap before fittoign taum
-        # print(self.AR.tstart, self.AR.tend)
         RM.setup(AR, SP, bridge_offset=bridge_offset)
         SP.setup(
             clamps=AR,
@@ -200,15 +249,12 @@ def main():
 
         RMA = RM.analysis_summary
         print("Analysis: RMA: ", RMA)
-        fh = open(ivdatafile, "rb")
-        df = pickle.load(fh)
-        r = df["Results"][0]
-
-        for trial in range(len(df["Results"])):
-            ds = df["Results"][trial]
-            k0 = list(df["Results"][trial].keys())[0]
-            dx = ds[k0]["monitor"]
-            P.axdict[pgbc].plot(dx["time"], dx["postsynapticV"], linewidth=1.0)
+        print(dir(AR))
+        for trial in range(len(AR.traces)):
+            # ds = df["Results"][trial]
+            # k0 = list(df["Results"][trial].keys())[0]
+            # dx = ds[k0]["monitor"]
+            P.axdict[pgbc].plot(AR.time_base, AR.traces[trial]*1e3, linewidth=1.0)
             P.axdict[pgbc].set_xlim(0.0, 150.0)
             P.axdict[pgbc].set_ylim(-200.0, 50.0)
         PH.calbar(
