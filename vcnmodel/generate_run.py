@@ -565,9 +565,6 @@ class GenerateRun:
         )
         pfout.close()
 
-    def cleanRunInfo(self):
-        pass
-
     def saveRuns(self, save=None):
         """
         Save the result of multiple runs to disk. Results is in a dictionary,

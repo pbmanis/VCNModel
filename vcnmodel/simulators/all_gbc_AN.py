@@ -53,8 +53,8 @@ class OneANRun(object):
 
         M = mrun.ModelRun() # create an instance
             
-        cell = f'VCN_c{gbc_name:s}'
-        cell_ax = f'VCNc{gbc_name:s}'
+        cell = gbc_name # f'VCN_c{gbc_name:s}'
+        cell_ax = gbc_name #  f'VCNc{gbc_name:s}'
         M.Params['cell'] = cell
         M.Params['Parallel'] = True
         M.Params['modelType'] = modelType
@@ -75,7 +75,7 @@ class OneANRun(object):
         
         # if M.Params['hocfile'] == None: # just use the matching hoc file
         print('mparams cell: ', M.Params['cell'])
-        M.Params['hocfile'] = M.Params['cell'] + '.hoc'
+        M.Params['hocfile'] = M.Params['cell'] + '_Full.hoc'
         print(f"{' ':14s}HOC file: {str(M.Params['hocfile']):s}")
         M.setup_model(par_map=M.Params)
         print(f"{' ':14s}Simulation file:        {str(M.Params['simulationFilename']):s}")

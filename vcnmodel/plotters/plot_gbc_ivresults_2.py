@@ -22,7 +22,7 @@ rc("text", usetex=False)
 import matplotlib.pyplot as mpl
 import pylibrary.plotting.plothelpers as PH
 
-modeltypes = ["mGBC", "XM13", "RM03"]
+modeltypes = ["mGBC", "XM13", "RM03", "XM13_nacncoop"]
 runtypes = ["AN", "an", "IO", "IV", "iv", "gifnoise"]
 # modetypes = ['find', 'singles', 'IO', 'multi']
 
@@ -53,8 +53,8 @@ def main():
         "--modeltype",
         dest="modeltype",
         action="store",
-        default="XM13",
-        help=("Select the model type (default XM13) from: %s " % modeltypes),
+        default="XM13_nacncoop",
+        help=("Select the model type (default XM13_nacncoop) from: %s " % modeltypes),
     )
 
     parser.add_argument(
@@ -66,17 +66,25 @@ def main():
     )
     args = parser.parse_args()
 
-    gbc_names = [cn for cn in args.cell]
-    if gbc_names[0] == 'A':
+    # gbc_names = [cn for cn in args.cell]
+    print('args.cell: ', args.cell)
+    if args.cell[0] == "A":
         # list the grade A cells
-        gbc_names = ['02', '05', '06', '09', '10', '11', '13', '17', '18', '24', '30', '31']
+        gbc_names = ["02", "05", "06", "09", "10", "11", "13", "17", "24", "30", "31"]
 
-    rows, cols = PH.getLayoutDimensions(len(args.cell))
+    rows, cols = PH.getLayoutDimensions(len(gbc_names))
+
+
+    plabels = [f"VCN_c{g:2s}" for g in gbc_names]
+    for i in range(rows*cols-len(gbc_names)):
+        plabels.append(f"empty{i:d}")
+
     P = PH.regular_grid(
         rows,
         cols,
+        order='rowsfirst',
         figsize=(6, 8),
-        panel_labels=gbc_names,
+        panel_labels=plabels,
         labelposition=(0.05, 0.95),
         margins={
             "leftmargin": 0.07,
@@ -87,15 +95,7 @@ def main():
     )
     chan = "_"  # for certainity in selection, include trailing underscore in this designation
 
-    default_modelName = "XM13_nacncoop"
-    # default_modelName = 'XM13'
-    if len(sys.argv) > 1:
-        modelName = sys.argv[1]
-    else:
-        modelName = default_modelName
-    if len(modelName) > 4:
-        chan = modelName[4:] + "_"
-        modelName = modelName[:4]
+    modelName = args.modeltype
     if args.scaled:
         soma = True
         dend = True
@@ -107,6 +107,7 @@ def main():
 
     for gbc in gbc_names:
         basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:2s}/Simulations/IV/"
+        pgbc = f"VCN_c{gbc:2s}"
         # ivdatafile = Path(f"VCN_Cells/VCN_c{gbc:2s}/Simulations/IV/VCN_c{gbc:2s}_pulse_XM13{chan:s}_II_soma=*_monitor.p")
         # print(list(Path(basefn).glob('*.p')))
         # print(basefn)
@@ -198,7 +199,7 @@ def main():
         )
 
         RMA = RM.analysis_summary
-        print(RMA)
+        print("Analysis: RMA: ", RMA)
         fh = open(ivdatafile, "rb")
         df = pickle.load(fh)
         r = df["Results"][0]
@@ -207,11 +208,11 @@ def main():
             ds = df["Results"][trial]
             k0 = list(df["Results"][trial].keys())[0]
             dx = ds[k0]["monitor"]
-            P.axdict[gbc].plot(dx["time"], dx["postsynapticV"], linewidth=1.0)
-            P.axdict[gbc].set_xlim(0.0, 150.0)
-            P.axdict[gbc].set_ylim(-200.0, 50.0)
+            P.axdict[pgbc].plot(dx["time"], dx["postsynapticV"], linewidth=1.0)
+            P.axdict[pgbc].set_xlim(0.0, 150.0)
+            P.axdict[pgbc].set_ylim(-200.0, 50.0)
         PH.calbar(
-            P.axdict[gbc],
+            P.axdict[pgbc],
             calbar=[120.0, -95.0, 25.0, 20.0],
             axesoff=True,
             orient="left",
@@ -223,7 +224,7 @@ def main():
         ip = ftname.find("_II_") + 4
         ftname = ftname[:ip] + "...\n" + ftname[ip:]
         toptitle = f"{ftname:s}\nRin={RMA['Rin']:.1f} Mohm  Taum={RMA['taum']:.2f} ms"
-        P.axdict[gbc].set_title(toptitle, fontsize=5)
+        P.axdict[pgbc].set_title(toptitle, fontsize=5)
 
     if chan == "_":
         chan = "nav11"

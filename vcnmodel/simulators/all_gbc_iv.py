@@ -61,7 +61,7 @@ def allgbcs():# set up plots
     # print ('yp:', yp)
     lpos = [0.5, 0.95]
     gradeA = [2, 5, 6, 9, 10, 11, 13,  17, 24, 29, 30]  # 17 fails
-    # gradeA = [17]
+    # gradeA = [29]
     cellnames = [f"VCN_c{k:02d}" for k in gradeA]
 
 
@@ -184,7 +184,7 @@ def allgbcs():# set up plots
         )
 
         RMA = RM.analysis_summary
-        print("axis: ", cell_ax)
+
         if plotflag:
             fh = open(ivdatafile, "rb")
             df = pickle.load(fh)

@@ -159,7 +159,7 @@ class Params:
 # runinfo parameters are filled by generate_run at the initialization of a single trace run
 def definj():
     return{
-        "pulse": np.linspace(-1.0, 1.00, 3, endpoint=True)
+        "pulse": np.linspace(-1.0, 1.00, 11, endpoint=True)
     }
 
 def defstarts():
