@@ -1,17 +1,15 @@
 #  Configuration for basic scaled inflation
 # Note that these are the variable names, not the command parser flags
 modelName='XM13_nacncoop'  # decoration data table in 
-full=true  # use "full" hoc file
+fullhocfile=true  # use "full" hoc file
 soma_autoinflate=true  # inflat the soma according to the excel table (see 'wheres_my_data.toml"")
 dendrite_autoinflate=true  # inflate the dendrite by the table
 ASA_fromsoma=true  # inflate the asa by the same amount as the soma
 dendrite_fromsoma=false  # if true, inflate the dendrite the same as the soma
-sgc_model='cochlea'  # which sgc model to run
+SGCmodelType='cochlea'  # which sgc model to run
 SRType='HS'
-reps=1
+ANSynapseType='multisite'
 dB=50.0
-frequency=16000.0
+F0=16000.0
 seed=9
-noparallel=true  # better for debugging
-
-# noparallel=true
+Parallel=false
