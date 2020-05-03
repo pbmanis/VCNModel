@@ -106,7 +106,7 @@ class CellConfig():
             self.SDSummary = pd.read_excel(fh, config['SomaAndDendriteData'], skiprows=3)
         
         with open(datafile, 'rb') as fh:
-            self.ASA = pd.read_excel(fh, config['asaData'], skiprows=0)
+            self.ASA = pd.read_excel(fh, config['asaData'], skiprows=config['asaHeaderSkip'])
         
         self.VCN_Inputs = OrderedDict()
     

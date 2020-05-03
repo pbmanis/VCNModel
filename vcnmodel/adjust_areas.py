@@ -572,13 +572,14 @@ class SetNSegs(object):
         if self.cell is None:  # no hoc reader file, so no adjustments
             return
         for section in self.cell.allsec():
-            # print(section, section.L, d_lambda, freq)
+            print(section, section.L, d_lambda, freq)
             nseg = 1 + 2 * int(
                 (section.L / (d_lambda * self._lambda_f(section, frequency=freq)) + 0.9)
                 / 2.0
             )
             if nseg < minimum:
                 nseg = minimum  # ensure at least 3 segments per section...
+            print('section name: ', section.name(), ' nseg: ', nseg)
             try:
                 section.nseg = int(nseg)
             except:
