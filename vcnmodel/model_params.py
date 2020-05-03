@@ -96,7 +96,7 @@ class Params:
 
     # cell specific parameters related to geometry
     fullhocfile: bool = False  # use the "full" hoc file (cellname_Full.hoc)
-    dt: float = 0.020
+    dt: float = 0.025
     celsius: float = 37  # set the temperature.
     Ra: float = 150.0  # ohm.cm
     soma_inflation: float = 1.0  # factor to multiply soma section areas by
@@ -131,7 +131,7 @@ class Params:
     save_all_sections: bool = False
     commandline: str = ""  # store command line on run
     checkcommand: bool = False
-    configfile: bool = None
+    configfile: Union[str, None] = None
     tagstring:  Union[str, None] = None
     initialization_time: float = 50.
 
@@ -208,11 +208,12 @@ class RunInfo:
 
     # sound parameters
     initialization_time: float = 50.0  # nominal time to let system settle, in msec
-    run_duration: float = 0.25  # in sec
+    run_duration: float = 0.35  # in sec
     soundtype: str = "SAM"  # or 'tonepip'
     pip_duration: float = 0.1  # duration in seconds for tone pip
     pip_start: list = field(default_factory = defstarts)  # start (delay to start of pip)
     pip_offduration: float = 0.05  # time after pip ends to keep running
+    
     Fs: float = 100e3  # cochlea/zilany model rate
     F0: float = 16000.0  # stimulus frequency
     dB: float = 30.0  # in SPL
@@ -647,27 +648,32 @@ def getCommands():
                 # during json.load
                 config = json.load(open(args.configfile))
             elif ".toml" in args.configfile:
+                print('getting toml')
                 config = toml.load(open(args.configfile))
 
         vargs = vars(args)  # reach into the dict to change values in namespace
+
         for c in config:
             if c in args:
-                print("c: ", c)
+                # print("Getting parser variable: ", c)
                 vargs[c] = config[c]
+            else:
+                raise ValueError(f"config variable {c:s} does not match with comand parser variables")
 
+        print("All configuration file variables read OK")
     # now copy into the Param dataclass
     params = Params()
     runinfo = RunInfo()
     parnames = dir(params)
     runnames = dir(runinfo)
-    for key, value in vars(args).items():
+    for key, value in vargs.items():
         if key in parnames:
             # print('key: ', key)
             # print(str(value))
             exec(f"params.{key:s} = {value!r}")
         elif key in runnames:
             exec(f"runinfo.{key:s} = {value!r}")
-
+    
     return(args, params, runinfo)
 
 
