@@ -587,7 +587,7 @@ class GenerateRun:
                 "basename": self.basename,
                 "runInfo": self.RunInfo,
                 "modelPars": mp,  # some specific parameters to this run
-                "self.Params": self.Params,  # all the parameters that were passed
+                "Params": self.Params,  # all the parameters that were passed
                 "Results": self.results, # [{k: x.todict()} for k, x in self.results.items()],
             },
             pfout,
