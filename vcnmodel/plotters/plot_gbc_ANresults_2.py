@@ -4,6 +4,7 @@ Version 2: read the new format filenames
 import sys
 import pickle
 from pathlib import Path
+from dataclasses import dataclass, field
 import datetime
 import matplotlib
 from matplotlib import rc
@@ -21,12 +22,19 @@ RM = RmTauAnalysis.RmTauAnalysis()
 
 import pylibrary.plotting.plothelpers as PH
 
-
+def grAList():
+    return [2, 5, 6, 9, 10, 11, 13, 17, 24, 29, 30]
+@dataclass
+class PData:
+    gradeA: list = field(default_factory = grAList)
+    default_modelName:str = "XM13_nacncoop"
+    soma_inflate:bool = True
+    dend_inflate:bool = True
+    basepath:str = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
+    
 def main():
-    # gbc_names = ['08', '09', '11', '14', '16', '17', '18', '19', '20', '21', '22', 'None']
-    # gbc_names = ['09', '11', '17', '18', 'None']
-    gradeA = [2, 5, 6, 9, 10, 11, 13, 17, 24, 29, 30]
-    gbc_names = [f"VCN_c{g:02d}" for g in gradeA]
+    PD = PData()
+    gbc_names = [f"VCN_c{g:02d}" for g in PD.gradeA]
     (r, c) = PH.getLayoutDimensions(len(gbc_names), pref="height")
     if r * c > len(gbc_names):
         for i in range(len(gbc_names), r * c):
@@ -47,58 +55,58 @@ def main():
     )
     chan = "_"  # for certainity in selection, include trailing underscore in this designation
 
-    default_modelName = "XM13_nacncoop"
+
     # default_modelName = 'XM13'
     if len(sys.argv) > 1:
         modelName = sys.argv[1]
     else:
-        modelName = default_modelName
+        modelName = PD.default_modelName
     if len(modelName) > 4:
         chan = modelName[4:] + "_"
         modelName = modelName[:4]
-    soma = True
-    dend = True
+
     stitle = "unknown scaling"
 
-    basepath = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
+
     for gbc in gbc_names:
         if gbc == "ne":
             continue
         cellpath = f"VCN_Cells/{gbc:2s}"
-        cell_ANData = Path(basepath, cellpath, f"Simulations/AN/")
-        # print('CellANdata: ', cell_ANData)# ivdatafile = Path(f"VCN_Cells/VCN_c{gbc:2s}/Simulations/IV/VCN_c{gbc:2s}_pulse_XM13{chan:s}_II_soma=*_monitor.p")
+        cell_ANData = Path(PD.basepath, cellpath, f"Simulations/AN/")
+        # print('CellANdata: ', cell_ANData)# ivdatafile = Path(f"VCN_Cells/VCN_c{gbc:2s}/Simulations/IV/VCN_c{gbc:2s}_pulse_XM13{chan:s}_II_PD.soma_inflate=*_monitor.p")
         fng = list(cell_ANData.glob(f"AN_Result_{gbc:s}*.p"))
         # fng = ['VCN_Cells/VCN_c09/Simulations/AN/AN_Result_VCN_c09_2019-10-28-163743-342545.p']
         ivdatafile = None
-        # print("\nConditions: soma= ", soma, "  dend=", dend)
+        # print("\nConditions:  PD.soma_inflate oma_inflate= ", PD.soma_inflate, "  dend=", dend)
         # print('fng: ', fng)
         for fn in fng:
             fnp = Path(fn)
             with (open(fnp, "rb")) as fh:
                 d = pickle.load(fh)
             par = d["Params"]
-            print('    ', fn)
-            print('        ', par)
-            if soma and dend:
+            # print('Params:   ', d["Params"])
+            # print('    File: ', fn)
+            # print('    Par:  ', par)
+            if PD.soma_inflate and PD.dend_inflate:
                 if par["soma_inflation"] > 0 and par["dendrite_inflation"] > 0.0:
                     ivdatafile = Path(fn)
                     stitle = "Soma and Dend scaled"
                     print(stitle)
                     break
-            elif soma and not dend:
+            elif PD.soma_inflate and not PD.dend_inflate:
                 if par["soma_inflation"] > 0 and par["dendrite_inflation"] < 0.0:
                     ivdatafile = Path(fn)
                     stitle = "Soma only scaled"
                     print(stitle)
                     break
-            elif dend and not soma:
+            elif PD.dend_inflate and not PD.soma_inflatea:
                 if par["soma_inflation"] < 0 and par["dendrite_inflation"] > 0.0:
                     ivdatafile = Path(fn)
                     stitle = "Dend only scaled"
                     print(stitle)
                     break
             elif not par["soma_autoinflate"] and not par["dendrite_autoinflate"]:
-                print("\nConditions x: soma= ", soma, "  dend=", dend)
+                print("\nConditions x: soma= ", PD.soma_inflate, "  dend=", PD.dend_inflate)
                 ivdatafile = Path(fn)
                 stitle = "No scaling (S, D)"
                 print(stitle)
