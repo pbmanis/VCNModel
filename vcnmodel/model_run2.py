@@ -175,7 +175,7 @@ wheres_the_data.toml
 import sys
 from pathlib import Path
 import os
-import errno
+import re
 import copy
 import pickle
 import time
@@ -457,7 +457,7 @@ class ModelRun:
         except:
             raise FileNotFoundError(f"Cannot create path: {str(path):s}")
 
-    def fix_singlets(self, h: object):
+    def fix_singlets(self, h: object, harsh:bool = False):
         badsecs = []
         for i, sec in enumerate(h.allsec()):
             if sec.n3d() == 1:
@@ -465,13 +465,14 @@ class ModelRun:
                 # print(f'Fixing Singlet Section: {str(sec):s}')
                 # print(dir(sec))
                 parent = sec.parentseg()
-                if (
-                    parent is None and i > 0
-                ):  # first section might not have a parent... obviously
-                    raise ValueError(
-                        f"Section: {str(sec):s} does not have a parent, and this must be fixed manually"
-                    )
-                if i == 0 and parent is None:
+                # if (
+                #     parent is None and i > 0
+                # ):  # first section might not have a parent... obviously
+                #     raise ValueError(
+                #         f"Section: {str(sec):s} does not have a parent, and this must be fixed manually"
+                #     )
+                # if i == 0 and parent is None:
+                if parent is None:  # until we can find a better way.
                     continue
                 # print(f'    Section connected to {str(parent):s} ')
                 nparentseg = parent.sec.n3d() - 1
@@ -480,10 +481,10 @@ class ModelRun:
                 z = parent.sec.z3d(nparentseg)
                 d = parent.sec.diam3d(nparentseg)
                 h.pt3dinsert(0, x, y, z, d, sec=sec)
-        if len(badsecs) > 0:
+        if harsh and len(badsecs) > 0:
             cprint('r', f"**** Fixed Singlet segments in {len(badsecs):d} sections")
             for b in badsecs:
-                print(f"{b.name():s}")
+                print(f"Bad sections: ', {b.name():s}")
             exit()
         else:
             cprint('r', f"**** No singlets found in this hoc file")
@@ -494,8 +495,8 @@ class ModelRun:
         if len(badsecs) == 0:
             cprint('g', 'No bad sections')
         else:
-            cprint('r', f"found {len(badsecs):d} bad sections with sec.n3d() = 1")
-            exit()
+            cprint('r', f"found {len(badsecs):d} bad sections with sec.n3d() = 1; repaired")
+
 
     def setup_model(self, par_map: dict = None):
         """
@@ -1788,11 +1789,21 @@ class ModelRun:
                 )  # override
             if self.Params.verbose:
                 print("SRtype, srindex: ", self.Params.SRType, srindex)
-            print(self.Params.ANSynapseType)
- 
+            # print(self.Params.ANSynapseType) 
+            
+            # note that we provide the opportunity to split the number of zones
+            # between multiple sites
             for pl in syn["postlocations"]:
                 postsite = syn["postlocations"][pl]
-                # note that we split the number of zones between multiple sites
+                plsecs = list(thisCell.hr.sec_groups[pl])
+                # print('plsecs: ', plsecs)
+                firstplsec = plsecs[0]  # get the first one (for soma)
+                plsecn = re.split('[\[\]+]', firstplsec)
+                # note this will need to be mapped later to put synapses on the right
+                # sections in dendrites. But for now, this will have to do.
+                postsite[0] = int(plsecn[1])  # from ['sections[118]'] for example
+                # print('postsite: ', postsite)
+
                 if self.Params.ANSynapseType == "simple":
                     print("*******Synapsetype is simple")
                     synapse.append(
@@ -2120,7 +2131,7 @@ class ModelRun:
         del results['modelPars']["decorator"]  # remove neuron section objects
         results["Results"] = result
         results["mode"] = res_mode
-        print(results)
+        # print(results)
         fout = self.Params.simulationFilename  # base name created by make-filename - do not overwrite
         if len(tag) > 0:
             fout = Path(str(fout).replace("_all_", "_" + tag + "_"))
