@@ -10,7 +10,7 @@ import dataclasses
 from dataclasses import dataclass, field
 import numpy as np
 import matplotlib
-
+from typing import Union
 import vcnmodel.model_params
 from ephys.ephysanalysis import MakeClamps
 from ephys.ephysanalysis import RmTauAnalysis
@@ -28,10 +28,11 @@ import pylibrary.plotting.plothelpers as PH
 
 modeltypes = ["mGBC", "XM13", "RM03", "XM13_nacncoop"]
 runtypes = ["AN", "an", "IO", "IV", "iv", "gifnoise"]
+experimenttypes = [None, "delays", "largestonly", "removelargest", "mean", "allmean", "twolargest"]
 # modetypes = ['find', 'singles', 'IO', 'multi']
 
 def grAList():
-    return [2, 5, 6, 9, 10, 11, 13, 17, 24, 29, 30]
+    return [2, 5, 6, 9, 10, 11, 13, 17, 30]
     
 @dataclass
 class PData:
@@ -79,6 +80,45 @@ def main():
         action="store_true",
         help=("use scaled data or not"),
     )
+    
+    parser.add_argument(
+        "-e",
+        "--experiment",
+        dest="experiment",
+        action="store",
+        default="delays",
+        help=("Select the experiment type from: %s " % experimenttypes),
+    )
+    
+    parser.add_argument(
+        "-d",
+        "--dB",
+        dest="dbspl",
+        type=float,
+        action="store",
+        default=None,
+        help=("Select the models at specific intensity"),
+    )
+
+    parser.add_argument(
+        "-r",
+        "--nreps",
+        dest="nreps",
+        type=int,
+        action="store",
+        default=None,
+        help=("Select the models with # reps"),
+    )
+    
+    parser.add_argument(
+        "-c",
+        "--check",
+        dest="check",
+        action="store_true",
+        help=("Just check selection criteria and return"),
+    )
+        
+    
     args = parser.parse_args()
     args.protocol = args.protocol.upper()
     
@@ -98,7 +138,7 @@ def main():
         rows,
         cols,
         order='rowsfirst',
-        figsize=(8, 10),
+        figsize=(14, 10),
         panel_labels=plabels,
         labelposition=(0.05, 0.95),
         margins={
@@ -128,20 +168,55 @@ def main():
         basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
         pgbc = f"VCN_c{gbc:02d}"
         if args.protocol == 'IV':
-            name_start = f"VCN_c{gbc:02d}_pulse_*.p"
+            name_start = f"IV_Result_VCN_c{gbc:02d}_*.p"
         elif args.protocol == 'AN':
             name_start = f"AN_Result_VCN_c{gbc:02d}_*.p"
             
-        print(f"search for:  {name_start:s}")
+        print(f"search for:  {str(Path(basefn, name_start)):s}")
         fng = list(Path(basefn).glob(name_start))
+        
+        """ cull list by experiment and db """
+        match_index = []
+        for ix, fn in enumerate(fng):
+            ematch = True
+            if args.experiment is not None:
+                if str(fn).find(args.experiment) < 0:
+                    ematch = False
 
+            dmatch = True
+            if args.dbspl is not None:
+                srch = f"_{int(args.dbspl):03d}dB_"
+                if str(fn).find(srch) < 0:
+                    dmatch = False
+
+            rmatch = True
+            if args.nreps is not None:
+                srch = f"_{int(args.nreps):03d}_"
+                if str(fn).find(srch) < 0:
+                    rmatch = False
+         
+            if dmatch and ematch and rmatch:
+                match_index.append(ix)
+        fng = [fng[i] for i in match_index]
+                
+        print('found (filtered):\n', '\n   '.join([str(f) for f in fng]))
+        # print(match_index)
+        if args.check:
+            return
+        
+        # print(len(fng))
+        if len(fng) == 0:
+            print('No Files matching conditions found')
+            return
+            
         times = np.zeros(len(fng))
         for i, f in enumerate(fng):
             times[i] = f.stat().st_mtime
         # pick most recent file = this should be better managed (master file information)
         ix = np.argmax(times)
         fng = [fng[ix]]
-            
+        
+        
         ivdatafile = None
         print("\nConditions: soma= ", PD.soma_inflate, "  dend=",PD.dend_inflate)
         for fn in fng: 
@@ -192,19 +267,19 @@ def main():
                     par = dataclasses.asdict(par)
             # print('pgbcivr2: Params: ', par)
             if PD.soma_inflate and PD.dend_inflate:
-                if par["soma_inflation"] > 0 and par["dendrite_inflation"] > 0.0:
+                if par["soma_inflation"] > 0.0 and par["dendrite_inflation"] > 0.0:
                     ivdatafile = Path(fn)
                     stitle = "Soma and Dend scaled"
                     print(stitle)
                     break
             elif PD.soma_inflate and not PD.dend_inflate:
-                if par["soma_inflation"] > 0 and par["dendrite_inflation"] < 0.0:
+                if par["soma_inflation"] > 0.0 and par["dendrite_inflation"] < 0.0:
                     ivdatafile = Path(fn)
                     stitle = "Soma only scaled"
                     print(stitle)
                     break
             elif PD.dend_inflate and not PD.soma_inflate:
-                if par["soma_inflation"] < 0 and par["dendrite_inflation"] > 0.0:
+                if par["soma_inflation"] < 0.0 and par["dendrite_inflation"] > 0.0:
                     ivdatafile = Path(fn)
                     stitle = "Dend only scaled"
                     print(stitle)
@@ -256,9 +331,11 @@ def main():
 
             RMA = RM.analysis_summary
             # print("Analysis: RMA: ", RMA)
+        ntr = len(AR.traces) # number of trials
         v0 = -160.
-        trstep = 2.5
-        inpstep = 0.5
+        trstep = 25.0/ntr
+        inpstep = 5.0/ntr
+        sz = 50./ntr
         for trial in range(len(AR.traces)):
             # ds = df["Results"][trial]
             # k0 = list(df["Results"][trial].keys())[0]
@@ -270,7 +347,7 @@ def main():
                 tr_y = trial*(trstep + len(spkt)*inpstep) 
                 for ian in range(len(spkt)):
                     vy = v0+tr_y*np.ones(len(spkt[ian]))+inpstep*ian
-                    P.axdict[pgbc].scatter(spkt[ian], vy, s=12, marker='|')
+                    P.axdict[pgbc].scatter(spkt[ian], vy, s=sz, marker='|', linewidths=0.35)
                     # print(len(vy), vy)
       #               print(spkt[ian])
                 P.axdict[pgbc].set_ylim(-140.0, 40.0)
