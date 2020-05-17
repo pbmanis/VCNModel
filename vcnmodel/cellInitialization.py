@@ -3,6 +3,7 @@ from __future__ import print_function
 import numpy as np
 import cnmodel.util as CU
 from pathlib import Path
+from pylibrary.tools.cprint import cprint
 
 """
 cellInitialization provides routines for initializing the membrane potential
@@ -16,7 +17,15 @@ you to use saved states to continue previous runs.
 """
 
 
-def init_model(cell, mode='iclamp', vinit=-65., restore_from_file=False, filename=None, electrode_site=None, reinit=False):
+def init_model(
+    cell: object,
+    mode: str = "iclamp",
+    vinit: float = -65.0,
+    restore_from_file: bool = False,
+    filename: Path = None,
+    electrode_site: object = None,
+    reinit: bool = False,
+) -> bool:
     """
     Model initialization procedure to set RMP to the resting RMP of the model cell.
     Does not instantiate recording or stimulating.
@@ -46,38 +55,46 @@ def init_model(cell, mode='iclamp', vinit=-65., restore_from_file=False, filenam
     
     """
     # print('initmodel')
-    if mode in ['vc', 'vclamp']:
-        cell.hr.h.finitialize(vinit)  # this is sufficient for initialization in voltage clamp
-        print('vclamp')
+    if mode in ["vc", "vclamp"]:
+        cell.hr.h.finitialize(
+            vinit
+        )  # this is sufficient for initialization in voltage clamp
+        cprint("c", "    Initializging for Vclamp")
         return True
-    if mode not in ['iclamp']:
+    if mode not in ["iclamp"]:
         raise ValueError('Mode must be "vc", "vclamp" or "iclamp"; got %s' % mode)
 
     # otherwise we are in current clamp
     # get state if one is specified
     if restore_from_file:
-        print('restoring from: ', filename)
-        restore_initial_conditions_state(cell, electrode_site=electrode_site, filename=filename, reinit=reinit)
+        cprint("c", f"    Restoring initialization from: {str(filename):s}")
+        restore_initial_conditions_state(
+            cell, electrode_site=electrode_site, filename=filename, reinit=reinit
+        )
         try:
-            print(f"init?: ", end='')
+            cprint("c", f"init?: ", end="")
             cell.hr.h.frecord_init()  # try an intialization
         except:
-            raise ValueError('\nUnable to restore initial state')
-        print(f'init OK')
+            cprint("r", "\nUnable to restore initial state")
+            raise ValueError("\nUnable to restore initial state")
+        cprint("g", f"        Initiaization was restored OK")
         return True  # much easier here...
-    
+
     # print('custom init')
     CU.custom_init(v_init=vinit)
-    
+
     if electrode_site is not None:
         vm = electrode_site.v
     else:
-        vm = 0.
-    print('Initialized with finitialize, starting at %8.2f, ending %8.2f ' % (vinit, vm))
+        vm = 0.0
+    cprint(
+        "g",
+        f"    Initialized with finitialize, starting at {vinit:8.2f}, end voltage: {vm:8.2f} mV",
+    )
     return True
 
 
-def printCellInfo(cell):
+def printCellInfo(cell: object) -> None:
     """
     Text output of information about cell - just information
     
@@ -93,13 +110,22 @@ def printCellInfo(cell):
         for i, s in enumerate(cell.all_sections[st]):
             if i == 0:
                 for sg in cell.all_sections[st]:
-                    print('nseg: ', sg.nseg)
-                print (cell.all_sections[st][0].allseg() ) # iteration object over all segments.
+                    print("nseg: ", sg.nseg)
+                print(
+                    cell.all_sections[st][0].allseg()
+                )  # iteration object over all segments.
             if i < 20:
-                print('%s %d: %d' % (st, i, s.nseg))
+                print("%s %d: %d" % (st, i, s.nseg))
 
 
-def get_initial_condition_state(cell, tdur=2000., filename=None, electrode_site=None, reinit=False, freq=2000.):
+def get_initial_condition_state(
+    cell:object,
+    filename:Path,
+    tdur:float=2000.0, 
+    electrode_site:object=None, 
+    reinit:bool=False, 
+    freq:float=2000.0
+)-> None:
     """
     Run model for a time, and then save the state
     
@@ -124,33 +150,41 @@ def get_initial_condition_state(cell, tdur=2000., filename=None, electrode_site=
     -------
         Nothing
     """
-    
+    if filename is None:
+        raise ValueError("cellInitialization:get_initial_condition_state: Filename must be specified")
+
     cell.cell_initialize()
     # first to an initialization to get close
-    print('\nget_initial_condition_state: file=', filename)
-    print('  starting t = %8.2f' % cell.hr.h.t)
-    init_model(cell, restore_from_file=False, electrode_site=electrode_site, reinit=reinit)
+    cprint("c", f"\nGetting initial_condition_state: file={str(filename):s}")
+    print("        starting t = %8.2f" % cell.hr.h.t)
+    init_model(
+        cell, restore_from_file=False, electrode_site=electrode_site, reinit=reinit
+    )
     cell.hr.h.tstop = tdur
-    print('running for %8.2f ms at %4.1f' % (tdur, cell.hr.h.celsius))
+    print("        running for %8.2f ms at %4.1f" % (tdur, cell.hr.h.celsius))
     cell.hr.h.run()
-    print('  run completed, t = %8.2f' % cell.hr.h.t)
+    cprint("g", f"  run completed, t = {cell.hr.h.t:8.2f}")
     if electrode_site is not None:
         vfinal = electrode_site.v
     else:
-        vfinal = 0.
-    print('  V = %8.2f' % vfinal)
+        vfinal = 0.0
+        cprint("g", f"Initialized to to voltage: {vfinal:8.2f} mV")
     state = cell.hr.h.SaveState()
     stateFile = cell.hr.h.File()
     state.save()
-    if filename is None:
-        filename = 'neuronstate.dat'
-    print('  writing state to : %s' % filename)
+    cprint("c", f"        writing state to : {str(filename.name):s}")
     stateFile.wopen(str(filename))
     state.fwrite(stateFile)
     stateFile.close()
 
 
-def restore_initial_conditions_state(cell, filename, electrode_site=None, reinit=False, autoinit=False):
+def restore_initial_conditions_state(
+    cell:object,
+    filename:Path,
+    electrode_site:object=None,
+    reinit:bool=False, 
+    autoinit:bool=False
+) -> None:
     """
     Restore initial conditions from a file
     
@@ -169,36 +203,43 @@ def restore_initial_conditions_state(cell, filename, electrode_site=None, reinit
     -------
         Nothing
     """
-#    print('restoring from file: {:s}'.format(filename))
-#    cell.set_d_lambda(freq=100, d_lambda=0.1)
+    #    print('restoring from file: {:s}'.format(filename))
+    #    cell.set_d_lambda(freq=100, d_lambda=0.1)
     cell.hr.h.finitialize()
-    stateFile = cell.hr.h.File() # restore state AFTER finitialize
+    stateFile = cell.hr.h.File()  # restore state AFTER finitialize
     state = cell.hr.h.SaveState()
-    
+
     stateFile.ropen(str(filename))
-    print('Initializing against: ', str(filename))
+    cprint("c", f"Restoring initial conditions from {str(filename.name):s}")
     try:
         state.fread(stateFile)
     except:
-        raise IOError('stateFile read failed - states do not match')
+        cprint("r", "stateFile read failed - states do not match with current model")
+        raise IOError("stateFile read failed - states do not match")
     stateFile.close()
+    cprint("c", "    ... restoring state")
     state.restore(1)
-    print(f'Restored initial conditions from: {str(filename):s}')
+    cprint("g", f"    Successfully restored initial conditions.")
 
     if electrode_site is not None:
         vm = electrode_site.v
     else:
-        vm = cell.hr.h('v')
-#        print 'restored soma v: %8.2f' % vm
-#        print 'v_init after restore: %8.2f' % cell.hr.hr.h.v_init
+        vm = cell.hr.h("v")
+    #        print 'restored soma v: %8.2f' % vm
+    #        print 'v_init after restore: %8.2f' % cell.hr.hr.h.v_init
     cell.hr.h.v_init = vm  # note: this leaves a very slight offset...
+
+
 #        for group in cell.hr.sec_groups.keys():
 #            for sec in cell.hr.sec_groups[group]:
 #                section = cell.hr.get_section(sec)
 #                print 'section: %s  vm=%8.3f' % (section.name(), section(0.5).v)
 
 
-def test_initial_conditions(cell, electrode_site=None, filename=None):
+def test_initial_conditions(
+        cell: object, 
+        electrode_site:object=None, 
+        filename:Path=None) -> None:
     """
     Test routine to verify that the initial conditions work.
     
@@ -218,26 +259,29 @@ def test_initial_conditions(cell, electrode_site=None, filename=None):
     """
     assert electrode_site is not None  # Make sure that the site has been specified
     monitor = {}
-    monitor['time'] = cell.hr.h.Vector()
-    monitor['time'].record(cell.hr.h._ref_t)
-    monitor['Velectrode'] = cell.hr.h.Vector()
-    print(f'Test Initial Conditions\n   at site: {str(electrode_site):s}\n   with file: {str(filename):s}')
-    monitor['Velectrode'].record(electrode_site(0.5)._ref_v, sec=electrode_site)
-    
-    restore_initial_conditions_state(cell, filename=filename, electrode_site=electrode_site)
-    cell.hr.h.t = 0.
-    cell.hr.h.tstop = 50.
-#    hf.hr.h.run()
-   # while hf.hr.h.t < hf.hr.h.tstop:
-   #     hf.hr.h.fadvance()
-    cell.hr.h.batch_save() # save nothing
+    monitor["time"] = cell.hr.h.Vector()
+    monitor["time"].record(cell.hr.h._ref_t)
+    monitor["Velectrode"] = cell.hr.h.Vector()
+    cprint(
+        "c",
+        f"Test Initial Conditions\n   at site: {str(electrode_site):s}\n   with file: {str(filename.name):s}",
+    )
+    monitor["Velectrode"].record(electrode_site(0.5)._ref_v, sec=electrode_site)
+
+    restore_initial_conditions_state(
+        cell, filename=filename, electrode_site=electrode_site
+    )
+    cell.hr.h.t = 0.0
+    cell.hr.h.tstop = 50.0
+    #    hf.hr.h.run()
+    # while hf.hr.h.t < hf.hr.h.tstop:
+    #     hf.hr.h.fadvance()
+    cell.hr.h.batch_save()  # save nothing
     cell.hr.h.batch_run(cell.hr.h.tstop, cell.hr.h.dt, "an.dat")
-    print(f'Filename: {str(filename):s}')
-    print(f"\ntime: {str(np.array(monitor['time'])):s}")
-    print(f"\nVelectrode:  {str(np.array(monitor['Velectrode'])):s}")
+    print(f"    Filename: {str(filename.name):s}")
+    print(f"        time: {str(np.array(monitor['time'])):s}")
+    print(f"        Velectrode:  {str(np.array(monitor['Velectrode'])):s}")
     # pg.mkQApp()
     # pl = pg.plot(np.array(monitor['time']), np.array(monitor['Velectrode']))
     # pl.setTitle(filename)
     # QtGui.QApplication.instance().exec_()
-
-
