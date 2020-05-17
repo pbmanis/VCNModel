@@ -61,7 +61,7 @@ class CmdChoices:
     ]
     soundChoices = ["tonepip", "noise", "stationaryNoise", "SAM", "CMMR"]
     speciesChoices = ["mouse", "guineapig"]
-    spirouChoices = ["all", "max=mean", "all=mean", "removelargest", "largestonly"]
+    SpirouChoices = ["all", "max=mean", "all=mean", "removelargest", "largestonly", "twolargest"]
     ANSynapseChoices = ["simple", "multisite"]
 
     srname = ["LS", "MS", "HS"]  # runs 0-2, not starting at 0
@@ -81,8 +81,7 @@ class Params:
     AMPAScale: float = 1.0  # Use the default scale for AMPAR conductances
     ANSynapseType: str = "simple"  # or multisite
     ANSynapticDepression: int = 0  # depression calculation is off by default
-    initIVStateFile: Union[str, Path, None] = None  # 'IVneuronState_%s.dat'
-    initANStateFile: Union[str, Path, None] = None  # 'ANneuronState_%s.dat'
+    initStateFile: Union[str, Path, None] = None  # 'IVneuronState_%s.dat'
     simulationFilename: Union[str, Path, None] = None
     shortSimulationFilename: Union[str, Path, None] = None
     simPath: Union[str, Path, None] = None
@@ -384,13 +383,13 @@ def build_parser():
         dest="F0",
         help="Set tone frequency, Hz (default 4000)",
     )
-    parser.add_argument(
-        "--duration",
-        type=float,
-        default=0.1,
-        dest="pip_duration",
-        help="Set sound stimulus duration (sec; default 0.1)",
-    )
+    # parser.add_argument(
+    #     "--duration",
+    #     type=float,
+    #     default=0.1,
+    #     dest="pip_duration",
+    #     help="Set sound stimulus duration (sec; default 0.1)",
+    # )
     parser.add_argument(
         "-r", "--reps", type=int, default=1, dest="nReps", help="# repetitions"
     )
@@ -426,6 +425,28 @@ def build_parser():
     )
 
     parser.add_argument(
+        "--pip_start",
+        type=float,
+        default=0.1,
+        dest="pip_start",
+        help="Set delay to onset of acoustic stimulus",
+    )   
+    parser.add_argument(
+        "--pip_duration",
+        type=float,
+        default=0.1,
+        dest="pip_duration",
+        help="Set duration of acoustic stimulus",
+    )
+    parser.add_argument(
+        "--pip_offduration",
+        type=float,
+        default=0.05,
+        dest="pip_offduration",
+        help="Time to continue simulation AFTER sound ends",
+    )
+    
+    parser.add_argument(
         "--fmod",
         type=float,
         default=20.0,
@@ -456,13 +477,13 @@ def build_parser():
     )
 
     parser.add_argument(
-        "--spirou",
+        "--Spirou",
         type=str,
-        dest="spirou",
+        dest="Spirou",
         action="store",
         default="all",
-        choices=CmdChoices.spirouChoices,
-        help="Specify spirou experiment type.... ",
+        choices=CmdChoices.SpirouChoices,
+        help="Specify Spirou experiment type.... ",
     )
     # Morphology
     parser.add_argument(
@@ -647,8 +668,9 @@ def getCommands():
                 # sequence for ASCII Horizontal Tab when it encounters it
                 # during json.load
                 config = json.load(open(args.configfile))
+                print(f"Reading JSON configuration file: {args.configfile:s}")
             elif ".toml" in args.configfile:
-                print('getting toml')
+                print(f"Reading TOML configuration file: {args.configfile:s}")
                 config = toml.load(open(args.configfile))
 
         vargs = vars(args)  # reach into the dict to change values in namespace
@@ -660,7 +682,7 @@ def getCommands():
             else:
                 raise ValueError(f"config variable {c:s} does not match with comand parser variables")
 
-        print("All configuration file variables read OK")
+        print("   ... All configuration file variables read OK")
     # now copy into the Param dataclass
     params = Params()
     runinfo = RunInfo()
