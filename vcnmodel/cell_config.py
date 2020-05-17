@@ -94,13 +94,14 @@ synperum2 = 0.799   # new numbers from synapse counting: value is average of 15
                     # std is 0.109
 
 class CellConfig():
-    def __init__(self, datafile=None, verbose=True):
+    def __init__(self, datafile=None, verbose=False):
 
         self.synperum2 = synperum2
         if datafile is None:
             datafile = dendqual
+        self.verbose = verbose
         self.datafile = datafile
-        if verbose:
+        if self.verbose:
             print('CellConfig: configuration dict: ')
         with open(datafile, 'rb') as fh:
             self.SDSummary = pd.read_excel(fh, config['SomaAndDendriteData'], skiprows=3)
@@ -115,7 +116,8 @@ class CellConfig():
             self.build_cell(cellnum)
             r, ct = self.makeDict(f"VCN_c{cellnum:02d}")
     # print(self.VCN_Inputs)
-        self.printCellInputs(self.VCN_Inputs)
+        if self.verbose:
+            self.printCellInputs(self.VCN_Inputs)
 
     def build_cell(self, cellnum):
         dcell = self.ASA[self.ASA['Cell-Inputs'] == cellnum]
@@ -148,7 +150,9 @@ class CellConfig():
         return r, celltype
 
     def printCellInputs_json(self, r):
-        print(json.dumps(r, indent=4))
+        if self.verbose:
+            print('\nCell Inputs:')
+            print(json.dumps(r, indent=4))
 
     def printCellInputs(self, r):
         chs = 'Cell ID, ASA, nsyn(calculated), delay, SRgroup, delay2, axonlength, branch length, syntype, postlocation'
@@ -184,8 +188,8 @@ class CellConfig():
         mesh_area = dcell[soma_area_data].values[0]
         hoc_soma_area = dcell[hocsomarecons].values[0]
         inflateratio = mesh_area/hoc_soma_area
-        print(f"Cell: {cellnum:02d}: Soma mesh area: {mesh_area:.2f}  Soma hoc area: {hoc_soma_area:.2f}  ", end='')
-        print(f"      Soma Inflation ratio: {inflateratio:.3f}")
+        print(f"    Cell: {cellnum:02d}: Soma mesh area: {mesh_area:.2f}  Soma hoc area: {hoc_soma_area:.2f}  ", end='')
+        print(f"          Soma Inflation ratio: {inflateratio:.3f}")
         return(inflateratio)
 
     def get_dendrite_ratio(self, cellID):
@@ -195,8 +199,8 @@ class CellConfig():
         mesh_area = dcell[dend_area_data].values[0]
         hoc_dend_area = dcell[hocdendrecons].values[0]
         inflateratio = mesh_area/hoc_dend_area
-        print(f"Cell: {cellnum:02d}: Dendrite mesh area: {mesh_area:.2f}  HOC Dendrite area: {hoc_dend_area:.2f}  ", end='')
-        print(f" Dendrite Inflation ratio: {inflateratio:.3f}")
+        print(f"    Cell: {cellnum:02d}: Dendrite mesh area: {mesh_area:.2f}  HOC Dendrite area: {hoc_dend_area:.2f}  ", end='')
+        print(f"          Dendrite Inflation ratio: {inflateratio:.3f}")
         return(inflateratio)
 
     def summarize_inputs(self):
@@ -244,7 +248,7 @@ class CellConfig():
                 meansize.append(np.mean(cellendings[cell]))
                 maxsize.append(np.max(cellendings[cell]))
                 convergence.append(len(cellendings[cell]))
-        print('convergence: ', convergence)
+        print('Convergence: ', convergence)
         
         ax[1].set_title('Normalized by largest', fontsize=tsize)
         ax[1].hist(normd, bins=20, range=(0,1.0), align='mid')
