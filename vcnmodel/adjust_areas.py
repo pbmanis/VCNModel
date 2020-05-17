@@ -196,7 +196,7 @@ class AdjustAreas:
         for s in self.dendrites:
             for a in self.cell.areaMap[s]:
                 ta += self.cell.areaMap[s][a]
-        print('dendrite total area: ', ta)
+        # print('    Dendrite total area: ', ta)
         self.HR = cell.hr
         for s in self.HR.h.allsec():
             s.Ra = 150.0
@@ -400,21 +400,20 @@ class AdjustAreas:
                 missedtypes.append(sectype)
         # adj_data["AreaMap"][
         if verbose:
-            cprint('c', f"doing sectypes: {str(set(sectypes)):s}")
+            cprint('c', f"Doing sectypes: {str(set(sectypes)):s}")
             cprint('c', f"used sectypes: {str(set(usedtypes)):s}")
-        cprint('y', f"Skipped sections named: {str(set(missedtypes)):s}")
+        cprint('y', f"    Skipped sections named: {str(set(missedtypes)):s}")
         if self.method:
-            print("\nChanging the areas by changing adj_data diams")
+            print("\n    Changing the areas by changing adj_data diams")
         else:
-            print("\nChanging the areas by changing segment diams")
-        print(f"     Cell AreaMap (cnmodel:cells) : {np.sum(adj_data['AreaMap']):10.2f} ")
-        print(f"     Original area (segareased:)  : {np.sum(adj_data['Areas3D']):10.2f} ")
-        print(f"     Inflated area (adjarea )     : {np.sum(adj_data['Areas3DInflated']):10.2f} ")
+            print("\n    Changing the areas by changing segment diams")
+        print(f"       Cell AreaMap (cnmodel:cells) : {np.sum(adj_data['AreaMap']):10.2f} ")
+        print(f"       Original area (segareased:)  : {np.sum(adj_data['Areas3D']):10.2f} ")
+        print(f"       Inflated area (adjarea )     : {np.sum(adj_data['Areas3DInflated']):10.2f} ")
         cnarea = self.getCNcellArea(sectypes=sectypes)
-        print(f"     CN inflated area: {cnarea:10.2f} ")
-        
+        print(f"    CN inflated area: {cnarea:10.2f} ")
         print(
-            f"Infl factor: {np.sum(adj_data['Areas3DInflated'])/np.sum(adj_data['Areas3D']):6.3f} (should be: {adj_data['InflateRatio']:6.3f})"
+            f"    Inflation factor: {np.sum(adj_data['Areas3DInflated'])/np.sum(adj_data['Areas3D']):6.3f} (should be: {adj_data['InflateRatio']:6.3f})"
         )
 
         return adj_data
@@ -445,13 +444,13 @@ class AdjustAreas:
                 hocarea.append(secarea)
                 hoc_secarea.append(section_area)
                 if verbose:
-                    print(f"adding area from : {sectype:20s} = {secarea:8.3f} [{section_area:8.3f}]", end='')
-                    print(f" (cumul: {np.sum(hocarea):8.3f} [{str(sec):s}]", end='')
-                    print(f" sec L*diam area: {np.pi*sec.L*sec.diam:8.3f}")
+                    print(f"    adding area from : {sectype:20s} = {secarea:8.3f} [{section_area:8.3f}]", end='')
+                    print(f"      (cumul: {np.sum(hocarea):8.3f} [{str(sec):s}]", end='')
+                    print(f"      sec L*diam area: {np.pi*sec.L*sec.diam:8.3f}")
             if sectype == self.cell.somaname:
-                self.cell.set_soma_size_from_Section(sec)  # make sure this is updated
+                self.cell.set_soma_size_from_soma_Sections(repeat=True)  # make sure this is updated
  
-        print(f"Section area: {np.sum(hoc_secarea):8.3f}")
+        print(f"    Section area: {np.sum(hoc_secarea):8.3f}")
         return(np.sum(hocarea))      
 
     def plot_areas(self, pt3d: dict):
@@ -572,14 +571,14 @@ class SetNSegs(object):
         if self.cell is None:  # no hoc reader file, so no adjustments
             return
         for section in self.cell.allsec():
-            print(section, section.L, d_lambda, freq)
+            # print(section, section.L, d_lambda, freq)
             nseg = 1 + 2 * int(
                 (section.L / (d_lambda * self._lambda_f(section, frequency=freq)) + 0.9)
                 / 2.0
             )
             if nseg < minimum:
                 nseg = minimum  # ensure at least 3 segments per section...
-            print('section name: ', section.name(), ' nseg: ', nseg)
+            # print('section name: ', section.name(), ' nseg: ', nseg)
             try:
                 section.nseg = int(nseg)
             except:
@@ -721,7 +720,7 @@ def recon_hoc():
     cell = f"{cname:s}/Morphology/{cname:s}.hocx"
     cell = f"{cname:s}/Morphology/{cname:s}_Full.hoc"
     fn = Path(basepath, cell)
-    print(fn.is_file())
+    # print(fn.is_file())
     cconfig = cell_config.CellConfig()
     sinflateratio = cconfig.get_soma_ratio(cname)
     dinflateratio = cconfig.get_dendrite_ratio(cname)
