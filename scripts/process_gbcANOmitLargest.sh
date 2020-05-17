@@ -1,12 +1,16 @@
 #!/bin/bash
+CONFIG="autoscale_multisite_parallel.toml"
+RUNTEXT="running the individual initialization and running AN PSTH protocols"
+CELLNAMES="02 05 06 09 10 11 13 17 30"
 
-FILES="VCN_c09" # " VCN_c11 VCN_c17 VCN_c18"
-
-for f in $FILES
+for f in $CELLNAMES
 do
-    python vcnmodel/model_run.py $f -H -P initAN --configfile autoscale.toml 
-    python vcnmodel/model_run.py $f -H -P runANPSTH -r 1 --Spirou removelargest --configfile autoscale.toml &
+    # python vcnmodel/model_run2.py $f -H -P initAN --configfile autoscale.toml
+    python vcnmodel/model_run2.py VCN_c$f -H -P runANPSTH -r 10 --Spirou removelargest --configfile $CONFIG
+    
 done
+
+wait
 
 echo ANPSTH generators complete
 # for f in $FILES

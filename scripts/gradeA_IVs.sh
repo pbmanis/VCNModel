@@ -14,8 +14,8 @@ echo "running the individual initialization and/or running of IV protocols"
 for f in $CELLNAMES
 do
     echo $f
-    #python vcnmodel/model_run2.py VCN_c$f -F -P initIV --configfile $CONFIG
-    python vcnmodel/model_run2.py VCN_c$f -F -P runIV  --configfile $CONFIG &
+    python vcnmodel/model_run2.py VCN_c$f -F -P initIV --configfile $CONFIG
+    python vcnmodel/model_run2.py VCN_c$f -F -P runIV  --configfile $CONFIG
 done
 
 wait
