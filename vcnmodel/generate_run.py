@@ -77,7 +77,7 @@ class GenerateRun:
         electrodeSection = somasecs[0]
         self.electrode_site = self.hf.get_section(electrodeSection)
         if self.RunInfo.dendriticElectrodeSection is not None:
-            print(self.RunInfo.dendriticElectrodeSection)
+            print('GenerateRun: Dendrite electrode section: ', self.RunInfo.dendriticElectrodeSection)
             dend_sections = list(
                 self.hf.sec_groups[self.RunInfo.dendriticElectrodeSection]
             )
@@ -118,7 +118,7 @@ class GenerateRun:
                 spks = csv.reader(csvfile, delimiter=",")
                 for i, row in enumerate(spks):
                     if i == 0:  # first line
-                        print(row)
+                        # print(row)
                         maxt = float(row[1]) * 1000
                         reps = int(row[0])
                         continue
@@ -485,6 +485,7 @@ class GenerateRun:
         assembles the data, saves it to disk and plots the results.
         Inputs: flag to put up a test plot....
         """
+        vfile = "v.dat"
         if verbose:
             print("_executeRun")
         assert self.run_initialized == True
@@ -500,8 +501,9 @@ class GenerateRun:
         """
         self.hf.h.batch_save()  # save nothing
         print("Temperature in run at start: {:6.1f}".format(self.hf.h.celsius))
-        self.hf.h.batch_run(self.hf.h.tstop, self.hf.h.dt, "v.dat")
+        self.hf.h.batch_run(self.hf.h.tstop, self.hf.h.dt, vfile)
         print("Finishing Vm: {:6.2f}".format(self.electrode_site.v))
+        Path(vfile).unlink()  # delete the v.dat file once we are done.
         self.monitor["time"] = np.array(self.monitor["time"])
         self.monitor["time"][0] = 0.0
         if verbose:
