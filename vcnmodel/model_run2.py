@@ -343,7 +343,9 @@ class ModelRun:
             model_Pars += f"_dend={self.Params.dendrite_inflation:.3f}"
         if self.Params.ASA_inflation != 1.0:
             model_Pars += f"_ASA={self.Params.ASA_inflation:.3f}"
-        
+        if self.Params.dendriteMode != 'normal':
+            model_Pars += f"_{self.Params.dendriteMode:s}"
+
         if self.RunInfo.Spirou == "all":
             add_Pars = "all"
         elif self.RunInfo.Spirou == "max=mean":
@@ -573,7 +575,7 @@ class ModelRun:
 
             changes = None
             nach = None  # uses default
-            if self.Params.modelName == "XM13_nacncoop":
+            if self.Params.modelName == "XM13_nacncoop" and self.Params.dendriteMode=='normal':
                 from vcnmodel.model_data import data_XM13_nacncoop as CHAN
 
                 nach = "nacncoop"
@@ -592,6 +594,47 @@ class ModelRun:
                     model_type="II",
                     data=CHAN.ChannelCompartments,
                 )
+            
+            if self.Params.modelName == "XM13_nacncoop" and self.Params.dendriteMode=='passive':
+                from vcnmodel.model_data import data_XM13_nacncoop_pasdend as CHAN
+
+                nach = "nacncoop"
+                changes = data.add_table_data(
+                    "XM13_nacncoop_channels",
+                    row_key="field",
+                    col_key="model_type",
+                    species="mouse",
+                    data=CHAN.ChannelData,
+                )
+                changes_c = data.add_table_data(
+                    "XM13_nacncoop_channels_compartments",
+                    row_key="parameter",
+                    col_key="compartment",
+                    species="mouse",
+                    model_type="II",
+                    data=CHAN.ChannelCompartments,
+                )            
+            
+            if self.Params.modelName == "XM13_nacncoop" and self.Params.dendriteMode=='active':
+                from vcnmodel.model_data import data_XM13_nacncoop_actdend as CHAN
+
+                nach = "nacncoop"
+                changes = data.add_table_data(
+                    "XM13_nacncoop_channels",
+                    row_key="field",
+                    col_key="model_type",
+                    species="mouse",
+                    data=CHAN.ChannelData,
+                )
+                changes_c = data.add_table_data(
+                    "XM13_nacncoop_channels_compartments",
+                    row_key="parameter",
+                    col_key="compartment",
+                    species="mouse",
+                    model_type="II",
+                    data=CHAN.ChannelCompartments,
+                )
+                            
             elif self.Params.modelName == "XM13":
                 import model_data.data_XM13 as CHAN
 
@@ -611,11 +654,10 @@ class ModelRun:
                     model_type="II",
                     data=CHAN.ChannelCompartments,
                 )
+            
             elif self.Params.modelName == "XM13_nacn":
                 import model_data.data_XM13_nacn as CHAN
-
                 nach = "nacn"
-
                 changes = data.add_table_data(
                     "XM13_nacn_channels",
                     row_key="field",
@@ -631,6 +673,7 @@ class ModelRun:
                     model_type="II",
                     data=CHAN.ChannelCompartments,
                 )
+            
             elif self.Params.modelName == "XM13_nabu":
                 import model_data.data_XM13_nabu as CHAN
 
@@ -650,6 +693,7 @@ class ModelRun:
                     model_type="II",
                     data=CHAN.ChannelCompartments,
                 )
+            
             if changes is not None:
                 data.report_changes(changes)
                 data.report_changes(changes_c)
@@ -661,6 +705,7 @@ class ModelRun:
                 modelType=self.Params.modelType,
                 nach=nach,
             )
+        
         elif self.Params.cellType in ["tstellate", "TStellate"]:
             print(f"Creating a t-stellate cell (run_model) ")
             self.post_cell = cells.TStellate.create(
@@ -669,6 +714,7 @@ class ModelRun:
                 species=self.Params.species,
                 modelType=self.Params.modelName,
             )
+       
         elif self.Params.cellType in ["dstellate", "DStellate"]:
             print(f"Creating a D-stellate cell (run_model)")
             self.post_cell = cells.DStellate.create(
@@ -809,6 +855,25 @@ class ModelRun:
 
         self.Params.setup = True
 
+    def view_model(self, par_map: dict = None):
+        if not self.Params.setup:
+            self.setup_model(par_map=par_map)        
+        import neuronvis as NV
+        viewitemn = "sec-type"
+        if self.RunInfo.viewitem is not "None":
+            viewitem = self.RunInfo.viewitem
+        NV.hocRender.Render(
+            hoc_file=self.post_cell.hr.h,# hoc_file,
+            display_mode='cylinders', # display_mode,
+            renderer='pyqtgraph', # args["renderer"],
+            display=viewitem, # 'sec-type', # args["display"],
+            mechanism='nacncoop', # args["mechanism"],
+            alpha=0.45, # args["alpha"],
+            sim_data=None, # sim_data,
+        )
+        exit()
+        
+        
     def run_model(self, par_map: dict = None):
         if not self.Params.setup:
             self.setup_model(par_map=par_map)
@@ -2191,7 +2256,10 @@ def main():
 
     parsedargs, params, runinfo = vcnmodel.model_params.getCommands()  # get from command line
     model = ModelRun(params=params, runinfo=runinfo)  # create instance of the model
-    model.run_model()
+    if parsedargs.viewitem != "None":
+        model.view_model()
+    else:
+        model.run_model()
 
     # if sys.flags.interactive == 0:
     #     pg.QtGui.QApplication.exec_()

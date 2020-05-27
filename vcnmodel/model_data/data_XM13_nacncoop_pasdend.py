@@ -2,6 +2,8 @@
 Data structures for model_run
 XM13 with cooperative nacn  channels
 
+Passive Dendrites: The dendrites have LEAK channels only, no voltage gated channels.
+
 """
 
 ChannelData = u"""
@@ -94,11 +96,11 @@ ChannelCompartments = u"""
     --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
                        axon       Unmyelinated_Axon    Myelinated_Axon    Axon_Initial_Segment    Axon_Hillock     soma        Proximal_Dendrite     Distal_Dendrite    Dendritic_Hub     Dendritic_Swelling
                                                                                                                                                       
-    nacncoop_gbar      3.0 [1]    15. [1]              0.0 [1]            15. [1]                 9.0 [1]          2.5 [1]     0.5 [1]               0.5 [1]            0.5 [1]           0.5 [1] 
-    kht_gbar           1.0 [1]    1.0 [1]              0.01 [1]           2.0 [1]                 1.0 [1]          1.0 [1]     1.0 [1]               1.0 [1]            1.0 [1]           1.0 [1] 
-    klt_gbar           1.0 [1]    1.0 [1]              0.01 [1]           1.0 [1]                 1.0 [1]          1.0 [1]     0.5 [1]               0.5 [1]            0.5 [1]           0.5 [1] 
-    ihvcn_gbar         0.0 [1]    0.0 [1]              0.0 [1]            0.5 [1]                 0.0 [1]          1.0 [1]     0.5 [1]               0.5 [1]            0.5 [1]           0.5 [1] 
-    leak_gbar          1.0 [1]    0.25 [1]             0.25e-3 [1]        1.0 [1]                 1.0 [1]          1.0 [1]     0.5 [1]               0.5 [1]            0.5 [1]           0.5 [1] 
+    nacncoop_gbar      3.0 [1]    15. [1]              0.0 [1]            15. [1]                 9.0 [1]          2.5 [1]     0.0 [1]               0.0 [1]            0.0 [1]           0.0 [1] 
+    kht_gbar           1.0 [1]    1.0 [1]              0.01 [1]           2.0 [1]                 1.0 [1]          1.0 [1]     0.0 [1]               0.0 [1]            0.0 [1]           0.0 [1] 
+    klt_gbar           1.0 [1]    1.0 [1]              0.01 [1]           1.0 [1]                 1.0 [1]          1.0 [1]     0.0 [1]               0.0 [1]            0.0 [1]           0.0 [1] 
+    ihvcn_gbar         0.0 [1]    0.0 [1]              0.0 [1]            0.5 [1]                 0.0 [1]          1.0 [1]     0.0 [1]               0.0 [1]            0.0 [1]           0.0 [1] 
+    leak_gbar          1.0 [1]    0.25 [1]             0.25e-3 [1]        1.0 [1]                 1.0 [1]          1.0 [1]     0.5 [1]               0.5 [1]            0.0 [1]           0.0 [1] 
     leak_erev          -65. [1]   -65. [1]             -65. [1]           -65. [1]                -65. [1]         -65. [1]    -65. [1]              -65. [1]           -65. [1]          -65. [1]
     na_type            nacncoop   nacncoop             nacncoop           nacncoop                nacncoop         nacncoop    nacncoop              nacncoop           nacncoop          nacncoop
     nacncoop_vshift    0.  [2]    0. [2]               0. [2]             0. [2]                  0. [2]           0. [2]      0.  [2]               0.  [2]            0.  [2]           0.  [2] 

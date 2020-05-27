@@ -35,7 +35,7 @@ def firing_rate(spikes):
     Rate of the spike train.
     """
     if len(spikes) < 2:
-        return NaN
+        return np.nan
     return (len(spikes) - 1) / (spikes[-1] - spikes[0])
 
 
@@ -44,7 +44,7 @@ def CV(spikes):
     Coefficient of variation.
     """
     if spikes == []:
-        return NaN
+        return np.nan
     ISI = diff(spikes)  # interspike intervals
     return std(ISI) / mean(ISI)
 
@@ -60,7 +60,7 @@ def correlogram(T1, T2, width=20.0, bin=1.0, T=None):
     TODO: optimise?
     """
     if (T1 == []) or (T2 == []):  # empty spike train
-        return NaN
+        return np.nan
     # Remove units
     width = float(width)
     T1 = np.array(T1)
@@ -192,7 +192,7 @@ def total_correlation(T1, T2, width=20, T=None):
     Modified: width has neg and pos parts. 
     """
     if (T1 == []) or (T2 == []):  # empty spike train
-        return NaN
+        return np.nan
     # Remove units
     if not np.isscalar(width):
         twidth = sum(width)

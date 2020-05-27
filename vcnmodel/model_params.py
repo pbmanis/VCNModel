@@ -1,4 +1,3 @@
-import sys
 import time
 from pathlib import Path
 import argparse
@@ -48,6 +47,11 @@ class CmdChoices:
         "HS",
         "fromcell",
     ]  # AN SR groups (assigned across all inputs)
+    dendriteChoices = [
+        "normal",
+        "passive",
+        "active",
+    ]
     protocolChoices = [
         "initIV",
         "testIV",
@@ -89,6 +93,7 @@ class Params:
     usedefaulthoc: bool = False
     cellType: str = CmdChoices.cellChoices[0]
     modelName: str = CmdChoices.modelNameChoices[0]
+    dendriteMode: str=CmdChoices.dendriteChoices[0]
     modelType: str = CmdChoices.modelTypeChoices[0]
     SGCmodelType: str = CmdChoices.SGCmodelChoices[0]
     species: str = CmdChoices.speciesChoices[0]
@@ -176,6 +181,7 @@ class RunInfo:
     runProtocol: str = CmdChoices.protocolChoices[
         2
     ]  # testIV is default because it is fast and should be run often
+    viewitem:str = "None"
     runName: str = "Run"
     manipulation: str = "Canonical"
     preMode: str = "cc"
@@ -289,6 +295,13 @@ def build_parser():
         help="Define the model type (default: XM13)",
     )
     parser.add_argument(
+        '--dendritemode',
+        dest="dendriteMode",
+        default="normal",
+        choices=CmdChoices.dendriteChoices,
+        help="Choose dendrite table (normal, active, passive)",
+    )
+    parser.add_argument(
         "--sgcmodel",
         type=str,
         dest="SGCmodelType",
@@ -328,6 +341,13 @@ def build_parser():
         action="store_true",
         default=False,
         help='Use "full" hoc file as in "VCN_c02_Full.hoc instead of VCN_c02.hoc")',
+    )
+    parser.add_argument(
+        "-v",
+        "--view",
+        dest="viewitem",
+        default="None",
+        help="Render cell with neuronvis to view structure or channel decoration"
     )
 
     parser.add_argument(
