@@ -343,8 +343,8 @@ class ModelRun:
             model_Pars += f"_dend={self.Params.dendrite_inflation:.3f}"
         if self.Params.ASA_inflation != 1.0:
             model_Pars += f"_ASA={self.Params.ASA_inflation:.3f}"
-        if self.Params.dendriteMode != 'normal':
-            model_Pars += f"_{self.Params.dendriteMode:s}"
+        #if self.Params.dendriteMode != 'normal':
+        model_Pars += f"_{self.Params.dendriteMode:s}"
 
         if self.RunInfo.Spirou == "all":
             add_Pars = "all"
@@ -358,6 +358,10 @@ class ModelRun:
             add_Pars = "largestonly"
         elif self.RunInfo.Spirou == "twolargest":
             add_Pars = "twolargest"
+        elif self.RunInfo.Spirou == "threelargest":
+            add_Pars = "threelargest"
+        elif self.RunInfo.Spirou == "fourlargest":
+            add_Pars = "fourlargest"
 
         if self.Params.inputPattern is None:
             inputs = "self"
@@ -862,14 +866,16 @@ class ModelRun:
         viewitemn = "sec-type"
         if self.RunInfo.viewitem is not "None":
             viewitem = self.RunInfo.viewitem
+        mech = self.Params.displaychannel
         NV.hocRender.Render(
             hoc_file=self.post_cell.hr.h,# hoc_file,
             display_mode='cylinders', # display_mode,
             renderer='pyqtgraph', # args["renderer"],
             display=viewitem, # 'sec-type', # args["display"],
-            mechanism='nacncoop', # args["mechanism"],
+            mechanism=mech, # args["mechanism"],
             alpha=0.45, # args["alpha"],
             sim_data=None, # sim_data,
+            output_file=str(Path('Renderings', f'{self.cellID:s}_{mech:s}_{self.Params.dendriteMode:s}.png')),
         )
         exit()
         
@@ -1308,8 +1314,25 @@ class ModelRun:
         
         if self.RunInfo.Spirou != 'all':
             print(f"   Spirou test type: {self.RunInfo.Spirou:s}")
-            
-        if self.RunInfo.Spirou in ["max=mean"]:
+
+        elif self.RunInfo.Spirou in ["all=mean"]:
+            print("    setting ALL to the mean of all inputs (no variance)")
+            gMax, gnMax, nSyn = self.get_synapses(synapse)
+
+            meangmax = np.mean(gMax)  # mean conductance each synapse
+            meangnmax = np.mean(gnMax)
+            imaxgmax = np.argmax(gMax)  # synapse with largest conductance
+            print(self.RunInfo.Spirou)
+            print("    AMPA: mean, gmax, imax: ", meangmax, gMax, imaxgmax)
+            print("    NMDA: mean, gnmax: ", meangnmax, gnMax)
+            gMax[imaxgmax] = meangmax
+            gnMax[imaxgmax] = meangnmax
+            for i in range(len(synapse)):
+                self.set_synapse(synapse[i], meangmax / nSyn[i], meangnmax / nSyn[i])
+            cprint('g', "    Revised synapse values:")
+            self.get_synapses(synapse, printvalues=True)
+                        
+        elif self.RunInfo.Spirou in ["max=mean"]:
             cprint('c', "Setting largest to mean of all inputs")
             gMax, gnMax, nSyn = self.get_synapses(synapse)
             meangmax = np.mean(gMax)  # mean conductance each synapse
@@ -1340,52 +1363,30 @@ class ModelRun:
             self.get_synapses(synapse, printvalues=True)
             
         elif self.RunInfo.Spirou in ["largestonly"]:
-            cprint('c', "Setting all terminal inputs to 0 except largest")
-            gMax, gnMax, nSyn = self.get_synapses(synapse)
-            imaxgmax = np.argmax(gMax)  # synapse with largest conductance
-            print("    AMPA:  gMax, imax: ", gMax, imaxgmax)
-            print("    NMDA:  gnmax: ",gnMax)
-            for i in range(len(gMax)):
-                if i != imaxgmax:
-                    self.set_synapse(
-                        synapse[i], 0.0, 0.0,
-                    )
-            cprint('g', "    Revised synapse values:")
-            self.get_synapses(synapse, printvalues=True)
-
+            nlarge = 1
+            cprint('c', "Setting all terminal inputs to 0 except the one largest")
         elif self.RunInfo.Spirou in ["twolargest"]:
+            nlarge = 2
             cprint('c', "Setting all terminal inputs to 0 except the two largest")
+        elif self.RunInfo.Spirou in ["threelargest"]:
+            nlarge = 3
+            cprint('c', "Setting all terminal inputs to 0 except the three largest")
+        elif self.RunInfo.Spirou in ["fourlargest"]:
+            nlarge = 4
+            cprint('c', "Setting all terminal inputs to 0 except the four largest")
+        if self.RunInfo.Spirou.find('largest') >= 0:
             gMax, gnMax, nSyn = self.get_synapses(synapse)
             i_gMaxSorted = np.argsort(gMax)  # synapse with largest conductance
             print("    AMPA:  gMax, imax: ", gMax, i_gMaxSorted)
             print("    NMDA:  gnmax: ",gnMax)
 
             for i in range(len(gMax)):
-                if i not in i_gMaxSorted[-2:]:
+                if i not in i_gMaxSorted[-nlarge:]:
                     self.set_synapse(
                         synapse[i], 0.0, 0.0,
                     )
             cprint('g', "    Revised synapse values:")
             self.get_synapses(synapse, printvalues=True)
-        
-        elif self.RunInfo.Spirou in ["all=mean"]:
-            print("    setting ALL to the mean of all inputs (no variance)")
-            gMax, gnMax, nSyn = self.get_synapses(synapse)
-
-            meangmax = np.mean(gMax)  # mean conductance each synapse
-            meangnmax = np.mean(gnMax)
-            imaxgmax = np.argmax(gMax)  # synapse with largest conductance
-            print(self.RunInfo.Spirou)
-            print("    AMPA: mean, gmax, imax: ", meangmax, gMax, imaxgmax)
-            print("    NMDA: mean, gnmax: ", meangnmax, gnMax)
-            gMax[imaxgmax] = meangmax
-            gnMax[imaxgmax] = meangnmax
-            for i in range(len(synapse)):
-                self.set_synapse(synapse[i], meangmax / nSyn[i], meangnmax / nSyn[i])
-            cprint('g', "    Revised synapse values:")
-            self.get_synapses(synapse, printvalues=True)
-        else:
-            pass # placeholder
 
         # run using pyqtgraph's parallel support
         if self.Params.Parallel:

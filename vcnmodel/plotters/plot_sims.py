@@ -32,30 +32,86 @@ from matplotlib import rc
 rc("text", usetex=False)
 import matplotlib.pyplot as mpl
 import pylibrary.plotting.plothelpers as PH
+import pylibrary.plotting.styler as PLS
 
 modeltypes = ["mGBC", "XM13", "RM03", "XM13_nacncoop"]
 runtypes = ["AN", "an", "IO", "IV", "iv", "gifnoise"]
 experimenttypes = [None, "delays", "largestonly", "removelargest", "mean", "allmean", "twolargest"]
 # modetypes = ['find', 'singles', 'IO', 'multi']
 analysistypes = ['traces', 'PSTH', 'revcorr', 'SAC']
-
-def grAList():
+dendriteChoices = [
+        "normal",
+        "passive",
+        "active",
+    ]
+def grAList() -> list:
+    """
+    Return a list of the 'grade A' cells from the SBEM project
+    """
+    
     return [2, 5, 6, 9, 10, 11, 13, 17, 30]
     
 @dataclass
 class PData:
+    """
+    data class for some parameters that control what we read
+    """
     gradeA: list = field(default_factory = grAList)
     default_modelName:str = "XM13_nacncoop"
     soma_inflate:bool = True
     dend_inflate:bool = True
     basepath:str = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
+    thiscell:str=""
 
-def norm(p, n):
+def def_empty_np():
+    return np.array(0)
+
+def def_empty_list():
+    return []
+
+@dataclass
+class RevCorrPars:
+    ntrials:int =  1
+    ninputs:int = 1 
+
+    # clip trace to avoid end effects
+    min_time:float = 10.0 # msec to allow the system to settlt  # this window needs to be at least as long as minwin
+    max_time:float = 250.0 # this window needs to be at least as long as maxwin
+    binw:float = 0.1
+    minwin:float = -5
+    maxwin:float = 2.5
+    amax:float = 0.
+
+@dataclass
+class RevCorrData:
+    C:list = field(default_factory = def_empty_list)
+    TC:list = field(default_factory = def_empty_list)
+    st:np.array = field(default_factory = def_empty_np)
+    tx:np.array =field(default_factory = def_empty_np)
+    ti:np.array =field(default_factory = def_empty_np)
+    ti_avg:np.array =field(default_factory = def_empty_np)
+    sv_all:np.array = field(default_factory = def_empty_np)
+    sv_avg:np.array = field(default_factory = def_empty_np) 
+    sites:np.array =  field(default_factory = def_empty_np)
+    nsp:int = 0
+    max_coin_rate: float=0
+    
+
+def norm(p:Union[list, np.ndarray], n:int) -> np.ndarray:
+    """
+    Simple function to normalize the n'th point of p
+    by the min and max
+    """
     pmin = np.min(p)
     pmax = np.max(p)
     return (p[n] - pmin) / float(pmax - pmin)
 
-def twinax(fig, ax1, pos=0.):
+def twinax(fig:object, ax1:object, pos:float=0.) -> object:
+    """
+    Create a 'twin' axis on the right side of a plot
+    Note: pyqtgraph.plotting.styles can also do an inset
+    which may be used instead
+    """
     ax2 = fig.add_axes(ax1.get_position(True), sharex=ax1)
     ax2.yaxis.tick_right()
     ax2.yaxis.set_label_position('right')
@@ -87,7 +143,7 @@ def clean_spiketimes(spikeTimes, mindT=0.7):
         spikeTimes = st[~np.isnan(st)]
     return spikeTimes
 
-def get_data_file(fn, changetimestamp, PD) ->Union[None, tuple]:
+def get_data_file(fn:Union[str, Path], changetimestamp:object, PD:dataclass) ->Union[None, tuple]:
     """
     Get a data file, and also parse information from the file
     for display
@@ -160,7 +216,7 @@ def get_data_file(fn, changetimestamp, PD) ->Union[None, tuple]:
       print(stitle)
     else:
         return None
-
+        
     if ivdatafile is None:
       print("no file matching conditions : ", str(ivdatafile))
       return None
@@ -173,7 +229,7 @@ def get_data_file(fn, changetimestamp, PD) ->Union[None, tuple]:
     return par, stitle, ivdatafile, filemode, d
 
 
-def analyze_data(ivdatafile, filemode, protocol): 
+def analyze_data(ivdatafile:Union[Path, str], filemode, protocol:str) -> tuple: 
     """
     Provide basic spike detection, shape analysis, and
     IV analysis if appropriate
@@ -198,36 +254,40 @@ def analyze_data(ivdatafile, filemode, protocol):
     
     SP.set_detector('Kalluri')  # spike detector
 
-    AR.tstart = 1.0
-    AR.tend = 0.4*1e3
-    AR.tdur = 0.399*1e3
+    # AR.tstart = 1.0
+    # AR.tend = 0.4*1e3
+    # AR.tdur = 0.399*1e3
     # print(AR.tstart, AR.tend, AR.tdur, AR.sample_rate)
     SP.analyzeSpikes()
     SP.analyzeSpikeShape()
 
     RMA = None
     if protocol == 'IV':
-      SP.fitOne(function="fitOneOriginal")
-      RM.analyze(
-          rmpregion=[0.0, AR.tstart - 0.001],
-          tauregion=[AR.tstart, AR.tstart + (AR.tend - AR.tstart) / 5.0],
-          to_peak=True,
-          tgap=tgap,
-      )
+        # for trial in range(len(AR.traces)):
+        #     mpl.plot(AR.time_base, AR.traces[trial]*1e3, linewidth=0.5)
+        # mpl.show()
+        # exit()
+        SP.fitOne(function="fitOneOriginal")
+        RM.analyze(
+              rmpregion=[0.0, AR.tstart - 0.001],
+              tauregion=[AR.tstart, AR.tstart + (AR.tend - AR.tstart) / 5.0],
+              to_peak=True,
+              tgap=tgap,
+          )
 
-      RMA = RM.analysis_summary
+        RMA = RM.analysis_summary
       # print("Analysis: RMA: ", RMA)
 
     return AR, SP, RMA
 
-def plot_traces(P, pgbc, fn, PD, changetimestamp, protocol):
+def plot_traces(P:object, pgbc:object, fn:Union[Path, str], PD:dataclass, changetimestamp:object, protocol:str) -> None:
     x = get_data_file(fn, changetimestamp, PD)
     mtime = Path(fn).stat().st_mtime
     timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d-%H:%M')
     if x is None:
-      print("No simulation found that matched conditions")
-      print(fng)
-      return
+        print("No simulation found that matched conditions")
+        print(fng)
+        return
     # unpack x
     par, stitle, ivdatafile, filemode, d = x 
     AR, SP, RMA = analyze_data(ivdatafile, filemode, protocol)
@@ -265,190 +325,75 @@ def plot_traces(P, pgbc, fn, PD, changetimestamp, protocol):
     toptitle += f"\n{timestamp_str:s}"
     P.axdict[pgbc].set_title(toptitle, fontsize=5)
 
+def plot_revcorr_map(P, pgbc, inputlist, ntrials, C, TC, st, tx, ti_avg, sv_all, sv_avg, sites, nsp, max_coin_rate, window):
+    pass
 
-def plot_revcorr(P, pgbc, fn, PD, changetimestamp, protocol,
-        thr=-20., width=4.0):
-    x = get_data_file(fn, changetimestamp, PD)
-    mtime = Path(fn).stat().st_mtime
-    timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d-%H:%M')
-    if x is None:
-      print("No simulation found that matched conditions")
-      print(fng)
-      return
-    # unpack x
-    par, stitle, ivdatafile, filemode, d = x 
-    
+def plot_revcorr2(P:object, pgbc:str, PD:dataclass, RCP:dataclass, RCD:dataclass):
     seaborn.set_style('ticks')
-    AR, SP, RMA = analyze_data(ivdatafile, filemode, protocol)
-
-    SC = cell_config.CellConfig()
-    syninfo = SC.VCN_Inputs[pgbc]
-
-    st = SP.spikeIndices
-    trials = list(d['Results'].keys())
-    npost = 0  # number of postsynaptic spikes
-    npre = 0  # number of presynaptic spikes
-    for i, tr in enumerate(trials):
-        trd = d['Results'][tr] # trial data
-        sv = trd['somaVoltage']
-        ti = trd['time']
-        dt = ti[1]-ti[0]
-        # st[tr] = PU.findspikes(ti, sv, thr, dt=dt, mode='threshold')
-        # st[tr] = clean_spiketimes(st[tr])
-        npost += len(st[tr])
-        for n in range(len(trd['inputSpikeTimes'])):  # for each sgc
-            npre += len(trd['inputSpikeTimes'][n])
-    ntrials = len(trials)
-
-    print(f'Detected {npost:d} Post spikes')
-    print(f'Detected {npre:d} Presynaptic spikes')
-    print ("# trials: ", ntrials)
-    ninputs = len(syninfo[1])
-    sites = np.zeros(ninputs)
-    print('ninputs: ', ninputs)
-    # clip trace to avoid end effects
-    min_time = 10.0 # msec to allow the system to settlt  # this window needs to be at least as long as minwin
-    max_time = np.max(ti) - min_time # this window needs to be at least as long as maxwin
-    binw = 0.1
-    minwin = -5
-    maxwin = 2.5
-    window = (minwin, maxwin)
-    tcwidth = -minwin # msec for total correlation width
-    xwidth = -minwin
-    tx = np.arange(-xwidth, 0, binw)
-    amax = 0.
-
-    for isite in range(ninputs): # precompute areas
-        area = syninfo[1][isite][0]
-        if area > amax:
-            amax = area
-        sites[isite] = int(np.around(area*SC.synperum2))
-        
-    summarySiteTC = {}
-    maxtc = 0
     ax = P.axdict[pgbc]
-    secax = twinax(P.figure_handle, ax, pos=maxwin)
-    sv_sites = []
-    C = None
-    nspk_plot = 0
+    #secax = twinax(P.figure_handle, ax, pos=maxwin)
+    secax = PLS.create_inset_axes([0, 0.5, 1, 0.5], ax)
+    PH.noaxes(secax, 'xy')
 
-    inputlist = range(ninputs)
-    spksplotted = False
-    for isite in inputlist: # range(ninputs):  # for each ANF input (get from those on first trial)
-        # print('isite: ', isite)
-        firstwithspikes=False
-        sv_avg = np.zeros(1)
-        sv_all = np.zeros(1)
-        nsp = 0
-        n_avg = 0
-
-        for trial in range(ntrials):  # sum across trials
-            # print('   trial: ', trial)
-            # ax.plot(d['Results'][trial]['time'], d['Results'][trial]['somaVoltage'])
- #            continue
-             # stx = st[trial]
-            # stx = d['Results'][trial]['spikeTimes']  # get postsynaptic spike train for this trial measured during simulatoin
-            stx = AR.time_base[SP.spikeIndices[trial]]
-            stx = stx[(stx > min_time) & (stx < max_time)]  # more than minimum delay
-            anx = d['Results'][trial]['inputSpikeTimes'][isite]
-            anx = anx[(anx > min_time) & (anx < max_time)]
-            if len(stx) == 0 or len(anx) == 0:
-                print('empty array for stx or anx')
-                continue
-            andirac = np.zeros(int(200./binw)+1)
-            if not firstwithspikes:
-                firstwithspikes = True
-                C = SPKS.correlogram(stx, anx, width=xwidth, bin=binw, T=None)
-                TC = SPKS.total_correlation(anx, stx, width=tcwidth, T=None)
-                if np.isnan(TC):
-                    TC = 0.
-                # definition: spike_triggered_average(spikes,stimulus,max_interval,dt,onset=None,display=False):
-                # C = SPKS.spike_triggered_average(st[trial]*ms, andirac*ms, max_interval=width*ms, dt=binw*ms)
-            else:
-                C = C + SPKS.correlogram(stx, anx, width=xwidth, bin=binw, T=None)
-                tct = SPKS.total_correlation(anx, stx, width=tcwidth, T=None)
-                if ~np.isnan(tct):
-                    TC = TC + tct
-
-            # accumulate postsynaptic spikes
-            if nsp == 0:  # first spike in trace
-                reltime = np.around(ti,5) - np.around(stx[0], 5)
-                areltime = np.argwhere((minwin <= reltime) & (reltime <= maxwin)).squeeze()
-                sv_avg = d['Results'][trial]['somaVoltage'][areltime]
-                sv_all = sv_avg.copy()
-                ti_avg = ti[0:len(areltime)] + minwin
-                nsp += 1
-    
-            else:  # rest of spikes
-                for n in range(1,len(stx)):
-                    reltime = np.around(ti, 5) - np.around(stx[n], 5)
-                    areltime = np.argwhere((minwin <= reltime) & (reltime <= maxwin)).squeeze()
-                    if len(areltime) > len(sv_avg):
-                        areltime = areltime[0:len(sv_avg)]
-                    if len(areltime) < len(sv_avg):
-                        nextend = len(sv_avg)-len(areltime)
-                        areltime = np.append(areltime, np.arange(areltime[-1]+1, areltime[-1]+nextend+1))
-                    if trial == 0:
-                        sv_avg = d['Results'][trial]['somaVoltage'][areltime]
-                        sv_all = sv_avg.copy()
-                        ti_avg = ti[0:len(areltime)] + minwin
-                    else:
-                        sv_avg += d['Results'][trial]['somaVoltage'][areltime]
-                        sv_all = np.vstack((sv_all, d['Results'][trial]['somaVoltage'][areltime]))
-                    nsp += 1
-
-            nspk_plot += nsp
-            sv_sites.append(sv_all)
-        if nsp > 0:
-            sv_avg /= nsp
-            # print('trial: ', i, sv_avg)
-                # C = C + SPKS.spike_triggered_average(st[trial]*ms, andirac*ms, max_interval=width*ms, dt=binw*ms)
-        if C is not None:
-            nc = int(len(C)/2)
-            TC = TC/len(st)
-            summarySiteTC[isite] = TC
-            color = mpl.cm.viridis(norm(sites, isite))
-            ax.set_facecolor((0.7, 0.7, 0.7))
-            ax.plot(tx, C[:nc], color=color, label=('Input {0:2d} N={1:3d}'.format(isite, int(sites[isite]))),
-                linewidth=0.75)
-        if TC > maxtc:
-            maxtc = TC
-        # only plot 1/10 of input spikes
-        stepsize = int(sv_all.shape[0]/20)
+    secax.set_facecolor((1,1,1,0))
+    secax.spines['bottom'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    # ax.set_facecolor((0.7, 0.7, 0.7))
+    summarySiteTC = {}
+    for isite in range(RCP.ninputs): # range(ninputs):  # for each ANF input (get from those on first trial)
+        stepsize = int(RCD.sv_all.shape[0]/20)
         if stepsize > 0:
-            sel = list(range(0, sv_all.shape[0], stepsize))
+            sel = list(range(0, RCD.sv_all.shape[0], stepsize))
         else:
-            sel = list(range(0, sv_all.shape[0], 1))
-            
+            sel = list(range(0, RCD.sv_all.shape[0], 1))
+        sel = list(range(0, RCD.sv_all.shape[0], 1))
         # if stelen(sel) < 10:
         #     if sv_all.shape[0] > 10:
         #         sel = list(range(10))
         #     else:
         #         sel = list(range(sv_all.shape[0]))
-        for t in sel:
-            secax.plot(ti_avg, sv_all[t], color='k', linewidth=0.2)
-            am = np.argmax(sv_all[t])
 
-        secax.plot(ti_avg, sv_avg, color='r', linewidth=0.75)
-                # secax.text(ti_avg[am], np.max(sv_all[t][am])+t*0.5, f"{sv_ntr[t]:.3f}")
-            
-        # tx2 = np.array([0.2, 0.8])
-        # ax2.plot(tx2, TC*np.ones_like(tx2), color=color, linewidth=2)
+        if RCD.C[isite] is not None:
+            # print('plotting C')
+            nc = int(len(RCD.C[isite])/2)
+            RCD.TC = RCD.TC/len(RCD.st)
+            summarySiteTC[isite] =RCD.TC
+            # print(RCD.sites, isite)
+            color = mpl.cm.viridis(norm(RCD.sites, isite))
+            # print('color', color)
+            ax.plot(RCD.tx, RCD.C[isite][:nc], color=color, label=('Input {0:2d} N={1:3d}'.format(isite, int(RCD.sites[isite]))),
+                linewidth=1.5, zorder=5)
+            RCD.max_coin_rate = np.max((RCD.max_coin_rate, np.max(RCD.C[:nc])))
 
-    print(f"Total spikes plotted: {nsp:d}")
-    for trial in range(ntrials):
-        stx = st[trial]
+        if isite == 0:  # only plot the first time through - the APs are the same no matter the trial
+            # print('Plotting V')
+            for t in sel:
+                secax.plot(RCD.ti_avg, RCD.sv_all[t], color="#666666", linewidth=0.2, zorder=1)
+                am = np.argmax(RCD.sv_all[t])
+
+            secax.plot(RCD.ti_avg, RCD.sv_avg, color='k', linewidth=0.75, zorder=2)
+            PH.calbar(secax, calbar=[1.0, -10, 1.0, 20.0], axesoff=True, orient='right', 
+                unitNames={'x': 'ms', 'y': 'mV'} )
+            PH.referenceline(secax, -60.)
+            seaborn.despine(ax=secax)
+    print(f"Total spikes plotted: {RCD.nsp:d}")
+    for trial in range(RCP.ntrials):
+        stx = RCD.st[trial]
     secax.plot([0., 0.], [-120., 10.], 'r', linewidth=0.5)
-    print('finished inputs')
+    # print('finished inputs')
     seaborn.despine(ax=ax)
-    ax.set_ylabel('Rate of coincidences/bin (Hz)', fontsize=12)
-    ax.set_xlabel('T (ms)', fontsize=12)
-    ax.set_xlim(window)
-    ax.set_ylim(0, 1)
-    secax.set_ylim([-120., 10.])
-    secax.set_xlim(window)
-    secax.set_ylabel('Vm', rotation=-90.)    
-    secax.tick_params(direction='in', length=5., width=1., labelsize=12)
+    ax.set_ylabel('Rate of coincidences/bin (Hz)', fontsize=10)
+    ax.set_xlabel('T (ms)', fontsize=10)
+    ax.set_xlim((RCP.minwin, RCP.maxwin))
+    if RCD.max_coin_rate > 0.2:
+        ax.set_ylim(0, 1)
+    else:
+        ax.set_ylim(0, 0.25)
+    secax.set_ylim([-70., 10.])
+    secax.set_xlim((RCP.minwin, RCP.maxwin))
+    # secax.set_ylabel('Vm', rotation=-90., fontsize=10)
+    secax.tick_params(direction='in', length=5., width=1., labelsize=9)
+    ax.tick_params(direction='in', length=5., width=1., labelsize=9)
     # ax2.set_ylabel('Total Correlation W=%.1f-%0.1f'% (tcwidth[0], tcwidth[1]), fontsize=12)
     # ax2.set_ylim(0, 1.0) # maxtc*1.2)
     # PH.talbotTicks(ax2, axes='xy',
@@ -465,7 +410,272 @@ def plot_revcorr(P, pgbc, fn, PD, changetimestamp, protocol,
     #     inp = "Undefined"
     # ax.set_title(f'VCN_{p:s} input={inp:s} [{int(np.min(sites)):d}-{int(np.max(sites)):d}]\nAmax={amax:.1f}', y=0.9, x=0.02,
     #     horizontalalignment='left', fontsize=6)
-    return summarySiteTC, sites
+    return summarySiteTC
+
+
+def get_data(fn:Union[Path, str], PD:dataclass, changetimestamp, protocol):
+    
+    X = get_data_file(fn, changetimestamp, PD)
+    mtime = Path(fn).stat().st_mtime
+    timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d-%H:%M')
+    if X is None:
+      print("No simulation found that matched conditions")
+      return None
+    # unpack x
+    par, stitle, ivdatafile, filemode, d = X 
+
+    # 2. find spikes
+    AR, SP, RMA = analyze_data(ivdatafile, filemode, protocol)
+    # set up analysis parameters and result storage
+    RCP = RevCorrPars()
+    RCD = RevCorrData()    
+    RCD.st = SP.spikeIndices
+    trials = list(d['Results'].keys())
+    RCP.ntrials = len(trials)
+    RCD.npost = 0  # number of postsynaptic spikes
+    RCD.npre = 0  # number of presynaptic spikes
+    for i, tr in enumerate(trials):
+        trd = d['Results'][tr] # trial data
+        sv = trd['somaVoltage']
+        ti = trd['time']
+        dt = ti[1]-ti[0]
+        # st[tr] = PU.findspikes(ti, sv, thr, dt=dt, mode='threshold')
+        # st[tr] = clean_spiketimes(st[tr])
+        RCD.npost += len(RCD.st[tr])
+        for n in range(len(trd['inputSpikeTimes'])):  # for each sgc
+            RCD.npre += len(trd['inputSpikeTimes'][n])
+    RCD.ti = ti
+    print(f'Detected {RCD.npost:d} Post spikes')
+    print(f'Detected {RCD.npre:d} Presynaptic spikes')
+    print ("# trials: ", RCP.ntrials)
+
+    # clip trace to avoid end effects
+    RCP.max_time = np.max(ti) - RCP.min_time # this window needs to be at least as long as maxwin
+    RCD.tx = np.arange(RCP.minwin, 0, RCP.binw)
+    summarySiteTC = {}
+    return d, AR, SP, RMA, RCP, RCD
+    
+        
+def compute_revcorr(P, pgbc, fn, PD, changetimestamp, protocol,
+        thr=-20., width=4.0) -> Union[None, tuple]:
+    #
+    # 1. Gather data
+    #
+    SC = cell_config.CellConfig()    
+    syninfo = SC.VCN_Inputs[pgbc]
+
+    d, AR, SP, RMA, RCP, RCD = get_data(fn, PD, changetimestamp, protocol)
+    RCP.ninputs = len(syninfo[1])
+    RCD.sites = np.zeros(RCP.ninputs)
+    for isite in range(RCP.ninputs): # precompute areas
+        area = syninfo[1][isite][0]
+        if area > RCP.amax:
+            RCP.amax = area
+        RCD.sites[isite] = int(np.around(area*SC.synperum2))
+
+    print('ninputs: ', RCP.ninputs)
+    maxtc = 0
+
+    RCD.sv_sites = []
+    print('inputs:',  RCP.ninputs)
+    RCD.C = [None]*RCP.ninputs
+    RCD.max_coin_rate = 0.
+    nspk_plot = 0
+    spksplotted = False
+    RCP.min_time = 10. # 220.  # driven window without onset
+    RCP.max_time = 300.
+    
+    for isite in range(RCP.ninputs): # range(ninputs):  # for each ANF input (get from those on first trial)
+        # print('isite: ', isite)
+        firstwithspikes=False
+        RCD.sv_avg = np.zeros(1)
+        RCD.sv_all = np.zeros(1)
+        RCD.nsp = 0
+        n_avg = 0
+
+        for trial in range(RCP.ntrials):  # sum across trials
+            stx = AR.time_base[SP.spikeIndices[trial]]
+            stx = stx[(stx > RCP.min_time) & (stx < RCP.max_time)]  # more than minimum delay
+            anx = d['Results'][trial]['inputSpikeTimes'][isite]
+            anx = anx[(anx > RCP.min_time) & (anx < RCP.max_time)]
+            if len(stx) == 0 or len(anx) == 0:
+               # print('empty array for stx or anx')
+                continue
+            andirac = np.zeros(int(200./RCP.binw)+1)
+            if not firstwithspikes:
+                firstwithspikes = True
+                RCD.C[isite] = SPKS.correlogram(stx, anx, width=-RCP.minwin, bin=RCP.binw, T=None)
+                RCD.TC = SPKS.total_correlation(anx, stx, width=-RCP.minwin, T=None)
+                if np.isnan(RCD.TC):
+                    RCD.TC = 0.
+            else:
+                RCD.C[isite] += SPKS.correlogram(stx, anx, width=-RCP.minwin, bin=RCP.binw, T=None)
+                tct = SPKS.total_correlation(anx, stx, width=-RCP.minwin, T=None)
+                if ~np.isnan(tct):
+                    RCD.TC = RCD.TC + tct
+
+            # accumulate postsynaptic spike waveforms
+            if RCD.nsp == 0:  # first spike in trace
+                reltime = np.around(RCD.ti,5) - np.around(stx[0], 5)
+                areltime = np.argwhere((RCP.minwin <= reltime) & (reltime <=RCP. maxwin)).squeeze()
+                RCD.sv_avg = d['Results'][trial]['somaVoltage'][areltime]
+                RCD.sv_all = RCD.sv_avg.copy()
+                RCD.ti_avg = RCD.ti[0:len(areltime)] + RCP.minwin
+                RCD.nsp += 1
+    
+            else:  # rest of spikes
+                for n in range(1,len(stx)):
+                    reltime = np.around(RCD.ti, 5) - np.around(stx[n], 5)
+                    areltime = np.argwhere((RCP.minwin <= reltime) & (reltime <= RCP.maxwin)).squeeze()
+                    if len(areltime) > len(RCD.sv_avg):
+                        areltime = areltime[0:len(RCD.sv_avg)]
+                    if len(areltime) < len(RCD.sv_avg):
+                        nextend = len(RCD.sv_avg)-len(areltime)
+                        areltime = np.append(areltime, np.arange(areltime[-1]+1, areltime[-1]+nextend+1))
+                    if trial == 0:
+                        RCD.sv_avg = d['Results'][trial]['somaVoltage'][areltime]
+                        RCD.sv_all = RCD.sv_avg.copy()
+                        RCD.ti_avg = RCD.ti[0:len(areltime)] + minwin
+                    else:
+                        sh = RCD.sv_avg.shape
+                        
+                        RCD.sv_avg += d['Results'][trial]['somaVoltage'][areltime]
+                        RCD.sv_all = np.vstack((RCD.sv_all, d['Results'][trial]['somaVoltage'][areltime]))
+                    RCD.nsp += 1
+
+            nspk_plot += RCD.nsp
+            RCD.sv_sites.append(RCD.sv_all)
+        # RCD.C[isite] /= RCP.ntrials
+        if RCD.nsp > 0:
+            RCD.sv_avg /= RCD.nsp
+            # print('trial: ', i, sv_avg)
+                # C = C + SPKS.spike_triggered_average(st[trial]*ms, andirac*ms, max_interval=width*ms, dt=binw*ms)
+        if RCD.TC > maxtc:
+            maxtc = RCD.TC
+
+    pre_w = [-2.7, -0.7]
+
+    summarySiteTC = plot_revcorr2(P, pgbc, PD, RCP, RCD)
+    # return summarySiteTC, RCD.sites
+
+    tind = np.where((RCD.tx > pre_w[0]) & (RCD.tx < pre_w[1]))[0]
+    pairwise = np.zeros((RCP.ninputs, RCP.ninputs))
+    participation = np.zeros(RCP.ninputs)
+    nperspike = []
+    nspikes = 0
+    for trial in range(RCP.ntrials):  # accumulate across all trials
+        spks = AR.time_base[SP.spikeIndices[trial]]
+        for s in spks:  # for each postsynaptic spike
+            if s < RCP.min_time or s > RCP.max_time: # trim to those only in a response window
+                continue
+            # print('pre: ', s)
+            nspikes += 1
+            nps = 0
+            for isite in range(RCP.ninputs):  # test inputs in a window prior
+                anxi = d['Results'][trial]['inputSpikeTimes'][isite]  # input spike times for one input
+                anxi = anxi[(anxi > RCP.min_time) & (anxi < RCP.max_time)]  # trim to those only in a response window
+                ani = anxi - s
+                # print('ani: ', ani)
+                nevi = len(np.where((ani >= pre_w[0]) & (ani <= pre_w[1]))[0]) # count spikes in ith window
+                if nevi > 0:
+                    participation[isite] += 1
+                    nps += 1
+                for jsite in range(isite+1, RCP.ninputs):
+
+                    anxj = d['Results'][trial]['inputSpikeTimes'][jsite]
+                    anxj = anxj[(anxj > RCP.min_time) & (anxj < RCP.max_time)]
+                    anj = anxj - s
+                    nevj = len(np.where((anj >= pre_w[0]) & (anj <= pre_w[1]))[0])
+                    if isite != jsite:
+                        if nevj > 0 and nevi > 0:
+                        # print(nevi, nevi)
+                            pairwise[isite, jsite] += 1
+                    else:
+                        if nevj > 0:
+                            pairwise[isite, jsite] += 1
+            nperspike.append(nps)
+
+    s_pair = np.sum(pairwise)
+    pairwise /= s_pair
+    psh = pairwise.shape
+    pos = np.zeros((psh[0], psh[1], 2))
+    print('# pairwise: ', s_pair, np.sum(pairwise))
+    for i in range(RCP.ninputs):
+        for j in range(RCP.ninputs):
+            # print(f"{pairwise[i,j]:.3f}", end='  ')
+            pos[i,j,0] = i+1
+            pos[i,j,1] =j+1
+        # print()
+    # print(nperspike)
+    import scipy.stats
+    # print(np.unique(nperspike, return_counts=True))
+    nperspike = [n for n in nperspike if n != 0]
+    nperspike = scipy.stats.itemfreq(nperspike).T
+    # print('nperspike counts: ', nperspike)
+    # nperspike = np.array(np.unique(nperspike, return_counts=True))/nspikes
+    # properly fill out output
+    xnspike = np.arange(RCP.ninputs)
+    ynspike = np.zeros(RCP.ninputs)
+    for j, i in enumerate(nperspike[0]):
+        # print(i, j, nperspike[1,j])
+        ynspike[i-1] = nperspike[1,j]
+
+    ynspike = np.cumsum(ynspike/nspikes)
+        
+    # print(RCD.sites)
+    # print(pos)
+    maxp = np.max(pairwise)
+    print(pairwise)
+    PSum = PH.regular_grid(rows=2, cols=2, order='rowsfirst', figsize=(6, 6),
+         showgrid = False, verticalspacing = 0.08, horizontalspacing = 0.08,
+          margins = {'bottommargin': 0.1, 'leftmargin': 0.1, 'rightmargin': 0.1, 'topmargin': 0.1},
+          label = ["A", "B", "C", "D"], labelposition = (-0.05, 1.05),)
+    sax = PSum.axdict
+    # f, sax = mpl.subplots(3,1)
+    # f.set_size_inches( w=3.5, h=9)
+    sax['A'].plot(np.arange(RCP.ninputs)+1, RCD.sites, 'bo')
+    pclip = np.clip(pairwise, np.min(np.where(pairwise > 0)), np.max(pairwise))
+    pclip[np.where(pclip == 0)] = np.nan
+    pclipped = pclip - np.nanmin(pclip)
+    colormap = 'plasma'
+    sax['B'].plot(np.arange(RCP.ninputs)+1, participation/nspikes, 'gx')
+    sax['C'].scatter(pos[:,:,0], pos[:,:,1], s=200*pairwise/maxp, c=pclipped, cmap=colormap)
+    cm_sns = mpl.cm.get_cmap(colormap)
+    vmax = np.nanmax(pclip)*100
+    vmin = np.nanmin(pclip)*100
+    print('vmin, vmax: ', vmin, vmax)
+    axcbar = PLS.create_inset_axes([0.8, 0.05, 0.05, 0.5], sax['C'])
+    norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+    ticks = np.linspace(vmin, vmax, num=4, endpoint=True)
+    c2 = matplotlib.colorbar.ColorbarBase(
+        axcbar, cmap=cm_sns, ticks=ticks, norm=norm
+    )
+
+    # PH.nice_plot(sax['C'], position=-0.2)
+    sax['D'].plot(np.arange(RCP.ninputs)+1, ynspike, 'm^-')
+    
+    sax['A'].set_ylim(bottom=0)
+    sax['B'].set_ylim((0, 1.0))
+    sax['D'].set_ylim(0, 1.05)
+    sax['A'].set_ylabel('Area (um2)')
+    sax['A'].set_xlabel('Input #')
+    sax['B'].set_xlabel('Input #')
+    sax['B'].set_ylabel('Participation')
+    sax['C'].set_ylabel('Input #')
+    sax['C'].set_xlabel('Input #')
+    sax['D'].set_xlabel(f"# Inputs in [{pre_w[0]:.1f} to {pre_w[1]:.1f}] before spike")
+
+    PH.cleanAxes(PSum.axarr.ravel())
+    PH.talbotTicks(sax['C'])
+    PH.talbotTicks(sax['A'])
+
+    PH.talbotTicks(sax['B'], tickPlacesAdd={'x': 0, 'y': 1}, floatAdd={'x': 0, 'y': 2})
+    PH.talbotTicks(sax['D'], tickPlacesAdd={'x': 0, 'y': 1}, floatAdd={'x': 0, 'y': 2})
+    PH.talbotTicks(axcbar, tickPlacesAdd={'x':0, 'y':2},  floatAdd={'x': 0, 'y': 2}, pointSize=7)
+    mpl.show()
+    
+    return summarySiteTC, RCD.sites
+
 
 def main():
     PD = PData()
@@ -523,7 +733,15 @@ def main():
         choices=experimenttypes,
         help=("Select the experiment type from: %s " % experimenttypes),
     )
-    
+
+    parser.add_argument(
+        '--dendritemode',
+        dest="dendriteMode",
+        default="normal",
+        choices=dendriteChoices,
+        help="Choose dendrite table (normal, active, passive)",
+    )
+        
     parser.add_argument(
         "-d",
         "--dB",
@@ -563,37 +781,42 @@ def main():
     else:
         PD.gradeA = [int(c) for c in args.cell]
     rows, cols = PH.getLayoutDimensions(len(PD.gradeA))
-    print(PD.gradeA)
     plabels = [f"VCN_c{g:02d}" for g in PD.gradeA]
     for i in range(rows*cols-len(PD.gradeA)):
         plabels.append(f"empty{i:d}")
-
+    
+    sizex = cols*3
+    sizey = rows*2.5
+    if rows * cols < 4:
+        sizex *= 2
+        sizey *= 2
     P = PH.regular_grid(
         rows,
         cols,
         order='rowsfirst',
-        figsize=(14, 10),
+        figsize=(sizex, sizey),
         panel_labels=plabels,
         labelposition=(0.05, 0.95),
         margins={
-            "leftmargin": 0.07,
-            "rightmargin": 0.05,
-            "topmargin": 0.12,
-            "bottommargin": 0.1,
+            "leftmargin": 0.1,
+            "rightmargin": 0.01,
+            "topmargin": 0.15,
+            "bottommargin": 0.15,
         },
     )
     chan = "_"  # for certainity in selection, include trailing underscore in this designation
 
     modelName = args.modeltype
     print('Scaling: ', args.scaled)
+    stitle = "unknown scaling"
     if args.scaled:
         PD.soma_inflate = True
         PD.dend_inflate = True
+        stitle="scaled"
     else:
         PD.soma_inflate = False
         PD.dend_inflate = False
-
-    stitle = "unknown scaling"
+        stitle= "notScaled"
     # trip filemode based on date of simulatoin
     changedate = "2020-04-29-12:00"
     dts = datetime.datetime.strptime(changedate,"%Y-%m-%d-%H:%M") 
@@ -631,9 +854,16 @@ def main():
                 srch = f"_{int(args.nreps):03d}_"
                 if str(fn).find(srch) < 0:
                     rmatch = False
-         
-            if dmatch and ematch and rmatch:
+                    
+            mmatch = True
+            if args.dendriteMode != 'normal':
+                srch = f"_{args.dendriteMode:s}_"
+                if str(fn).find(srch) < 0:
+                    mmatch = False
+
+            if dmatch and ematch and rmatch and mmatch:
                 match_index.append(ix)
+                                
         fng = [fng[i] for i in match_index]
         if len(fng) == 0:
             print('No Files matching conditions found')
@@ -657,7 +887,7 @@ def main():
             if args.analysis == "traces":
                 plot_traces(P, pgbc, fn, PD, changetimestamp, args.protocol)
             elif args.analysis == "revcorr":
-                plot_revcorr(P, pgbc, fn, PD, changetimestamp, args.protocol)
+                compute_revcorr(P, pgbc, fn, PD, changetimestamp, args.protocol)
 
     if chan == "_":
         chan = "nav11"

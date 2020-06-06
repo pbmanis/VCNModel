@@ -65,9 +65,10 @@ class CmdChoices:
     ]
     soundChoices = ["tonepip", "noise", "stationaryNoise", "SAM", "CMMR"]
     speciesChoices = ["mouse", "guineapig"]
-    SpirouChoices = ["all", "max=mean", "all=mean", "removelargest", "largestonly", "twolargest"]
+    SpirouChoices = ["all", "max=mean", "all=mean", "removelargest", "largestonly",
+        "twolargest", "threelargest", "fourlargest"]
     ANSynapseChoices = ["simple", "multisite"]
-
+    channelChoices = ['klt', 'kht','ihvcn', 'nacncoop', 'nacn', 'najsr']
     srname = ["LS", "MS", "HS"]  # runs 0-2, not starting at 0
 
 
@@ -97,7 +98,8 @@ class Params:
     modelType: str = CmdChoices.modelTypeChoices[0]
     SGCmodelType: str = CmdChoices.SGCmodelChoices[0]
     species: str = CmdChoices.speciesChoices[0]
-
+    displaychannel: str = CmdChoices.channelChoices[0]
+    
     # cell specific parameters related to geometry
     fullhocfile: bool = False  # use the "full" hoc file (cellname_Full.hoc)
     dt: float = 0.025
@@ -349,7 +351,13 @@ def build_parser():
         default="None",
         help="Render cell with neuronvis to view structure or channel decoration"
     )
-
+    parser.add_argument(
+        "-c",
+        "--channel",
+        dest="displaychannel",
+        default=CmdChoices.channelChoices[0],
+        help=f"Render cell with neuronvis to view channel decorations for: {str(CmdChoices.channelChoices):s}"
+    )
     parser.add_argument(
         "--inputpattern",
         "-i",
