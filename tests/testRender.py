@@ -19,9 +19,9 @@ import string
 #infile = 'test.hoc'
 #infile = 'VCN_c18_final_rescaled.hoc'
 #infile = 'VCN_c18_reparented755.hoc'
-infile = 'VCN_c08.hoc'
+infile = 'VCN_c02_Full.hoc'
 
-hf = HocReader('VCN_Cells/VCN_c08/Morphology/' + infile)
+hf = HocReader('/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c02/Morphology/' + infile)
 if hf.file_loaded is False:
     exit()
 
@@ -30,8 +30,10 @@ hf.h.topology()
 # print 'hf sections: ', hf.sections
 named_section_colors = {'axon': 'r', 'AXON_0': 'r', 'heminode': 'g', 'stalk':'y', 'branch': 'b', 'neck': 'brown',
     'swelling': 'magenta', 'tip': 'powderblue', 'parentaxon': 'orange', 'synapse': 'k',
-    'soma': 'b', 'dend': 'g', 'dendscaled_0': 'g', 'dendscaled_2': 'y', 'sections': 'b', 'hillock': 'magenta',
-    'initseg': 'orange', 'undefined': 'k', 'dendrite': 'g', 'apical_dendrite': 'y'}
+    'soma': 'blue', 'dend': 'g', 'dendscaled_0': 'g', 'dendscaled_2': 'y', 'sections': 'b', 'hillock': 'magenta',
+    'initseg': 'orange', 'undefined': 'k', 'dendrite': 'g', 'apical_dendrite': 'y',
+    'Axon_Hillock': 'magenta', 'Axon_Initial_Segment': 'orange', 'Dendritic_Hub': 'red', 'Dendritic_Swelling': 'grey',
+    'Proximal_Dendrite': 'green', 'Distal_Dendrite': 'yellow'}
 section_colors = {}
 if len(hf.sec_groups) > 1: # multiple names, so assign colors to structure type
     section_colors = {}
