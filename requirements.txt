@@ -1,6 +1,6 @@
 # vcnmodel requirements
 # 7 May 2020
-# P. Manis
+# P. Manismate 
 
 black==19.10b0
 Cython==0.29.7
@@ -52,19 +52,24 @@ imreg_dft>=2.0
 descartes
 mahotas
 
--e git+https://github.com/pbmanis/pylibrary.git#egg=pylibrary
+#-e git+https://github.com/pbmanis/montager.git@578ba75af12bb2321e377451f35921977656041a#egg=montage
+#-e git+https://github.com/pbmanis/neuronvis@Python3#egg=neuronvis
 
+-e /Users/pbmanis/Desktop/Python/pylibrary
+-e /Users/pbmanis/Desktop/Python/ephys
+-e /Users/pbmanis/Desktop/Python/montage
+-e /Users/pbmanis/Desktop/Python/neuronvis
+-e /Users/pbmanis/Desktop/Python/cnmodel_pbm
 -e git+https://github.com/pbmanis/pyqtgraph.git#egg=pyqtgraph
 
--e git+https://github.com/pbmanis/cnmodel.git@5522473356de7d1733212ce5a652cd5cc0fb7c9b#egg=cnmodel
+#-e git+https://github.com/pbmanis/cnmodel.git@5522473356de7d1733212ce5a652cd5cc0fb7c9b#egg=cnmodel
 
 # this has to be last as the compilation depends on getting Cython and numpy installed first
 -e git+https://github.com/pbmanis/cochlea-1.git#egg=cochlea
 
--e git+https://github.com/pbmanis/montager.git@578ba75af12bb2321e377451f35921977656041a#egg=montage
--e git+https://github.com/pbmanis/neuronvis@Python3#egg=neuronvis
--e git+https://github.com/pbmanis/ephys#egg=ephys
+
+
 future==0.17.1
 
-# still need to to this at the end:
+# still need in the setup file
 # nrnivmodl vcn_venv/src/cnmodel/cnmodel/mechanisms vcn_venv/src/cnmodel
