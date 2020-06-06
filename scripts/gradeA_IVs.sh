@@ -8,17 +8,31 @@ proto="runIV"
 # Note we do not have a full reconstruction for cell 18
 # in that dataset.
 #######################################################
-CELLNAMES="02 05 06 09 10 11 13 17 24 29 30"
-CONFIG="autoscale.toml"
+CELLNAMES="02" #" 05 06 09 10 11 13 17 24 29 30"
+CONFIG="autoscale_multisite_parallel.toml"
 echo "running the individual initialization and/or running of IV protocols"
 for f in $CELLNAMES
 do
     echo $f
-    python vcnmodel/model_run2.py VCN_c$f -F -P initIV --configfile $CONFIG
-    python vcnmodel/model_run2.py VCN_c$f -F -P runIV  --configfile $CONFIG
+    python vcnmodel/model_run2.py VCN_c$f -F -P initIV --configfile $CONFIG --dendritemode normal
+    python vcnmodel/model_run2.py VCN_c$f -F -P runIV  --configfile $CONFIG --dendritemode normal
 done
 
 wait
+#
+# for f in $CELLNAMES
+# do
+#     echo $f
+#     python vcnmodel/model_run2.py VCN_c$f -F -P initIV --configfile $CONFIG --dendritemode passive
+#     python vcnmodel/model_run2.py VCN_c$f -F -P runIV  --configfile $CONFIG --dendritemode passive
+# done
+#
+# for f in $CELLNAMES
+# do
+#     echo $f
+#     python vcnmodel/model_run2.py VCN_c$f -F -P initIV --configfile $CONFIG --dendritemode active
+#     python vcnmodel/model_run2.py VCN_c$f -F -P runIV  --configfile $CONFIG --dendritemode active
+# done
 
 echo IV runs complete
 # with "A", we do all cells in grade A

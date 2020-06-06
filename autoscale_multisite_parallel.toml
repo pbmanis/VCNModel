@@ -19,4 +19,4 @@ soundtype="tonepip"  # or "tonepip" or "noise" or "SAM"
 fmod=100.0
 dmod=100.0
 seed=9
-Parallel=true
+Parallel=false
