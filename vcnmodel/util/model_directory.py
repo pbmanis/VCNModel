@@ -8,6 +8,10 @@ import model_params
 import toml
 import shutil
 
+"""
+Tool for making sure that the VCN cells are properly populated
+with hoc files, and to list the simulations in the cell directories
+"""
 @dataclass
 class SIM:
     name:Union[Path, str, None] = None
