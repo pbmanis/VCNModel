@@ -863,22 +863,36 @@ class ModelRun:
         if not self.Params.setup:
             self.setup_model(par_map=par_map)        
         import neuronvis as NV
-        viewitemn = "sec-type"
-        if self.RunInfo.viewitem is not "None":
-            viewitem = self.RunInfo.viewitem
-        mech = self.Params.displaychannel
+
         NV.hocRender.Render(
             hoc_file=self.post_cell.hr.h,# hoc_file,
-            display_mode='cylinders', # display_mode,
-            renderer='pyqtgraph', # args["renderer"],
-            display=viewitem, # 'sec-type', # args["display"],
-            mechanism=mech, # args["mechanism"],
-            alpha=0.45, # args["alpha"],
+            display_style=self.Params.displayStyle, # display_mode,
+            display_renderer='pyqtgraph', # args["renderer"],
+            display_mode=self.Params.displayMode, # 'sec-type', # args["display"],
+            mechanism=self.Params.displayMechanism ,# args["mechanism"],
+            alpha=1.0, # args["alpha"],
             sim_data=None, # sim_data,
-            output_file=str(Path('Renderings', f'{self.cellID:s}_{mech:s}_{self.Params.dendriteMode:s}.png')),
+            output_file=str(Path('Renderings', f'{self.cellID:s}_{self.Params.displayMechanism:s}_{self.Params.dendriteMode:s}.png')),
         )
         exit()
-        
+
+    # def view_cellparts(self, par_map: dict = None):
+    #     cprint('r', 'cellparts')
+    #     if not self.Params.setup:
+    #         self.setup_model(par_map=par_map)
+    #     import neuronvis as NV
+    #     viewitem = "sec-type"
+    #     mech = self.Params.displaychannel
+    #     NV.hocRender.Render(
+    #         hoc_file=self.post_cell.hr.h,# hoc_file,
+    #         display_style='surface', # display_mode, (cylinders, graph, volume, surface)
+    #         display_renderer='pyqtgraph', # args["renderer"],
+    #         display_mode=viewitem, # 'sec-type', # args["display"],
+    #         alpha=1, # args["alpha"],
+    #         sim_data=None, # sim_data,
+    #         output_file=str(Path('Renderings', f'{self.cellID:s}_parts.png')),
+    #     )
+    #     exit()  
         
     def run_model(self, par_map: dict = None):
         if not self.Params.setup:
@@ -2257,7 +2271,7 @@ def main():
 
     parsedargs, params, runinfo = vcnmodel.model_params.getCommands()  # get from command line
     model = ModelRun(params=params, runinfo=runinfo)  # create instance of the model
-    if parsedargs.viewitem != "None":
+    if parsedargs.displayMode != "None":
         model.view_model()
     else:
         model.run_model()

@@ -38,7 +38,7 @@ modeltypes = ["mGBC", "XM13", "RM03", "XM13_nacncoop"]
 runtypes = ["AN", "an", "IO", "IV", "iv", "gifnoise"]
 experimenttypes = [None, "delays", "largestonly", "removelargest", "mean", "allmean", "twolargest"]
 # modetypes = ['find', 'singles', 'IO', 'multi']
-analysistypes = ['traces', 'PSTH', 'revcorr', 'SAC']
+analysistypes = ['traces', 'PSTH', 'revcorr', 'SAC', 'tuning']
 dendriteChoices = [
         "normal",
         "passive",
@@ -61,6 +61,7 @@ class PData:
     soma_inflate:bool = True
     dend_inflate:bool = True
     basepath:str = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
+    renderpath:str = "/Users/pbmanis/Desktop/Python/vcnmodel/Renderings"
     thiscell:str=""
 
 def def_empty_np():
@@ -280,7 +281,7 @@ def analyze_data(ivdatafile:Union[Path, str], filemode, protocol:str) -> tuple:
 
     return AR, SP, RMA
 
-def plot_traces(P:object, pgbc:object, fn:Union[Path, str], PD:dataclass, changetimestamp:object, protocol:str) -> None:
+def plot_traces(ax:object, fn:Union[Path, str], PD:dataclass, changetimestamp:object, protocol:str) -> None:
     x = get_data_file(fn, changetimestamp, PD)
     mtime = Path(fn).stat().st_mtime
     timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d-%H:%M')
@@ -298,8 +299,8 @@ def plot_traces(P:object, pgbc:object, fn:Union[Path, str], PD:dataclass, change
     sz = 50./ntr
     EUD = EU.Utility()
     for trial in range(len(AR.traces)):
-        P.axdict[pgbc].plot(AR.time_base, AR.traces[trial]*1e3, linewidth=0.5)
-        P.axdict[pgbc].plot(AR.time_base[SP.spikeIndices[trial]], AR.traces[trial][SP.spikeIndices[trial]]*1e3, 'ro', 
+        ax.plot(AR.time_base, AR.traces[trial]*1e3, linewidth=0.5)
+        ax.plot(AR.time_base[SP.spikeIndices[trial]], AR.traces[trial][SP.spikeIndices[trial]]*1e3, 'ro', 
             markersize=2.5)
         if protocol == 'AN' and 'inputSpikeTimes' in list(d['Results'][trial].keys()):
             spkt = d['Results'][trial]['inputSpikeTimes']
@@ -307,30 +308,43 @@ def plot_traces(P:object, pgbc:object, fn:Union[Path, str], PD:dataclass, change
             tr_y = trial*(trstep + len(spkt)*inpstep) 
             for ian in range(len(spkt)):
                 vy = v0+tr_y*np.ones(len(spkt[ian]))+inpstep*ian
-                P.axdict[pgbc].scatter(spkt[ian], vy, s=sz,
+                ax.scatter(spkt[ian], vy, s=sz,
                 marker='|', linewidths=0.35)
                 # print(len(vy), vy)
         #                 print(spkt[ian])
-            P.axdict[pgbc].set_ylim(-140.0, 40.0)
+            ax.set_ylim(-140.0, 40.0)
         else:
-            P.axdict[pgbc].set_ylim(-200., 50.)
-    P.axdict[pgbc].set_xlim(0.080, np.max(AR.time_base))
+            ax.set_ylim(-200., 50.)
+    ax.set_xlim(0.080, np.max(AR.time_base))
 
     ftname = str(ivdatafile.name)
     ip = ftname.find("_II_") + 4
     ftname = ftname[:ip] + "...\n" + ftname[ip:]
     toptitle = f"{ftname:s}"
     if protocol == 'IV':
-      toptitle += f"\nRin={RMA['Rin']:.1f} Mohm  Taum={RMA['taum']:.2f} ms"
+        toptitle += f"\nRin={RMA['Rin']:.1f} Mohm  Taum={RMA['taum']:.2f} ms"
+
+        secax = PLS.create_inset_axes([0.4, 0, 0.4, 0.4], ax)
+        secax.plot(RM.ivss_cmd*1e12, RM.ivss_v*1e3, 'ks-', markersize=3, markerfacecolor='k', zorder=10, clip_on=False)
+        ltz = np.where(RM.ivss_cmd <= 0)[0]
+        secax.plot(RM.ivss_cmd[ltz]*1e12, RM.ivpk_v[ltz]*1e3, 'ko-', markersize=3, markerfacecolor='w', zorder=10, clip_on=False)
+        PH.crossAxes(secax, xyzero=[0., -60.], limits=[-1.0*1e3, -150, 1.0*1e3, -25.])
+        PH.talbotTicks(secax, axes='xy',
+                density=(1.0, 1.0), insideMargin=0.02, pointSize=6,
+                tickPlacesAdd={'x': 0, 'y': 0}, floatAdd={'x': 0, 'y': 0})
+    PH.calbar(ax, calbar=[20., -160., 10., 20.], unitNames={'x': 'ms', 'y': 'mV'}, fontsize=9)
+    if RMA is not None:
+        PH.referenceline(ax, RMA['RMP'])
+        ax.text(-1., RMA['RMP'], f"{RMA['RMP']:.1f}", verticalalignment='center', horizontalalignment='right',
+            fontsize=9)
     toptitle += f"\n{timestamp_str:s}"
-    P.axdict[pgbc].set_title(toptitle, fontsize=5)
+    ax.set_title(toptitle, fontsize=5)
 
 def plot_revcorr_map(P, pgbc, inputlist, ntrials, C, TC, st, tx, ti_avg, sv_all, sv_avg, sites, nsp, max_coin_rate, window):
     pass
 
-def plot_revcorr2(P:object, pgbc:str, PD:dataclass, RCP:dataclass, RCD:dataclass):
+def plot_revcorr2(ax:object, PD:dataclass, RCP:dataclass, RCD:dataclass):
     seaborn.set_style('ticks')
-    ax = P.axdict[pgbc]
     #secax = twinax(P.figure_handle, ax, pos=maxwin)
     secax = PLS.create_inset_axes([0, 0.5, 1, 0.5], ax)
     PH.noaxes(secax, 'xy')
@@ -456,13 +470,13 @@ def get_data(fn:Union[Path, str], PD:dataclass, changetimestamp, protocol):
     return d, AR, SP, RMA, RCP, RCD
     
         
-def compute_revcorr(P, pgbc, fn, PD, changetimestamp, protocol,
+def compute_revcorr(ax, gbc, fn, PD, changetimestamp, protocol,
         thr=-20., width=4.0) -> Union[None, tuple]:
     #
     # 1. Gather data
     #
     SC = cell_config.CellConfig()    
-    syninfo = SC.VCN_Inputs[pgbc]
+    syninfo = SC.VCN_Inputs[gbc]
 
     d, AR, SP, RMA, RCP, RCD = get_data(fn, PD, changetimestamp, protocol)
     RCP.ninputs = len(syninfo[1])
@@ -555,8 +569,12 @@ def compute_revcorr(P, pgbc, fn, PD, changetimestamp, protocol,
 
     pre_w = [-2.7, -0.7]
 
-    summarySiteTC = plot_revcorr2(P, pgbc, PD, RCP, RCD)
+    summarySiteTC = plot_revcorr2(ax, PD, RCP, RCD)
     # return summarySiteTC, RCD.sites
+
+################
+# now some pariwise, etc. stats on events prior to a spike
+################
 
     tind = np.where((RCD.tx > pre_w[0]) & (RCD.tx < pre_w[1]))[0]
     pairwise = np.zeros((RCP.ninputs, RCP.ninputs))
@@ -638,7 +656,8 @@ def compute_revcorr(P, pgbc, fn, PD, changetimestamp, protocol,
     pclip[np.where(pclip == 0)] = np.nan
     pclipped = pclip - np.nanmin(pclip)
     colormap = 'plasma'
-    sax['B'].plot(np.arange(RCP.ninputs)+1, participation/nspikes, 'gx')
+    # sax['B'].plot(np.arange(RCP.ninputs)+1, participation/nspikes, 'gx')
+    sax['B'].plot(RCD.sites, participation/nspikes, 'gx')
     sax['C'].scatter(pos[:,:,0], pos[:,:,1], s=200*pairwise/maxp, c=pclipped, cmap=colormap)
     cm_sns = mpl.cm.get_cmap(colormap)
     vmax = np.nanmax(pclip)*100
@@ -656,10 +675,11 @@ def compute_revcorr(P, pgbc, fn, PD, changetimestamp, protocol,
     
     sax['A'].set_ylim(bottom=0)
     sax['B'].set_ylim((0, 1.0))
+    sax['B'].set_xlim(left=0)
     sax['D'].set_ylim(0, 1.05)
-    sax['A'].set_ylabel('Area (um2)')
+    sax['A'].set_ylabel('# Release Sites')
     sax['A'].set_xlabel('Input #')
-    sax['B'].set_xlabel('Input #')
+    sax['B'].set_xlabel('# Release Sites')
     sax['B'].set_ylabel('Participation')
     sax['C'].set_ylabel('Input #')
     sax['C'].set_xlabel('Input #')
@@ -675,6 +695,44 @@ def compute_revcorr(P, pgbc, fn, PD, changetimestamp, protocol,
     mpl.show()
     
     return summarySiteTC, RCD.sites
+
+def select_filenames(fng, args)->Union[list, None]:
+    # print(fng)
+    print('Selct filename for experiment: ', args.experiment)
+    match_index = []
+    for ix, fn in enumerate(fng):
+        ematch = True
+        if args.experiment is not None:
+            if str(fn).find(args.experiment) < 0:
+                ematch = False
+
+        dmatch = True
+        if args.dbspl is not None:
+            srch = f"_{int(args.dbspl):03d}dB_"
+            if str(fn).find(srch) < 0:
+                dmatch = False
+
+        rmatch = True
+        if args.nreps is not None:
+            srch = f"_{int(args.nreps):03d}_"
+            if str(fn).find(srch) < 0:
+                rmatch = False
+                
+        mmatch = True
+        if args.dendriteMode != 'normal':
+            srch = f"_{args.dendriteMode:s}_"
+            if str(fn).find(srch) < 0:
+                mmatch = False
+
+        if dmatch and ematch and rmatch and mmatch:
+            match_index.append(ix)
+                            
+    fng = [fng[i] for i in match_index]
+    if len(fng) == 0:
+        print('No Files matching conditions found')
+        return None             
+    # print('found (filtered):\n', '\n   '.join([str(f) for f in fng]))
+    return fng
 
 
 def main():
@@ -790,20 +848,7 @@ def main():
     if rows * cols < 4:
         sizex *= 2
         sizey *= 2
-    P = PH.regular_grid(
-        rows,
-        cols,
-        order='rowsfirst',
-        figsize=(sizex, sizey),
-        panel_labels=plabels,
-        labelposition=(0.05, 0.95),
-        margins={
-            "leftmargin": 0.1,
-            "rightmargin": 0.01,
-            "topmargin": 0.15,
-            "bottommargin": 0.15,
-        },
-    )
+
     chan = "_"  # for certainity in selection, include trailing underscore in this designation
 
     modelName = args.modeltype
@@ -821,7 +866,7 @@ def main():
     changedate = "2020-04-29-12:00"
     dts = datetime.datetime.strptime(changedate,"%Y-%m-%d-%H:%M") 
     changetimestamp = datetime.datetime.timestamp(dts)
-    for gbc in PD.gradeA:
+    for ig, gbc in enumerate(PD.gradeA):
         basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
         pgbc = f"VCN_c{gbc:02d}"
         if args.protocol == 'IV':
@@ -834,60 +879,85 @@ def main():
         fng = list(Path(basefn).glob(name_start))
         
         """ cull list by experiment and db """
-        match_index = []
-        print(fng)
-        print(args.experiment)
-        for ix, fn in enumerate(fng):
-            ematch = True
-            if args.experiment is not None:
-                if str(fn).find(args.experiment) < 0:
-                    ematch = False
 
-            dmatch = True
-            if args.dbspl is not None:
-                srch = f"_{int(args.dbspl):03d}dB_"
-                if str(fn).find(srch) < 0:
-                    dmatch = False
 
-            rmatch = True
-            if args.nreps is not None:
-                srch = f"_{int(args.nreps):03d}_"
-                if str(fn).find(srch) < 0:
-                    rmatch = False
-                    
-            mmatch = True
-            if args.dendriteMode != 'normal':
-                srch = f"_{args.dendriteMode:s}_"
-                if str(fn).find(srch) < 0:
-                    mmatch = False
-
-            if dmatch and ematch and rmatch and mmatch:
-                match_index.append(ix)
-                                
-        fng = [fng[i] for i in match_index]
-        if len(fng) == 0:
-            print('No Files matching conditions found')
-            continue                
-        print('found (filtered):\n', '\n   '.join([str(f) for f in fng]))
         # print(match_index)
         if args.check:
             return
-
-        times = np.zeros(len(fng))
-        for i, f in enumerate(fng):
-            times[i] = f.stat().st_mtime
-        # pick most recent file = this should be better managed (master file information)
-        ix = np.argmax(times)
-        fng = [fng[ix]]
-        
         ivdatafile = None
 
         print("\nConditions: soma= ", PD.soma_inflate, "  dend=",PD.dend_inflate)
-        for fn in fng:
-            if args.analysis == "traces":
-                plot_traces(P, pgbc, fn, PD, changetimestamp, args.protocol)
-            elif args.analysis == "revcorr":
-                compute_revcorr(P, pgbc, fn, PD, changetimestamp, args.protocol)
+        if args.analysis in ['traces', 'revcorr']:
+            fng = select_filenames(fng, args)
+            times = np.zeros(len(fng))
+            for i, f in enumerate(fng):
+                times[i] = f.stat().st_mtime
+            # pick most recent file = this should be better managed (master file information)
+      
+            ix = np.argmax(times)
+            fng = [fng[ix]]
+            if ig == 0:
+                P = PH.regular_grid(
+                    rows,
+                    cols,
+                    order='rowsfirst',
+                    figsize=(sizex, sizey),
+                    panel_labels=plabels,
+                    labelposition=(0.05, 0.95),
+                    margins={
+                        "leftmargin": 0.1,
+                        "rightmargin": 0.01,
+                        "topmargin": 0.15,
+                        "bottommargin": 0.15,
+                        },
+                )
+            
+            ax = P.axdict[pgbc]
+            for fn in fng:
+                if args.analysis == "traces":
+                    plot_traces(ax, fn, PD, changetimestamp, args.protocol)
+                elif args.analysis == "revcorr":
+                    compute_revcorr(ax, pgbc, fn, PD, changetimestamp, args.protocol)
+        elif args.analysis == "tuning":
+            channel = 'nacncoop'
+            cols = 3
+            rows = 2
+            sizex = cols*3
+            sizey = rows*2.5
+            P = PH.regular_grid(
+                rows,
+                cols,
+                order='rowsfirst',
+                figsize=(sizex, sizey),
+                # panel_labels=plabels,
+                labelposition=(0.05, 0.95),
+                margins={
+                    "leftmargin": 0.1,
+                    "rightmargin": 0.01,
+                    "topmargin": 0.15,
+                    "bottommargin": 0.15,
+                },
+            )
+            
+            print('...')
+
+            truefile = {'Passive': 'passive', 'Canonical': 'normal', 'Active': 'active'}
+            for ic, chdist in enumerate(['Passive', 'Canonical', 'Active']):
+                args.dendritemode = truefile[chdist]
+                fna = select_filenames(fng, args)
+                print('\n plot data from: '.join([str(f) for f in fna]))
+
+                for k, fn in enumerate(fna):
+                    plot_traces(P.axarr[0, k], fn, PD, changetimestamp, args.protocol)
+                
+                P.axarr[0,ic].text(50, 1.0, chdist, horizontalalignment='center')
+                basen = fn.parts[-4]
+                    
+                pngfile = Path(PD.renderpath, f"{basen:s}_{channel:s}_{truefile[chdist]:s}.png")
+                print(pngfile)
+                imaged = mpl.imread(pngfile)
+                P.axarr[1, ic].imshow(imaged)
+                
 
     if chan == "_":
         chan = "nav11"

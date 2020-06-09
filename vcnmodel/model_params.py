@@ -68,8 +68,12 @@ class CmdChoices:
     SpirouChoices = ["all", "max=mean", "all=mean", "removelargest", "largestonly",
         "twolargest", "threelargest", "fourlargest"]
     ANSynapseChoices = ["simple", "multisite"]
-    channelChoices = ['klt', 'kht','ihvcn', 'nacncoop', 'nacn', 'najsr']
+
     srname = ["LS", "MS", "HS"]  # runs 0-2, not starting at 0
+
+    displayModeChoices = ['None', 'vm', 'sec-type', "mechanism"]
+    displayStyleChoices = ["cylinders", "graph", "volume", "surface",]
+    channelChoices = ['klt', 'kht','ihvcn', 'nacncoop', 'nacn', 'najsr']    
 
 
 # set up the Params data structure. This should hold everything that might be modified
@@ -98,7 +102,9 @@ class Params:
     modelType: str = CmdChoices.modelTypeChoices[0]
     SGCmodelType: str = CmdChoices.SGCmodelChoices[0]
     species: str = CmdChoices.speciesChoices[0]
-    displaychannel: str = CmdChoices.channelChoices[0]
+    displayStyle: str = CmdChoices.displayStyleChoices[0]
+    displayMechanism: str = CmdChoices.channelChoices[0]
+    displayMode: str = CmdChoices.displayModeChoices[0]
     
     # cell specific parameters related to geometry
     fullhocfile: bool = False  # use the "full" hoc file (cellname_Full.hoc)
@@ -183,7 +189,6 @@ class RunInfo:
     runProtocol: str = CmdChoices.protocolChoices[
         2
     ]  # testIV is default because it is fast and should be run often
-    viewitem:str = "None"
     runName: str = "Run"
     manipulation: str = "Canonical"
     preMode: str = "cc"
@@ -345,18 +350,24 @@ def build_parser():
         help='Use "full" hoc file as in "VCN_c02_Full.hoc instead of VCN_c02.hoc")',
     )
     parser.add_argument(
-        "-v",
-        "--view",
-        dest="viewitem",
-        default="None",
-        help="Render cell with neuronvis to view structure or channel decoration"
+        "--style",
+        dest="displayStyle",
+        default=CmdChoices.displayStyleChoices[0],
+        choices=CmdChoices.displayStyleChoices, 
+        help="Render cell with neuronvis with style: {str(CmdChoices.displayStyleChoices):s}"
     )
     parser.add_argument(
-        "-c",
-        "--channel",
-        dest="displaychannel",
-        default=CmdChoices.channelChoices[0],
-        help=f"Render cell with neuronvis to view channel decorations for: {str(CmdChoices.channelChoices):s}"
+        "--mechanism",
+        dest="displayMechanism",
+        default= CmdChoices.channelChoices[0],
+        help=f"Render cell with neuronvis to view channel mechanism decorations for: {str(CmdChoices.channelChoices):s}"
+    )
+    parser.add_argument(
+        "--displaymode",
+        dest="displayMode",
+        default=CmdChoices.displayModeChoices[0],
+        choices=CmdChoices.displayModeChoices,
+        help=f"Render cell with neuronvis : set mode to one of {str(CmdChoices.displayModeChoices):s}"
     )
     parser.add_argument(
         "--inputpattern",
