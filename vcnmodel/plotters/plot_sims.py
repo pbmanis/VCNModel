@@ -37,13 +37,25 @@ import pylibrary.plotting.styler as PLS
 modeltypes = ["mGBC", "XM13", "RM03", "XM13_nacncoop"]
 runtypes = ["AN", "an", "IO", "IV", "iv", "gifnoise"]
 experimenttypes = [None, "delays", "largestonly", "removelargest", "mean", "allmean", "twolargest"]
-# modetypes = ['find', 'singles', 'IO', 'multi']
-analysistypes = ['traces', 'PSTH', 'revcorr', 'SAC', 'tuning']
+modetypes = ['find', 'singles', 'IO', 'multi']
+analysistypes = ['traces', 'PSTH', 'revcorr', 'SAC', 'tuning', 'singles']
 dendriteChoices = [
         "normal",
         "passive",
         "active",
     ]
+
+orient_cells = {
+        2: [140.,    0.0, -144.0],
+        6: [140.,  -59.0,  -12.0],
+        5: [140.,  -46.0,  121.0],
+        9: [140.,  -74.0,   18.0],
+       11: [140.,   -2.0, -181.0],
+       10: [140.,    5.0,  -35.0],
+       13: [140.,  -22.0,  344.0],
+       17: [140., -158.0,   39.0],
+       30: [140., -134.0, -181.0],
+}
 def grAList() -> list:
     """
     Return a list of the 'grade A' cells from the SBEM project
@@ -696,6 +708,7 @@ def compute_revcorr(ax, gbc, fn, PD, changetimestamp, protocol,
     
     return summarySiteTC, RCD.sites
 
+
 def select_filenames(fng, args)->Union[list, None]:
     # print(fng)
     print('Selct filename for experiment: ', args.experiment)
@@ -877,7 +890,7 @@ def main():
             
         print(f"Searching for:  {str(Path(basefn, name_start)):s}")
         fng = list(Path(basefn).glob(name_start))
-        
+        exit()
         """ cull list by experiment and db """
 
 
@@ -918,6 +931,10 @@ def main():
                     plot_traces(ax, fn, PD, changetimestamp, args.protocol)
                 elif args.analysis == "revcorr":
                     compute_revcorr(ax, pgbc, fn, PD, changetimestamp, args.protocol)
+        elif args.analysis == 'singles':
+            fna = select_filenames(fng, args)
+            print(fna)
+            
         elif args.analysis == "tuning":
             channel = 'nacncoop'
             cols = 3

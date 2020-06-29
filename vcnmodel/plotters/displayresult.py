@@ -7,7 +7,7 @@ modeltype is needed to pull the correct model data
 for example:
 dispalyresult.py 14  should show the IV for 14 for the model in modeltype
 
-AN_Result_VCN_c09_Syn006_N001_030dB_16000.0_MS.p
+AN_Result_VCN_{p:s}_Syn006_N001_030dB_16000.0_MS.p
 
 
 """
@@ -43,7 +43,7 @@ class DisplayResult():
         self.fn = {}
         self.bp = {}
         self.Params['patterns'] = ''
-        self.Params['modeltype'] = 'XM13'
+        self.Params["modeltype"] = 'XM13'
         self.Params['runtype'] = 'IV'
         self.Params['modetypes'] = 'singles'
         self.Params['threshold'] = 0.
@@ -66,29 +66,29 @@ class DisplayResult():
         print(self.Params['patterns'])
         for p in self.Params['patterns']:
             if self.Params['runtype'] in ['AN'] and self.Params['modetype'] not in ['IO']:
-                self.fn[p] = 'AN_Result_VCN_{0:s}_delays_{1:s}_N001_060dB_4000.0_FM40.0_DM050_HS.p'.format(p, self.Params['modeltype'])
-                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM250.0_DM100_HS.p'
-           #     self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM250.0_DM100_MS_mean.p'
-              #  self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM100.0_DM100_MS.p'
-                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM300.0_DM100_MS_mean.p'
-                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N010_060dB_4000.0_FM300.0_DM100_MS_allmean.p'
-                self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N050_060dB_4000.0_FM400.0_DM050_MS_mean.p'
-                #self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N050_060dB_4000.0_FM400.0_DM050_MS.p'
-                #self.fn[p] = 'AN_Result_VCN_c09_delays_XM13_N050_060dB_4000.0_FM400.0_DM050_MS_allmean.p'
-            #  self.fn[p] = 'AN_Result_VCN_{0:s}_{1:s}_Syn{2:03d}_N001_030dB_16000.0_MS.p'.format(p, self.Params['modeltype'], self.Params['synno'])
-                self.bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/AN'.format(p)
+                self.fn[p] = f'AN_Result_VCN_{p:s}_delays_{self.Params["modeltype"]:s}_N001_060dB_4000.0_FM40.0_DM050_HS.p'
+                self.fn[p] = f'AN_Result_VCN_{p:s}_delays_XM13_N010_060dB_4000.0_FM250.0_DM100_HS.p'
+           #     self.fn[p] = 'AN_Result_VCN_{p:s}_delays_XM13_N010_060dB_4000.0_FM250.0_DM100_MS_mean.p'
+              #  self.fn[p] = 'AN_Result_VCN_{p:s}_delays_XM13_N010_060dB_4000.0_FM100.0_DM100_MS.p'
+                self.fn[p] = f'AN_Result_VCN_{p:s}_delays_XM13_N010_060dB_4000.0_FM300.0_DM100_MS_mean.p'
+                self.fn[p] = f'AN_Result_VCN_{p:s}_delays_XM13_N010_060dB_4000.0_FM300.0_DM100_MS_allmean.p'
+                self.fn[p] = f'AN_Result_VCN_{p:s}_delays_XM13_N050_060dB_4000.0_FM400.0_DM050_MS_mean.p'
+                #self.fn[p] = 'AN_Result_VCN_{p:s}_delays_XM13_N050_060dB_4000.0_FM400.0_DM050_MS.p'
+                #self.fn[p] = 'AN_Result_VCN_{p:s}_delays_XM13_N050_060dB_4000.0_FM400.0_DM050_MS_allmean.p'
+            #  self.fn[p] = 'AN_Result_VCN_{p:s}_{1:s}_Syn{2:03d}_N001_030dB_16000.0_MS.p'.format(p, self.Params["modeltype"], self.Params['synno'])
+                self.bp[p] = f'VCN_Cells/VCN_{p:s}/Simulations/AN'
 
             elif self.Params['runtype']in ['AN'] and self.Params['modetype'] in ['IO']:
-                self.fn[p] = 'AN_Result_VCN_{0:s}_{1:s}_SynIO{2:03d}_N001_030dB_16000.0_MS.p'.format(p, self.Params['modeltype'], self.Params['synno'])
-                self.bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/AN'.format(p)
+                self.fn[p] = f'AN_Result_VCN_{p:s}_{self.Params["modeltype"]:s}_SynIO{self.Params["synno"]:03d}_N001_030dB_16000.0_MS.p'
+                self.bp[p] = f'VCN_Cells/VCN_{p:s}/Simulations/AN'
 
             elif self.Params['runtype'] in ['IV']:
-                self.fn[p] = 'VCN_{0:s}_{1:s}.p'.format(p, self.Params['modeltype'])
-                self.bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/IV'.format(p)
+                self.fn[p] = f'VCN_{p:s}_{self.Params["modeltype"]:s}.p'
+                self.bp[p] = f'VCN_Cells/VCN_{p:s}/Simulations/IV'
 
             elif self.Params['runtype'] in ['gifnoise']:
-                self.fn[p] = 'VCN_{0:s}_{1:s}_gifnoise.p'.format(p, self.Params['modeltype'])
-                self.bp[p] = 'VCN_Cells/VCN_{0:s}/Simulations/Noise'.format(p)
+                self.fn[p] = f'VCN_{p:s}_{self.Params["modeltype"]:s}_gifnoise.p'
+                self.bp[p] = f'VCN_Cells/VCN_{p:s}/Simulations/Noise'
         self.lookupfiles()
         print(('Files: ', self.fn))
 
@@ -352,7 +352,7 @@ if __name__ == '__main__':
                     default='IV', help=('Select the run type (default: IV) from: %s' % DR.runtypes))
     parser.add_argument('-m', '--modetype', dest='modetype', action='store',
                     default='multi', help=('Select the mode type  (default: multi) from: %s' % DR.modetypes))
-    parser.add_argument('-M', '--modeltype', dest='modeltype', action='store',
+    parser.add_argument('-M', '--modeltype', dest="modeltype", action='store',
                     default='XM13', help=('Select the model type (default XM13) from: %s '% DR.modeltypes))
     parser.add_argument('-n', '--synno', dest='synno', action='store',
                     default=None, help='Select the synno')

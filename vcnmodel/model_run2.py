@@ -181,6 +181,7 @@ import pickle
 import time
 import argparse
 import dataclasses
+import datetime
 from dataclasses import dataclass
 from collections import OrderedDict
 import pprint
@@ -218,12 +219,13 @@ cprint = CP.cprint
 
 
 class ModelRun:
-    def __init__(self, params:dataclass=None, runinfo:dataclass=None):
+    def __init__(self, params:dataclass=None, runinfo:dataclass=None, args=None):
         self.Params = params
         self.RunInfo = runinfo
+        self.Params.commandline = args
 
         if self.Params.checkcommand:
-            self.Params.commandline = " ".join(sys.argv)
+            self.Params.commandline = sys.argv[1]
             print(
                 "Parameters: ", json.dumps(dataclasses.asdict(self.Params), indent=4)
             )  # pprint doesn't work well with ordered dicts
@@ -233,10 +235,6 @@ class ModelRun:
             print('Command line: ', self.Params.commandline)
             exit()
 
-        else:
-            pass
-            # model.run_model()  # then run the model
-        
         if self.Params.verbose:
             self.print_modelsetup()
         self.cconfig = cell_config.CellConfig(verbose=self.Params.verbose)
@@ -346,6 +344,7 @@ class ModelRun:
         #if self.Params.dendriteMode != 'normal':
         model_Pars += f"_{self.Params.dendriteMode:s}"
 
+        add_Pars = None
         if self.RunInfo.Spirou == "all":
             add_Pars = "all"
         elif self.RunInfo.Spirou == "max=mean":
@@ -362,11 +361,14 @@ class ModelRun:
             add_Pars = "threelargest"
         elif self.RunInfo.Spirou == "fourlargest":
             add_Pars = "fourlargest"
-
+        if add_Pars is None:
+            raise ValueError("RunInfo has invalid value")
         if self.Params.inputPattern is None:
             inputs = "self"
         else:
             inputs = self.Params.inputPattern
+        datestr = self.run_starttime.strftime("%Y-%m-%d.%H-%M-%S")  # get the actual start time for the top directory
+        run_directory = f"{self.RunInfo.runProtocol:s}-{add_Pars:s}-{datestr:s}"
 
         print('\nRUNPROTOCOL: ', self.RunInfo.runProtocol)
         if self.RunInfo.runProtocol in ["initIV", "initandrunIV", "runIV"]:
@@ -383,7 +385,7 @@ class ModelRun:
                 self.Params.initStateFile = Path(initPath, fn0)
                 if self.RunInfo.runProtocol.startswith("init") and self.Params.initStateFile.is_file():
                     self.Params.initStateFile.unlink()  # delete old initializaiton file first
-            simPath = Path(self.baseDirectory, self.cellID, self.simDirectory, simMode)
+            simPath = Path(self.baseDirectory, self.cellID, self.simDirectory, simMode, run_directory)
             self.mkdir_p(simPath)  # confirm that output path exists
             fn = f"{simMode:s}_Result_{self.cellID:s}_inp={inputs:s}_{model_Pars:s}"
             fn += f"_pulse_{add_Pars:s}_{self.Params.ANSynapseType:s}"
@@ -415,7 +417,7 @@ class ModelRun:
                 print('initstatefile exists?: ', self.Params.initStateFile.is_file())
                 if self.RunInfo.runProtocol.startswith("initAN") and self.Params.initStateFile.is_file():
                     self.Params.initStateFile.unlink()  # delete old initializaiton file first
-            simPath = Path(self.baseDirectory, self.cellID, self.simDirectory, simMode)
+            simPath = Path(self.baseDirectory, self.cellID, self.simDirectory, simMode, run_directory)
             fn = f"{simMode:s}_Result_{self.cellID:s}_inp={inputs:s}_{model_Pars:s}"
             fn += f"_{add_Pars:s}_{self.Params.ANSynapseType:s}"
             fn += f"_{self.RunInfo.nReps:03d}_{self.RunInfo.soundtype:s}"
@@ -436,6 +438,9 @@ class ModelRun:
             "c",
             f"{simMode:s} Simulation data file:  {str(self.Params.simulationFilename.name):s}"
         )
+        cprint("c",
+            f"Full sim path: {str(simPath):s}")
+
 
 
     def set_spontaneousrate(self, spont_rate_type: int):
@@ -864,15 +869,21 @@ class ModelRun:
             self.setup_model(par_map=par_map)        
         import neuronvis as NV
 
+        if self.cellID in list(vcnmodel.model_params.display_orient_cells):
+            angles = vcnmodel.model_params.display_orient_cells[self.cellID]
+        else:
+            angles = [200., 0., 0.]
+        print('Rendering via model_run2')
         NV.hocRender.Render(
-            hoc_file=self.post_cell.hr.h,# hoc_file,
-            display_style=self.Params.displayStyle, # display_mode,
-            display_renderer='pyqtgraph', # args["renderer"],
-            display_mode=self.Params.displayMode, # 'sec-type', # args["display"],
-            mechanism=self.Params.displayMechanism ,# args["mechanism"],
-            alpha=1.0, # args["alpha"],
-            sim_data=None, # sim_data,
-            output_file=str(Path('Renderings', f'{self.cellID:s}_{self.Params.displayMechanism:s}_{self.Params.dendriteMode:s}.png')),
+        hoc_file=self.post_cell.hr.h,# hoc_file,
+        display_style=self.Params.displayStyle, # display_mode,
+        display_renderer='pyqtgraph', # args["renderer"],
+        display_mode=self.Params.displayMode, # 'sec-type', # args["display"],
+        mechanism=self.Params.displayMechanism,# args["mechanism"],
+        initial_view=angles, 
+        alpha=1.0, # args["alpha"],
+        sim_data=None, # sim_data,
+        # output_file=str(Path('Renderings', f'{self.cellID:s}_{self.Params.displayMechanism:s}_{self.Params.dendriteMode:s}.png')),
         )
         exit()
 
@@ -895,6 +906,7 @@ class ModelRun:
     #     exit()  
         
     def run_model(self, par_map: dict = None):
+        self.run_starttime = datetime.datetime.now()
         if not self.Params.setup:
             self.setup_model(par_map=par_map)
         
@@ -915,6 +927,7 @@ class ModelRun:
                 + self.RunInfo.pip_duration
                 + self.RunInfo.pip_offduration
             )
+
 
         dispatcher[self.RunInfo.runProtocol]()
 
@@ -1545,7 +1558,7 @@ class ModelRun:
         nReps = self.RunInfo.nReps
         threshold = self.RunInfo.threshold  # spike threshold, mV
 
-        preCell, synapse, self.R.electrode_site = self.configure_cell(
+        preCell, synapse, self.electrode_site = self.configure_cell(
             self.post_cell, synapseConfig, celltype
         )
 
@@ -1601,10 +1614,10 @@ class ModelRun:
                         else:
                             p.gmax = gMaxNMDA[i]  # except the chosen one
             print("Syn #%d   synapse gMax: %f " % (k, gMax[k]))
-            for i, s in enumerate(synapse):
-                for p in s.psd.ampa_psd:
-                    print(f"Synapse: {i:d}  gmax={p.gmax:.6f}")
-            print("tag: %s" % tagname)
+            # for i, s in enumerate(synapse):
+            #     for p in s.psd.ampa_psd:
+            #         print(f"Synapse: {i:d}  gmax={p.gmax:.6f}")
+            # print("tag: %s" % tagname)
 
             tresults = [None] * nReps
 
@@ -1627,8 +1640,8 @@ class ModelRun:
                 # retreive the data
             else:  # easier to debug
                 for j, N in enumerate(range(nReps)):
-                    tresults[j] = self.f(
-                        self.post_cell,
+                    tresults[j] = self.single_an_run(
+                        # self.post_cell,
                         j,
                         synapseConfig,
                         seeds,
@@ -2270,7 +2283,7 @@ class ModelRun:
 def main():
 
     parsedargs, params, runinfo = vcnmodel.model_params.getCommands()  # get from command line
-    model = ModelRun(params=params, runinfo=runinfo)  # create instance of the model
+    model = ModelRun(params=params, runinfo=runinfo, args=parsedargs)  # create instance of the model
     if parsedargs.displayMode != "None":
         model.view_model()
     else:

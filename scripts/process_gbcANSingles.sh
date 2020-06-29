@@ -1,22 +1,20 @@
 #!/bin/bash
-mod_params="-r 1 --stimulus tonepip"
-stim_params="-f 16000. --dB 30."
-AN_params=" --sgcmodel cochlea --SR MS"
 
-FILES="VCN_c09 VCN_c11 VCN_c17 VCN_c18"
-for f in $FILES
+CELLNAMES="02 05 06 09 10 11 13 17 30"
+#CONFIG="noscale.toml" #"autoscale.toml"
+CONFIG="singles_autoscale_multisite_noparallel.toml"
+RUNTEXT="running the AN Single protocols"
+echo $RUNTEXT
+for f in $CELLNAMES
 do
-    echo "Cell: $f, self inputs"
-    python vcnmodel/model_run.py $f --protocol initAN -H \
-         ${mod_params} ${stim_params} ${AN_params} --configfile autoscale.toml\
-             --saveall
-
-    python vcnmodel/model_run.py $f --protocol runANSingles -H \
-         ${mod_params} ${stim_params} ${AN_params} --configfile autoscale.toml\
-             --saveall
+    echo $f
+    # python vcnmodel/model_run2.py VCN_c$f  -F -P initAN --configfile $CONFIG
+    python vcnmodel/model_run2.py VCN_c$f  -F -P runANSingles -r 25 --configfile $CONFIG
 done
+
+
 wait
-echo ANPSTH generators complete
+echo AN Singles complete
 # for f in $FILES
 # do
 #     echo "Cell: <$f>"

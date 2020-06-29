@@ -10,6 +10,18 @@ import json
 import toml
 from pprint import PrettyPrinter
 
+
+display_orient_cells = {
+        "VCN_c02": [140.,    0.0, -144.0],
+        "VCN_c06": [140.,  -59.0,  -12.0],
+        "VCN_c05": [140.,  -46.0,  121.0],
+        "VCN_c09": [140.,  -74.0,   18.0],
+        "VCN_c11": [140.,   -2.0, -181.0],
+        "VCN_c10": [140.,    5.0,  -35.0],
+        "VCN_c13": [140.,  -22.0,  344.0],
+        "VCN_c17": [140., -158.0,   39.0],
+        "VCN_c30": [140., -134.0, -181.0],
+}
 """
 Define data structures used for:
     Command line parsing
@@ -369,6 +381,16 @@ def build_parser():
         choices=CmdChoices.displayModeChoices,
         help=f"Render cell with neuronvis : set mode to one of {str(CmdChoices.displayModeChoices):s}"
     )
+    
+    parser.add_argument(
+        "--displayscale",
+        dest="displayscale",
+        action="store_true",
+        default=False,
+        help="use display scale and orientation from table for generating renderings"
+    )
+    
+    
     parser.add_argument(
         "--inputpattern",
         "-i",
