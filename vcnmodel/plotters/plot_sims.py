@@ -139,7 +139,13 @@ def twinax(fig:object, ax1:object, pos:float=0.) -> object:
     ax2.patch.set_visible(False)
 #    PH.adjust_spines(ax2, distance=0.)
     return ax2
-                
+
+def get_changetimestamp():
+    # trip filemode based on date of simulatoin
+    changedate = "2020-04-29-12:00"
+    dts = datetime.datetime.strptime(changedate,"%Y-%m-%d-%H:%M") 
+    changetimestamp = datetime.datetime.timestamp(dts)
+    return(changetimestamp)                
 def clean_spiketimes(spikeTimes, mindT=0.7):
     """
     Clean up spike time array, removing all less than mindT
