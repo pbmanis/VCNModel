@@ -1,12 +1,36 @@
-#!/usr/bin/env python
-"""
-Dict replacemnt regex:
-find: self.Params(\[\")(\w+)(\"\])
-replace: self.Params.$2
+import copy
+import dataclasses
+import datetime
+import json
+import pickle
+import re
+import sys
+import time
+import timeit
+from collections import OrderedDict
+from dataclasses import dataclass
+from pathlib import Path
 
-"""
+import matplotlib
+import numpy as np
+import toml
+from cnmodel import cells
+from cnmodel.decorator import Decorator
+from cnmodel.util import sound
+from matplotlib import pyplot as mpl
+from neuronvis import hoc_graphics as hoc_graphics
+from pylibrary.tools import cprint as CP
+from pylibrary.tools import utility as pu  # access to a spike finder routine
+from pyqtgraph import multiprocess as MP
 
-__author__ = "pbmanis"
+import vcnmodel.model_params
+from vcnmodel import cell_config as cell_config
+from vcnmodel import cellInitialization as cellInit
+from vcnmodel.adjust_areas import AdjustAreas
+from vcnmodel.generate_run import GenerateRun
+
+matplotlib.use("Qt5Agg")
+
 """
 model_run.py
 
@@ -47,10 +71,12 @@ VCN_Cells/   # top level for data
 
 
 usage: model_run [-h] [--type {Bushy,TStellate,DStellate}]
-                 [--model {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}]
+                 [--model {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,
+                        XM13PasDend,Calyx,MNTB,L23Pyr}]
                  [--modeltype {II,II-I,I-II,I-c,I-t,II-o}]
                  [--sgcmodel {Zilany,cochlea}]
-                 [--protocol {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}]
+                 [--protocol {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,
+                        runANIO,runANSingles,runANOmitOne,gifnoise}]
                  [-H] [--hocfile HOCFILE] [-F] [--inputpattern INPUTPATTERN]
                  [--stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}]
                  [--check] [-C CONFIGFILE] [-d DB] [-f F0]
@@ -79,13 +105,17 @@ optional arguments:
   -h, --help            show this help message and exit
   --type {Bushy,TStellate,DStellate}, -T {Bushy,TStellate,DStellate}
                         Define the cell type (default: Bushy)
-  --model {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}, -M {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}
+  --model {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr},
+                -M {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}
                         Define the model type (default: XM13)
   --modeltype {II,II-I,I-II,I-c,I-t,II-o}
                         Define the model type (default: XM13)
   --sgcmodel {Zilany,cochlea}
                         Define the SGC model type (default: Zilany)
-  --protocol {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}, -P {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,runANIO,runANSingles,runANOmitOne,gifnoise}
+  --protocol {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,runANIO,
+                runANSingles,runANOmitOne,gifnoise}
+                , -P {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,runANIO,
+                runANSingles,runANOmitOne,gifnoise}
                         Protocol to use for simulation (default: IV)
   -H, --defaulthoc      Use default hoc file for this cell
   --hocfile HOCFILE     hoc file to use for simulation (default is the
@@ -172,43 +202,6 @@ wheres_the_data.toml
 
 """
 
-import sys
-from pathlib import Path
-import os
-import re
-import copy
-import pickle
-import time
-import argparse
-import dataclasses
-import datetime
-from dataclasses import dataclass
-from collections import OrderedDict
-import pprint
-import json
-import toml
-import numpy as np
-import timeit
-import matplotlib
-
-matplotlib.use("Qt5Agg")
-import matplotlib.pyplot as mpl
-
-# from neuronvis.hoc_viewer import HocViewer
-import vcnmodel.model_params
-import vcnmodel.cell_config as cell_config
-import neuronvis.hoc_graphics as hoc_graphics
-from vcnmodel.generate_run import GenerateRun
-import vcnmodel.cellInitialization as cellInit
-from vcnmodel.adjust_areas import AdjustAreas
-from cnmodel import cells
-from cnmodel.util import sound
-from cnmodel.decorator import Decorator
-from cnmodel import data as DATA
-import pylibrary.tools.utility as pu  # access to a spike finder routine
-import pylibrary.tools.cprint as CP
-import pyqtgraph as pg
-import pyqtgraph.multiprocess as MP
 
 # import pylibrary.plotting.pyqtgraph_plothelpers as pgh
 
@@ -219,7 +212,7 @@ cprint = CP.cprint
 
 
 class ModelRun:
-    def __init__(self, params:dataclass=None, runinfo:dataclass=None, args=None):
+    def __init__(self, params: dataclass = None, runinfo: dataclass = None, args=None):
         self.Params = params
         self.RunInfo = runinfo
         self.Params.commandline = args
@@ -229,28 +222,23 @@ class ModelRun:
             print(
                 "Parameters: ", json.dumps(dataclasses.asdict(self.Params), indent=4)
             )  # pprint doesn't work well with ordered dicts
-            print(
-                "RunInfo: ", dataclasses.asdict(self.RunInfo)
-            )
-            print('Command line: ', self.Params.commandline)
+            print("RunInfo: ", dataclasses.asdict(self.RunInfo))
+            print("Command line: ", self.Params.commandline)
             exit()
 
         if self.Params.verbose:
             self.print_modelsetup()
         self.cconfig = cell_config.CellConfig(verbose=self.Params.verbose)
-        
+
         where_is_data = Path("wheres_my_data.toml")
         if where_is_data.is_file():
             self.datapaths = toml.load("wheres_my_data.toml")
         else:
-            self.datapaths = {"baseDirectory": Path(
-            "../VCN-SBEM-Data", "VCN_Cells")
-        } 
+            self.datapaths = {"baseDirectory": Path("../VCN-SBEM-Data", "VCN_Cells")}
         self.baseDirectory = self.datapaths["baseDirectory"]
         self.morphDirectory = "Morphology"
         self.initDirectory = "Initialization"
         self.simDirectory = "Simulations"
-
 
     def print_modelsetup(self):
         """
@@ -291,7 +279,7 @@ class ModelRun:
 
         Parameters
         ----------
-        model_type : string
+        model_name : string
             The type of the model that will be used (condutance settings)
 
         Returns
@@ -301,9 +289,7 @@ class ModelRun:
         """
         if model_name not in self.modfelNameChoices:
             print(
-                "Model type must be one of: {:s}. Got: {:s}".format(
-                    ", ".join(self.modelNameChoices), model_type
-                )
+                f"Model type must be one of: {', '.join(self.modelNameChoices):s}. Got: {self.Params.modelType:s}"
             )
             exit()
         self.Params.modelName = model_name
@@ -331,17 +317,15 @@ class ModelRun:
                 self.Params.soma_inflation,
                 self.Params.dendrite_inflation,
             )
-       
-        model_Pars = (
-            f"{str(self.Params.modelName):s}_{str(self.Params.modelType):s}"
-        )
+
+        model_Pars = f"{str(self.Params.modelName):s}_{str(self.Params.modelType):s}"
         if self.Params.soma_inflation != 1.0:
             model_Pars += f"_soma={self.Params.soma_inflation:.3f}"
         if self.Params.dendrite_inflation != 1.0:
             model_Pars += f"_dend={self.Params.dendrite_inflation:.3f}"
         if self.Params.ASA_inflation != 1.0:
             model_Pars += f"_ASA={self.Params.ASA_inflation:.3f}"
-        #if self.Params.dendriteMode != 'normal':
+        # if self.Params.dendriteMode != 'normal':
         model_Pars += f"_{self.Params.dendriteMode:s}"
 
         add_Pars = None
@@ -367,10 +351,12 @@ class ModelRun:
             inputs = "self"
         else:
             inputs = self.Params.inputPattern
-        datestr = self.run_starttime.strftime("%Y-%m-%d.%H-%M-%S")  # get the actual start time for the top directory
+        datestr = self.run_starttime.strftime(
+            "%Y-%m-%d.%H-%M-%S"
+        )  # get the actual start time for the top directory
         run_directory = f"{self.RunInfo.runProtocol:s}-{add_Pars:s}-{datestr:s}"
 
-        print('\nRUNPROTOCOL: ', self.RunInfo.runProtocol)
+        print("\nRUNPROTOCOL: ", self.RunInfo.runProtocol)
         if self.RunInfo.runProtocol in ["initIV", "initandrunIV", "runIV"]:
             simMode = "IV"
             initPath = Path(self.baseDirectory, self.cellID, self.initDirectory)
@@ -381,29 +367,36 @@ class ModelRun:
                 fn0 += f"_{self.Params.SRType:2s}"
                 if self.Params.tagstring is not None:
                     fn0 += f"_{self.Params.tagstring:s}"
-                fn0 += '.dat'
+                fn0 += ".dat"
                 self.Params.initStateFile = Path(initPath, fn0)
-                if self.RunInfo.runProtocol.startswith("init") and self.Params.initStateFile.is_file():
+                if (
+                    self.RunInfo.runProtocol.startswith("init")
+                    and self.Params.initStateFile.is_file()
+                ):
                     self.Params.initStateFile.unlink()  # delete old initializaiton file first
-            simPath = Path(self.baseDirectory, self.cellID, self.simDirectory, simMode, run_directory)
+            simPath = Path(
+                self.baseDirectory,
+                self.cellID,
+                self.simDirectory,
+                simMode,
+                run_directory,
+            )
             self.mkdir_p(simPath)  # confirm that output path exists
             fn = f"{simMode:s}_Result_{self.cellID:s}_inp={inputs:s}_{model_Pars:s}"
             fn += f"_pulse_{add_Pars:s}_{self.Params.ANSynapseType:s}"
             fn += f"_{self.Params.SRType:2s}"
             if self.Params.tagstring is not None:
                 fn += f"_{self.Params.tagstring:s}"
-            fn += f".p"
-            self.Params.simulationFilename = Path(
-                    simPath, fn
-                )
+            fn += ".p"
+            self.Params.simulationFilename = Path(simPath, fn)
 
         if (
             self.RunInfo.runProtocol.startswith("runAN")
-                or self.RunInfo.runProtocol == "initAN"
-                or self.RunInfo.runProtocol == "runANSingles"
-            ):
+            or self.RunInfo.runProtocol == "initAN"
+            or self.RunInfo.runProtocol == "runANSingles"
+        ):
             simMode = "AN"
- 
+
             initPath = Path(self.baseDirectory, self.cellID, self.initDirectory)
             self.mkdir_p(initPath)  # confirm existence of that file
             if self.Params.initStateFile is None:
@@ -414,10 +407,19 @@ class ModelRun:
                 fn0 += f"_{self.Params.SRType:2s}.p"
                 self.Params.initStateFile = Path(initPath, fn0)
                 # print("AN Initialization file: ", self.Params.initStateFile.name)
-                print('initstatefile exists?: ', self.Params.initStateFile.is_file())
-                if self.RunInfo.runProtocol.startswith("initAN") and self.Params.initStateFile.is_file():
+                print("initstatefile exists?: ", self.Params.initStateFile.is_file())
+                if (
+                    self.RunInfo.runProtocol.startswith("initAN")
+                    and self.Params.initStateFile.is_file()
+                ):
                     self.Params.initStateFile.unlink()  # delete old initializaiton file first
-            simPath = Path(self.baseDirectory, self.cellID, self.simDirectory, simMode, run_directory)
+            simPath = Path(
+                self.baseDirectory,
+                self.cellID,
+                self.simDirectory,
+                simMode,
+                run_directory,
+            )
             fn = f"{simMode:s}_Result_{self.cellID:s}_inp={inputs:s}_{model_Pars:s}"
             fn += f"_{add_Pars:s}_{self.Params.ANSynapseType:s}"
             fn += f"_{self.RunInfo.nReps:03d}_{self.RunInfo.soundtype:s}"
@@ -427,7 +429,7 @@ class ModelRun:
             fn += f"_{self.Params.SRType:2s}"
             if self.Params.tagstring is not None:
                 fn += f"_{self.Params.tagstring:s}"
-            fn += f".p"
+            fn += ".p"
             self.Params.simulationFilename = Path(simPath, fn)
             self.mkdir_p(simPath)  # confirm that output path exists
         cprint(
@@ -436,12 +438,9 @@ class ModelRun:
         )
         cprint(
             "c",
-            f"{simMode:s} Simulation data file:  {str(self.Params.simulationFilename.name):s}"
+            f"{simMode:s} Simulation data file:  {str(self.Params.simulationFilename.name):s}",
         )
-        cprint("c",
-            f"Full sim path: {str(simPath):s}")
-
-
+        cprint("c", f"Full sim path: {str(simPath):s}")
 
     def set_spontaneousrate(self, spont_rate_type: int):
         """
@@ -475,10 +474,10 @@ class ModelRun:
     def mkdir_p(self, path: [str, Path]):
         try:
             Path.mkdir(path, parents=True, exist_ok=True)
-        except:
+        except IOError:
             raise FileNotFoundError(f"Cannot create path: {str(path):s}")
 
-    def fix_singlets(self, h: object, harsh:bool = False):
+    def fix_singlets(self, h: object, harsh: bool = False):
         badsecs = []
         for i, sec in enumerate(h.allsec()):
             if sec.n3d() == 1:
@@ -503,21 +502,22 @@ class ModelRun:
                 d = parent.sec.diam3d(nparentseg)
                 h.pt3dinsert(0, x, y, z, d, sec=sec)
         if harsh and len(badsecs) > 0:
-            cprint('r', f"**** Fixed Singlet segments in {len(badsecs):d} sections")
+            cprint("r", f"**** Fixed Singlet segments in {len(badsecs):d} sections")
             for b in badsecs:
                 print(f"Bad sections: ', {b.name():s}")
             exit()
         else:
-            cprint('g', f"**** No singlets found in this hoc file")
+            cprint("g", "**** No singlets found in this hoc file")
         badsecs = []
         for sec in h.allsec():
             if sec.n3d() == 1:
                 badsecs.append(sec)
         if len(badsecs) == 0:
-            cprint('g', 'No bad sections')
+            cprint("g", "No bad sections")
         else:
-            cprint('r', f"found {len(badsecs):d} bad sections with sec.n3d() = 1; repaired")
-
+            cprint(
+                "r", f"found {len(badsecs):d} bad sections with sec.n3d() = 1; repaired"
+            )
 
     def setup_model(self, par_map: dict = None):
         """
@@ -545,7 +545,7 @@ class ModelRun:
         ]
 
         if self.Params.verbose:
-            print(f"run_model entry")
+            print("run_model entry")
         if par_map is not None and "id" in list(par_map.keys()):
             self.idnum = par_map["id"]
         else:
@@ -562,13 +562,11 @@ class ModelRun:
         if self.Params.fullhocfile:
             self.Params.hocfile = self.Params.cell + "_Full.hoc"
             cprint("c", f"Using '_Full' hoc file: {self.Params.hocfile:s}")
-        elif self.Params.usedefaulthoc or self.Params.hocfile == None:
-            self.Params.hocfile = self.Params.cell + ".hoc" # try to make a name
+        elif self.Params.usedefaulthoc or self.Params.hocfile is None:
+            self.Params.hocfile = self.Params.cell + ".hoc"  # try to make a name
             cprint("c", f"Using default hoc file: {self.Params.hocfile:s}")
-        else:             # a passed hoc file will be used
+        else:  # a passed hoc file will be used
             cprint("c", f"Using passed hoc file: {self.Params.hocfile:s}")
-
-
 
         filename = Path(
             self.baseDirectory, self.cellID, self.morphDirectory, self.Params.hocfile
@@ -579,12 +577,15 @@ class ModelRun:
 
         # instantiate cells
         if self.Params.cellType in ["Bushy", "bushy"]:
-            print(f"Creating a bushy cell (run_model) ")
+            print("Creating a bushy cell (run_model) ")
             from cnmodel import data
 
             changes = None
             nach = None  # uses default
-            if self.Params.modelName == "XM13_nacncoop" and self.Params.dendriteMode=='normal':
+            if (
+                self.Params.modelName == "XM13_nacncoop"
+                and self.Params.dendriteMode == "normal"
+            ):
                 from vcnmodel.model_data import data_XM13_nacncoop as CHAN
 
                 nach = "nacncoop"
@@ -603,9 +604,13 @@ class ModelRun:
                     model_type="II",
                     data=CHAN.ChannelCompartments,
                 )
-            
-            if self.Params.modelName == "XM13_nacncoop" and self.Params.dendriteMode=='passive':
-                from vcnmodel.model_data import data_XM13_nacncoop_pasdend as CHAN
+
+            if (
+                self.Params.modelName == "XM13_nacncoop"
+                and self.Params.dendriteMode == "passive"
+            ):
+                from vcnmodel.model_data import \
+                    data_XM13_nacncoop_pasdend as CHAN
 
                 nach = "nacncoop"
                 changes = data.add_table_data(
@@ -622,10 +627,14 @@ class ModelRun:
                     species="mouse",
                     model_type="II",
                     data=CHAN.ChannelCompartments,
-                )            
-            
-            if self.Params.modelName == "XM13_nacncoop" and self.Params.dendriteMode=='active':
-                from vcnmodel.model_data import data_XM13_nacncoop_actdend as CHAN
+                )
+
+            if (
+                self.Params.modelName == "XM13_nacncoop"
+                and self.Params.dendriteMode == "active"
+            ):
+                from vcnmodel.model_data import \
+                    data_XM13_nacncoop_actdend as CHAN
 
                 nach = "nacncoop"
                 changes = data.add_table_data(
@@ -643,9 +652,9 @@ class ModelRun:
                     model_type="II",
                     data=CHAN.ChannelCompartments,
                 )
-                            
+
             elif self.Params.modelName == "XM13":
-                import model_data.data_XM13 as CHAN
+                from model_data import data_XM13 as CHAN
 
                 nach = "nav11"
                 changes = data.add_table_data(
@@ -663,9 +672,10 @@ class ModelRun:
                     model_type="II",
                     data=CHAN.ChannelCompartments,
                 )
-            
+
             elif self.Params.modelName == "XM13_nacn":
-                import model_data.data_XM13_nacn as CHAN
+                from model_data import data_XM13_nacn as CHAN
+
                 nach = "nacn"
                 changes = data.add_table_data(
                     "XM13_nacn_channels",
@@ -682,9 +692,9 @@ class ModelRun:
                     model_type="II",
                     data=CHAN.ChannelCompartments,
                 )
-            
+
             elif self.Params.modelName == "XM13_nabu":
-                import model_data.data_XM13_nabu as CHAN
+                from model_data import data_XM13_nabu as CHAN
 
                 nach = "nabu"
                 changes = data.add_table_data(
@@ -702,7 +712,7 @@ class ModelRun:
                     model_type="II",
                     data=CHAN.ChannelCompartments,
                 )
-            
+
             if changes is not None:
                 data.report_changes(changes)
                 data.report_changes(changes_c)
@@ -714,18 +724,18 @@ class ModelRun:
                 modelType=self.Params.modelType,
                 nach=nach,
             )
-        
+
         elif self.Params.cellType in ["tstellate", "TStellate"]:
-            print(f"Creating a t-stellate cell (run_model) ")
+            print("Creating a t-stellate cell (run_model) ")
             self.post_cell = cells.TStellate.create(
                 morphology=str(filename),
                 decorator=Decorator,
                 species=self.Params.species,
                 modelType=self.Params.modelName,
             )
-       
+
         elif self.Params.cellType in ["dstellate", "DStellate"]:
-            print(f"Creating a D-stellate cell (run_model)")
+            print("Creating a D-stellate cell (run_model)")
             self.post_cell = cells.DStellate.create(
                 morphology=str(filename),
                 decorator=Decorator,
@@ -756,7 +766,9 @@ class ModelRun:
         print("Ra (ohm.cm) = {:8.1f}".format(self.post_cell.hr.h.Ra))
 
         self.fix_singlets(self.post_cell.hr.h)
-        if self.Params.soma_autoinflate:  # get values and inflate soma automatically to match mesh
+        if (
+            self.Params.soma_autoinflate
+        ):  # get values and inflate soma automatically to match mesh
             cprint("c", "Soma Autoinflation")
 
             inflateratio = self.cconfig.get_soma_ratio(self.cellID)
@@ -767,7 +779,7 @@ class ModelRun:
             self.Params.soma_inflation = inflateratio
 
         if self.Params.soma_inflation != 1.0:
-            cprint('c', "    Inflating soma")
+            cprint("c", "    Inflating soma")
             self.post_cell.hr.h.finitialize()
             rtau = self.post_cell.compute_rmrintau(
                 auto_initialize=True, vrange=[-80.0, -50.0]
@@ -780,24 +792,23 @@ class ModelRun:
 
             AdjA = AdjustAreas(method="pt3d")
             AdjA.sethoc_fromCNcell(self.post_cell)
-            pt3d = AdjA.adjust_diameters(
-                sectypes=["soma", "Soma"], inflateRatio=inflateratio
-            )
+            AdjA.adjust_diameters(sectypes=["soma", "Soma"], inflateRatio=inflateratio)
             # AdjA.plot_areas(pt3d)
 
             rtau = self.post_cell.compute_rmrintau(
                 auto_initialize=True, vrange=[-80.0, -60.0]
             )
-            print(
-                f"    New Rin after somatic inflation: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
-            )
+            print(f"    New Rin after somatic inflation: {rtau['Rin']:.2f}", end="")
+            print(f" , tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}")
         if self.Params.ASA_fromsoma:
             self.Params.ASA_inflation = self.Params.soma_inflation
 
         if self.Params.dendrite_fromsoma:
             self.Params.dendrite_inflation = self.Params.soma_inflation
             cprint("c", "Dendrite inflation uses soma inflation.")
-        elif self.Params.dendrite_autoinflate:  # get values and inflate soma automatically to match mesh
+        elif (
+            self.Params.dendrite_autoinflate
+        ):  # get values and inflate soma automatically to match mesh
             cprint("c", "Dendrite Autoinflation")
             inflateratio = self.cconfig.get_dendrite_ratio(self.cellID)
             if np.isnan(inflateratio):
@@ -805,7 +816,7 @@ class ModelRun:
             self.Params.dendrite_inflation = inflateratio
 
         if self.Params.dendrite_inflation != 1.0:
-            cprint('c', "    Inflating dendrite")
+            cprint("c", "    Inflating dendrite")
             rtau = self.post_cell.compute_rmrintau(
                 auto_initialize=True, vrange=[-80.0, -55.0]
             )
@@ -815,9 +826,7 @@ class ModelRun:
 
             AdjA = AdjustAreas()
             AdjA.sethoc_fromCNcell(self.post_cell)
-            pt3d = AdjA.adjust_diameters(
-                sectypes=dendrite_names, inflateRatio=inflateratio
-            )
+            AdjA.adjust_diameters(sectypes=dendrite_names, inflateRatio=inflateratio)
             # AdjA.plot_areas(pt3d)  # just to take a look at the adjustment
 
             rtau = self.post_cell.compute_rmrintau(
@@ -866,24 +875,25 @@ class ModelRun:
 
     def view_model(self, par_map: dict = None):
         if not self.Params.setup:
-            self.setup_model(par_map=par_map)        
+            self.setup_model(par_map=par_map)
         import neuronvis as NV
 
         if self.cellID in list(vcnmodel.model_params.display_orient_cells):
             angles = vcnmodel.model_params.display_orient_cells[self.cellID]
         else:
-            angles = [200., 0., 0.]
-        print('Rendering via model_run2')
+            angles = [200.0, 0.0, 0.0]
+        print("Rendering via model_run2")
         NV.hocRender.Render(
-        hoc_file=self.post_cell.hr.h,# hoc_file,
-        display_style=self.Params.displayStyle, # display_mode,
-        display_renderer='pyqtgraph', # args["renderer"],
-        display_mode=self.Params.displayMode, # 'sec-type', # args["display"],
-        mechanism=self.Params.displayMechanism,# args["mechanism"],
-        initial_view=angles, 
-        alpha=1.0, # args["alpha"],
-        sim_data=None, # sim_data,
-        # output_file=str(Path('Renderings', f'{self.cellID:s}_{self.Params.displayMechanism:s}_{self.Params.dendriteMode:s}.png')),
+            hoc_file=self.post_cell.hr.h,  # hoc_file,
+            display_style=self.Params.displayStyle,  # display_mode,
+            display_renderer="pyqtgraph",  # args["renderer"],
+            display_mode=self.Params.displayMode,  # 'sec-type', # args["display"],
+            mechanism=self.Params.displayMechanism,  # args["mechanism"],
+            initial_view=angles,
+            alpha=1.0,  # args["alpha"],
+            sim_data=None,  # sim_data,
+            # output_file=str(Path('Renderings',
+            #     f'{self.cellID:s}_{self.Params.displayMechanism:s}_{self.Params.dendriteMode:s}.png')),
         )
         exit()
 
@@ -903,41 +913,41 @@ class ModelRun:
     #         sim_data=None, # sim_data,
     #         output_file=str(Path('Renderings', f'{self.cellID:s}_parts.png')),
     #     )
-    #     exit()  
-        
+    #     exit()
+
     def run_model(self, par_map: dict = None):
         self.run_starttime = datetime.datetime.now()
         if not self.Params.setup:
             self.setup_model(par_map=par_map)
-        
+
         dispatcher = {
             "initIV": self.initIV,
             "runIV": self.iv_run,
             "testIV": self.testIV,
-            "initAN": self.an_run_init, #(self.post_cell, make_an_intial_conditions=True),
+            "initAN": self.an_run_init,  # (self.post_cell, make_an_intial_conditions=True),
             "runANPSTH": self.an_run,
             "runANIO": self.an_run_IO,
             "runANSingles": self.an_run_singles,
-            "runANOmitOne": self.an_run_omit_one,#.(self.post_cell, exclude=True),
+            "runANOmitOne": self.an_run_omit_one,  # .(self.post_cell, exclude=True),
             "gifnoise": self.noise_run,
         }
-        if self.RunInfo.runProtocol in ["runANPSTH", "runANSingles", "runANOmitOne", "runANIO"]:
+        if self.RunInfo.runProtocol in [
+            "runANPSTH",
+            "runANSingles",
+            "runANOmitOne",
+            "runANIO",
+        ]:
             self.RunInfo.run_duration = (
                 np.sum(self.RunInfo.pip_start)
                 + self.RunInfo.pip_duration
                 + self.RunInfo.pip_offduration
             )
 
-
         dispatcher[self.RunInfo.runProtocol]()
 
     def initIV(self):
         self.R = GenerateRun(
-            self.Params,
-            self.RunInfo,
-            self.post_cell,
-            idnum=self.idnum,
-            starttime=None,
+            self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
         )
         cellInit.get_initial_condition_state(
             self.post_cell,
@@ -949,11 +959,7 @@ class ModelRun:
 
     def testIV(self):
         self.R = GenerateRun(
-            self.Params,
-            self.RunInfo,
-            self.post_cell,
-            idnum=self.idnum,
-            starttime=None,
+            self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
         )
         cellInit.test_initial_conditions(
             self.post_cell,
@@ -982,14 +988,10 @@ class ModelRun:
         print("iv_run: starting")
         start_time = timeit.default_timer()
 
-        if self.RunInfo.sequence is not "":  # replace sequence?
+        if self.RunInfo.sequence != "":  # replace sequence?
             self.RunInfo.stimInj = {"pulse": eval(self.Params.sequence)}
         self.R = GenerateRun(
-            self.Params,
-            self.RunInfo,
-            self.post_cell,
-            idnum=self.idnum,
-            starttime=None,
+            self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
         )
         self.R.RunInfo.folder = Path(
             self.baseDirectory, self.cellID, self.simDirectory, "IV"
@@ -998,7 +1000,7 @@ class ModelRun:
             print("iv_run: calling do_run")
         nworkers = self.Params.nWorkers
         #        print(self.Params.Parallel)
-        if self.Params.Parallel == False:
+        if self.Params.Parallel is False:
             nworkers = 1
         #        print('Number of workers available on this machine: ', nworkers)
         self.R.doRun(
@@ -1091,11 +1093,7 @@ class ModelRun:
         print("noise_run: starting")
         # parse i_test_range and pass it here
         self.R = GenerateRun(
-            self.Params,
-            self.RunInfo,
-            self.post_cell,
-            idnum=self.idnum,
-            starttime=None,
+            self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
         )
         # ivinitfile = Path(self.baseDirectory, self.cellID,
         #                         self.initDirectory, self.Params.initStateFile)
@@ -1106,7 +1104,7 @@ class ModelRun:
             print("noise_run: calling do_run")
         nworkers = self.Params.nWorkers
         #        print(self.Params.Parallel)
-        if self.Params.Parallel == False:
+        if self.Params.Parallel is False:
             nworkers = 1
         #        print('Number of workers available on this machine: ', nworkers)
         self.R.doRun(
@@ -1153,7 +1151,7 @@ class ModelRun:
 
         Returns
         -------
-        
+
         s : numpy array
             A 2-D numpy array (nReps, len(synapseConfig)) containing the seeds for each run and
             each synapse.
@@ -1185,7 +1183,7 @@ class ModelRun:
         print(
             f"{'Total Neuron Run Time = ':>25s} {self.nrn_run_time / 60.0:8.2f} min ({self.nrn_run_time:8.0f}s)"
         )
-        
+
     def get_synapses(self, synapses: list, printvalues=False):
         """
         Get values of settings in synapses
@@ -1208,7 +1206,7 @@ class ModelRun:
                     ngMax[i] = ngMax[i] + p.gmax
         if self.Params.verbose or printvalues:
             for i, s in enumerate(synapses):
-                print('getsyn: i nsyn gmax nmdagmax  : ', i, nSyn[i], gMax[i], ngMax[i])
+                print("getsyn: i nsyn gmax nmdagmax  : ", i, nSyn[i], gMax[i], ngMax[i])
         return (gMax, ngMax, nSyn)
 
     def set_synapse(self, synapse: list, gampa: float, gnmda: float):
@@ -1225,15 +1223,13 @@ class ModelRun:
             p.gmax = gnmda
             totaln = totaln + p.gmax
         if self.Params.verbose:
-            print('setsyn: total ampa, nmda: ', totalg, totaln)
+            print("setsyn: total ampa, nmda: ", totalg, totaln)
 
     def an_run_init(self):
         self.an_run(make_an_intial_conditions=True)
 
     def an_run(
-        self,
-        verify: bool = False,
-        make_an_intial_conditions: bool = False,
+        self, verify: bool = False, make_an_intial_conditions: bool = False,
     ):
         """
         Establish AN inputs to soma, and run the model.
@@ -1257,13 +1253,13 @@ class ModelRun:
 
         """
         if make_an_intial_conditions:
-            cprint('g', "\n*** Initializing for an_run\n")
+            cprint("g", "\n*** Initializing for an_run\n")
         else:
-            cprint('g', "\n*** an_run\n")
+            cprint("g", "\n*** an_run\n")
 
         if self.Params.inputPattern is not None:
             fromdict = self.Params.inputPattern
-            print(f"Cell id: {self.cellID:s} using input pattern: {fromdict:s}" )
+            print(f"Cell id: {self.cellID:s} using input pattern: {fromdict:s}")
         else:
             print(f"Cell id: {self.cellID:s} is using 'self' input pattern")
             fromdict = self.cellID
@@ -1283,7 +1279,7 @@ class ModelRun:
         threshold = self.RunInfo.threshold  # spike threshold, mV
 
         preCell, synapse, self.electrode_site = self.configure_cell(
-            self.post_cell, synapseConfig = synapseConfig, celltype=celltype
+            self.post_cell, synapseConfig=synapseConfig, celltype=celltype
         )
 
         # see if we need to save the cell state now.
@@ -1298,7 +1294,10 @@ class ModelRun:
                 electrode_site=self.electrode_site,
                 reinit=self.Params.auto_initialize,
             )
-            cprint('c', f"Confirming Initial conditions with: {str(self.Params.initStateFile.name):s}")
+            cprint(
+                "c",
+                f"Confirming Initial conditions with: {str(self.Params.initStateFile.name):s}",
+            )
             cellInit.test_initial_conditions(
                 self.post_cell,
                 filename=self.Params.initStateFile,
@@ -1330,7 +1329,7 @@ class ModelRun:
         # manipulate syanptic strengths to test hypotheses here.
         allsf = self.Params.AMPAScale
         if self.Params.verbose:
-            print('AMPA Scale: ', allsf)
+            print("AMPA Scale: ", allsf)
         gMax, ngMax, nSyn = self.get_synapses(synapse)
 
         if allsf != 1.0:
@@ -1338,8 +1337,8 @@ class ModelRun:
                 gMax[i] = gMax[i] * allsf
                 ngMax[i] = ngMax[i] * allsf
                 self.set_synapse(synapse[i], gMax[i] / nSyn[i], ngMax[i] / nSyn[i])
-        
-        if self.RunInfo.Spirou != 'all':
+
+        if self.RunInfo.Spirou != "all":
             print(f"   Spirou test type: {self.RunInfo.Spirou:s}")
 
         elif self.RunInfo.Spirou in ["all=mean"]:
@@ -1356,11 +1355,11 @@ class ModelRun:
             gnMax[imaxgmax] = meangnmax
             for i in range(len(synapse)):
                 self.set_synapse(synapse[i], meangmax / nSyn[i], meangnmax / nSyn[i])
-            cprint('g', "    Revised synapse values:")
+            cprint("g", "    Revised synapse values:")
             self.get_synapses(synapse, printvalues=True)
-                        
+
         elif self.RunInfo.Spirou in ["max=mean"]:
-            cprint('c', "Setting largest to mean of all inputs")
+            cprint("c", "Setting largest to mean of all inputs")
             gMax, gnMax, nSyn = self.get_synapses(synapse)
             meangmax = np.mean(gMax)  # mean conductance each synapse
             meangnmax = np.mean(gnMax)
@@ -1372,47 +1371,47 @@ class ModelRun:
             self.set_synapse(
                 synapse[imaxgmax], meangmax / nSyn[imaxgmax], meangnmax / nSyn[imaxgmax]
             )
-            cprint('g', "    Revised synapse values:")
+            cprint("g", "    Revised synapse values:")
             self.get_synapses(synapse, printvalues=True)
-        
+
         elif self.RunInfo.Spirou in ["removelargest"]:
-            cprint('c', "Setting largest terminal to 0")
+            cprint("c", "Setting largest terminal to 0")
             gMax, gnMax, nSyn = self.get_synapses(synapse)
             imaxgmax = np.argmax(gMax)  # synapse with largest conductance
             print("    AMPA:  gMax, imax: ", gMax, imaxgmax)
-            print("    NMDA:  gnmax: ",gnMax)
+            print("    NMDA:  gnmax: ", gnMax)
             gMax[imaxgmax] = 0.0
             gnMax[imaxgmax] = 0.0
             self.set_synapse(
                 synapse[imaxgmax], 0.0, 0.0,
             )
-            cprint('g', "    Revised synapse values:")
+            cprint("g", "    Revised synapse values:")
             self.get_synapses(synapse, printvalues=True)
-            
+
         elif self.RunInfo.Spirou in ["largestonly"]:
             nlarge = 1
-            cprint('c', "Setting all terminal inputs to 0 except the one largest")
+            cprint("c", "Setting all terminal inputs to 0 except the one largest")
         elif self.RunInfo.Spirou in ["twolargest"]:
             nlarge = 2
-            cprint('c', "Setting all terminal inputs to 0 except the two largest")
+            cprint("c", "Setting all terminal inputs to 0 except the two largest")
         elif self.RunInfo.Spirou in ["threelargest"]:
             nlarge = 3
-            cprint('c', "Setting all terminal inputs to 0 except the three largest")
+            cprint("c", "Setting all terminal inputs to 0 except the three largest")
         elif self.RunInfo.Spirou in ["fourlargest"]:
             nlarge = 4
-            cprint('c', "Setting all terminal inputs to 0 except the four largest")
-        if self.RunInfo.Spirou.find('largest') >= 0:
+            cprint("c", "Setting all terminal inputs to 0 except the four largest")
+        if self.RunInfo.Spirou.find("largest") >= 0:
             gMax, gnMax, nSyn = self.get_synapses(synapse)
             i_gMaxSorted = np.argsort(gMax)  # synapse with largest conductance
             print("    AMPA:  gMax, imax: ", gMax, i_gMaxSorted)
-            print("    NMDA:  gnmax: ",gnMax)
+            print("    NMDA:  gnmax: ", gnMax)
 
             for i in range(len(gMax)):
                 if i not in i_gMaxSorted[-nlarge:]:
                     self.set_synapse(
                         synapse[i], 0.0, 0.0,
                     )
-            cprint('g', "    Revised synapse values:")
+            cprint("g", "    Revised synapse values:")
             self.get_synapses(synapse, printvalues=True)
 
         # run using pyqtgraph's parallel support
@@ -1422,11 +1421,7 @@ class ModelRun:
             ) as tasker:
                 for j, x in tasker:
                     tresults = self.single_an_run(
-                        j,
-                        synapseConfig,
-                        seeds,
-                        preCell,
-                        self.an_setup_time,
+                        j, synapseConfig, seeds, preCell, self.an_setup_time,
                     )
                     tasker.results[j] = tresults
             # retreive the data
@@ -1449,7 +1444,6 @@ class ModelRun:
                 dendriteVoltage = np.array(tresults[j]["Vdend"])
                 stimWaveform = np.array(tresults[j]["stimWaveform"])
                 stimTimebase = np.array(tresults[j]["stimTimebase"])
-                stim = np.array(tresults[j]["stim"])  # save the stimulus
                 result[N] = {
                     "spikeTimes": spikeTimes,
                     "inputSpikeTimes": inputSpikeTimes,
@@ -1460,8 +1454,8 @@ class ModelRun:
                     "stimWaveform": stimWaveform,
                     "stimTimebase": stimTimebase,
                 }
-                if self.Params.save_all_sections: # just save soma sections        
-                #for section in list(g):
+                if self.Params.save_all_sections:  # just save soma sections
+                    # for section in list(g):
                     allDendriteVoltages[N] = tresults[j]["allsecVec"]
 
         else:
@@ -1470,11 +1464,7 @@ class ModelRun:
                 print("Repetition %d" % N)
 
                 tresults[j] = self.single_an_run(
-                    j,
-                    synapseConfig,
-                    seeds,
-                    preCell,
-                    self.an_setup_time,
+                    j, synapseConfig, seeds, preCell, self.an_setup_time,
                 )
 
                 celltime.append(tresults[j]["time"])  # (self.time)
@@ -1495,7 +1485,7 @@ class ModelRun:
                 dendriteVoltage = np.array(tresults[j]["Vdend"])
                 stimWaveform = np.array(tresults[j]["stimWaveform"])
                 stimTimebase = np.array(tresults[j]["stimTimebase"])
-                stim = np.array(tresults[j]["stim"])  # save the stimulus
+                # stim = np.array(tresults[j]["stim"])  # save the stimulus
                 result[N] = {
                     "spikeTimes": spikeTimes,
                     "inputSpikeTimes": inputSpikeTimes,
@@ -1585,8 +1575,8 @@ class ModelRun:
                 gMax[i] = p.gmax
             for p in s.psd.nmda_psd:
                 gMaxNMDA[i] = p.gmax
-        print('gmaxAmpa: ', gMax)
-        print('gmaxNMDA: ', gMaxNMDA)
+        print("gmaxAmpa: ", gMax)
+        print("gmaxNMDA: ", gMaxNMDA)
         result = {}
         for k in range(nSyns):
             # only enable gsyn on the selected input
@@ -1630,11 +1620,7 @@ class ModelRun:
                 ) as tasker:
                     for j, x in tasker:
                         tresults = self.single_an_run(
-                            j,
-                            synapseConfig,
-                            seeds,
-                            preCell,
-                            self.an_setup_time,
+                            j, synapseConfig, seeds, preCell, self.an_setup_time,
                         )
                         tasker.results[j] = tresults
                 # retreive the data
@@ -1674,7 +1660,6 @@ class ModelRun:
                 stim[N] = np.array(tresults[j]["stim"])
             stimWaveform = np.array(tresults[0]["stim"])
             stimTimebase = np.array(tresults[0]["stimTimebase"])
-
 
             result[k] = {
                 "spikeTimes": spikeTimes,
@@ -1728,7 +1713,7 @@ class ModelRun:
         preCell, synapse, self.R.electrode_site = self.configure_cell(
             self.post_cell, synapseConfig, celltype
         )
-
+        seeds = self.compute_seeds()
         nSyns = len(preCell)
         k = 0
         spikeTimes = {}
@@ -1768,11 +1753,7 @@ class ModelRun:
                                         4.0 * (j + 1) * gMax[i] / float(nReps + 1)
                                     )  # except the shosen one
                         tresults = self.single_an_run(
-                            j,
-                            synapseConfig,
-                            seeds,
-                            preCell,
-                            self.an_setup_time,
+                            j, synapseConfig, seeds, preCell, self.an_setup_time,
                         )
                         tasker.results[j] = tresults
                 # retreive the data
@@ -1787,11 +1768,7 @@ class ModelRun:
                                     4.0 * float(j + 1) * gMax[i] / float(nReps + 1)
                                 )  # except the chosen one
                     tresults[j] = self.single_an_run(
-                        j,
-                        synapseConfig,
-                        seeds,
-                        preCell,
-                        self.an_setup_time,
+                        j, synapseConfig, seeds, preCell, self.an_setup_time,
                     )
             gmaxs = [
                 4.0 * float(j + 1) * gMax[0] / float(nReps + 1) for j in range(nReps)
@@ -1814,8 +1791,6 @@ class ModelRun:
                 somaVoltage[N] = np.array(tresults[j]["Vsoma"])
                 dendriteVoltage[N] = np.array(tresults[j]["Vdend"])
             self.RunInfo.gSyns = gmaxs
-            total_elapsed_time = time.time() - self.start_time
-            #        total_run_time = time.time() - run_time
             self.print_timing()
 
             result = {
@@ -1830,7 +1805,7 @@ class ModelRun:
         if self.Params.plotFlag:
             self.plot_an(celltime, result)
 
-    def configure_cell(self, thisCell:object, synapseConfig:dict, celltype:str):
+    def configure_cell(self, thisCell: object, synapseConfig: dict, celltype: str):
         """
         Configure the cell. This routine builds the cell in NEURON, adds presynaptic inputs
         as described in the synapseConfig, and configures those according to parameters in
@@ -1870,18 +1845,20 @@ class ModelRun:
         synapse = []
         # reconfigure syanpses to set the spont rate group
         for i, syn in enumerate(synapseConfig):
-            if self.Params.SRType is "fromcell":  # use the one in the table
+            if self.Params.SRType == "fromcell":  # use the one in the table
                 preCell.append(cells.DummySGC(cf=self.RunInfo.F0, sr=syn["SR"]))
                 preCell[-1]._synapsetype = self.Params.ANSynapseType
-                self.Params.SRType = self.Params.srnames[syn[2]]  # use and report value from table
+                self.Params.SRType = self.Params.srnames[
+                    syn[2]
+                ]  # use and report value from table
             else:
                 try:
                     srindex = self.Params.srnames.index(self.Params.SRType)
                     print(
-                        f"Retrieved index {srindex:d} with SR type {self.Params.SRType:s}"
-                        , end=' '
+                        f"Retrieved index {srindex:d} with SR type {self.Params.SRType:s}",
+                        end=" ",
                     )
-                except:
+                except ValueError:
                     raise ValueError(
                         "SR type '%s' not found in Sr type list" % self.Params.SRType
                     )
@@ -1891,8 +1868,8 @@ class ModelRun:
                 )  # override
             if self.Params.verbose:
                 print("  SRtype, srindex: ", self.Params.SRType, srindex)
-            # print(self.Params.ANSynapseType) 
-            
+            # print(self.Params.ANSynapseType)
+
             # note that we provide the opportunity to split the number of zones
             # between multiple sites
             for pl in syn["postlocations"]:
@@ -1900,7 +1877,7 @@ class ModelRun:
                 plsecs = list(thisCell.hr.sec_groups[pl])
                 # print('plsecs: ', plsecs)
                 firstplsec = plsecs[0]  # get the first one (for soma)
-                plsecn = re.split('[\[\]+]', firstplsec)
+                plsecn = re.split(r"[\[\]+]", firstplsec)
                 # note this will need to be mapped later to put synapses on the right
                 # sections in dendrites. But for now, this will have to do.
                 postsite[0] = int(plsecn[1])  # from ['sections[118]'] for example
@@ -1930,7 +1907,9 @@ class ModelRun:
                     )
         if self.Params.ANSynapseType == "multisite":
             for i, s in enumerate(synapse):
-                s.terminal.relsite.Dep_Flag = self.Params.ANSynapticDepression # turn on or off depression computation
+                s.terminal.relsite.Dep_Flag = (
+                    self.Params.ANSynapticDepression
+                )  # turn on or off depression computation
 
         electrodeSection = list(thisCell.hr.sec_groups["soma"])[0]
         electrode_site = thisCell.hr.get_section(electrodeSection)
@@ -1943,15 +1922,13 @@ class ModelRun:
         scaled = signal * 10 ** (dbspl / 20.0) * p0 / rms
         return scaled
 
-    def single_an_run(
-        self, j, synapseConfig, seeds, preCell, an_setup_time
-    ):
+    def single_an_run(self, j, synapseConfig, seeds, preCell, an_setup_time):
         """
         Perform a single run with all AN input on the target cell turned off except for input j.
 
         Parameters
         ----------
- 
+
         j : int
             The input that will be active in this run
 
@@ -2051,8 +2028,7 @@ class ModelRun:
                 )  # generate spike train, connect to terminal
             else:
                 raise ValueError(
-                    "SGC model type type %s not implemented"
-                    % self.Params.SGCmodelType
+                    "SGC model type type %s not implemented" % self.Params.SGCmodelType
                 )
             ANSpikeTimes.append(preCell[i]._spiketrain)
 
@@ -2089,9 +2065,11 @@ class ModelRun:
         self.post_cell.hr.h.t = 0.0
         self.post_cell.hr.h.batch_save()  # save nothing
         self.post_cell.hr.h.dt = self.Params.dt
-        self.post_cell.hr.h.batch_run(self.post_cell.hr.h.tstop, self.post_cell.hr.h.dt, "an.dat")
+        self.post_cell.hr.h.batch_run(
+            self.post_cell.hr.h.tstop, self.post_cell.hr.h.dt, "an.dat"
+        )
         nrn_run_time += time.time() - nrn_start
-        if dendsite == None:
+        if dendsite is None:
             Vdend = np.zeros_like(Vsoma)
 
         anresult = {
@@ -2141,7 +2119,7 @@ class ModelRun:
             return
         # if self.Params.Parallel:
         #     return  # no plots when doing parallel runs...
-        nReps = self.RunInfo.nReps
+        # nReps = self.RunInfo.nReps
         threshold = self.RunInfo.threshold
         fig, ax = mpl.subplots(2, 1)
         fig.suptitle("AN Inputs")
@@ -2176,12 +2154,17 @@ class ModelRun:
 
     def cleanNeuronObjs(self):
         if not isinstance(self.RunInfo.electrodeSection, str):
-            self.RunInfo.electrodeSection = str(self.RunInfo.electrodeSection.name())  # electrodeSection
+            self.RunInfo.electrodeSection = str(
+                self.RunInfo.electrodeSection.name()
+            )  # electrodeSection
         # self.RunInfo.electrodeSectionName = str(self.RunInfo.electrodeSection.name())
-        if self.RunInfo.dendriticElectrodeSection is not None and not isinstance(self.RunInfo.dendriticElectrodeSection, str):
-            self.RunInfo.dendriticElectrodeSection = str(self.dendriticElectrodeSection.name())  # dendriticElectrodeSection,
-        dendriticSectionDistance = 100.0  # microns.
-        
+        if self.RunInfo.dendriticElectrodeSection is not None and not isinstance(
+            self.RunInfo.dendriticElectrodeSection, str
+        ):
+            self.RunInfo.dendriticElectrodeSection = str(
+                self.dendriticElectrodeSection.name()
+            )  # dendriticElectrodeSection,
+        # dendriticSectionDistance = 100.0  # microns.
 
     def analysis_filewriter(self, filebase, result, tag=""):
         """
@@ -2206,35 +2189,36 @@ class ModelRun:
             "stimTimebase",
         ]
 
-        try:
-            for rk in requiredKeys:
-                assert rk in k  # make sure keys are there
-            res_mode = "syn"
-        except:
-            res_mode = "reps"
+        res_mode = "reps"
+        for rk in requiredKeys:
+            if rk not in k:
+                res_mode = "syn"
+                break
 
         results = {}
         # results with be a dict with params, runinfo, modelpars and trials as keys
         print("\n*** analysis_filewriter\n")
 
-        results['basename'] = self.Params.simulationFilename
+        results["basename"] = self.Params.simulationFilename
         results["Params"] = self.Params  # include all the parameters of the run too
         # clean up Parame to remove PosixPath from filenames
 
         results["Params"].initStateFile = str(self.Params.initStateFile)
         results["Params"].initStateFile = str(self.Params.initStateFile)
         results["Params"].simulationFilename = str(self.Params.simulationFilename)
-        results["Params"].hocfile= str(self.Params.hocfile)
-        
-        self.cleanNeuronObjs()
-        results['runInfo'] = self.RunInfo
+        results["Params"].hocfile = str(self.Params.hocfile)
 
-        results['modelPars'] = copy.deepcopy(self.post_cell.status)
-        del results['modelPars']["decorator"]  # remove neuron section objects
+        self.cleanNeuronObjs()
+        results["runInfo"] = self.RunInfo
+
+        results["modelPars"] = copy.deepcopy(self.post_cell.status)
+        del results["modelPars"]["decorator"]  # remove neuron section objects
         results["Results"] = result
         results["mode"] = res_mode
         # print(results)
-        fout = self.Params.simulationFilename  # base name created by make-filename - do not overwrite
+        fout = (
+            self.Params.simulationFilename
+        )  # base name created by make-filename - do not overwrite
         if len(tag) > 0:
             fout = Path(str(fout).replace("_all_", "_" + tag + "_"))
         if self.Params.tagstring is not None:
@@ -2255,11 +2239,11 @@ class ModelRun:
         if len(hf.sec_groups) > 1:  # multiple names, so assign colors to structure type
             self.section_colors = {}
             if self.Params.verbose:
-                print('gethocfile # colors: ', len(self.hg.colorMap))
-                print('gethocfile # sexcgroups: ',len(list(hf.sec_groups.keys())))
+                print("gethocfile # colors: ", len(self.hg.colorMap))
+                print("gethocfile # sexcgroups: ", len(list(hf.sec_groups.keys())))
             for i, s in enumerate(hf.sec_groups.keys()):
                 if self.Params.verbose:
-                    print('gethocfile group: ',s)
+                    print("gethocfile group: ", s)
                 self.section_colors[s] = self.hg.colorMap[i]
         #        else: # single section name, assign colors to SectionList types:
         #        self.section_colors={'axon': 'r', 'heminode': 'g', 'stalk':'y', 'branch': 'b', 'neck': 'brown',
@@ -2282,15 +2266,18 @@ class ModelRun:
 
 def main():
 
-    parsedargs, params, runinfo = vcnmodel.model_params.getCommands()  # get from command line
-    model = ModelRun(params=params, runinfo=runinfo, args=parsedargs)  # create instance of the model
+    (
+        parsedargs,
+        params,
+        runinfo,
+    ) = vcnmodel.model_params.getCommands()  # get from command line
+    model = ModelRun(
+        params=params, runinfo=runinfo, args=parsedargs
+    )  # create instance of the model
     if parsedargs.displayMode != "None":
         model.view_model()
     else:
         model.run_model()
-
-    # if sys.flags.interactive == 0:
-    #     pg.QtGui.QApplication.exec_()
 
 
 if __name__ == "__main__":
