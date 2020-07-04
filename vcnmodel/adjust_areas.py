@@ -1,3 +1,14 @@
+from pathlib import Path
+
+import numpy as np
+from cnmodel import cells
+from matplotlib import pyplot as mpl
+from neuron import h
+from pylibrary.tools import cprint as CP
+
+from vcnmodel import cell_config as cell_config
+from vcnmodel import h_reader
+
 """
 Adjust the areas of named processes to match
 a specific value.
@@ -8,13 +19,13 @@ This step is required because the swc/hoc representation is a smoothed
 cylinderical version of a rather convoluted (or crenulated) cell surface,
 and therefore underestimates the actual membrane area.
 
-The procedure adjusts the areas of each *section* for a set of 
+The procedure adjusts the areas of each *section* for a set of
 named processes (e.g., ['apical_dendrite', 'basal_dendrite']) by
 applying a fixed scale factor to the diameter of each pt3d object
 in that section. Because NEURON then readjustes the area
 calculation the final inflation factor (a single, positive real number)
 may differ slightly for each section. The
-differendes are most prominent for very small diameter sections, but 
+differendes are most prominent for very small diameter sections, but
 also appears for larger sections. Therefore, the procedure does the
 adjustment iteratively until the total area of the named structure(s)
 is inflated by the desired factor,
@@ -25,18 +36,7 @@ In the days of coronavirus, March 2020, Sunset Beach, NC.
 
 """
 
-import numpy as np
-from pprint import pprint
-from pathlib import Path
-from math import sin, cos
-import matplotlib.pyplot as mpl
 
-from neuron import h
-
-import vcnmodel.cell_config as cell_config
-from vcnmodel import h_reader
-import pylibrary.tools.cprint as CP
-from cnmodel import cells
 cprint = CP.cprint
 
 """
@@ -143,21 +143,26 @@ sections[4] {
 
 class AdjustAreas:
     """
-    This class encapsulates routines to adjust the areas of 
+    This class encapsulates routines to adjust the areas of
     hoc reconstructed files using pt3d data.
     """
-    def __init__(self, method='pt3d'):
-        self.method = method  # option of wheter to compute areas from pt3d data, or segment data
-        if self.method == 'pt3d':
+
+    def __init__(self, method="pt3d"):
+        self.method = (
+            method  # option of wheter to compute areas from pt3d data, or segment data
+        )
+        if self.method == "pt3d":
             self.areafunc = self.segareasec
             self.adjust_dia_func = self.adjust_pt3d_dia
-        elif self.method == 'segment':
+        elif self.method == "segment":
             self.areafunc = self.segareasec
             self.adjust_dia_func = self.adjust_seg_dia
 
         else:
-            raise ValueError("AdjustAReas: the method must be one of ['pt3d', 'segment']")
-        
+            raise ValueError(
+                "AdjustAReas: the method must be one of ['pt3d', 'segment']"
+            )
+
         # default names for dendries and somas
         # def plot_areas(ax, xdend, a1, a2):
         self.dendrites = [
@@ -179,12 +184,11 @@ class AdjustAreas:
             "soma",
             "Soma",
         ]
-        
 
     def sethoc_fromCNcell(self, cell):
         """
         Get the hoc information from a cnmodel cell object
-        
+
         Parameters
         -----------
         cell : cnmodel cell object
@@ -192,7 +196,7 @@ class AdjustAreas:
         self.cell = cell
         if self.cell.areaMap is None:
             self.cell.computeAreas()
-        ta = 0.
+        ta = 0.0
         for s in self.dendrites:
             for a in self.cell.areaMap[s]:
                 ta += self.cell.areaMap[s][a]
@@ -201,47 +205,52 @@ class AdjustAreas:
         for s in self.HR.h.allsec():
             s.Ra = 150.0
         S = SetNSegs(self.HR.h)
-        S.set_nseg(freq=1000.0, d_lambda=0.025, minimum=3)  # perform d_lambda adjustment on structure
-        
-    def sethoc_fromfile(self, fn:[str, Path]):
+        S.set_nseg(
+            freq=1000.0, d_lambda=0.025, minimum=3
+        )  # perform d_lambda adjustment on structure
+
+    def sethoc_fromfile(self, fn: [str, Path]):
         """
         Read a reconstruction and set the number of segments using rule
-        
+
         Parameters
         ----------
         fn : filename (string or Path)
         """
-        
+
         self.HR = h_reader.HocReader(str(fn))
         for s in self.HR.h.allsec():
             s.Ra = 150.0
         S = SetNSegs(self.HR.h)
-        S.set_nseg(freq=1000.0, d_lambda=0.025, minimum=3)  # perform d_lambda adjustment on structure
+        S.set_nseg(
+            freq=1000.0, d_lambda=0.025, minimum=3
+        )  # perform d_lambda adjustment on structure
         # print(self.HR.get_section_prefixes())
         # for s in self.HR.h.allsec():
         #     print('adja sethoc_fromfile:', self.HR.get_sec_info(s))
         # exit()
-        
-    def sethoc_fromstring(self, hdata:str):
+
+    def sethoc_fromstring(self, hdata: str):
         """
         Read a reconstruction from a string
         and set the number of segments using rule
-        
+
         Parameters
         ----------
         hdata : string
         """
-        
-        h(hdata) # neuron reads it
-        self.HR = h_reader.HocReader(h)  # placeholder for the hoc_render structure - we only need to assign h
+
+        h(hdata)  # neuron reads it
+        self.HR = h_reader.HocReader(
+            h
+        )  # placeholder for the hoc_render structure - we only need to assign h
         for s in self.HR.h.allsec():
             s.Ra = 150.0
         S = SetNSegs(self.HR.h)
         S.set_nseg(freq=1000.0, d_lambda=0.025, minimum=3)
 
-
-    def section_diam_test(self):
-        ############### now with just diam in section
+    def section_diam_test(self, sf=1.0):
+        """now with just diam in section"""
         self.HR.h(hocstruct)
         self.HR.h.topology()
 
@@ -269,19 +278,17 @@ class AdjustAreas:
             area += seg.area()
         # print(f'{name:s} area: {area:.3f} ')
         return area
-            
+
     def pt3dareasec(self, sec: object) -> float:
-       """
+        """
        Sum up the areas of all the pt3d pieces in a section
 
        """
 
-       area = 0
-       for i in range(sec.n3d()):
-           area += np.pi*sec.arc3d(i)*sec.diam3d(i)
-       return area 
-    
-
+        area = 0
+        for i in range(sec.n3d()):
+            area += np.pi * sec.arc3d(i) * sec.diam3d(i)
+        return area
 
     def adjust_pt3d_dia(self, sec: object, sf: float):
         """
@@ -292,7 +299,7 @@ class AdjustAreas:
         for i in range(sec.n3d()):
             diam = sec.diam3d(i)
             sec.pt3dchange(i, diam * sf)
-    
+
     def adjust_seg_dia(self, sec: object, sf: float):
         h.pt3dconst(0, sec=sec)
         for seg in sec.allseg():
@@ -329,7 +336,6 @@ class AdjustAreas:
 
     def adjust_dia_areamatch(
         self, sec: object, sf: float, eps: float = 1e-4,
-
     ):
         """
         This function expands the surface area of a section by a
@@ -356,7 +362,7 @@ class AdjustAreas:
                 print("Inflation failed: ratio: ", ratio, section_area, target_area, n)
                 exit()
             self.adjust_dia_func(sec, ratio)
-                
+
             # h.define_shape()
             section_area = self.areafunc(sec)
 
@@ -364,7 +370,9 @@ class AdjustAreas:
             n += 1
         # print(f"sec: {str(sec):s}  iters: {n:d}")
 
-    def adjust_diameters(self, sectypes:list, inflateRatio:float, verbose:bool=False) -> dict:
+    def adjust_diameters(
+        self, sectypes: list, inflateRatio: float, verbose: bool = False
+    ) -> dict:
 
         adj_data = {  # data structure
             "Areas3D": [],
@@ -383,8 +391,7 @@ class AdjustAreas:
         for secname, sec in self.HR.sections.items():
             sectype = self.HR.find_sec_group(secname)
             if verbose:
-                cprint('r', (secname, sectype))
-            # print(f"sec: {str(sec):>14s} {sectype:>20s}  n={sec.nseg:>3d} L={sec.L:8.1f}  D={sec.diam:7.3f}  (L/nsec: {sec.L/sec.nseg:>6.2f})")
+                cprint("r", (secname, sectype))
             if sectype in sectypes:
                 adj_data["Areas3D"].append(self.areafunc(sec))
                 adj_data["AreaMap"].append(self.cell.areaMap[sectype][sec])
@@ -400,64 +407,76 @@ class AdjustAreas:
                 missedtypes.append(sectype)
         # adj_data["AreaMap"][
         if verbose:
-            cprint('c', f"Doing sectypes: {str(set(sectypes)):s}")
-            cprint('c', f"used sectypes: {str(set(usedtypes)):s}")
-        cprint('y', f"    Skipped sections named: {str(set(missedtypes)):s}")
+            cprint("c", f"Doing sectypes: {str(set(sectypes)):s}")
+            cprint("c", f"used sectypes: {str(set(usedtypes)):s}")
+        cprint("y", f"    Skipped sections named: {str(set(missedtypes)):s}")
         if self.method:
             print("\n    Changing the areas by changing adj_data diams")
         else:
             print("\n    Changing the areas by changing segment diams")
-        print(f"       Cell AreaMap (cnmodel:cells) : {np.sum(adj_data['AreaMap']):10.2f} ")
-        print(f"       Original area (segareased:)  : {np.sum(adj_data['Areas3D']):10.2f} ")
-        print(f"       Inflated area (adjarea )     : {np.sum(adj_data['Areas3DInflated']):10.2f} ")
+        print(
+            f"       Cell AreaMap (cnmodel:cells) : {np.sum(adj_data['AreaMap']):10.2f} "
+        )
+        print(
+            f"       Original area (segareased:)  : {np.sum(adj_data['Areas3D']):10.2f} "
+        )
+        print(
+            f"       Inflated area (adjarea )     : {np.sum(adj_data['Areas3DInflated']):10.2f} "
+        )
         cnarea = self.getCNcellArea(sectypes=sectypes)
         print(f"    CN inflated area: {cnarea:10.2f} ")
+        s1 = f"Inflation factor: {np.sum(adj_data['Areas3DInflated'])/np.sum(adj_data['Areas3D']):6.3f}"
         print(
-            f"    Inflation factor: {np.sum(adj_data['Areas3DInflated'])/np.sum(adj_data['Areas3D']):6.3f} (should be: {adj_data['InflateRatio']:6.3f})"
+            f"   {s1:s}  (should be: {adj_data['InflateRatio']:6.3f})"
         )
 
         return adj_data
 
-    def get_hoc_area(self, sectypes:list):
+    def get_hoc_area(self, sectypes: list):
         hocarea = []
         for secname, sec in self.HR.sections.items():
             sectype = self.HR.find_sec_group(secname)
-            # print(f"sec: {str(sec):>14s} {sectype:>20s}  n={sec.nseg:>3d} L={sec.L:8.1f}  D={sec.diam:7.3f}  (L/nsec: {sec.L/sec.nseg:>6.2f})")
             if sectype in sectypes:
                 hocarea.append(self.areafunc(sec))
- 
-        return(np.sum(hocarea))
- 
-    def getCNcellArea(self, sectypes:list, verbose:bool=False) -> float:
+
+        return np.sum(hocarea)
+
+    def getCNcellArea(self, sectypes: list, verbose: bool = False) -> float:
         if verbose:
-            print('sectypes: ', sectypes)
+            print("sectypes: ", sectypes)
         hocarea = []
         hoc_secarea = []
         self.cell.distances()
         self.cell.computeAreas()  # make sure we have updated
         for secname, sec in self.HR.sections.items():
             sectype = self.HR.find_sec_group(secname)
-            # print(f"sec: {str(sec):>14s} {sectype:>20s}  n={sec.nseg:>3d} L={sec.L:8.1f}  D={sec.diam:7.3f}  (L/nsec: {sec.L/sec.nseg:>6.2f})")
             if sectype in sectypes:
                 secarea = self.cell.areaMap[sectype][sec]
                 section_area = self.areafunc(sec)
                 hocarea.append(secarea)
                 hoc_secarea.append(section_area)
                 if verbose:
-                    print(f"    adding area from : {sectype:20s} = {secarea:8.3f} [{section_area:8.3f}]", end='')
-                    print(f"      (cumul: {np.sum(hocarea):8.3f} [{str(sec):s}]", end='')
+                    print(
+                        f"    adding area from : {sectype:20s} = {secarea:8.3f} [{section_area:8.3f}]",
+                        end="",
+                    )
+                    print(
+                        f"      (cumul: {np.sum(hocarea):8.3f} [{str(sec):s}]", end=""
+                    )
                     print(f"      sec L*diam area: {np.pi*sec.L*sec.diam:8.3f}")
             if sectype == self.cell.somaname:
-                self.cell.set_soma_size_from_soma_Sections(repeat=True)  # make sure this is updated
- 
+                self.cell.set_soma_size_from_soma_Sections(
+                    repeat=True
+                )  # make sure this is updated
+
         print(f"    Section area: {np.sum(hoc_secarea):8.3f}")
-        return(np.sum(hocarea))      
+        return np.sum(hocarea)
 
     def plot_areas(self, pt3d: dict):
 
         f, ax = mpl.subplots(2, 2)
         ax = ax.ravel()
-        title = str(pt3d['sectypes']).replace('_', '\_')
+        # title = str(pt3d["sectypes"]).replace(r"_", r"\_")
         # f.suptitle(f"Adjusted areas: {title:s}")
         ndend = len(pt3d["Areas3D"])
         xdend = np.arange(ndend)
@@ -487,10 +506,7 @@ class AdjustAreas:
         )
         f.colorbar(scp0, ax=ax[1])
         ax[1].plot(
-            xdend,
-            pt3d["InflateRatio"] * np.ones(ndend),
-            linewidth=0.5,
-            label="Target",
+            xdend, pt3d["InflateRatio"] * np.ones(ndend), linewidth=0.5, label="Target",
         )
         ax[1].set_ylim(1.0, 2.0)
         ax[1].set_xlabel("Section number")
@@ -542,7 +558,7 @@ class SetNSegs(object):
         """
         Set the number of segments needed  in each section
         for a particular cell with
-        
+
         cell : Neuron hoc object for the cell
         """
 
@@ -559,14 +575,14 @@ class SetNSegs(object):
         and the advantages of using an odd value for nseg,
         see  Hines, M.L. and Carnevale, N.T. NEURON: a tool for neuroscientists. The Neuroscientist 7:123-135, 2001.
         This is a python version of the hoc code.
-        
+
         Parameters
         ----------
         freq : float, default=100. (Hz)
             Frequency in Hz to use in computing nseg.
         d_lambda : float, default=0.1
             fraction of AC length constant for minimum segment length
-        
+
         """
         if self.cell is None:  # no hoc reader file, so no adjustments
             return
@@ -581,20 +597,20 @@ class SetNSegs(object):
             # print('section name: ', section.name(), ' nseg: ', nseg)
             try:
                 section.nseg = int(nseg)
-            except:
+            except ValueError:
                 print("nseg: ", nseg)
                 raise (ValueError)
 
     def _lambda_f(self, section: object, frequency: float = 100.0):
         """
         get lambda_f for the section (internal)
-        
+
         Parameters
         ----------
         freq : float, default=100. (Hz)
             Frequency in Hz to use in computing nseg.
         section : Neuron section object
-        
+
         Returns
         -------
         section length normalized by the length constant at freq.
@@ -628,90 +644,80 @@ class SetNSegs(object):
         # print("_lambda_f: ", section.L, section.Ra, section.cm, section.nseg, lam)
         return section.L / lam
 
+    def simple_hoc(self):
+        h(hocstruct2)
+        h.topology()
+        S = h.setnsegs(h)
+        S.set_nseg(freq=1000.0, d_lambda=0.01)
+        for sec in h.allsec():
+            print(sec.nseg)
 
+    def by_section_diam(self, fn, cname: str):
+        # re-read original data
+        HR2 = h_reader.HocReader(str(fn))  # h.load_file(str(fn))
+        # print(dir(h))
+        # exit()
+        cconfig = cell_config.CellConfig()
+        sinflateratio = cconfig.get_soma_ratio(cname)
+        dinflateratio = cconfig.get_dendrite_ratio(cname)
 
+        S = SetNSegs(HR2.h)
+        S.set_nseg(freq=1000.0, d_lambda=0.01)
 
-def simple_hoc():
-    h(hocstruct2)
-    h.topology()
-    S = setnsegs(h)
-    S.set_nseg(freq=1000.0, d_lambda=0.01)
-    for sec in h.allsec():
-        print(sec.nseg)
+        asoma = 0.0
+        aother = 0.0
+        asoma_inf = 0.0
+        adend_inf = 0.0
+        aother_inf = 0.0
+        dendAreas = []
+        dendAreasInflated = []
+        secdiams = []
+        seclengths = []
+        secdiamsInflated = []
+        # dendAreasSeg = []
+        dendColors = []
+        for secname, sec in HR2.sections.items():
+            sectype = HR2.find_sec_group(secname)
+            sec.nseg = 3
+            # sec = HR.sections[secname]
+            if sectype in ["soma"]:
+                asoma += self.areafunc(sec)  # h.area(0.5, sec=sec)
+                sec.diam = sec.diam * sinflateratio
+                asoma_inf += self.areafunc(sec)  # h.area(0.5, sec=sec)
+                print("soma : sec, d: ", sec, sec.diam, asoma_inf)
+            elif sectype in self.dendrites:
+                dendColors.append(sec.nseg)
+                dendAreas.append(self.areafunc(sec))  # h.area(0.5, sec=sec))
+                secdiams.append(sec.diam)
+                sec.diam = sec.diam * dinflateratio
+                secdiamsInflated.append(sec.diam)
+                seclengths.append(sec.L)
+                dendAreasInflated.append(self.areafunc(sec))  # h.area(0.5, sec=sec))
+                adend_inf += self.areafunc(sec)  # h.area(0.5, sec=sec)
+                print(
+                    f"dend : {sectype:>24s} sec: {secname:s}, d: {sec.diam:6.3f} sum(A): {adend_inf:9.3f}"
+                )
+            else:
+                aother += self.areafunc(sec)  # h.area(0.5, sec=sec)
+                sec.diam = sec.diam * 1
+                aother_inf += self.areafunc(sec)  # h.area(0.5, sec=sec)
+                cprint(
+                    "r",
+                    f"other: {sectype:>24s} sec: {secname:s}, d: {sec.diam:6.3f}: sum(A): {aother_inf:9.3f}",
+                )
 
-    # s = h.Shape()
-    # s.show(0)
-    # while(1):
-    #     pass
+        # HR2.h.define_shape()
 
-
-def by_section_diam(fn, cname: str):
-    # re-read original data
-    HR2 = h_reader.HocReader(str(fn))  # h.load_file(str(fn))
-    # print(dir(h))
-    # exit()
-    cconfig = cell_config.CellConfig()
-    sinflateratio = cconfig.get_soma_ratio(cname)
-    dinflateratio = cconfig.get_dendrite_ratio(cname)
-
-    S = SetNSegs(HR2.h)
-    S.set_nseg(freq=1000.0, d_lambda=0.01)
-
-    asoma = 0.0
-    aother = 0.0
-    asoma_inf = 0.0
-    adend_inf = 0.0
-    aother_inf = 0.0
-    dendAreas = []
-    dendAreasInflated = []
-    secdiams = []
-    seclengths = []
-    secdiamsInflated = []
-    dendAreasSeg = []
-    dendColors = []
-    for secname, sec in HR2.sections.items():
-        sectype = HR2.find_sec_group(secname)
-        sec.nseg = 3
-        # sec = HR.sections[secname]
-        # print(f"sec: {str(sec):>14s} {sectype:>20s}  n={sec.nseg:>3d} L={sec.L:8.1f}  D={sec.diam:7.3f}  (L/nsec: {sec.L/sec.nseg:>6.2f})")
-        if sectype in ["soma"]:
-            asoma += areafunc(sec)  # h.area(0.5, sec=sec)
-            sec.diam = sec.diam * sinflateratio
-            asoma_inf += areafunc(sec)  # h.area(0.5, sec=sec)
-            print("soma : sec, d: ", sec, sec.diam, asoma_inf)
-        elif sectype in dendrites:
-            dendColors.append(sec.nseg)
-            dendAreas.append(areafunc(sec))  # h.area(0.5, sec=sec))
-            secdiams.append(sec.diam)
-            sec.diam = sec.diam * dinflateratio
-            secdiamsInflated.append(sec.diam)
-            seclengths.append(sec.L)
-            dendAreasInflated.append(areafunc(sec))  # h.area(0.5, sec=sec))
-            adend_inf += areafunc(sec)  # h.area(0.5, sec=sec)
-            print(
-                f"dend : {sectype:>24s} sec: {secname:s}, d: {sec.diam:6.3f} sum(A): {adend_inf:9.3f}"
-            )
-        else:
-            aother += areafunc(sec)  # h.area(0.5, sec=sec)
-            sec.diam = sec.diam * 1
-            aother_inf += areafunc(sec)  # h.area(0.5, sec=sec)
-            cprint(
-                "r",
-                f"other: {sectype:>24s} sec: {secname:s}, d: {sec.diam:6.3f}: sum(A): {aother_inf:9.3f}",
-            )
-
-    # HR2.h.define_shape()
-
-    print("\nChanging the areas by changing section diameters")
-    print(
-        f"soma inflated area: {asoma_inf:10.2f} Infl factor: {asoma_inf/asoma:6.3f} (should be: {sinflateratio:6.3f})"
-    )
-    print(
-        f"dend inflated area: {adend_inf:10.2f} Infl factor: {adend_inf/asoma:6.3f} (should be: {dinflateratio:6.3f})"
-    )
-    print(
-        f"other inflated area: {aother_inf:10.2f} Infl factor: {aother_inf/aother:6.3f} (should be: {1.0:6.3f})"
-    )
+        print("\nChanging the areas by changing section diameters")
+        print(
+            f"soma inflated area: {asoma_inf:10.2f} Infl factor: ", end='')
+        print(f"{asoma_inf/asoma:6.3f} (should be: {sinflateratio:6.3f})")
+        print(
+            f"dend inflated area: {adend_inf:10.2f} Infl factor: ", end='')
+        print(f"{adend_inf/asoma:6.3f} (should be: {dinflateratio:6.3f})")
+        print(
+            f"other inflated area: {aother_inf:10.2f} Infl factor: ", end='')
+        print(f"{aother_inf/aother:6.3f} (should be: {1.0:6.3f})")
 
 
 def recon_hoc():
@@ -725,7 +731,7 @@ def recon_hoc():
     sinflateratio = cconfig.get_soma_ratio(cname)
     dinflateratio = cconfig.get_dendrite_ratio(cname)
 
-    AdjArea = AdjustAreas(method='pt3d')
+    AdjArea = AdjustAreas(method="pt3d")
     post_cell = cells.Bushy.create(
         morphology=str(fn),
         # decorator=Decorator,
@@ -736,8 +742,10 @@ def recon_hoc():
     AdjArea.sethoc_fromCNcell(post_cell)
     # AdjArea.sethoc_fromstring(hdata=hocstruct2)
     AdjArea.cell.print_soma_info()
-    pt3d = AdjArea.adjust_diameters(sectypes = AdjArea.somas, inflateRatio=sinflateratio)
-    pt3d = AdjArea.adjust_diameters(sectypes = AdjArea.dendrites, inflateRatio=dinflateratio)
+    pt3d = AdjArea.adjust_diameters(sectypes=AdjArea.somas, inflateRatio=sinflateratio)
+    pt3d = AdjArea.adjust_diameters(
+        sectypes=AdjArea.dendrites, inflateRatio=dinflateratio
+    )
     AdjArea.cell.print_soma_info()
     AdjArea.plot_areas(pt3d)
 
