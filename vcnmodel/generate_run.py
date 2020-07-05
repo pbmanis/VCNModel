@@ -1,4 +1,26 @@
-from __future__ import print_function
+import copy
+import csv
+import dataclasses
+import errno
+import os
+import pickle
+import signal
+import time
+from collections import OrderedDict
+from pathlib import Path
+
+import numpy as np
+import pyqtgraph as pg
+from cnmodel.util.stim import make_pulse  # makestim
+from pyqtgraph import multiprocess as mproc
+from pyqtgraph.Qt import QtGui
+
+from vcnmodel import NoiseTrainingGen as NG
+from vcnmodel import cellInitialization as cellInit
+from vcnmodel.analyzers import analyze_run as ar
+
+# from NoiseTrainingGen.NoiseGen import generator
+from vcnmodel.plotters import IVPlots as IVP
 
 __author__ = "pbmanis"
 """
@@ -13,28 +35,6 @@ Methods:
     set up the stimuli, initialize the state of the model, and then run the model, generating a plot
 February 2014, Paul B. Manis UNC Chapel Hill
 """
-
-import os
-import numpy as np
-from pathlib import Path
-import copy
-from collections import OrderedDict
-import dataclasses
-from cnmodel.util.stim import make_pulse  # makestim
-import vcnmodel.NoiseTrainingGen as NG
-
-# from NoiseTrainingGen.NoiseGen import generator
-import vcnmodel.plotters.IVPlots as IVP
-import vcnmodel.analyzers.analyze_run as ar
-import vcnmodel.cellInitialization as cellInit
-import time
-import csv
-import pickle
-import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui
-import pyqtgraph.multiprocess as mproc
-import errno
-import signal
 
 
 verbose = False  # use this for testing.
@@ -68,16 +68,19 @@ class GenerateRun:
             self.RunInfo.postMode = "vc"
         elif stimtype == "gifnoise":
             self.RunInfo.postMode = "gifnoise"
-            if params is None:
+            if Params is None:
                 raise ValueError(
-                    "generate_run: gifnoise mode requires params to be passed"
+                    "generate_run: gifnoise mode requires Params to be passed"
                 )
 
         somasecs = list(self.hf.sec_groups["soma"])
         electrodeSection = somasecs[0]
         self.electrode_site = self.hf.get_section(electrodeSection)
         if self.RunInfo.dendriticElectrodeSection is not None:
-            print('GenerateRun: Dendrite electrode section: ', self.RunInfo.dendriticElectrodeSection)
+            print(
+                "GenerateRun: Dendrite electrode section: ",
+                self.RunInfo.dendriticElectrodeSection,
+            )
             dend_sections = list(
                 self.hf.sec_groups[self.RunInfo.dendriticElectrodeSection]
             )
@@ -120,7 +123,6 @@ class GenerateRun:
                     if i == 0:  # first line
                         # print(row)
                         maxt = float(row[1]) * 1000
-                        reps = int(row[0])
                         continue
                     if int(row[0]) in self.RunInfo.spikeTimeList.keys():
                         self.RunInfo.spikeTimeList[int(row[0])].append(
@@ -137,7 +139,7 @@ class GenerateRun:
         self.mons = OrderedDict()
 
         if verbose:
-            print("runinfo initialization done")
+            print("run-off initialization done")
 
     def mkdir_p(self, path):
         try:
@@ -153,7 +155,7 @@ class GenerateRun:
         if self.startTime is None:
             self.dtime = time.strftime("%y.%m.%d-%H.%M.%S")
         else:  # convert time object
-            self.dtime = dtime = time.strftime(
+            self.dtime = time.strftime(
                 "%y.%m.%d-%H.%M.%S", time.localtime(self.startTime)
             )
         self.mkdir_p(self.RunInfo.folder)
@@ -210,7 +212,7 @@ class GenerateRun:
         self.RunInfo.celsius = self.cell.status["temperature"]
         self.hf.h.celsius = self.RunInfo.celsius
         self.hf.h.dt = self.Params.dt
-        self.clist = {}  #  color list
+        self.clist = {}  # color list
         somasecs = list(self.hf.sec_groups["soma"])
         electrodeSection = somasecs[0]
         self.electrode_site = self.hf.get_section(electrodeSection)
@@ -218,7 +220,8 @@ class GenerateRun:
         # electrodeSection = list(self.hf.sec_groups[self.RunInfo.electrodeSection])[0]
         # self.electrode_site = self.hf.get_section(electrodeSection)
         if self.RunInfo.postMode in ["vc", "vclamp"]:
-            # Note to self (so to speak): the hoc object returned by this call must have a life after
+            # Note to self (so to speak): the hoc object returned b
+            # by this call must have a life after
             # the routine exits. Thus, it must be "self." Same for the IC stimulus...
             self.vcPost = self.hf.h.SEClamp(
                 0.5, sec=self.electrode_site
@@ -349,15 +352,20 @@ class GenerateRun:
         # pg.show()
         # self.hf.h('access %s' % self.hf.get_section(self.electrode_site).name())
 
-
     def cleanNeuronObjs(self):
         if not isinstance(self.RunInfo.electrodeSection, str):
-            self.RunInfo.electrodeSection = str(self.RunInfo.electrodeSection.name())  # electrodeSection
+            self.RunInfo.electrodeSection = str(
+                self.RunInfo.electrodeSection.name()
+            )  # electrodeSection
         # self.RunInfo.electrodeSectionName = str(self.RunInfo.electrodeSection.name())
-        if self.RunInfo.dendriticElectrodeSection is not None and not isinstance(self.RunInfo.dendriticElectrodeSection, str):
-            self.RunInfo.dendriticElectrodeSection = str(self.dendriticElectrodeSection.name())  # dendriticElectrodeSection,
-        dendriticSectionDistance = 100.0  # microns.
-        
+        if self.RunInfo.dendriticElectrodeSection is not None and not isinstance(
+            self.RunInfo.dendriticElectrodeSection, str
+        ):
+            self.RunInfo.dendriticElectrodeSection = str(
+                self.dendriticElectrodeSection.name()
+            )  # dendriticElectrodeSection,
+        # dendriticSectionDistance = 100.0  # microns.
+
     def doRun(
         self,
         filename=None,
@@ -404,7 +412,6 @@ class GenerateRun:
         # print(f"doRun: initfile = {str(initfile):s}")
         TASKS = [s for s in range(nLevels)]
         tresults = [None] * len(TASKS)
-        runner = [None] * nLevels
         signal.signal(
             signal.SIGCHLD, signal.SIG_DFL
         )  # might prevent OSError "no child process"
@@ -432,7 +439,7 @@ class GenerateRun:
         for k, i in enumerate(ipulses):
             if self.Params.plotFlag:
                 if k == 0:
-                    self.mons = list(self.results[i]['monitor'].keys())
+                    self.mons = list(self.results[i]["monitor"].keys())
                     self.plotRun(self.results[i], init=True)
                 else:
                     self.plotRun(self.results[i], init=False)
@@ -488,7 +495,7 @@ class GenerateRun:
         vfile = "v.dat"
         if verbose:
             print("_executeRun")
-        assert self.run_initialized == True
+        assert self.run_initialized is True
         print("Starting Vm at electrode site: {:6.2f}".format(self.electrode_site.v))
 
         # one way
@@ -542,55 +549,25 @@ class GenerateRun:
             print("    _executeRun completed")
         return results
 
-    # def saveRun(self, results):
-    #     """
-    #     Save the result of a single run to disk. Results must be a Param structure, which we turn into
-    #      a dictionary...
-    #     """
-    #     print("Saving single run to: ")
-    #     fn = "{0:s}_{1:s}.p".format(self.basename, self.cell.status["modelType"])
-    #     print("     ", fn)
-    #     pfout = open(fn, "wb")
-    #     mp = copy.deepcopy(self.cell.status)
-    #     del mp["decorator"]
-    #     self.cleanNeuronObjs()  # in runinfo
-    #     pickle.dump(
-    #         {
-    #             "basename": self.basename,
-    #             "runInfo": self.RunInfo,
-    #             "modelPars": mp,
-    #             "Params": self.Params,
-    #             "Results": results,
-    #             "IVResults": self.IVResult,
-    #         },  # analysis results specific for IV
-    #         pfout,
-    #     )
-    #     pfout.close()
-
     def saveRuns(self, save=None):
         """
         Save the result of multiple runs to disk. Results is in a dictionary,
         each element of which is a Param structure, which we then turn into
         a dictionary...
         """
-        # if save is None:
-        #     fn = f"{self.basename:s}{self.cell.status['modelName']:s}_{self.cell.status['modelType']:s}.p"
-        # else:
-        #     fn = f"{self.basename:s}{self.cell.status['modelName']:s}_{self.cell.status['modelType']:s}_{save:s}.p"
-        #     # (f'{0:s}_{1:s}_{2:s}.p'.format(self.basename, self.cell.status['modelType'], save))
         fn = self.Params.simulationFilename
         print(f"WRITING DATA TO: {str(fn):s}")
         pfout = open(fn, "wb")
         mp = copy.deepcopy(self.cell.status)
         del mp["decorator"]
-        self.cleanNeuronObjs() # in runinfo
+        self.cleanNeuronObjs()  # in runinfo
         pickle.dump(
             {
                 "basename": self.basename,
                 "runInfo": self.RunInfo,
                 "modelPars": mp,  # some specific parameters to this run
                 "Params": self.Params,  # all the parameters that were passed
-                "Results": self.results, # [{k: x.todict()} for k, x in self.results.items()],
+                "Results": self.results,  # [{k: x.todict()} for k, x in self.results.items()],
             },
             pfout,
         )
@@ -602,7 +579,8 @@ class GenerateRun:
         )  # return tuple to assemble name elsewhere
 
         # if recordSection:
-        #     fns = os.path.join(self.RunInfo.folder, self.RunInfo.fileName + '_swellings_' + dtime + '.p')
+        #     fns = os.path.join(self.RunInfo.folder,
+        # self.RunInfo.fileName + '_swellings_' + dtime + '.p')
         #     srsave = sr.SimulationResult()
         #     srsave.save(fns, data=np.array(self.vswel),
         #             time=np.array(self.vec['time']),
