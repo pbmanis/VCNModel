@@ -296,13 +296,17 @@ class ModelRun:
 
     def _make_filenames(self):
         """
-        Define program-wide file names (used also in cell_initialization and generate_run) one time for consistencye
+        Define program-wide file names (used also in cell_
+        initialization and generate_run) one time for consistencye
 
         This routine generates two names:
-            1. The name of the initizlization file. This name includes the model name, the model type (for that name),
-                soma and dendrite inflation factors if relevenat. Other parameters can be added if needed
-            2. The name of the simulation data file. This name is similar to the initizlizaiton name, but may include
-                information about the type of run, stimuli, etc.
+            1. The name of the initizlization file. This name 
+                 includes the model name, the model type (for that name),
+                 soma and dendrite inflation factors if relevenat.
+                 Other parameters can be added if needed
+            2. The name of the simulation data file. This name
+                 is similar to the initizlizaiton name, but may include
+                 information about the type of run, stimuli, etc.
 
         """
         self.cellID = Path(

@@ -1,12 +1,13 @@
-"""
-Show the parameters for a given model run
-"""
-
 from collections import OrderedDict
 import pickle
 import pylibrary as PL
 import pprint
 import vcnmodel.model_params as model_params
+
+
+""""
+Show the parameters for a given model run
+"""
 
 MP = model_params.ModelParams()
 pp = pprint.PrettyPrinter()

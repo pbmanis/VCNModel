@@ -17,6 +17,7 @@ from pylibrary.plotting import styler as PLS
 import vcnmodel.model_params
 from vcnmodel import cell_config as cell_config
 from vcnmodel import spikestatistics as SPKS
+from cnmodel.util import vector_strength
 
 """
 Functions to compute some results and plot the
@@ -374,12 +375,9 @@ def analyze_data(ivdatafile: Union[Path, str], filemode, protocol: str) -> tuple
 
 
 def plot_traces(
-    ax: object,
-    fn: Union[Path, str],
-    PD: dataclass,
-    changetimestamp: object,
-    protocol: str,
-) -> None:
+    ax: object, fn: Union[Path, str], PD: dataclass, protocol: str,
+) -> tuple:
+    changetimestamp = get_changetimestamp()
     x = get_data_file(fn, changetimestamp, PD)
     mtime = Path(fn).stat().st_mtime
     timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d-%H:%M")
@@ -388,13 +386,22 @@ def plot_traces(
         print(fn)
         return
     # unpack x
+    inx = str(fn).find('_Syn')
+    synno = None
+    if inx > 0:
+        synno = int(fn[inx+4:inx+7])
+
+    
     par, stitle, ivdatafile, filemode, d = x
     AR, SP, RMA = analyze_data(ivdatafile, filemode, protocol)
     ntr = len(AR.traces)  # number of trials
     v0 = -160.0
+    deadtime = 50.
     trstep = 25.0 / ntr
     inpstep = 5.0 / ntr
     sz = 50.0 / ntr
+    noutspikes = 0
+    ninspikes = 0
     for trial in range(len(AR.traces)):
         ax.plot(AR.time_base, AR.traces[trial] * 1e3, linewidth=0.5)
         ax.plot(
@@ -403,18 +410,34 @@ def plot_traces(
             "ro",
             markersize=2.5,
         )
-        if protocol == "AN" and "inputSpikeTimes" in list(d["Results"][trial].keys()):
-            spkt = d["Results"][trial]["inputSpikeTimes"]
+ 
+        sinds = np.array(SP.spikeIndices[trial])*AR.sample_rate[trial]
+        noutspikes += len(np.argwhere(sinds > deadtime))
+        if protocol in ["AN", "runANSingles"]:
+            if (trial in list(d['Results'].keys())
+                and "inputSpikeTimes" in list(d["Results"][trial].keys())):
+                 spkt = d["Results"][trial]["inputSpikeTimes"]
+            elif "inputSpikeTimes" in list(d['Results'].keys()):
+                 spkt = d["Results"]["inputSpikeTimes"][trial]
             # print('input spike trains: ', len(spkt))
+            # print('spkt: ', spkt)
             tr_y = trial * (trstep + len(spkt) * inpstep)
-            for ian in range(len(spkt)):
+            if synno is None:
+                for ian in range(len(spkt)):
+                    vy = v0 + tr_y * np.ones(len(spkt[ian])) + inpstep * ian
+                    ax.scatter(spkt[ian], vy, s=sz, marker="|", linewidths=0.35)
+            else:
+                ian = synno
                 vy = v0 + tr_y * np.ones(len(spkt[ian])) + inpstep * ian
                 ax.scatter(spkt[ian], vy, s=sz, marker="|", linewidths=0.35)
+                ninspikes += len(spkt[ian] > deadtime)
+                    
                 # print(len(vy), vy)
             #                 print(spkt[ian])
             ax.set_ylim(-140.0, 40.0)
         else:
             ax.set_ylim(-200.0, 50.0)
+    # print('Nout/Nin: ', float(noutspikes)/ninspikes)
     ax.set_xlim(0.080, np.max(AR.time_base))
 
     ftname = str(ivdatafile.name)
@@ -474,6 +497,7 @@ def plot_traces(
         )
     toptitle += f"\n{timestamp_str:s}"
     ax.set_title(toptitle, fontsize=5)
+    return(synno, noutspikes, ninspikes)
 
 
 def plot_revcorr_map(
@@ -654,11 +678,12 @@ def compute_revcorr(
     gbc: str,
     fn: Union[str, Path],
     PD: object,
-    changetimestamp: object,
     protocol: str,
     thr: float = -20.0,
     width: float = 4.0,
 ) -> Union[None, tuple]:
+
+    changetimestamp = get_changetimestamp()
     #
     # 1. Gather data
     #
@@ -733,7 +758,7 @@ def compute_revcorr(
                 ).squeeze()
                 RCD.sv_avg = d["Results"][trial]["somaVoltage"][areltime]
                 RCD.sv_all = RCD.sv_avg.copy()
-                RCD.ti_avg = RCD.ti[0:len(areltime)] + RCP.minwin
+                RCD.ti_avg = RCD.ti[0 : len(areltime)] + RCP.minwin
                 RCD.nsp += 1
 
             else:  # rest of spikes
@@ -743,7 +768,7 @@ def compute_revcorr(
                         (RCP.minwin <= reltime) & (reltime <= RCP.maxwin)
                     ).squeeze()
                     if len(areltime) > len(RCD.sv_avg):
-                        areltime = areltime[0:len(RCD.sv_avg)]
+                        areltime = areltime[0 : len(RCD.sv_avg)]
                     if len(areltime) < len(RCD.sv_avg):
                         nextend = len(RCD.sv_avg) - len(areltime)
                         areltime = np.append(
@@ -753,7 +778,7 @@ def compute_revcorr(
                     if trial == 0:
                         RCD.sv_avg = d["Results"][trial]["somaVoltage"][areltime]
                         RCD.sv_all = RCD.sv_avg.copy()
-                        RCD.ti_avg = RCD.ti[0:len(areltime)] + RCP.minwin
+                        RCD.ti_avg = RCD.ti[0 : len(areltime)] + RCP.minwin
                     else:
                         RCD.sv_avg += d["Results"][trial]["somaVoltage"][areltime]
                         RCD.sv_all = np.vstack(
@@ -960,7 +985,7 @@ def plot_tuning(args, filename=None, filenames=None):
             fna = [Path(filename)]  # just one file
 
         for k, fn in enumerate(fna):
-            plot_traces(P.axarr[0, k], fn, PD, changetimestamp, args.protocol)
+            plot_traces(P.axarr[0, k], fn, PD, args.protocol)
 
         P.axarr[0, ic].text(50, 1.0, chdist, horizontalalignment="center")
         basen = fn.parts[-4]
@@ -969,6 +994,161 @@ def plot_tuning(args, filename=None, filenames=None):
         print(pngfile)
         imaged = mpl.imread(pngfile)
         P.axarr[1, ic].imshow(imaged)
+
+
+def plot_AN_response(P, fn, PD, protocol):
+    changetimestamp = get_changetimestamp()
+    x = get_data_file(fn, changetimestamp, PD)
+    mtime = Path(fn).stat().st_mtime
+    timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d-%H:%M")
+    if x is None:
+        print("No simulation found that matched conditions")
+        print(fn)
+        return
+    # unpack x
+    par, stitle, ivdatafile, filemode, d = x
+    AR, SP, RMA = analyze_data(ivdatafile, filemode, protocol)
+    ntr = len(AR.traces)  # number of trials
+    v0 = -160.0
+    trstep = 25.0 / ntr
+    inpstep = 5.0 / ntr
+    sz = 50.0 / ntr
+    # print(dir(AR))
+    si = d["Params"]
+    ri = d["runInfo"]
+    # print(si)
+    # print(ri)
+    # print(isinstance(si, dict))
+    # print(isinstance(ri, dict))
+    if isinstance(si, dict):
+        totaldur = (
+            si["pip_start"]
+            + np.max(si["pip_start"])
+            + si["pip_duration"]
+            + si["pip_offduration"]
+        )
+        soundtype = si['soundtype']
+        pip_start = si["pip_start"]
+        pip_duration = si["pip_duration"]
+        F0 = si['F0']
+        dB = si["dB"],
+        fmod = si["fmod"],
+        dmod = si["dmod"],
+    else:
+        totaldur = (ri.pip_start + np.max(ri.pip_start) + ri.pip_duration + ri.pip_offduration)
+        pip_start = ri.pip_start
+        pip_duration = ri.pip_duration
+        soundtype = ri.soundtype
+        F0 = ri.F0
+        dB = ri.dB
+        fmod = ri.fmod
+        dmod = ri.dmod
+    # print(d['Results'][0].keys())
+    # print(dir(AR))
+
+    ntr = len(AR.traces)
+    allst = []
+    for i in range(ntr):  # for all trails in the measure.
+        trial = AR.traces[i]
+        trd = d['Results'][i]
+        w = trd["stimWaveform"]
+        stb = trd["stimTimebase"]
+        P.axdict["A"].plot(
+            AR.time / 1000.0, AR.traces[i], linewidth=0.5
+        )
+        P.axdict["B"].plot(stb, w, linewidth=0.5)  # stimulus underneath
+        P.axdict["C"].plot(
+            trd["spikeTimes"] / 1000.0,
+            i * np.ones(len(trd["spikeTimes"])),
+            "o",
+            markersize=2.5,
+            color="b",
+        )
+        inputs = len(trd["inputSpikeTimes"])
+        for k in range(inputs):
+            tk = trd["inputSpikeTimes"][k] / 1000.0
+            y = (i + 0.1 + k * 0.05) * np.ones(len(tk))
+            P.axdict["E"].plot(tk, y, "|", markersize=2.5, color="r", linewidth=0.5)
+
+        allst.extend(trd["spikeTimes"] / 1000.0)
+    allst = np.array(allst)
+    allst = np.sort(allst)
+    # the histogram of the data
+    ax = P.axdict["F"]
+    if len(allst) > 0:
+        P.axdict["F"].hist(allst, 100, density=True, facecolor="blue", alpha=0.75)
+    else:
+        P.axdict["F"].text(0.5, 0.5, "No Spikes", fontsize=14, 
+        color='r', transform=ax.transAxes, horizontalalignment="center")
+    
+    for a in ["A", "B", "C", "E", "F"]:  # set some common layout scaling
+        P.axdict[a].set_xlim((0.0, totaldur))
+        P.axdict[a].set_xlabel("T (s)")
+
+    if soundtype == "SAM":  # calculate vs and plot histogram
+        if len(allst) == 0:
+            P.axdict["D"].text(0.5, 0.5, "No Spikes", fontsize=14, color='r', 
+            transform=ax.transAxes, horizontalalignment="center")
+        else:
+                  
+            # combine all spikes into one array, plot PSTH
+        # allst = []
+       #  for trial in range(ntr):
+       #      trd = d['Results'][trial]
+       #      allst.extend(trd["spikeTimes"] / 1000.0)
+       #  allst = np.array(allst)
+       #  allst = np.sort(allst)
+       #  # the histogram of the data
+       #  if len(allst) > 0:
+       #      P.axdict["F"].hist(allst, 100, density=True, facecolor="blue", alpha=0.75)
+       #  else:
+       #      P.axdict["F"].text(0.5, 0.5, "No Spikes", fontsize=14, color='r')
+        # print('allst: ', allst)
+            phasewin = [
+                pip_start[0] + 0.25 * pip_duration,
+                pip_start[0] + pip_duration,
+            ]
+            # print (phasewin)
+            spkin = allst[np.where(allst > phasewin[0])]
+            spikesinwin = spkin[np.where(spkin <= phasewin[1])]
+
+            # set freq for VS calculation
+            if soundtype == "tone":
+                print(
+                    "Tone: F0=%.3f at %3.1f dbSPL, cell CF=%.3f"
+                    % (F0, dB, F0)
+                )
+            if soundtype == "SAM":
+                tstring = (
+                    "SAM Tone: F0=%.3f at %3.1f dbSPL, fMod=%3.1f  dMod=%5.2f, cell CF=%.3f"
+                    % (
+                        F0,
+                        dB,
+                        fmod,
+                        dmod,
+                        F0,
+                    )
+                )
+                # print(tstring)
+                P.figure_handle.suptitle(tstring, fontsize=10)
+            # print('spikes: ', spikesinwin)
+            vs = vector_strength(spikesinwin * 1000.0, fmod)  # vs expects spikes in msec
+            print(" Sound type: ", soundtype)
+            print(
+                "AN Vector Strength at %.1f: %7.3f, d=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d"
+                % (F0, vs["r"], vs["d"] * 1e6, vs["R"], vs["p"], vs["n"])
+            )
+            # print(vs['ph'])
+            P.axdict["D"].hist(vs["ph"], bins=2 * np.pi * np.arange(30) / 30.0)
+            P.axdict["D"].set_xlim((0.0, 2 * np.pi))
+            P.axdict["D"].set_title(
+                "Phase (VS = {0:.3f})".format(vs["r"]),
+                fontsize=9,
+                horizontalalignment="center",
+            )
+
+    # P.figure_handle.savefig("AN_res.pdf")
+#     plt.show()
 
 
 def select_filenames(fng, args) -> Union[list, None]:
@@ -1195,10 +1375,10 @@ def cmdline_display(args, PD):
             ax = P.axdict[pgbc]
             for fn in fng:
                 if args.analysis == "traces":
-                    plot_traces(ax, fn, PD, changetimestamp, args.protocol)
+                    plot_traces(ax, fn, PD, args.protocol)
                 elif args.analysis == "revcorr":
                     res = compute_revcorr(
-                        ax, pgbc, fn, PD, changetimestamp, args.protocol
+                        ax, pgbc, fn, PD, args.protocol
                     )
                     if res is None:
                         return

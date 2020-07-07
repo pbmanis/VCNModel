@@ -1,24 +1,16 @@
-import sys
-import subprocess
-
-import numpy as np
-import functools
-from pathlib import Path
-import pickle
-import time
-import importlib
-import toml
-import datetime
-from dataclasses import dataclass, field
-from typing import Union, Dict, List
 import dataclasses
+from dataclasses import dataclass, field
+import datetime
+import pickle
+import subprocess
+from collections import OrderedDict
+from pathlib import Path
+from typing import Dict, List, Union
 
-import pyqtgraph as pg
-from pyqtgraph.Qt import QtCore, QtGui
-from pyqtgraph import Qt
-
-import pylibrary.tools.cprint as CP
 import cnmodel
+import numpy as np
+from pylibrary.tools import cprint as CP
+
 
 """
 Fill in a table using pyqtgrph that summarizes the data in a directory.
@@ -51,6 +43,7 @@ cnmodel_git_hash = process.communicate()[0].strip()
 def defemptylist():
     return []
 
+
 #
 # dataclass for the pkl file. Abstracted information from the main data files
 # to speed up access.
@@ -58,20 +51,22 @@ def defemptylist():
 @dataclass
 class IndexData:
     datestr: str = ""
-    cellType: str=""
-    modelType: str=""
-    modelName: str=""
+    filetype: str = "F"
+    cellType: str = ""
+    modelType: str = ""
+    modelName: str = ""
     command_line: str = ""
     changed_data: Union[None, str] = None  # changed_data
     cnmodel_hash: str = cnmodel_git_hash  # save hash for the model code
     files: List = field(default_factory=defemptylist)
     vcnmodel_code_hash: str = git_head_hash  # this repository!
-    simulationnpath: str = ""
+    simulation_path: str = ""
     temperature: float = 0.0
     dt: Union[float, None] = None
     threshold: Union[float, None] = None
-    dBspl: float=0.
-    SRType: str=""
+    dBspl: float = 0.0
+    nReps: int = 0
+    SRType: str = ""
     elapsed: float = 0.0
     runProtocol: str = ""
     synapsetype: str = ""
@@ -79,11 +74,20 @@ class IndexData:
 
 
 class TableManager:
-    def __init__(self, table, basepath, selvals):
+    def __init__(self, table, basepath, selvals, altcolormethod):
         self.table = table
         self.basepath = basepath
         self.selvals = selvals
+        self.altColors = altcolormethod
 
+    def force_suffix(self, filename, suffix='.pkl'):
+        fn = Path(filename)
+        if fn.suffix != suffix:
+            fn = str(fn)
+            fn = fn + suffix
+            fn = Path(fn)
+        return fn
+        
     def find_build_indexfiles(self, indexdir: Union[str, Path], force=False):
         """
         Given the indexdir, determine:
@@ -95,79 +99,132 @@ class TableManager:
         Parameters
         ----------
         indexdir : (str or Path)
-            The directory to check
+            The directory to check.
         
         Returns
         ------
         Contents of the index file.
         """
 
-        indexfile = Path(indexdir).with_suffix(".pkl")
+        cprint('b', indexdir)
+        indexfile = self.force_suffix(indexdir)
+        cprint("c", f"Checking for index file: {str(indexfile):s}")
         if indexfile.is_file() and not force:
-            cprint("g", f"Found a pkl index file: {str(indexdir):s}")
+            cprint("g", f"    Found index file, reading")
             with open(indexfile, "rb") as fh:
                 d = pickle.load(fh, encoding="latin1")
             return d
-        else:
-            cprint("c", f"Building a pkl index file for {str(indexdir):s}")
-            runs = indexdir.glob("*.p")
+        if force or not indexfile.is_file():
+            cprint("c", f"Building a new .pkl index file for {str(indexdir):s}")
+            print(indexfile)
+            print(indexfile.is_file())
+            dpath = Path(indexfile.parent, indexfile.stem)
+            cprint("c", dpath)
+            runs = list(dpath.glob("*.p"))
+            print('runsa: ', runs)
+            if len(runs) == 0:
+                return None
             for r in runs:
-                pars, runinfo = self.read_data_params(r)
+                p = self.read_pfile_params(r)
+                if p is None:
+                    return None
+                else:
+                    pars, runinfo, indexfile = p
+            cprint('m', f"to build indexdir: {str(indexdir):s}")
             indexdata = self.write_indexfile(pars, runinfo, indexdir)
             return indexdata
 
-    def read_data_params(self, datafile):
+    def read_pfile_params(self, datafile) -> Union[tuple, None]:
         """
         Reads the Params and runinfo entry from the simulation data file
         """
+        print("Reading pfile: ", str(datafile.name))
         with open(datafile, "rb") as fh:
             d = pickle.load(fh, encoding="latin1")
-        # pars = dataclasses.asdict(d['Params'])
-        return d["Params"], d["runInfo"]  # just return as dataclasses
+        if 'runInfo' not in list(d.keys()):
+            cprint('r', 'SKIPPING: File is too old; re-run for new structure')
+            return(None)
+        return (d["Params"], d["runInfo"], str(datafile.name))  # just the dicts
 
-    def write_indexfile(self, params, runinfo, indexdir):
+    def make_indexdata(self, params, runinfo, fn=None, indexdir=None):
         """
         Load up the index data class with selected information
         from the Param and runInfo data classes in the simulation
         run files, then write the index file.
         """
         Index_data = IndexData()
-        Index_data.command_line = vars(params.commandline)
+        usedict = False
+        if indexdir is not None:
+            Index_data.command_line = vars(params.commandline)
+            Index_data.filetype = "D"  # directory
+        else:
+            Index_data.filetype = "F"  # j ust one file
+            if isinstance(params, OrderedDict):
+                usedict = True
+                Index_data.command_line = params["commandline"]
+            else:
+                Index_data.command_line = params.commandline
+
         Index_data.changed_data = None  # changed_data
         Index_data.cnmodel_hash = cnmodel_git_hash  # save hash for the model code
         Index_data.vcnmodel_code_hash = git_head_hash  # this repository!
-        starttime = datetime.datetime.now()
-        runtime = starttime.strftime("%Y-%m-%d.%H-%M-%S")
-        Index_data.datestr = runtime
-        Index_data.simulationnpath = str(
+        Index_data.simulation_path = str(
             Path(
                 self.basepath,
                 f"VCN_c{int(self.selvals['Cells'][1]):02d}",
                 "Simulations",
                 self.selvals["Run Type"][1],
             )
-        )
+        )        
+        if Index_data.filetype == "F":
 
-        Index_data.cellType = params.cellType
-        Index_data.modelType = params.modelType
-        Index_data.modelName = params.modelName
-        Index_data.temperature = params.celsius
-        Index_data.dt = params.dt
+            mtime = Path(Index_data.simulation_path, fn).stat().st_mtime
+        elif Index_data.filetype == "D":
+            mtime = Path(Index_data.simulation_path, indexdir).stat().st_mtime
+        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d-%H:%M")
+        Index_data.datestr = timestamp_str
+
+
         Index_data.threshold = None
         Index_data.elapsed = 0.0
-        runs = indexdir.glob("*.p")
-        for r in runs:
-            Index_data.files.append(str(r))  # get the result file list here
-        Index_data.runProtocol = runinfo.runProtocol
-        Index_data.synapsetype = params.ANSynapseType
-        Index_data.synapse_experiment = runinfo.Spirou
-        Index_data.dBspl = runinfo.dB
-        Index_data.SRType = params.SRType
-        indexfile = Path(indexdir).with_suffix(".pkl")
+        if indexdir is not None:
+            runs = indexdir.glob("*.p")
+            for r in runs:
+                Index_data.files.append(str(r))  # get the result file list here
+        else:
+            Index_data.files = [fn]
+        if usedict:  # old style files with dictionaries
+            Index_data.cellType = params["cellType"]
+            Index_data.modelType = params["modelType"]
+            Index_data.modelName = params["modelName"]
+            Index_data.temperature = 37.0  # params["Celsius"]  Not always in the file information we retrieve
+            Index_data.dt = params["dt"]
+            Index_data.runProtocol = params["runProtocol"]
+            Index_data.synapsetype = params["ANSynapseType"]
+            Index_data.synapse_experiment = params["spirou"]
+            Index_data.dBspl = params["dB"]
+            Index_data.SRType = params["SRType"]
+        else:  # new style files with dataclasses
+            Index_data.cellType = params.cellType
+            Index_data.modelType = params.modelType
+            Index_data.modelName = params.modelName
+            Index_data.temperature = params.celsius
+            Index_data.dt = params.dt
+            Index_data.runProtocol = runinfo.runProtocol
+            Index_data.synapsetype = params.ANSynapseType
+            Index_data.synapse_experiment = runinfo.Spirou
+            Index_data.dBspl = runinfo.dB
+            Index_data.nReps = runinfo.nReps
+            Index_data.SRType = params.SRType
+
+        return Index_data
+        
+    def write_indexfile(self, params, runinfo, indexdir):
+        Index_data = self.make_indexdata(params, runinfo, indexdir=indexdir)
+        indexfile = self.force_suffix(indexdir)
         with open(indexfile, "wb") as fh:
             pickle.dump(Index_data, fh)
         return Index_data
-
 
     def read_indexfile(self, indexfilename):
         """
@@ -175,74 +232,106 @@ class TableManager:
         information such as the file list, for analyses.
         
         """
+        indexfilename = self.force_suffix(indexfilename)
         with open(indexfilename, "rb") as fh:
             indexdata = pickle.load(fh, encoding="latin1")
         return indexdata
 
-        # then save off to indexfile.
-
     def build_table(self, mode="scan"):
+        if mode == 'scan':
+            force = False
+        if mode == 'update':
+            force = True
         self.data = []
         self.table.setData(self.data)
+        # cprint('m', self.basepath)
+        # cprint('y', f"VCN_c{int(self.selvals['Cells'][1]):02d}")
+        # cprint('g', self.selvals["Run Type"][1])
         thispath = Path(
             self.basepath,
             f"VCN_c{int(self.selvals['Cells'][1]):02d}",
             "Simulations",
             self.selvals["Run Type"][1],
         )
-
-        rundirs = thispath.glob("*")
-        indexable_dirs = [r for r in rundirs if r.is_dir()]
-        cprint('r', f"indexabls Directories: {str(indexable_dirs):s}")
-        for indexdir in indexable_dirs:
-            self.find_build_indexfiles(
-                indexdir, force=False
-            )  # get the indexed data and update as necessary.
-
-        # load up the index files
-        indexfiles = list(thispath.glob("*.pkl"))      
+        # cprint('c', thispath)
+        rundirs = list(thispath.glob("*"))
         indxs = []
-        for i, f in enumerate(indexfiles):
-            indxs.append(self.read_indexfile(f))
+        # first build elements with directories
+        indexable_dirs = sorted([r for r in rundirs if r.is_dir()])
+        if len(indexable_dirs) > 0:
+            cprint("c", "Indexable Directories: ")
+            for d in indexable_dirs:
+                cprint("c", f"     {str(d):s}")
+                self.find_build_indexfiles(
+                    d, force=force
+                )  # get the indexed data and update as necessary.
+            # load up the index files
+            indexfiles = list(thispath.glob("*.pkl"))
+            for i, f in enumerate(indexfiles):
+                indxs.append(self.read_indexfile(f))
+
+        runfiles = list(thispath.glob("*.p"))
+        dfiles = sorted(list(runfiles))  # regular data files
+        for i, f in enumerate(dfiles):
+            p = self.read_pfile_params(f)
+            if p is None:
+                indxs.append(None)
+            else:
+                params, runinfo, fn = p  # ok to unpack
+                indxs.append(self.make_indexdata(params, runinfo, fn))
+        indexfiles = indexfiles + dfiles
+
+        # for i in range(len(indexfiles)):
+        #     try:
+        #         print(   indxs[i].command_line["nReps"],)
+        #     except:
+        #         print("......", indxs[i].command_line)
+        # print('*'*80)
+        # for ix in indxs:
+        #            print(ix, end="\n\n")
         self.table_data = indxs
-        #transfer to the data array for the table
+        # transfer to the data array for the table
         self.data = np.array(
             [
                 (
-                    str(Path("/".join(indexfiles[i].parts[-4:]))),
+                    indxs[i].filetype,
                     indxs[i].datestr,
                     indxs[i].cellType,
                     indxs[i].modelType,
                     indxs[i].modelName,
                     indxs[i].runProtocol,
                     indxs[i].dBspl,
+                    indxs[i].nReps, # command_line["nReps"],
                     len(indxs[i].files),
-                    
+                    str(Path("/".join(indexfiles[i].parts[-4:]))),
                 )
                 for i in range(len(indexfiles))
             ],
             dtype=[
-                ("Filename", object),
-                ("datestr", object),
-                ("cellType", object),
+                ("type", object),
+                ("date", object),
+                ("cell", object),
                 ("modelType", object),
                 ("modelName", object),
-                ("runProtocol", object),
+                ("Protocol", object),
                 # ("inputtype", object),
                 # ("modetype", object),
                 # ("scaling", object),
                 # ("Freq", object),
                 ("dBspl", object),
+                ("nReps", object),
                 ("# Files", object),
+                ("Filename", object),
                 # ("SRType", object),
                 # ("# files", object),
                 # ("synapsetype", object),
             ],
         )
-        style = "section:: {font-size: 4pt; color:black; font:TimesRoman;}"
         self.table.setData(self.data)
+       
+        style = "section:: {font-size: 4pt; color:black; font:TimesRoman;}"
         self.table.setStyleSheet(style)
-        self.altColors([QtGui.QColor(0x00, 0x00, 0x00), QtGui.QColor(0x22, 0x22, 0x22)])
+        self.altColors()
         # self.table.setStyle(QtGui.QFont('Arial', 6))
         self.table.resizeRowsToContents()
         self.table.resizeColumnsToContents()
@@ -251,18 +340,3 @@ class TableManager:
         for j in range(self.table.columnCount()):
             self.table.item(rowIndex, j).setBackground(color)
 
-    def altColors(self, colors):
-        """
-        Paint alternating table rows with different colors
-        
-        Parameters
-        ----------
-        colors : list of 2 elements
-            colors[0] is for odd rows (RGB, Hex)
-            colors[1] is for even rows
-        """
-        for j in range(self.table.rowCount()):
-            if j % 2:
-                self.setColortoRow(j, colors[0])
-            else:
-                self.setColortoRow(j, colors[1])
