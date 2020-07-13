@@ -9,15 +9,18 @@ from typing import Union
 import numpy as np
 import seaborn
 from ephys.ephysanalysis import MakeClamps, RmTauAnalysis, SpikeAnalysis
+import matplotlib.colors
+import matplotlib.colorbar
 from matplotlib import pyplot as mpl
 from matplotlib import rc
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.plotting import styler as PLS
-
+from pylibrary.tools import cprint as CP
 import vcnmodel.model_params
 from vcnmodel import cell_config as cell_config
 from vcnmodel import spikestatistics as SPKS
 from cnmodel.util import vector_strength
+cprint = CP.cprint
 
 """
 Functions to compute some results and plot the
@@ -245,8 +248,10 @@ def get_data_file(
     fns = str(fn)
     ivdatafile = None
     if not fnp.is_file():
-        print(f"file: {str(fnp):s} NOT FOUND")
+        cprint('r', f"   File: {str(fnp):s} NOT FOUND")
         return None
+    else:
+        print(f"   File {str(fnp):s} found.")
     mtime = fnp.stat().st_mtime
     timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d-%H:%M")
     print(f"pgbcivr2: Checking file: {fnp.name:s} [{timestamp_str:s}]")
@@ -264,7 +269,7 @@ def get_data_file(
     #               continue
     # print(d['Results'][0]['inputSpikeTimes'])
     #
-    # exit()
+
     if filemode in ["vcnmodel.v0"]:
         # print(d['runInfo'].keys())
         par = d["runInfo"]
@@ -287,6 +292,8 @@ def get_data_file(
         if isinstance(par, vcnmodel.model_params.Params):
             par = dataclasses.asdict(par)
     # print('pgbcivr2: Params: ', par)
+    print(PD)
+    print(par)
     if PD.soma_inflate and PD.dend_inflate:
         if par["soma_inflation"] > 0.0 and par["dendrite_inflation"] > 0.0:
             ivdatafile = Path(fn)
@@ -391,7 +398,6 @@ def plot_traces(
     if inx > 0:
         synno = int(fn[inx+4:inx+7])
 
-    
     par, stitle, ivdatafile, filemode, d = x
     AR, SP, RMA = analyze_data(ivdatafile, filemode, protocol)
     ntr = len(AR.traces)  # number of trials
@@ -416,7 +422,7 @@ def plot_traces(
         if protocol in ["AN", "runANSingles"]:
             if (trial in list(d['Results'].keys())
                 and "inputSpikeTimes" in list(d["Results"][trial].keys())):
-                 spkt = d["Results"][trial]["inputSpikeTimes"]
+                    spkt = d["Results"][trial]["inputSpikeTimes"]
             elif "inputSpikeTimes" in list(d['Results'].keys()):
                  spkt = d["Results"]["inputSpikeTimes"][trial]
             # print('input spike trains: ', len(spkt))
@@ -431,7 +437,7 @@ def plot_traces(
                 vy = v0 + tr_y * np.ones(len(spkt[ian])) + inpstep * ian
                 ax.scatter(spkt[ian], vy, s=sz, marker="|", linewidths=0.35)
                 ninspikes += len(spkt[ian] > deadtime)
-                    
+
                 # print(len(vy), vy)
             #                 print(spkt[ian])
             ax.set_ylim(-140.0, 40.0)
@@ -534,6 +540,9 @@ def plot_revcorr2(ax: object, PD: dataclass, RCP: dataclass, RCD: dataclass):
     for isite in range(
         RCP.ninputs
     ):  # range(ninputs):  # for each ANF input (get from those on first trial)
+        # print('svall: ', RCD.sv_all, type(RCD.sv_all), RCD.sv_all.shape)
+        if RCD.sv_all.shape == ():
+            continue
         stepsize = int(RCD.sv_all.shape[0] / 20)
         if stepsize > 0:
             sel = list(range(0, RCD.sv_all.shape[0], stepsize))
@@ -569,6 +578,7 @@ def plot_revcorr2(ax: object, PD: dataclass, RCP: dataclass, RCD: dataclass):
         ):  # only plot the first time through - the APs are the same no matter the trial
             # print('Plotting V')
             for t in sel:
+                print(len(RCD.sv_all))
                 secax.plot(
                     RCD.ti_avg, RCD.sv_all[t], color="#666666", linewidth=0.2, zorder=1
                 )
@@ -592,10 +602,12 @@ def plot_revcorr2(ax: object, PD: dataclass, RCP: dataclass, RCD: dataclass):
     ax.set_ylabel("Rate of coincidences/bin (Hz)", fontsize=10)
     ax.set_xlabel("T (ms)", fontsize=10)
     ax.set_xlim((RCP.minwin, RCP.maxwin))
-    if RCD.max_coin_rate > 0.2:
+    if 0.2 < RCD.max_coin_rate < 1.0:
         ax.set_ylim(0, 1)
-    else:
+    elif 0.2 >= RCD.max_coin_rate:
         ax.set_ylim(0, 0.25)
+    elif RCD.max_coin_rate > 1.0:
+        ax.set_ylim(0, 2.0)
     secax.set_ylim([-70.0, 10.0])
     secax.set_xlim((RCP.minwin, RCP.maxwin))
     # secax.set_ylabel('Vm', rotation=-90., fontsize=10)
@@ -636,6 +648,7 @@ def get_data(
     # timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d-%H:%M")
     if X is None:
         print("No simulation found that matched conditions")
+        print("Looking for file: ", fn)
         return None
     # unpack x
     par, stitle, ivdatafile, filemode, d = X
@@ -703,23 +716,37 @@ def compute_revcorr(
 
     print("ninputs: ", RCP.ninputs)
     maxtc = 0
-
+    si = d["Params"]
+    ri = d["runInfo"]
+    # print(si)
+    # print(ri)
+    # print(isinstance(si, dict))
+    # print(isinstance(ri, dict))
+    if isinstance(si, dict):
+        min_time = (si["pip_start"] + 0.025 )*1000. # push onset out of the way
+        max_time = (si["pip_start"]+si["pip_duration"])*1000.
+        F0 = si['F0']
+        dB = si["dB"],
+    else:
+        if isinstance(ri.pip_start, list):
+            start = ri.pip_start[0]
+        else:
+            start = ri.pip_start
+        min_time = (start+0.025)*1000.
+        max_time = (start+ri.pip_duration)*1000.
     RCD.sv_sites = []
-    print("inputs:", RCP.ninputs)
     RCD.C = [None] * RCP.ninputs
     RCD.max_coin_rate = 0.0
     nspk_plot = 0
     # spksplotted = False
-    RCP.min_time = 10.0  # 220.  # driven window without onset
-    RCP.max_time = 300.0
+    RCP.min_time = min_time  # driven window without onset
+    RCP.max_time = max_time
 
-    for isite in range(
-        RCP.ninputs
-    ):  # range(ninputs):  # for each ANF input (get from those on first trial)
+    for isite in range(RCP.ninputs): # for each ANF input
         # print('isite: ', isite)
         firstwithspikes = False
-        RCD.sv_avg = np.zeros(1)
-        RCD.sv_all = np.zeros(1)
+        # RCD.sv_avg = np.zeros(1)  # these are allocated on first trial for each input run
+        # RCD.sv_all = np.zeros(1)
         RCD.nsp = 0
         # n_avg = 0
 
@@ -757,8 +784,8 @@ def compute_revcorr(
                     (RCP.minwin <= reltime) & (reltime <= RCP.maxwin)
                 ).squeeze()
                 RCD.sv_avg = d["Results"][trial]["somaVoltage"][areltime]
-                RCD.sv_all = RCD.sv_avg.copy()
                 RCD.ti_avg = RCD.ti[0 : len(areltime)] + RCP.minwin
+                RCD.sv_all = np.zeros((RCP.ntrials, RCD.ti_avg.shape[0]))
                 RCD.nsp += 1
 
             else:  # rest of spikes
@@ -777,13 +804,11 @@ def compute_revcorr(
                         )
                     if trial == 0:
                         RCD.sv_avg = d["Results"][trial]["somaVoltage"][areltime]
-                        RCD.sv_all = RCD.sv_avg.copy()
+                        RCD.sv_all = np.zeros((RCP.ntrials, RCD.ti_avg.shape[0]))  # initialize the array
                         RCD.ti_avg = RCD.ti[0 : len(areltime)] + RCP.minwin
                     else:
                         RCD.sv_avg += d["Results"][trial]["somaVoltage"][areltime]
-                        RCD.sv_all = np.vstack(
-                            (RCD.sv_all, d["Results"][trial]["somaVoltage"][areltime])
-                        )
+                    RCD.sv_all[trial] =  d["Results"][trial]["somaVoltage"][areltime]
                     RCD.nsp += 1
 
             nspk_plot += RCD.nsp
@@ -793,8 +818,11 @@ def compute_revcorr(
             RCD.sv_avg /= RCD.nsp
             # print('trial: ', i, sv_avg)
             # C = C + SPKS.spike_triggered_average(st[trial]*ms, andirac*ms, max_interval=width*ms, dt=binw*ms)
-        if RCD.TC > maxtc:
+        # print('RCD: ', RCD.TC)
+        if isinstance(RCD.TC, float) and RCD.TC > maxtc:
             maxtc = RCD.TC
+        else:
+            maxtc = 1.0
 
     pre_w = [-2.7, -0.7]
 
@@ -851,10 +879,11 @@ def compute_revcorr(
             nperspike.append(nps)
 
     s_pair = np.sum(pairwise)
-    pairwise /= s_pair
+    if s_pair > 0.0:
+        pairwise /= s_pair
     psh = pairwise.shape
     pos = np.zeros((psh[0], psh[1], 2))
-    print("# pairwise: ", s_pair, np.sum(pairwise))
+
     for i in range(RCP.ninputs):
         for j in range(RCP.ninputs):
             # print(f"{pairwise[i,j]:.3f}", end='  ')
@@ -903,23 +932,31 @@ def compute_revcorr(
     # f, sax = mpl.subplots(3,1)
     # f.set_size_inches( w=3.5, h=9)
     sax["A"].plot(np.arange(RCP.ninputs) + 1, RCD.sites, "bo")
-    pclip = np.clip(pairwise, np.min(np.where(pairwise > 0)), np.max(pairwise))
-    pclip[np.where(pclip == 0)] = np.nan
-    pclipped = pclip - np.nanmin(pclip)
+    print('pairwise: ', pairwise)
     colormap = "plasma"
+    if s_pair > 0.0:
+        pclip = np.clip(pairwise, np.min(np.where(pairwise > 0)), np.max(pairwise))
+        pclip[np.where(pclip == 0)] = np.nan
+        pclipped = pclip - np.nanmin(pclip)
+        sax["C"].scatter(
+            pos[:, :, 0], pos[:, :, 1], s=200 * pairwise / maxp, c=pclipped, cmap=colormap
+        )
+        vmax = np.nanmax(pclip) * 100
+        vmin = np.nanmin(pclip) * 100
+        print("vmin, vmax: ", vmin, vmax)
+    else:
+        vmin = 0
+        vmax = 1
     # sax['B'].plot(np.arange(RCP.ninputs)+1, participation/nspikes, 'gx')
     sax["B"].plot(RCD.sites, participation / nspikes, "gx")
-    sax["C"].scatter(
-        pos[:, :, 0], pos[:, :, 1], s=200 * pairwise / maxp, c=pclipped, cmap=colormap
-    )
-    # cm_sns = mpl.cm.get_cmap(colormap)
-    vmax = np.nanmax(pclip) * 100
-    vmin = np.nanmin(pclip) * 100
-    print("vmin, vmax: ", vmin, vmax)
+ 
+
+
     axcbar = PLS.create_inset_axes([0.8, 0.05, 0.05, 0.5], sax["C"])
-    # norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
-    # ticks = np.linspace(vmin, vmax, num=4, endpoint=True)
-    # c2 = matplotlib.colorbar.ColorbarBase(axcbar, cmap=cm_sns, ticks=ticks, norm=norm)
+    norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+    ticks = np.linspace(vmin, vmax, num=4, endpoint=True)
+    cm_sns = mpl.cm.get_cmap(colormap)
+    c2 = matplotlib.colorbar.ColorbarBase(axcbar, cmap=cm_sns, ticks=ticks, norm=norm)
 
     # PH.nice_plot(sax['C'], position=-0.2)
     sax["D"].plot(np.arange(RCP.ninputs) + 1, ynspike, "m^-")
@@ -937,13 +974,16 @@ def compute_revcorr(
     sax["D"].set_xlabel(f"# Inputs in [{pre_w[0]:.1f} to {pre_w[1]:.1f}] before spike")
 
     PH.cleanAxes(PSum.axarr.ravel())
-    PH.talbotTicks(sax["C"])
+    # PH.talbotTicks(sax["C"])
     PH.talbotTicks(sax["A"])
 
     PH.talbotTicks(sax["B"], tickPlacesAdd={"x": 0, "y": 1}, floatAdd={"x": 0, "y": 2})
     PH.talbotTicks(sax["D"], tickPlacesAdd={"x": 0, "y": 1}, floatAdd={"x": 0, "y": 2})
     PH.talbotTicks(
         axcbar, tickPlacesAdd={"x": 0, "y": 2}, floatAdd={"x": 0, "y": 2}, pointSize=7
+    )
+    PSum.figure_handle.suptitle(
+        f"Cell {gbc:s}", fontsize=12
     )
     mpl.show()
 
@@ -1339,7 +1379,7 @@ def cmdline_display(args, PD):
 
         print(f"Searching for:  {str(Path(basefn, name_start)):s}")
         fng = list(Path(basefn).glob(name_start))
-        print("found: ", fng)  # exit()
+        print(f"Found: {len(fng):d} files.")
         """ cull list by experiment and db """
 
         if args.check:
