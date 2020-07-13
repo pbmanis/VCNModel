@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CELLNAMES="02 05 06 09 10 11 13 17 30"
+CELLNAMES="24 29" # "02 05 06 09 10 11 13 17 30"
 #CONFIG="noscale.toml" #"autoscale.toml"
 CONFIG="singles_autoscale_multisite_noparallel.toml"
 RUNTEXT="running the AN Single protocols"
