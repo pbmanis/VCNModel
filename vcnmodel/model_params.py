@@ -159,7 +159,8 @@ class Params:
     Parallel: bool = True
     verbose: bool = False
     save_all_sections: bool = False
-    commandline: str = ""  # store command line on run
+    commandline: str = ""  # store command line on run, all parser args
+    commands: str = ""  # store command line on run, the actual given commands
     checkcommand: bool = False
     configfile: Union[str, None] = None
     tagstring: Union[str, None] = None
