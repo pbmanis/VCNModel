@@ -11,7 +11,7 @@ import pyqtgraph as pg
 import toml
 from pylibrary.plotting import plothelpers as PH
 from pyqtgraph.parametertree import Parameter, ParameterTree
-from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 
 from vcnmodel import table_manager as table_manager
 from vcnmodel.plotters import plot_sims as PS
@@ -34,6 +34,7 @@ cellvalues = [
     5,
     6,
     9,
+    10,
     11,
     13,
     17,
@@ -214,6 +215,7 @@ class DataTables:
         layout.addWidget(view, 0, 1, 8, 8)
         layout.addWidget(self.table, 0, 1, 8, 8)  # data plots on right
         self.win.show()
+        self.table.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
 
         self.table.doubleClicked.connect(functools.partial(self.on_Click, self.table))
         self.table.clicked.connect(functools.partial(self.on_Single_Click, self.table))
@@ -476,8 +478,9 @@ class DataTables:
         cols = 1  # just a single selection
         sizex = 6.
         sizey = 6.
-        plabels = [f"VCN_c{self.cellID:02d}"]
-        pgbc = f"VCN_c{self.cellID:02d}"
+
+        plabels = [f"VCN_c{int(self.cellID):02d}"]
+        pgbc = plabels[0]
         P = PH.regular_grid(
             rows,
             cols,

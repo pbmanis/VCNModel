@@ -116,12 +116,12 @@ class TableManager:
             return d
         if force or not indexfile.is_file():
             cprint("c", f"Building a new .pkl index file for {str(indexdir):s}")
-            print(indexfile)
-            print(indexfile.is_file())
+            # print(indexfile)
+  #           print(indexfile.is_file())
             dpath = Path(indexfile.parent, indexfile.stem)
-            cprint("c", dpath)
+            # cprint("c", dpath)
             runs = list(dpath.glob("*.p"))
-            print('runsa: ', runs)
+            # print('runsa: ', runs)
             if len(runs) == 0:
                 return None
             for r in runs:
@@ -139,8 +139,12 @@ class TableManager:
         Reads the Params and runinfo entry from the simulation data file
         """
         print("Reading pfile: ", str(datafile.name))
-        with open(datafile, "rb") as fh:
-            d = pickle.load(fh, encoding="latin1")
+        try:
+            with open(datafile, "rb") as fh:
+                d = pickle.load(fh, encoding="latin1")
+        except IOError:
+            raise IOError('SKIPPING: File is too old; re-run for new structure')
+            return None
         if 'runInfo' not in list(d.keys()):
             cprint('r', 'SKIPPING: File is too old; re-run for new structure')
             return(None)
@@ -269,18 +273,22 @@ class TableManager:
             indexfiles = list(thispath.glob("*.pkl"))
             for i, f in enumerate(indexfiles):
                 indxs.append(self.read_indexfile(f))
+                # if indxs[-1] is None:
+                # cprint('y', f"None in #{i:d} :{str(f):s}")
 
         runfiles = list(thispath.glob("*.p"))
         dfiles = sorted(list(runfiles))  # regular data files
         for i, f in enumerate(dfiles):
             p = self.read_pfile_params(f)
             if p is None:
-                indxs.append(None)
+                # indxs.append(None)
+                cprint('y', f"None in #{i:d} :{str(f):s}")
             else:
                 params, runinfo, fn = p  # ok to unpack
                 indxs.append(self.make_indexdata(params, runinfo, fn))
         indexfiles = indexfiles + dfiles
 
+        # print(indxs)
         # for i in range(len(indexfiles)):
         #     try:
         #         print(   indxs[i].command_line["nReps"],)
@@ -300,12 +308,13 @@ class TableManager:
                     indxs[i].modelType,
                     indxs[i].modelName,
                     indxs[i].runProtocol,
+                    indxs[i].synapse_experiment,
                     indxs[i].dBspl,
                     indxs[i].nReps, # command_line["nReps"],
                     len(indxs[i].files),
                     str(Path("/".join(indexfiles[i].parts[-4:]))),
                 )
-                for i in range(len(indexfiles))
+                for i in range(len(indxs))
             ],
             dtype=[
                 ("type", object),
@@ -314,6 +323,7 @@ class TableManager:
                 ("modelType", object),
                 ("modelName", object),
                 ("Protocol", object),
+                ("Experiment", object),
                 # ("inputtype", object),
                 # ("modetype", object),
                 # ("scaling", object),
