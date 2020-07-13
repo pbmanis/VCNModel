@@ -215,16 +215,18 @@ class ModelRun:
     def __init__(self, params: dataclass = None, runinfo: dataclass = None, args=None):
         self.Params = params
         self.RunInfo = runinfo
-        self.Params.commandline = args
+        print(args)
 
         if self.Params.checkcommand:
-            self.Params.commandline = sys.argv[1]
+            self.Params.commandline = sys.argv[1:]
             print(
                 "Parameters: ", json.dumps(dataclasses.asdict(self.Params), indent=4)
             )  # pprint doesn't work well with ordered dicts
             print("RunInfo: ", dataclasses.asdict(self.RunInfo))
             print("Command line: ", self.Params.commandline)
             exit()
+        self.Params.commandline = args
+        self.Params.commands = sys.argv[1:]
 
         if self.Params.verbose:
             self.print_modelsetup()
@@ -398,6 +400,7 @@ class ModelRun:
             self.RunInfo.runProtocol.startswith("runAN")
             or self.RunInfo.runProtocol == "initAN"
             or self.RunInfo.runProtocol == "runANSingles"
+            or self.RunInfo.runProtocol == "runANPSTH"
         ):
             simMode = "AN"
 
@@ -1954,7 +1957,7 @@ class ModelRun:
             A dictionary containing 'Vsoma', 'Vdend', 'time', and the 'ANSpikeTimes'
 
         """
-        print("\n*** single_an_run\n")
+        print(f"\n*** single_an_run: j={j:4d}")
 
         # try:
         #     cellInit.restore_initial_conditions_state(
