@@ -3,10 +3,13 @@ import dataclasses
 import datetime
 import pickle
 from dataclasses import dataclass, field
+from collections import OrderedDict
 from pathlib import Path
-from typing import Union
+from typing import Union, List, Tuple
 
 import numpy as np
+import scipy.stats
+from numba import jit
 import seaborn
 from ephys.ephysanalysis import MakeClamps, RmTauAnalysis, SpikeAnalysis
 import matplotlib.colors
@@ -20,6 +23,15 @@ import vcnmodel.model_params
 from vcnmodel import cell_config as cell_config
 from vcnmodel import spikestatistics as SPKS
 from cnmodel.util import vector_strength
+from vcnmodel import sttc as STTC
+# try using a standard ccf
+# import neo
+# from quantities import s, Hz, ms
+# from elephant.spike_train_generation import homogeneous_poisson_process
+# import elephant.spike_train_correlation as ESTC
+# from elephant.conversion import BinnedSpikeTrain
+
+from vcnmodel import correlation_calcs as CXC
 cprint = CP.cprint
 
 """
@@ -88,7 +100,7 @@ SP = SpikeAnalysis.SpikeAnalysis()
 RM = RmTauAnalysis.RmTauAnalysis()
 rc("text", usetex=False)
 
-modeltypes = ["mGBC", "XM13", "RM03", "XM13_nacncoop"]
+modeltypes = ["mGBC", "XM13", "RM03", "XM13_nacncoop", "XM13A_nacncoop"]
 runtypes = ["AN", "an", "IO", "IV", "iv", "gifnoise"]
 experimenttypes = [
     None,
@@ -155,7 +167,7 @@ def def_empty_list():
 class RevCorrPars:
     ntrials: int = 1
     ninputs: int = 1
-
+    algorithm: str = "RevcorrSPKS"  # save the algorithm name
     # clip trace to avoid end effects
     min_time: float = 10.0  # msec to allow the system to settlt  # this window needs to be at least as long as minwin
     max_time: float = 250.0  # this window needs to be at least as long as maxwin
@@ -167,8 +179,10 @@ class RevCorrPars:
 
 @dataclass
 class RevCorrData:
-    C: list = field(default_factory=def_empty_list)
-    TC: list = field(default_factory=def_empty_list)
+    C: list = field(default_factory=def_empty_list)  # using Brian 1.4 correlation
+    CB: list = field(default_factory=def_empty_list)  # using elephant/neo, binned correlation
+    CBT: list = field(default_factory=def_empty_list)  # using elephant/neo, binned correlation
+    TC: float = 0. # list = field(default_factory=def_empty_list)
     st: np.array = field(default_factory=def_empty_np)
     tx: np.array = field(default_factory=def_empty_np)
     ti: np.array = field(default_factory=def_empty_np)
@@ -176,7 +190,8 @@ class RevCorrData:
     sv_all: np.array = field(default_factory=def_empty_np)
     sv_avg: np.array = field(default_factory=def_empty_np)
     sites: np.array = field(default_factory=def_empty_np)
-    nsp: int = 0
+    nsp_avg: int = 0
+    npost_spikes: int = 0
     max_coin_rate: float = 0
 
 
@@ -292,8 +307,8 @@ def get_data_file(
         if isinstance(par, vcnmodel.model_params.Params):
             par = dataclasses.asdict(par)
     # print('pgbcivr2: Params: ', par)
-    print(PD)
-    print(par)
+    # print(PD)
+    # print(par)
     if PD.soma_inflate and PD.dend_inflate:
         if par["soma_inflation"] > 0.0 and par["dendrite_inflation"] > 0.0:
             ivdatafile = Path(fn)
@@ -397,7 +412,9 @@ def plot_traces(
     synno = None
     if inx > 0:
         synno = int(fn[inx+4:inx+7])
-
+    if protocol in["IV", "runIV"]:
+        protocol = "IV"
+    print('Protocol: ', protocol)
     par, stitle, ivdatafile, filemode, d = x
     AR, SP, RMA = analyze_data(ivdatafile, filemode, protocol)
     ntr = len(AR.traces)  # number of trials
@@ -450,8 +467,8 @@ def plot_traces(
     ip = ftname.find("_II_") + 4
     ftname = ftname[:ip] + "...\n" + ftname[ip:]
     toptitle = f"{ftname:s}"
-    if protocol == "IV":
-        toptitle += f"\nRin={RMA['Rin']:.1f} Mmhm1  Taum={RMA['taum']:.2f} ms"
+    if protocol =="IV":
+        toptitle += f"\nRin={RMA['Rin']:.1f} M$\Omega$  $\\tau_m$={RMA['taum']:.2f} ms"
 
         secax = PLS.create_inset_axes([0.4, 0, 0.4, 0.4], ax)
         secax.plot(
@@ -502,7 +519,7 @@ def plot_traces(
             fontsize=9,
         )
     toptitle += f"\n{timestamp_str:s}"
-    ax.set_title(toptitle, fontsize=5)
+    ax.set_title(toptitle, y=1.0, fontsize=8, verticalalignment="top")
     return(synno, noutspikes, ninspikes)
 
 
@@ -524,7 +541,12 @@ def plot_revcorr_map(
     window,
 ):
     pass
-
+    
+def make_patch_spines_invisible(axn):
+    axn.set_frame_on(True)
+    axn.patch.set_visible(False)
+    for sp in axn.spines.values():
+        sp.set_visible(False)
 
 def plot_revcorr2(ax: object, PD: dataclass, RCP: dataclass, RCD: dataclass):
     seaborn.set_style("ticks")
@@ -536,7 +558,10 @@ def plot_revcorr2(ax: object, PD: dataclass, RCP: dataclass, RCD: dataclass):
     secax.spines["bottom"].set_visible(False)
     ax.spines["top"].set_visible(False)
     # ax.set_facecolor((0.7, 0.7, 0.7))
+    ax2 = ax.twinx()
+    ax2.spines['right'].set_position(("axes", 0.9))
     summarySiteTC = {}
+    maxrevcorr = 0
     for isite in range(
         RCP.ninputs
     ):  # range(ninputs):  # for each ANF input (get from those on first trial)
@@ -549,12 +574,7 @@ def plot_revcorr2(ax: object, PD: dataclass, RCP: dataclass, RCD: dataclass):
         else:
             sel = list(range(0, RCD.sv_all.shape[0], 1))
         sel = list(range(0, RCD.sv_all.shape[0], 1))
-        # if stelen(sel) < 10:
-        #     if sv_all.shape[0] > 10:
-        #         sel = list(range(10))
-        #     else:
-        #         sel = list(range(sv_all.shape[0]))
-
+        refzero = int(RCP.minwin/RCP.binw)
         if RCD.C[isite] is not None:
             # print('plotting C')
             nc = int(len(RCD.C[isite]) / 2)
@@ -563,22 +583,51 @@ def plot_revcorr2(ax: object, PD: dataclass, RCP: dataclass, RCD: dataclass):
             # print(RCD.sites, isite)
             color = mpl.cm.viridis(norm(RCD.sites, isite))
             # print('color', color)
-            ax.plot(
-                RCD.tx,
-                RCD.C[isite][:nc],
-                color=color,
-                label=("Input {0:2d} N={1:3d}".format(isite, int(RCD.sites[isite]))),
-                linewidth=1.5,
-                zorder=5,
-            )
+            maxrevcorr = np.max((maxrevcorr, np.max(RCD.CB[isite])))
+            totalrevcorr = np.sum(RCD.CB[isite])
+
+
+            make_patch_spines_invisible(ax2)
+            if isite in range(RCP.ninputs):
+                if RCP.algorithm == "RevcorrSPKS":
+                    ax.plot(
+                        RCD.tx,
+                        RCD.C[isite][:nc],
+                        color=color,
+                        label=("Input {0:2d} N={1:3d}".format(isite, int(RCD.sites[isite]))),
+                        linewidth=1.5,
+                        zorder=5,
+                    )
+
+                # print(RCD.npost_spikes)
+     #            print(RCD.CB[isite])
+                elif RCP.algorithm == "RevcorrSimple":
+                    ax.plot(
+                        RCD.CBT - RCP.maxwin, 
+                        RCD.CB[isite]/float(RCD.npost_spikes),
+                        color=color,
+                        label=("Input {0:2d} N={1:3d}".format(isite, int(RCD.sites[isite]))),
+                        linewidth=1,
+                        zorder=5,
+                        alpha=1.0
+                    )
+                elif RCP.algorithm  == "RevcorrSTTC": # use spike time tiling method
+                   ax.plot(
+                       RCD.tx,
+                       RCD.STTC[isite][:nc],
+                       color=color,
+                       label=("Input {0:2d} N={1:3d}".format(isite, int(RCD.sites[isite]))),
+                       linewidth=1.5,
+                       zorder=5,
+                   )
+
+
             RCD.max_coin_rate = np.max((RCD.max_coin_rate, np.max(RCD.C[:nc])))
 
         if (
             isite == 0
-        ):  # only plot the first time through - the APs are the same no matter the trial
-            # print('Plotting V')
+        ):  # only plot the first time through - the APs are the same no matter the input
             for t in sel:
-                print(len(RCD.sv_all))
                 secax.plot(
                     RCD.ti_avg, RCD.sv_all[t], color="#666666", linewidth=0.2, zorder=1
                 )
@@ -593,13 +642,12 @@ def plot_revcorr2(ax: object, PD: dataclass, RCP: dataclass, RCD: dataclass):
             )
             PH.referenceline(secax, -60.0)
             seaborn.despine(ax=secax)
-    print(f"Total spikes plotted: {RCD.nsp:d}")
-    # for trial in range(RCP.ntrials):
-    #     stx = RCD.st[trial]
+    print(f"Total spikes plotted: {RCD.nsp_avg:d}")
+
     secax.plot([0.0, 0.0], [-120.0, 10.0], "r", linewidth=0.5)
-    # print('finished inputs')
+
     seaborn.despine(ax=ax)
-    ax.set_ylabel("Rate of coincidences/bin (Hz)", fontsize=10)
+    secax.set_ylabel("Rate of coincidences/bin (Hz)", fontsize=10)
     ax.set_xlabel("T (ms)", fontsize=10)
     ax.set_xlim((RCP.minwin, RCP.maxwin))
     if 0.2 < RCD.max_coin_rate < 1.0:
@@ -608,6 +656,8 @@ def plot_revcorr2(ax: object, PD: dataclass, RCP: dataclass, RCD: dataclass):
         ax.set_ylim(0, 0.25)
     elif RCD.max_coin_rate > 1.0:
         ax.set_ylim(0, 2.0)
+    yls = ax.get_ylim()
+    # ax2.set_ylim(yls)
     secax.set_ylim([-70.0, 10.0])
     secax.set_xlim((RCP.minwin, RCP.maxwin))
     # secax.set_ylabel('Vm', rotation=-90., fontsize=10)
@@ -666,10 +716,6 @@ def get_data(
     for i, tr in enumerate(trials):
         trd = d["Results"][tr]  # trial data
         ti = trd["time"]
-        # sv = trd["somaVoltage"]
-        # dt = ti[1] - ti[0]
-        # st[tr] = PU.findspikes(ti, sv, thr, dt=dt, mode='threshold')
-        # st[tr] = clean_spiketimes(st[tr])
         RCD.npost += len(RCD.st[tr])
         for n in range(len(trd["inputSpikeTimes"])):  # for each sgc
             RCD.npre += len(trd["inputSpikeTimes"][n])
@@ -685,6 +731,56 @@ def get_data(
     RCD.tx = np.arange(RCP.minwin, 0, RCP.binw)
     return (d, AR, SP, RMA, RCP, RCD)
 
+from numba import jit
+
+@jit(parallel=True, cache=True,)
+def nb_revcorr(st1, st2, binwidth, corrwindow):
+    xds  = np.zeros(int((corrwindow[1]-corrwindow[0])/binwidth))
+    print(xds.shape)
+    # [None]*len(st1)
+    for i, sp in enumerate(st1):
+        diff = st2 - sp
+        v = np.where((corrwindow[0] <= diff) & (diff <= corrwindow[1]))
+        # print('v: ', v)
+       #  if len(v) > 0:
+       #      iv = [int(vx/binwidth) for vx in v]
+       #      xds[iv] = 1
+       #      print('xds: ', xds)# for d in diff:
+        #     if corrwindow[0] <= d <= corrwindow[1]:
+        #         xds[i] = d
+    # print(np.array(xds))
+    # print(np.array(xds).ravel().shape)
+    return xds, len(st1)  # return the n postsynaptic spikes 
+
+
+
+def revcorr(
+    st1: Union[np.ndarray, List]= None,
+    st2: Union[np.ndarray, List]= None,
+    binwidth:float=0.1,
+    datawindow:Union[List, Tuple]= [0., 100.], # time window for selecteing spikes
+    corrwindow:Union[List, Tuple]= [-5., 1.], # time window to examine correlation relative to st1
+    ) -> np.ndarray:
+    if st1 is None or st2 is None:
+        raise ValueError("coincident_spikes_correlation: reference and comparator must be defined")
+    refa = st1 # [a for a in st1 if (datawindow[0] <= a <= datawindow[1])]
+    refb = st2 # [b for b in st2 if (datawindow[0] <= b <= datawindow[1])]    
+    # xds  = [None]*len(refa)
+    xds  = np.zeros(int((corrwindow[1]-corrwindow[0])/binwidth))
+    for i, sp in enumerate(refa):
+        diff = refb - sp
+        v = diff[np.where((corrwindow[0] <= diff) & (diff <= corrwindow[1]))]
+        # print('v: ', v)
+        if len(v) > 0:
+            indxs = [int(vx/binwidth) for vx in v]
+            xds[indxs] = xds[indxs] + 1
+        # for d in diff:
+        #     if corrwindow[0] <= d <= corrwindow[1]:
+        #         xds.append(d)
+    # print(np.array(xds))
+    # print(np.array(xds).ravel().shape)
+    return xds, len(st1)  # return the n postsynaptic spikes 
+
 
 def compute_revcorr(
     ax: object,
@@ -692,20 +788,28 @@ def compute_revcorr(
     fn: Union[str, Path],
     PD: object,
     protocol: str,
+    revcorrtype: str = 'RevcorrSPKS',
     thr: float = -20.0,
     width: float = 4.0,
-) -> Union[None, tuple]:
+    ) -> Union[None, tuple]:
 
     changetimestamp = get_changetimestamp()
+
     #
     # 1. Gather data
     #
+    print('Getting data')
     SC, syninfo = get_synaptic_info(gbc)
 
     res = get_data(fn, PD, changetimestamp, protocol)
     if res is None:
         return None
     (d, AR, SP, RMA, RCP, RCD) = res
+    RCP.algorithm = revcorrtype
+    if RCP.algorithm == 'RevcorrSTTC':
+        sttccorr = STTC.STTC()
+        
+    print('Preparing for computation')
     RCP.ninputs = len(syninfo[1])
     RCD.sites = np.zeros(RCP.ninputs)
     for isite in range(RCP.ninputs):  # precompute areas
@@ -716,12 +820,12 @@ def compute_revcorr(
 
     print("ninputs: ", RCP.ninputs)
     maxtc = 0
+
+    #
+    # 2. set up parameters
+    #
     si = d["Params"]
     ri = d["runInfo"]
-    # print(si)
-    # print(ri)
-    # print(isinstance(si, dict))
-    # print(isinstance(ri, dict))
     if isinstance(si, dict):
         min_time = (si["pip_start"] + 0.025 )*1000. # push onset out of the way
         max_time = (si["pip_start"]+si["pip_duration"])*1000.
@@ -734,99 +838,120 @@ def compute_revcorr(
             start = ri.pip_start
         min_time = (start+0.025)*1000.
         max_time = (start+ri.pip_duration)*1000.
+
     RCD.sv_sites = []
     RCD.C = [None] * RCP.ninputs
+    RCD.CB = [None] * RCP.ninputs
+    RCD.STTC = [None] * RCP.ninputs
     RCD.max_coin_rate = 0.0
+    RCD.npost_spikes = 0  # count spikes used in analysis
+    RCD.nsp_avg = 0
     nspk_plot = 0
     # spksplotted = False
     RCP.min_time = min_time  # driven window without onset
     RCP.max_time = max_time
 
-    for isite in range(RCP.ninputs): # for each ANF input
-        # print('isite: ', isite)
-        firstwithspikes = False
-        # RCD.sv_avg = np.zeros(1)  # these are allocated on first trial for each input run
-        # RCD.sv_all = np.zeros(1)
-        RCD.nsp = 0
-        # n_avg = 0
+    #
+    # 3. Prepare storage arrays
+    #
+    nbins = int((max_time-min_time)/RCP.binw)
+    
+    RCD.CBT = np.arange(RCP.minwin, RCP.maxwin, RCP.binw) # refcorr time base
+    for isite in range(RCP.ninputs):
+        RCD.CB[isite] = np.zeros_like(RCD.CBT)
+        ncpts = len(np.arange(RCP.minwin, -RCP.minwin, RCP.binw))
+        RCD.C[isite] = np.zeros(ncpts)
+        RCD.STTC[isite] = np.zeros(ncpts)
 
-        for trial in range(RCP.ntrials):  # sum across trials
-            stx = AR.time_base[SP.spikeIndices[trial]]
-            stx = stx[
-                (stx > RCP.min_time) & (stx < RCP.max_time)
-            ]  # more than minimum delay
-            anx = d["Results"][trial]["inputSpikeTimes"][isite]
-            anx = anx[(anx > RCP.min_time) & (anx < RCP.max_time)]
-            if len(stx) == 0 or len(anx) == 0:
-                # print('empty array for stx or anx')
-                continue
-            # andirac = np.zeros(int(200.0 / RCP.binw) + 1)
-            if not firstwithspikes:
-                firstwithspikes = True
-                RCD.C[isite] = SPKS.correlogram(
-                    stx, anx, width=-RCP.minwin, bin=RCP.binw, T=None
-                )
-                RCD.TC = SPKS.total_correlation(anx, stx, width=-RCP.minwin, T=None)
-                if np.isnan(RCD.TC):
-                    RCD.TC = 0.0
-            else:
-                RCD.C[isite] += SPKS.correlogram(
-                    stx, anx, width=-RCP.minwin, bin=RCP.binw, T=None
-                )
-                tct = SPKS.total_correlation(anx, stx, width=-RCP.minwin, T=None)
-                if ~np.isnan(tct):
-                    RCD.TC = RCD.TC + tct
+    #
+    # sum across trials, and sort by inputs
+    #
+    print('starting loop')
+    start_time = datetime.datetime.now()
+    for trial in range(RCP.ntrials):  # sum across trials
+        stx = AR.time_base[SP.spikeIndices[trial]]
+        stx = stx[  # get postsynaptic spikes and trim to analysis window
+            (stx > RCP.min_time) & (stx < RCP.max_time)
+        ]  
+        if len(stx) == 0:
+            continue
+        RCD.npost_spikes += len(stx)
 
-            # accumulate postsynaptic spike waveforms
-            if RCD.nsp == 0:  # first spike in trace
-                reltime = np.around(RCD.ti, 5) - np.around(stx[0], 5)
-                areltime = np.argwhere(
-                    (RCP.minwin <= reltime) & (reltime <= RCP.maxwin)
-                ).squeeze()
+        # accumulate spikes and calculate average spike
+        for n in range(len(stx)):
+            reltime = np.around(RCD.ti, 5) - np.around(stx[n], 5)
+            areltime = np.argwhere(
+                (RCP.minwin <= reltime) & (reltime <= RCP.maxwin)
+            ).squeeze()
+            
+            if RCD.nsp_avg == 0: # init arrays
                 RCD.sv_avg = d["Results"][trial]["somaVoltage"][areltime]
+                RCD.nsp_avg = 1
                 RCD.ti_avg = RCD.ti[0 : len(areltime)] + RCP.minwin
-                RCD.sv_all = np.zeros((RCP.ntrials, RCD.ti_avg.shape[0]))
-                RCD.nsp += 1
+                RCD.sv_all = np.zeros((RCP.ntrials, RCD.ti_avg.shape[0]))  # initialize the array
+            else:
+                if len(areltime) > len(RCD.sv_avg):
+                    areltime = areltime[0 : len(RCD.sv_avg)]
+                if len(areltime) < len(RCD.sv_avg):
+                    nextend = len(RCD.sv_avg) - len(areltime)
+                    areltime = np.append(
+                        areltime,
+                        np.arange(areltime[-1] + 1, areltime[-1] + nextend + 1),
+                    )
+                RCD.sv_avg += d["Results"][trial]["somaVoltage"][areltime]
+                RCD.nsp_avg += 1
+            RCD.sv_all[trial] =  d["Results"][trial]["somaVoltage"][areltime]
 
-            else:  # rest of spikes
-                for n in range(1, len(stx)):
-                    reltime = np.around(RCD.ti, 5) - np.around(stx[n], 5)
-                    areltime = np.argwhere(
-                        (RCP.minwin <= reltime) & (reltime <= RCP.maxwin)
-                    ).squeeze()
-                    if len(areltime) > len(RCD.sv_avg):
-                        areltime = areltime[0 : len(RCD.sv_avg)]
-                    if len(areltime) < len(RCD.sv_avg):
-                        nextend = len(RCD.sv_avg) - len(areltime)
-                        areltime = np.append(
-                            areltime,
-                            np.arange(areltime[-1] + 1, areltime[-1] + nextend + 1),
-                        )
-                    if trial == 0:
-                        RCD.sv_avg = d["Results"][trial]["somaVoltage"][areltime]
-                        RCD.sv_all = np.zeros((RCP.ntrials, RCD.ti_avg.shape[0]))  # initialize the array
-                        RCD.ti_avg = RCD.ti[0 : len(areltime)] + RCP.minwin
-                    else:
-                        RCD.sv_avg += d["Results"][trial]["somaVoltage"][areltime]
-                    RCD.sv_all[trial] =  d["Results"][trial]["somaVoltage"][areltime]
-                    RCD.nsp += 1
 
-            nspk_plot += RCD.nsp
+            nspk_plot += RCD.nsp_avg
             RCD.sv_sites.append(RCD.sv_all)
-        # RCD.C[isite] /= RCP.ntrials
-        if RCD.nsp > 0:
-            RCD.sv_avg /= RCD.nsp
-            # print('trial: ', i, sv_avg)
-            # C = C + SPKS.spike_triggered_average(st[trial]*ms, andirac*ms, max_interval=width*ms, dt=binw*ms)
-        # print('RCD: ', RCD.TC)
+
+        # Now get reverse  correlation for each input        
+        for isite in range(RCP.ninputs): # for each ANF input
+            anx = d["Results"][trial]["inputSpikeTimes"][isite] # get input an spikes and trim
+            anx = anx[(anx > RCP.min_time) & (anx < RCP.max_time)]
+            if len(anx) == 0:
+                continue
+            
+            if revcorrtype == "RevcorrSPKS":
+                RCD.C[isite] += SPKS.correlogram(
+                    stx, anx, width=-RCP.minwin, binwidth=RCP.binw, T=None
+                    )
+           
+            elif revcorrtype == "RevcorrSimple":
+                refcorr, npost = revcorr(stx, anx,
+                    binwidth=  RCP.binw,
+                    datawindow = [RCP.min_time, RCP.max_time],
+                    corrwindow=[RCP.minwin, RCP.maxwin]
+                    )
+                RCD.CB[isite] = RCD.CB[isite] + refcorr
+
+            elif revcorrtype == "RevcorrSTTC":
+                sttccorr.set_spikes(RCP.binw, stx, anx, RCP.binw)
+                refcorr = sttccorr.calc_ccf_sttc(corrwindow=[RCP.minwin, RCP.maxwin], binwidth=RCP.binw)
+                RCD.STTC[isite] = RCD.STTC[isite] + refcorr
+                 
+            tct = SPKS.total_correlation(anx, stx, width=-RCP.minwin, T=None)
+            if ~np.isnan(tct):
+                RCD.TC += tct
+
         if isinstance(RCD.TC, float) and RCD.TC > maxtc:
             maxtc = RCD.TC
         else:
             maxtc = 1.0
-
+    if RCD.nsp_avg > 0:
+        RCD.sv_avg /= RCD.nsp_avg
+    
+    elapsed_time = datetime.datetime.now() - start_time
+    print('Time for calculation: ', elapsed_time)
     pre_w = [-2.7, -0.7]
 
     summarySiteTC = plot_revcorr2(ax, PD, RCP, RCD)
+
+    ax.set_title(
+        f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}",
+        fontsize=11
+    )
     # return summarySiteTC, RCD.sites
 
     ################
@@ -889,9 +1014,6 @@ def compute_revcorr(
             # print(f"{pairwise[i,j]:.3f}", end='  ')
             pos[i, j, 0] = i + 1
             pos[i, j, 1] = j + 1
-        # print()
-    # print(nperspike)
-    import scipy.stats
 
     # print(np.unique(nperspike, return_counts=True))
     nperspike = [n for n in nperspike if n != 0]
@@ -910,20 +1032,19 @@ def compute_revcorr(
     # print(RCD.sites)
     # print(pos)
     maxp = np.max(pairwise)
-    print(pairwise)
     PSum = PH.regular_grid(
         rows=2,
         cols=2,
         order="rowsfirst",
         figsize=(6, 6),
         showgrid=False,
-        verticalspacing=0.08,
-        horizontalspacing=0.08,
+        verticalspacing=0.1,
+        horizontalspacing=0.1,
         margins={
             "bottommargin": 0.1,
             "leftmargin": 0.1,
             "rightmargin": 0.1,
-            "topmargin": 0.1,
+            "topmargin": 0.15,
         },
         label=["A", "B", "C", "D"],
         labelposition=(-0.05, 1.05),
@@ -932,7 +1053,7 @@ def compute_revcorr(
     # f, sax = mpl.subplots(3,1)
     # f.set_size_inches( w=3.5, h=9)
     sax["A"].plot(np.arange(RCP.ninputs) + 1, RCD.sites, "bo")
-    print('pairwise: ', pairwise)
+    # print('pairwise: ', pairwise)
     colormap = "plasma"
     if s_pair > 0.0:
         pclip = np.clip(pairwise, np.min(np.where(pairwise > 0)), np.max(pairwise))
@@ -943,14 +1064,12 @@ def compute_revcorr(
         )
         vmax = np.nanmax(pclip) * 100
         vmin = np.nanmin(pclip) * 100
-        print("vmin, vmax: ", vmin, vmax)
+        # print("vmin, vmax: ", vmin, vmax)
     else:
         vmin = 0
         vmax = 1
     # sax['B'].plot(np.arange(RCP.ninputs)+1, participation/nspikes, 'gx')
     sax["B"].plot(RCD.sites, participation / nspikes, "gx")
- 
-
 
     axcbar = PLS.create_inset_axes([0.8, 0.05, 0.05, 0.5], sax["C"])
     norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
@@ -983,7 +1102,8 @@ def compute_revcorr(
         axcbar, tickPlacesAdd={"x": 0, "y": 2}, floatAdd={"x": 0, "y": 2}, pointSize=7
     )
     PSum.figure_handle.suptitle(
-        f"Cell {gbc:s}", fontsize=12
+        f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}",
+        fontsize=11
     )
     mpl.show()
 
@@ -1022,8 +1142,9 @@ def plot_tuning(args, filename=None, filenames=None):
             fna = select_filenames(filenames, args)
             print("\n plot data from: ".join([str(f) for f in fna]))
         else:
-            fna = [Path(filename)]  # just one file
-
+            fna = filename  # just one file
+        fna = [Path(fn) for fn in fna if str(fn).find("ASA=") < 0]
+        print('fns: ', fna)
         for k, fn in enumerate(fna):
             plot_traces(P.axarr[0, k], fn, PD, args.protocol)
 
@@ -1031,9 +1152,51 @@ def plot_tuning(args, filename=None, filenames=None):
         basen = fn.parts[-4]
 
         pngfile = Path(PD.renderpath, f"{basen:s}_{channel:s}_{truefile[chdist]:s}.png")
-        print(pngfile)
+        # print(pngfile)
         imaged = mpl.imread(pngfile)
         P.axarr[1, ic].imshow(imaged)
+    return P
+
+def setup_PSTH():
+    sizer = OrderedDict(
+        [
+            ("A", {"pos": [0.08, 0.4, 0.81, 0.15]}),
+            ("B", {"pos": [0.08, 0.4, 0.50, 0.27]}),
+            ("C", {"pos": [0.08, 0.4, 0.36, 0.10]}),
+            ("D", {"pos": [0.08, 0.4, 0.06, 0.24]}),
+            # rhs
+            ("E", {"pos": [0.55, 0.4, 0.75, 0.18]}),
+            ("F", {"pos": [0.55, 0.4, 0.53, 0.18]}),
+            ("G", {"pos": [0.55, 0.4, 0.30, 0.18]}),
+            ("H", {"pos": [0.55, 0.4, 0.07, 0.18]}),
+        ]
+    )  # dict elements are [left, width, bottom, height] for the axes in the plot.
+    n_panels = len(sizer.keys())
+    gr = [
+        (a, a + 1, 0, 1) for a in range(0, n_panels)
+    ]  # just generate subplots - shape does not matter
+    axmap = OrderedDict(zip(sizer.keys(), gr))
+    P = PH.Plotter((n_panels, 1), order="columnsfirst",
+        axmap=axmap, label=True, figsize=(8.0, 6.0))
+    P.resize(sizer)  # perform positioning magic
+    P.axdict["A"].set_ylabel("mV", fontsize=8)
+
+    P.axdict["D"].set_title("Bushy Spike Raster", fontsize=9)
+    P.axdict["D"].set_ylabel("Trial")
+
+    P.axdict["B"].set_title("PSTH")
+    P.axdict["B"].set_ylabel("Sp/sec")
+
+    P.axdict["C"].set_title("Stimulus", fontsize=9)
+    P.axdict["C"].set_ylabel("Amplitude (Pa)", fontsize=8)
+    P.axdict["C"].set_xlabel("T (s)")
+
+    P.axdict["E"].set_title("Phase", fontsize=8)
+    P.axdict["F"].set_title("?", fontsize=8)
+    P.axdict["G"].set_title("ANF Spike Raster", fontsize=9)
+    P.axdict["H"].set_title("ANF PSTH", fontsize=9)
+
+    return P
 
 
 def plot_AN_response(P, fn, PD, protocol):
@@ -1085,50 +1248,76 @@ def plot_AN_response(P, fn, PD, protocol):
         dmod = ri.dmod
     # print(d['Results'][0].keys())
     # print(dir(AR))
-
+    # print('total, pipstart, pipdur: ', totaldur, pip_start, pip_duration)
     ntr = len(AR.traces)
-    allst = []
-    for i in range(ntr):  # for all trails in the measure.
-        trial = AR.traces[i]
+    all_an_st = []
+    all_bu_st = []
+    for i in range(ntr):  # for all trials in the measure.
+        vtrial = AR.traces[i]*1e3
         trd = d['Results'][i]
         w = trd["stimWaveform"]
         stb = trd["stimTimebase"]
-        P.axdict["A"].plot(
-            AR.time / 1000.0, AR.traces[i], linewidth=0.5
-        )
-        P.axdict["B"].plot(stb, w, linewidth=0.5)  # stimulus underneath
-        P.axdict["C"].plot(
+        all_bu_st.extend(trd["spikeTimes"])
+        # print('max bu spktimes: ', np.max(trd["spikeTimes"]))# Panel A: traces
+        if i < 1:
+            P.axdict["A"].plot(
+                AR.time_base / 1000.0,
+                vtrial,
+                'k-',
+                linewidth=0.5
+                )
+            P.axdict["A"].plot(
+                AR.time_base[SP.spikeIndices[i]]/1000.,
+                vtrial[SP.spikeIndices[i]],
+                "ro",
+                markersize=1.5,
+            )
+        if i == 0:
+            P.axdict["C"].plot(stb, w, 'k-', linewidth=0.5)  # stimulus underneath
+        P.axdict["D"].plot(
             trd["spikeTimes"] / 1000.0,
             i * np.ones(len(trd["spikeTimes"])),
-            "o",
-            markersize=2.5,
+            "|",
+            markersize=1.5,
             color="b",
         )
         inputs = len(trd["inputSpikeTimes"])
         for k in range(inputs):
-            tk = trd["inputSpikeTimes"][k] / 1000.0
+            tk =trd["inputSpikeTimes"][k]
+            all_an_st.extend(tk)
             y = (i + 0.1 + k * 0.05) * np.ones(len(tk))
-            P.axdict["E"].plot(tk, y, "|", markersize=2.5, color="r", linewidth=0.5)
+            if i % 10 == 0:
+                P.axdict["G"].plot(tk/1000., y, "|", markersize=2.5, color="k", linewidth=0.5)
+            # print('max an spktimes: ', np.max(tk))# Panel A: traces
 
-        allst.extend(trd["spikeTimes"] / 1000.0)
-    allst = np.array(allst)
-    allst = np.sort(allst)
+    all_bu_st = np.sort(np.array(all_bu_st))/1000.
+    all_an_st = np.sort(np.array(all_an_st))/1000.
     # the histogram of the data
-    ax = P.axdict["F"]
-    if len(allst) > 0:
-        P.axdict["F"].hist(allst, 100, density=True, facecolor="blue", alpha=0.75)
+    hbins = np.arange(0., np.max(AR.time/1000.), 1e-3)  # 0.5 msec bins
+    print(all_bu_st.shape, np.max(all_bu_st), all_an_st.shape, np.max(all_an_st), np.max(hbins))
+    if len(all_bu_st) > 0:
+        P.axdict["B"].hist(all_bu_st, bins=hbins, facecolor="k", alpha=1)
+        # n, bins, patch = mpl.hist(all_bu_st, hbins, facecolor="blue", alpha=1)
+   #      print('Spikes in PSTH: ', np.sum(n))
+   #      print(n)
+   #      print(bins)
     else:
-        P.axdict["F"].text(0.5, 0.5, "No Spikes", fontsize=14, 
-        color='r', transform=ax.transAxes, horizontalalignment="center")
-    
-    for a in ["A", "B", "C", "E", "F"]:  # set some common layout scaling
+        P.axdict["B"].text(0.5, 0.5, "No Spikes", fontsize=14, 
+            color='r', transform=P.axdict["C"].transAxes, horizontalalignment="center")
+    if len(all_an_st) > 0:
+        P.axdict["H"].hist(all_an_st, bins=hbins, facecolor="k", alpha=1)
+    else:
+        P.axdict["H"].text(0.5, 0.5, "No Spikes", fontsize=14, 
+            color='r', transform=P.axdict["H"].transAxes, horizontalalignment="center")
+     
+    for a in ["A", "B", "C", "D", "F", "G", "H"]:  # set some common layout scaling
         P.axdict[a].set_xlim((0.0, totaldur))
-        P.axdict[a].set_xlabel("T (s)")
+        # P.axdict[a].set_xlabel("T (s)")
 
     if soundtype == "SAM":  # calculate vs and plot histogram
-        if len(allst) == 0:
-            P.axdict["D"].text(0.5, 0.5, "No Spikes", fontsize=14, color='r', 
-            transform=ax.transAxes, horizontalalignment="center")
+        if len(all_bu_st) == 0:
+            P.axdict["H"].text(0.5, 0.5, "No Spikes", fontsize=14, color='r', 
+            transform=P.axdict["H"].transAxes, horizontalalignment="center")
         else:
                   
             # combine all spikes into one array, plot PSTH
@@ -1149,7 +1338,7 @@ def plot_AN_response(P, fn, PD, protocol):
                 pip_start[0] + pip_duration,
             ]
             # print (phasewin)
-            spkin = allst[np.where(allst > phasewin[0])]
+            spkin = all_bu_st[np.where(all_bu_st > phasewin[0])]
             spikesinwin = spkin[np.where(spkin <= phasewin[1])]
 
             # set freq for VS calculation
@@ -1179,9 +1368,9 @@ def plot_AN_response(P, fn, PD, protocol):
                 % (F0, vs["r"], vs["d"] * 1e6, vs["R"], vs["p"], vs["n"])
             )
             # print(vs['ph'])
-            P.axdict["D"].hist(vs["ph"], bins=2 * np.pi * np.arange(30) / 30.0)
-            P.axdict["D"].set_xlim((0.0, 2 * np.pi))
-            P.axdict["D"].set_title(
+            P.axdict["E"].hist(vs["ph"], bins=2 * np.pi * np.arange(30) / 30.0)
+            P.axdict["E"].set_xlim((0.0, 2 * np.pi))
+            P.axdict["E"].set_title(
                 "Phase (VS = {0:.3f})".format(vs["r"]),
                 fontsize=9,
                 horizontalalignment="center",
@@ -1372,7 +1561,7 @@ def cmdline_display(args, PD):
         basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
         pgbc = f"VCN_c{gbc:02d}"
         if args.protocol == "IV":
-            name_start = f"IV_Result_VCN_c{gbc:02d}_*.p"
+            name_start = f"IV_Result_VCN_c{gbc:02d}_inp=self_{modelName:s}*.p"
             args.experiment = None
         elif args.protocol == "AN":
             name_start = f"AN_Result_VCN_c{gbc:02d}_*.p"
@@ -1427,7 +1616,7 @@ def cmdline_display(args, PD):
             print(fna)
 
         elif args.analysis == "tuning":
-            plot_tuning(args, filename=None, filenames=fng)
+            P = plot_tuning(args, filename=None, filenames=fng)
     if chan == "_":
         chan = "nav11"
     else:

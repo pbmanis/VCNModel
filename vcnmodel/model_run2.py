@@ -613,6 +613,29 @@ class ModelRun:
                 )
 
             if (
+                self.Params.modelName == "XM13A_nacncoop"
+                and self.Params.dendriteMode == "normal"
+            ):
+                from vcnmodel.model_data import data_XM13A_nacncoop as CHAN
+
+                nach = "nacncoop"
+                changes = data.add_table_data(
+                    "XM13A_nacncoop_channels",
+                    row_key="field",
+                    col_key="model_type",
+                    species="mouse",
+                    data=CHAN.ChannelData,
+                )
+                changes_c = data.add_table_data(
+                    "XM13A_nacncoop_channels_compartments",
+                    row_key="parameter",
+                    col_key="compartment",
+                    species="mouse",
+                    model_type="II",
+                    data=CHAN.ChannelCompartments,
+                )
+                
+            if (
                 self.Params.modelName == "XM13_nacncoop"
                 and self.Params.dendriteMode == "passive"
             ):
@@ -637,6 +660,33 @@ class ModelRun:
                 )
 
             if (
+                self.Params.modelName == "XM13A_nacncoop"
+                and self.Params.dendriteMode == "passive"
+            ):
+                from vcnmodel.model_data import \
+                    data_XM13A_nacncoop_pasdend as CHAN
+
+                nach = "nacncoop"
+                changes = data.add_table_data(
+                    "XM13A_nacncoop_channels",
+                    row_key="field",
+                    col_key="model_type",
+                    species="mouse",
+                    data=CHAN.ChannelData,
+                )
+                changes_c = data.add_table_data(
+                    "XM13A_nacncoop_channels_compartments",
+                    row_key="parameter",
+                    col_key="compartment",
+                    species="mouse",
+                    model_type="II",
+                    data=CHAN.ChannelCompartments,
+                )
+            #
+            # ACTIVE
+            #
+                
+            if (
                 self.Params.modelName == "XM13_nacncoop"
                 and self.Params.dendriteMode == "active"
             ):
@@ -660,6 +710,30 @@ class ModelRun:
                     data=CHAN.ChannelCompartments,
                 )
 
+            if (
+                self.Params.modelName == "XM13A_nacncoop"
+                and self.Params.dendriteMode == "active"
+            ):
+                from vcnmodel.model_data import \
+                    data_XM13A_nacncoop_actdend as CHAN
+
+                nach = "nacncoop"
+                changes = data.add_table_data(
+                    "XM13A_nacncoop_channels",
+                    row_key="field",
+                    col_key="model_type",
+                    species="mouse",
+                    data=CHAN.ChannelData,
+                )
+                changes_c = data.add_table_data(
+                    "XM13A_nacncoop_channels_compartments",
+                    row_key="parameter",
+                    col_key="compartment",
+                    species="mouse",
+                    model_type="II",
+                    data=CHAN.ChannelCompartments,
+                )
+                
             elif self.Params.modelName == "XM13":
                 from model_data import data_XM13 as CHAN
 

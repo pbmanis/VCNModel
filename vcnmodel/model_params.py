@@ -35,6 +35,7 @@ class CmdChoices:
     modelNameChoices = [
         "XM13",
         "XM13_nacncoop",
+        "XM13A_nacncoop",
         "XM13_nacn",
         "XM13_nabu",
         "RM03",

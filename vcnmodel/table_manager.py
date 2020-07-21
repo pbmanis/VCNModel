@@ -55,6 +55,7 @@ class IndexData:
     cellType: str = ""
     modelType: str = ""
     modelName: str = ""
+    dendriteMode: str=""
     command_line: str = ""
     changed_data: Union[None, str] = None  # changed_data
     cnmodel_hash: str = cnmodel_git_hash  # save hash for the model code
@@ -146,7 +147,10 @@ class TableManager:
             raise IOError('SKIPPING: File is too old; re-run for new structure')
             return None
         if 'runInfo' not in list(d.keys()):
-            cprint('r', 'SKIPPING: File is too old; re-run for new structure')
+            cprint('r', 'SKIPPING: File is too old (missing "runinfo"); re-run for new structure')
+            return(None)
+        if "Params" not in list(d.keys()):
+            cprint('r', 'SKIPPING: File is too old (missing "Params"); re-run for new structure')
             return(None)
         return (d["Params"], d["runInfo"], str(datafile.name))  # just the dicts
 
@@ -197,12 +201,18 @@ class TableManager:
                 Index_data.files.append(str(r))  # get the result file list here
         else:
             Index_data.files = [fn]
+        print('Params: ' , params)
+        print('runinfo: ', runinfo)
         if usedict:  # old style files with dictionaries
             Index_data.cellType = params["cellType"]
             Index_data.modelType = params["modelType"]
             Index_data.modelName = params["modelName"]
             Index_data.temperature = 37.0  # params["Celsius"]  Not always in the file information we retrieve
-            Index_data.dt = params["dt"]
+
+            try:
+                Index_data.dt = params["dt"]
+            except:
+                Index_data.dt = 20e-6
             Index_data.runProtocol = params["runProtocol"]
             Index_data.synapsetype = params["ANSynapseType"]
             Index_data.synapse_experiment = params["spirou"]
@@ -212,6 +222,10 @@ class TableManager:
             Index_data.cellType = params.cellType
             Index_data.modelType = params.modelType
             Index_data.modelName = params.modelName
+            try:
+                Index_data.dendriteMode = params.dendriteMode
+            except:
+                Index_data.dendriteMode = "normal"
             Index_data.temperature = params.celsius
             Index_data.dt = params.dt
             Index_data.runProtocol = runinfo.runProtocol
@@ -262,6 +276,7 @@ class TableManager:
         indxs = []
         # first build elements with directories
         indexable_dirs = sorted([r for r in rundirs if r.is_dir()])
+        indexfiles = []
         if len(indexable_dirs) > 0:
             cprint("c", "Indexable Directories: ")
             for d in indexable_dirs:
@@ -308,6 +323,7 @@ class TableManager:
                     indxs[i].modelType,
                     indxs[i].modelName,
                     indxs[i].runProtocol,
+                    indxs[i].dendriteMode,
                     indxs[i].synapse_experiment,
                     indxs[i].dBspl,
                     indxs[i].nReps, # command_line["nReps"],
@@ -323,6 +339,7 @@ class TableManager:
                 ("modelType", object),
                 ("modelName", object),
                 ("Protocol", object),
+                ("DendMode", object),
                 ("Experiment", object),
                 # ("inputtype", object),
                 # ("modetype", object),
@@ -350,3 +367,14 @@ class TableManager:
         for j in range(self.table.columnCount()):
             self.table.item(rowIndex, j).setBackground(color)
 
+    def get_table_data(self, index_row):
+        """
+        Regardless of the sort, read the current index row and
+        map it back to the data in the table.
+        """
+        index = self.table.currentIndex()
+        value = index.sibling(index.row(), 1).data()
+        for i, d in enumerate(self.data):
+            if self.data[i][1] == value:
+                return self.table_data[i]
+        return None
