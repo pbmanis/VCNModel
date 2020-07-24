@@ -69,6 +69,8 @@ class CmdChoices:
         "testIV",
         "runIV",
         "initandrunIV",
+        "initVC",
+        "runVC",
         "initAN",
         "runANPSTH",
         "runANIO",
@@ -193,6 +195,17 @@ def definj():
     return {"pulse": np.linspace(-1.0, 2.00, 16, endpoint=True)}
 
 
+def defVCsteps():
+    """
+    Steps are relative to HOLDING, which is typicall -60 mV
+    """
+    start = -60.
+    stop = 100.
+    step = 10.
+    npts = int((stop-start)/step)+1
+    return {"pulse": np.linspace(start, stop, npts, endpoint=True)}
+
+
 def defstarts():
     return [0.1]
 
@@ -232,6 +245,7 @@ class RunInfo:
     nStim: int = 1
     stimFreq: float = 200.0  # hz
     stimInj: dict = field(default_factory=definj)
+    stimVC: dict = field(default_factory=defVCsteps)
     # iRange,  # nA, a list of test levels for current clamp
     stimDur: float = 100.0  # msec
     stimDelay: float = 5.0  # msec
@@ -242,7 +256,7 @@ class RunInfo:
     vstimDur: float = 50.0  # msec
     vstimDelay: float = 2.0  # msec
     vstimPost: float = 3.0  # msec
-    vstimHolding: float = -60  # holding, mV
+    vstimHolding: float = -60.0  # holding, mV
 
     # sound parameters
     initialization_time: float = 50.0  # nominal time to let system settle, in msec
@@ -761,6 +775,8 @@ def getCommands():
                 )
 
         print("   ... All configuration file variables read OK")
+    else:
+        vargs = vars(args)
     # now copy into the Param dataclass
     params = Params()
     runinfo = RunInfo()

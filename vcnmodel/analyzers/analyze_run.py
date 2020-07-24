@@ -12,7 +12,8 @@ import pylibrary.tools.utility as pu
 from lmfit import Model
 from lmfit.models import ExponentialModel
 
-verbose = False
+
+verbose = True
 
 class AnalyzeRun():
     def __init__(self, results):
@@ -35,6 +36,17 @@ class AnalyzeRun():
         # print 'min v4: ', np.min(self.V[3,:])
         # return
         self.analyzeIV(self.t, self.V, self.I, self.tw, self.thr)
+
+    def VC(self):
+        """
+        Compute the IV of the loaded dataset
+        """
+        # print 'V shape in IV: ', self.V.shape
+        # print 'min v1: ', np.min(self.V[0,:])
+        # print 'min v4: ', np.min(self.V[3,:])
+        # return
+        self.analyzeVC(self.t, self.V, self.I, self.tw)
+
 
     def parseStim(self, res):
         """
@@ -84,6 +96,7 @@ class AnalyzeRun():
                 self.t = msite['time'][0:vlen]
             self.V[j,:] = msite[self.somasite[0]]
             self.I[j,:] = msite[self.somasite[1]]
+            self.I[j,0] = self.I[j,1]  # fix first point problem..
         self.thr = -30.0  # mV
 
     def clean_spiketimes(self, spikeTimes, mindT=0.7):
@@ -114,6 +127,8 @@ class AnalyzeRun():
             # print st
             spikeTimes = st
         return spikeTimes
+
+
 
     def analyzeIV(self, t, V, I, tw, thr):
         """
@@ -203,7 +218,6 @@ class AnalyzeRun():
             if ic[j] < 0.0 and (t_minv[j]-ts) > 5.*dt: # just for hyperpolarizing pulses...
                 if verbose:
                     print('    fitting trace %d' % j)
-
                     print('t.shape: ', t.shape)
                     print('V.shape: ', V[j,:].shape)
                     print('ts, vmin: ', ts, vmin)
@@ -242,6 +256,100 @@ class AnalyzeRun():
                 'taufit': [xtfit, ytfit], 'ihfit': [xihfit, yihfit],
                 }
 
+
+        
+    def analyzeVC(self, t, V, I, tw):
+        """
+        Analyze a set of current records (vc); return SS boltzmann fit
+            
+        Parameters
+        ----------
+        t : numpy array of floats (1-D)
+            time array for the voltage and current
+        V : numpy array of floats (2-D)
+            Voltage traces to be analyzed. Dimension 0 is trace number,
+            dimension 1 corresponds to time evolution of voltage
+        I : numpy array of floats (2-D)
+            Current traces, corresponding to the voltage traces in V. Should
+            be organized in the same way.
+        tw : list
+            list of [tdelay, tdur, tssw], where:
+                tdelay is the delay to the start of the step.
+                tdur is the duration of the step
+                tssw is the duration of the steady-state window prior
+                    to the end of the step
+
+        Returns
+        -------
+            a dictionary with:
+            vmin
+            vss
+            i for vmin and vss
+            spike count
+            ispk
+            (eventually should also include time constant measures,and adaptation ratio)
+        """
+        
+        def boltzI(x, gmax, vhalf, k, E):
+            return(gmax*(1./(np.exp((x-E)/k))))
+            
+        if verbose:
+            print('starting analyzeVC')
+        ntraces = np.shape(V)[0]
+        # initialize all result arrays, lists and dicts
+        vss = np.empty(ntraces)
+        vmin = np.zeros(ntraces)
+        vrmss = np.zeros(ntraces)
+        vm = np.zeros(ntraces)
+        ic = np.zeros(ntraces)
+
+        dt = t[1]-t[0]
+        # break down the time windows
+        tss = [int((tw[1]-tw[2])/dt), int(tw[1]/dt)]
+        ts = tw[0]
+        te = tw[1]
+        td = tw[2]
+ 
+        import matplotlib.pyplot as mpl
+        f, ax = mpl.subplots(1,1)
+        for j in range(0, ntraces):
+            if verbose:
+                print('    analyzing trace: %d' % (j))
+            vss[j] = np.mean(V[j,tss[0]:tss[1]])  # steady-state voltage
+            ic[j] = np.mean(I[j,tss[0]:tss[1]])  # corresponding currents
+            vm[j] = np.mean(V[j, 0:int((ts-1.0)/dt)])  # resting potential - for 1 msec prior to step
+            ax.plot(t, I[j])
+            if verbose:
+                print('   >>> completed analyzing trace %d' % j)
+        mpl.show()
+        if verbose:
+            print('done with traces')
+        # now fit traces to variation of g = gmax * I/(V-Vr)
+        gmodel = Model(boltzI)
+
+        gmodel.set_param_hint('gmax', value=3., min=0.)
+        gmodel.set_param_hint('vhalf', value=38., min=00., max=90.)
+        gmodel.set_param_hint('k', value=7., min=1.0, max=20.0, vary=False)
+        gmodel.set_param_hint('E', value=-84., vary=False)
+        gparams = gmodel.make_params()
+        result = gmodel.fit(ic, params=gparams, x=vss)
+        print(result.fit_report())
+        print(dir(result))
+
+        ax.plot(vss, ic, 'bs-')
+        ax.plot(vss, result.best_fit, 'r-')
+        mpl.show()
+        
+        if verbose:
+            print('building VCResult')
+        self.VCResult = {'I': ic, 'Vmin': vmin, 'Vss': vss, 'Vrmss': vrmss,
+                'Vm': vm,
+                'fit': result,
+                "Boltz_gmax": result.params["gmax"],
+                "Boltz_vhalf": result.params["vhalf"],
+                "Boltz_slopefactor": result.params["k"], 
+                }
+                
     def saveIVResult(self, name):
         """
         Save the result of multiple runs to disk. Results is in a dictionary,

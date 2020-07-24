@@ -365,6 +365,7 @@ class ModelRun:
         print("\nRUNPROTOCOL: ", self.RunInfo.runProtocol)
         if self.RunInfo.runProtocol in ["initIV", "initandrunIV", "runIV"]:
             simMode = "IV"
+            self.RunInfo.postMode = simMode
             initPath = Path(self.baseDirectory, self.cellID, self.initDirectory)
             self.mkdir_p(initPath)  # confirm existence of the initialization directory
             if self.Params.initStateFile is None:
@@ -396,13 +397,49 @@ class ModelRun:
             fn += ".p"
             self.Params.simulationFilename = Path(simPath, fn)
 
-        if (
+        elif self.RunInfo.runProtocol in ["initVC", "runVC"]:
+            simMode = "VC"
+            self.RunInfo.postMode = simMode
+            initPath = Path(self.baseDirectory, self.cellID, self.initDirectory)
+            self.mkdir_p(initPath)  # confirm existence of the initialization directory
+            print('initpath: ', initPath)
+            if self.Params.initStateFile is None:
+                fn0 = f"{simMode:s}_Init_{self.cellID:s}_inp={inputs:s}_{model_Pars:s}"
+                fn0 += f"_pulse_{add_Pars:s}_{self.Params.ANSynapseType:s}"
+                fn0 += f"_{self.Params.SRType:2s}"
+                if self.Params.tagstring is not None:
+                    fn0 += f"_{self.Params.tagstring:s}"
+                fn0 += ".dat"
+                self.Params.initStateFile = Path(initPath, fn0)
+                if (
+                    self.RunInfo.runProtocol.startswith("init")
+                    and self.Params.initStateFile.is_file()
+                ):
+                    self.Params.initStateFile.unlink()  # delete old initializaiton file first
+            simPath = Path(
+                self.baseDirectory,
+                self.cellID,
+                self.simDirectory,
+                simMode,
+                run_directory,
+            )
+            self.mkdir_p(simPath)  # confirm that output path exists
+            fn = f"{simMode:s}_Result_{self.cellID:s}_inp={inputs:s}_{model_Pars:s}"
+            fn += f"_pulse_{add_Pars:s}_{self.Params.ANSynapseType:s}"
+            fn += f"_{self.Params.SRType:2s}"
+            if self.Params.tagstring is not None:
+                fn += f"_{self.Params.tagstring:s}"
+            fn += ".p"
+            self.Params.simulationFilename = Path(simPath, fn)
+            
+        elif (
             self.RunInfo.runProtocol.startswith("runAN")
             or self.RunInfo.runProtocol == "initAN"
             or self.RunInfo.runProtocol == "runANSingles"
             or self.RunInfo.runProtocol == "runANPSTH"
         ):
             simMode = "AN"
+            self.RunInfo.postMode = 'cc'
 
             initPath = Path(self.baseDirectory, self.cellID, self.initDirectory)
             self.mkdir_p(initPath)  # confirm existence of that file
@@ -1005,6 +1042,8 @@ class ModelRun:
             "initIV": self.initIV,
             "runIV": self.iv_run,
             "testIV": self.testIV,
+            "initVC": self.initVC,
+            "runVC": self.VC_run,
             "initAN": self.an_run_init,  # (self.post_cell, make_an_intial_conditions=True),
             "runANPSTH": self.an_run,
             "runANIO": self.an_run_IO,
@@ -1154,6 +1193,138 @@ class ModelRun:
             "spikes": {"i": self.R.IVResult["Ispike"], "n": self.R.IVResult["Nspike"]},
         }
         return self.IVSummary
+
+
+    def initVC(self):
+        self.R = GenerateRun(
+            self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
+        )
+        cellInit.get_initial_condition_state(
+            self.post_cell,
+            tdur=self.Params.initialization_time,
+            filename=self.Params.initStateFile,
+            electrode_site=self.R.electrode_site,
+        )
+        print(f"VC Ran to get initial state for {self.post_cell.hr.h.t:.1f} msec")
+
+    def testVC(self):
+        self.R = GenerateRun(
+            self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
+        )
+        cellInit.test_initial_conditions(
+            self.post_cell,
+            filename=self.Params.initStateFile,
+            electrode_site=self.R.electrode_site,
+        )
+        self.R.testRun(initfile=self.Params.initStateFile)
+        return  # that is ALL, never make testIV/init and then keep running.
+
+    def VC_run(self, par_map: dict = None):
+        """
+        Main entry routine for running all IV (current-voltage relationships with somatic electrode)
+
+        Parameters
+        ----------
+        par_map : dict (default: empty)
+            A dictionary of paramters, passed to models that are run (not used).
+
+        Returns
+        -------
+            summary : dict
+                A summary of the results, including the file, par_map, resting input resistance,
+                time constant, and spike times
+
+        """
+        print("VC_run: starting")
+        start_time = timeit.default_timer()
+
+        if self.RunInfo.sequence != "":  # replace sequence?
+            self.RunInfo.stimInj = {"pulse": eval(self.Params.sequence)}
+        self.R = GenerateRun(
+            self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
+        )
+        self.R.RunInfo.folder = Path(
+            self.baseDirectory, self.cellID, self.simDirectory, "VC"
+        )
+        if self.Params.verbose:
+            print("VC_run: calling do_run")
+        nworkers = self.Params.nWorkers
+        #        print(self.Params.Parallel)
+        if self.Params.Parallel is False:
+            nworkers = 1
+        #        print('Number of workers available on this machine: ', nworkers)
+        self.R.doRun(
+            self.Params.hocfile,
+            parMap=self.RunInfo.stimInj,
+            save="monitor",
+            restore_from_file=True,
+            initfile=self.Params.initStateFile,
+            workers=nworkers,
+        )
+        if self.Params.verbose:
+            print("   VC_run: do_run completed")
+        elapsed = timeit.default_timer() - start_time
+        print(f"   VC_rin: Elapsed time: {elapsed:2f} seconds")
+        isteps = self.R.VCResult["I"]
+        # if self.Params.verbose:
+        #     for k, i in enumerate(self.R.IVResult["tauih"].keys()):
+        #         print(
+        #             "   ih: %3d (%6.1fnA) tau: %f"
+        #             % (i, isteps[k], self.R.IVResult["tauih"][i]["tau"])
+        #         )
+        #         print("           dV : %f" % self.R.IVResult["tauih"][i]["a"])
+        #     for k, i in enumerate(self.R.IVResult["taus"].keys()):
+        #         print(
+        #             "   i: %3d (%6.1fnA) tau: %f"
+        #             % (i, isteps[k], self.R.IVResult["taus"][i]["tau"])
+        #         )
+        #         print("          dV : %f" % (self.R.IVResult["taus"][i]["a"]))
+        #
+        # # print('   Nspike, Ispike: ', self.R.IVResult['Nspike'], self.R.IVResult['Ispike'])
+        # print("   N spikes:   {0:d}".format(int(np.sum(self.R.IVResult["Nspike"]))))
+        # print("   Rinss:      {0:.1f} Mohm".format(self.R.IVResult["Rinss"]))
+        # print(
+        #     "   Tau(mean):  {0:.3f} ms".format(
+        #         np.mean(
+        #             [
+        #                 self.R.IVResult["taus"][i]["tau"]
+        #                 for i in range(len(self.R.IVResult["taus"]))
+        #             ]
+        #         )
+        #     )
+        # )
+        # print("   Vm:         {0:.1f} mV".format(np.mean(self.R.IVResult["Vm"])))
+        # if len(list(self.R.IVResult["taus"].keys())) == 0:
+       #      taum_mean = 0.0
+       #      tauih_mean = 0.0
+       #  else:
+       #      taum_mean = np.mean(
+       #          [
+       #              self.R.IVResult["taus"][i]["tau"]
+       #              for k, i in enumerate(self.R.IVResult["taus"].keys())
+       #          ]
+       #      )
+       #      tauih_mean = np.mean(
+       #          [
+       #              self.R.IVResult["tauih"][i]["tau"]
+       #              for k, i in enumerate(self.R.IVResult["tauih"].keys())
+       #          ]
+       #      )
+        # construct dictionary for return results:
+        self.VCSummary = {
+            "basefile": self.R.basename,
+            "par_map": par_map,
+            "ID": self.idnum,
+            "sequence": self.RunInfo.stimInj,
+            "Vm": np.mean(self.R.VCResult["Vm"]),
+            "Rin": self.R.VCResult["Rinss"],
+            "taum": taum_mean,
+            "tauih": tauih_mean,
+
+        }
+        return self.VCSummary
+
+
 
     def noise_run(self, par_map: dict = {}):
         """

@@ -61,8 +61,8 @@ def init_model(
         )  # this is sufficient for initialization in voltage clamp
         cprint("c", "    Initializging for Vclamp")
         return True
-    if mode not in ["iclamp"]:
-        raise ValueError('Mode must be "vc", "vclamp" or "iclamp"; got %s' % mode)
+    if mode not in ['CC', "cc", "iclamp", 'VC', 'vclamp', 'vc']:
+        raise ValueError('Mode must be "vc", "vclamp" "cc", or "iclamp"; got %s' % mode)
 
     # otherwise we are in current clamp
     # get state if one is specified

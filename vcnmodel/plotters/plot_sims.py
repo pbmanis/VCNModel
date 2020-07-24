@@ -24,6 +24,7 @@ from vcnmodel import cell_config as cell_config
 from vcnmodel import spikestatistics as SPKS
 from cnmodel.util import vector_strength
 from vcnmodel import sttc as STTC
+from lmfit import Model
 # try using a standard ccf
 # import neo
 # from quantities import s, Hz, ms
@@ -412,8 +413,10 @@ def plot_traces(
     synno = None
     if inx > 0:
         synno = int(fn[inx+4:inx+7])
-    if protocol in["IV", "runIV"]:
+    if protocol in ["IV", "runIV"]:
         protocol = "IV"
+    elif protocol in ["VC", "runVC"]:
+        protocol = "VC"
     print('Protocol: ', protocol)
     par, stitle, ivdatafile, filemode, d = x
     AR, SP, RMA = analyze_data(ivdatafile, filemode, protocol)
@@ -426,6 +429,9 @@ def plot_traces(
     noutspikes = 0
     ninspikes = 0
     for trial in range(len(AR.traces)):
+        AR.traces[trial][0] = AR.traces[trial][1]
+        if protocol in ["VC", "vc", "vclamp"]:
+            AR.traces[trial] = AR.traces[trial].asarray() * 1e6
         ax.plot(AR.time_base, AR.traces[trial] * 1e3, linewidth=0.5)
         ax.plot(
             AR.time_base[SP.spikeIndices[trial]],
@@ -458,16 +464,18 @@ def plot_traces(
                 # print(len(vy), vy)
             #                 print(spkt[ian])
             ax.set_ylim(-140.0, 40.0)
+        elif protocol in ["VC", "vc", "vclamp"]:
+            ax.set_ylim((-100.0, 100.0))
         else:
             ax.set_ylim(-200.0, 50.0)
+            ax.set_xlim(0.080, np.max(AR.time_base))
     # print('Nout/Nin: ', float(noutspikes)/ninspikes)
-    ax.set_xlim(0.080, np.max(AR.time_base))
 
     ftname = str(ivdatafile.name)
     ip = ftname.find("_II_") + 4
     ftname = ftname[:ip] + "...\n" + ftname[ip:]
     toptitle = f"{ftname:s}"
-    if protocol =="IV":
+    if protocol in ["IV"]:
         toptitle += f"\nRin={RMA['Rin']:.1f} M$\Omega$  $\\tau_m$={RMA['taum']:.2f} ms"
 
         secax = PLS.create_inset_axes([0.4, 0, 0.4, 0.4], ax)
@@ -502,12 +510,20 @@ def plot_traces(
             tickPlacesAdd={"x": 0, "y": 0},
             floatAdd={"x": 0, "y": 0},
         )
-    PH.calbar(
-        ax,
-        calbar=[20.0, -160.0, 10.0, 20.0],
-        unitNames={"x": "ms", "y": "mV"},
-        fontsize=9,
-    )
+    elif protocol in ["VC", "vc", "vclamp"]:
+        PH.calbar(
+            ax,
+            calbar=[20.0, -10.0, 10.0, 10.0],
+            unitNames={"x": "ms", "y": "nA"},
+            fontsize=9,
+        )    
+    else:
+        PH.calbar(
+            ax,
+            calbar=[20.0, -160.0, 10.0, 20.0],
+            unitNames={"x": "ms", "y": "mV"},
+            fontsize=9,
+        )
     if RMA is not None:
         PH.referenceline(ax, RMA["RMP"])
         ax.text(
@@ -523,6 +539,95 @@ def plot_traces(
     return(synno, noutspikes, ninspikes)
 
 
+def boltzI(x, gmax, vhalf, k, E):
+    return(gmax*(x-E)*(1./(1.0+np.exp(-(x-vhalf)/k))))
+    # return(gmax*(1./(1.0+np.exp(-(x-vhalf)/k))))
+
+
+def analyzeVC(
+        ax: object, fn: Union[Path, str], PD: dataclass, protocol: str,
+    ) -> tuple:
+    changetimestamp = get_changetimestamp()
+    x = get_data_file(fn, changetimestamp, PD)
+    mtime = Path(fn).stat().st_mtime
+    timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d-%H:%M")
+    if x is None:
+        print("No simulation found that matched conditions")
+        print(fn)
+        return
+    # unpack x
+    inx = str(fn).find('_Syn')
+    synno = None
+    if inx > 0:
+        synno = int(fn[inx+4:inx+7])
+    if protocol in["VC", "runVC"]:
+        protocol = "VC"
+    print('Protocol: ', protocol)
+    par, stitle, ivdatafile, filemode, d = x
+    AR, SP, RMA = analyze_data(ivdatafile, filemode, protocol)
+        # for j in range(0, ntraces):
+        # if verbose:
+        #     print('    analyzing trace: %d' % (j))
+        # vss[j] = np.mean(V[j,tss[0]:tss[1]])  # steady-state voltage
+        # ic[j] = np.mean(I[j,tss[0]:tss[1]])  # corresponding currents
+        # vm[j] = np.mean(V[j, 0:int((ts-1.0)/dt)])  # resting potential - for 1 msec prior to step
+        # ax.plot(t, I[j])
+        # if verbose:
+        #     print('   >>> completed analyzing trace %d' % j)
+    # print(dir(AR))
+    # print(AR.tstart)
+    # print(AR.tstart_tdur)
+    # print(AR.tdur)
+    # print(AR.tend)
+    # print(AR.sample_rate)
+    # print(AR.commandLevels)
+    tss = [0,0]
+    tss[0] = int(AR.tstart+(AR.tdur/4.0)/AR.sample_rate[0])  # wrong duration stored in traces - need to fix.
+    tss[1] = int((AR.tstart + AR.tdur*0.5)/AR.sample_rate[0])
+    I = AR.traces.asarray()
+    V = AR.cmd_wave
+    ntraces = np.shape(V)[0]
+    # initialize all result arrays, lists and dicts
+    vss = np.empty(ntraces)
+    vmin = np.zeros(ntraces)
+    vrmss = np.zeros(ntraces)
+    vm = np.zeros(ntraces)
+    ic = np.zeros(ntraces)
+    # print(np.array(tss)*AR.sample_rate[0])
+    for j in range(0, ntraces):
+        vss[j] = np.mean(V[j,tss[0]:tss[1]])  # steady-state voltage
+        ic[j] = np.mean(I[j,tss[0]:tss[1]])  # corresponding currents
+        vm[j] = np.mean(V[j, 0:int((AR.tstart-1.0)/AR.sample_rate[0])])  # resting potential - for 1 msec prior to step
+        ax[0].plot(AR.time, V[j,:], 'k-')
+
+    print(vss)
+    # now fit traces to variation of g = gmax * I/(V-Vr)
+    gmodel = Model(boltzI)
+    # def boltzI(self, x, gmax, vhalf, k, E):
+#             return(gmax*(1./(np.exp((x-E)/k))))
+#
+    vss = np.array(vss)*1e3
+    # transform to g
+    Ek = -84.
+    gss = ic/(vss-Ek)
+    ax[1].plot(vss, ic, 'ko-', markersize=2)
+    print(ic)
+    gmodel.set_param_hint('gmax', value=2.e-10, min=0.,vary=True)
+    gmodel.set_param_hint('vhalf', value=-38., min=-90., max=90.)
+    gmodel.set_param_hint('k', value=7, min=0.05, max=200.0, vary=True)
+    gmodel.set_param_hint('E', value=Ek, vary=False)
+    gparams = gmodel.make_params()
+    weights = np.ones_like(vss)
+    for i, w in enumerate(weights):
+        if vss[i] <= -100:
+            weights[i] = 0.
+    result = gmodel.fit(ic, method='nedler', params=gparams, x=vss, weights = weights, max_nfev=10000)
+    print(result.fit_report())
+    print(vss)
+    print(result.best_fit)
+    ax[1].plot(vss, result.best_fit, 'r-')
+    mpl.show()
+    
 def plot_revcorr_map(
     P,
     pgbc,
