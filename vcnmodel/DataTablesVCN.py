@@ -277,11 +277,12 @@ class DataTables:
         self.analyze_from_table(index.row())
 
     def handleSortIndicatorChanged(self, index, order):
-        # print(dir(self.table.model()))
-        if index != 0:
-            self.table.horizontalHeader().setSortIndicator(
-                0, self.table.model().sortOrder()
-            )
+        print(dir(self.table.model()))
+        pass
+        # if index != 0:
+  #           self.table.horizontalHeader().setSortIndicator(
+  #               0, self.table.model().sortOrder()
+  #           )
 
     def command_dispatcher(self, param, changes):
 
@@ -491,29 +492,30 @@ class DataTables:
         selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
         if selected is None:
             return
-        P = PH.regular_grid(
-            3,
-            1,
-            order="rowsfirst",
-            figsize=(4.0, 6.0),
-            showgrid=False,
-            verticalspacing=0.01,
-            horizontalspacing=0.01,
-            margins={
-                "bottommargin": 0.1,
-                "leftmargin": 0.07,
-                "rightmargin": 0.05,
-                "topmargin": 0.03,
-            },
-            labelposition=(0.0, 0.0),
-            parent_figure=None,
-            panel_labels=None,
-        )
+        P =PS.setup_VC_plots()
+        # P = PH.regular_grid(
+        #     3,
+        #     1,
+        #     order="rowsfirst",
+        #     figsize=(4.0, 6.0),
+        #     showgrid=False,
+        #     verticalspacing=0.05,
+        #     horizontalspacing=0.05,
+        #     margins={
+        #         "bottommargin": 0.1,
+        #         "leftmargin": 0.1,
+        #         "rightmargin": 0.1,
+        #         "topmargin": 0.03,
+        #     },
+        #     labelposition=(0.0, 0.0),
+        #     parent_figure=None,
+        #     panel_labels=None,
+        # )
 
         PD = PS.PData()
         sfi = Path(selected.simulation_path, selected.files[0])
         PS.plot_traces(P.axarr[0, 0], sfi, PD, protocol = selected.runProtocol)
-        PS.analyzeVC(P.axarr[1:3, 0], sfi, PD, protocol = selected.runProtocol)
+        PS.analyzeVC(P.axarr, sfi, PD, protocol = selected.runProtocol)
         P.figure_handle.show()
 
         

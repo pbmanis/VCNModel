@@ -311,17 +311,17 @@ class AnalyzeRun():
         td = tw[2]
  
         import matplotlib.pyplot as mpl
-        f, ax = mpl.subplots(1,1)
+        # f, ax = mpl.subplots(1,1)
         for j in range(0, ntraces):
             if verbose:
                 print('    analyzing trace: %d' % (j))
             vss[j] = np.mean(V[j,tss[0]:tss[1]])  # steady-state voltage
             ic[j] = np.mean(I[j,tss[0]:tss[1]])  # corresponding currents
             vm[j] = np.mean(V[j, 0:int((ts-1.0)/dt)])  # resting potential - for 1 msec prior to step
-            ax.plot(t, I[j])
+            # ax.plot(t, I[j])
             if verbose:
                 print('   >>> completed analyzing trace %d' % j)
-        mpl.show()
+        # mpl.show()
         if verbose:
             print('done with traces')
         # now fit traces to variation of g = gmax * I/(V-Vr)
@@ -334,11 +334,11 @@ class AnalyzeRun():
         gparams = gmodel.make_params()
         result = gmodel.fit(ic, params=gparams, x=vss)
         print(result.fit_report())
-        print(dir(result))
-
-        ax.plot(vss, ic, 'bs-')
-        ax.plot(vss, result.best_fit, 'r-')
-        mpl.show()
+        # print(dir(result))
+        #
+        # ax.plot(vss, ic, 'bs-')
+        # ax.plot(vss, result.best_fit, 'r-')
+        # mpl.show()
         
         if verbose:
             print('building VCResult')

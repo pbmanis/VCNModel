@@ -201,8 +201,8 @@ class TableManager:
                 Index_data.files.append(str(r))  # get the result file list here
         else:
             Index_data.files = [fn]
-        print('Params: ' , params)
-        print('runinfo: ', runinfo)
+        # print('Params: ' , params)
+        # print('runinfo: ', runinfo)
         if usedict:  # old style files with dictionaries
             Index_data.cellType = params["cellType"]
             Index_data.modelType = params["modelType"]
@@ -227,7 +227,15 @@ class TableManager:
             except:
                 Index_data.dendriteMode = "normal"
             Index_data.temperature = params.celsius
-            Index_data.dt = params.dt
+            try:
+                Index_data.dt = params.dt
+            except:
+                if runinfo.postMode == 'CC':
+                    Index_data.dt = params.dtIC
+                elif runinfo.postMode == 'VC':
+                    Index_data.dt = params.dtVC
+                else:
+                    raise ValueError('Rininfo postmode not known: ', runinfo.postMode)
             Index_data.runProtocol = runinfo.runProtocol
             Index_data.synapsetype = params.ANSynapseType
             Index_data.synapse_experiment = runinfo.Spirou

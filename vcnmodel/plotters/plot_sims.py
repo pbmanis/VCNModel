@@ -24,6 +24,7 @@ from vcnmodel import cell_config as cell_config
 from vcnmodel import spikestatistics as SPKS
 from cnmodel.util import vector_strength
 from vcnmodel import sttc as STTC
+import lmfit
 from lmfit import Model
 # try using a standard ccf
 # import neo
@@ -432,7 +433,7 @@ def plot_traces(
         AR.traces[trial][0] = AR.traces[trial][1]
         if protocol in ["VC", "vc", "vclamp"]:
             AR.traces[trial] = AR.traces[trial].asarray() * 1e6
-        ax.plot(AR.time_base, AR.traces[trial] * 1e3, linewidth=0.5)
+        ax.plot(AR.time_base, AR.traces[trial] * 1e3, 'k-', linewidth=0.5)
         ax.plot(
             AR.time_base[SP.spikeIndices[trial]],
             AR.traces[trial][SP.spikeIndices[trial]] * 1e3,
@@ -465,7 +466,8 @@ def plot_traces(
             #                 print(spkt[ian])
             ax.set_ylim(-140.0, 40.0)
         elif protocol in ["VC", "vc", "vclamp"]:
-            ax.set_ylim((-100.0, 100.0))
+            pass #
+            #ax.set_ylim((-100.0, 100.0))
         else:
             ax.set_ylim(-200.0, 50.0)
             ax.set_xlim(0.080, np.max(AR.time_base))
@@ -511,9 +513,12 @@ def plot_traces(
             floatAdd={"x": 0, "y": 0},
         )
     elif protocol in ["VC", "vc", "vclamp"]:
+        maxt  = np.max(AR.time_base)
+        tlen = 10. # ms
         PH.calbar(
             ax,
-            calbar=[20.0, -10.0, 10.0, 10.0],
+            calbar=[maxt-tlen, 2.0, tlen, 5],
+            orient='right',
             unitNames={"x": "ms", "y": "nA"},
             fontsize=9,
         )    
@@ -541,12 +546,39 @@ def plot_traces(
 
 def boltzI(x, gmax, vhalf, k, E):
     return(gmax*(x-E)*(1./(1.0+np.exp(-(x-vhalf)/k))))
-    # return(gmax*(1./(1.0+np.exp(-(x-vhalf)/k))))
+
+def boltzG(x, gmax, vhalf, k, E):
+    return(gmax*(1./(1.0+np.exp(-(x-vhalf)/k))))
+
+def expdecay(x, decay, amplitude, offset):
+    return(offset + amplitude*np.exp(-x/decay))
+ 
+def exp2decay(x, a0, a1, tau0, tau1, offset):
+     return(offset + a0*np.exp(-x/tau0) + a1*np.exp(-x/tau1))
+       
+def setup_VC_plots():
+    sizer = OrderedDict(
+        [
+            ("A", {"pos": [0.125, 0.75, 0.6, 0.37]}),
+            ("B", {"pos": [0.125, 0.75, 0.45, 0.12]}),
+            ("C", {"pos": [0.125, 0.75, 0.06, 0.32]}),
+        ]
+    )  # dict elements are [left, width, bottom, height] for the axes in the plot.
+    n_panels = len(sizer.keys())
+    gr = [
+        (a, a + 1, 0, 1) for a in range(0, n_panels)
+    ]  # just generate subplots - shape does not matter
+    axmap = OrderedDict(zip(sizer.keys(), gr))
+    P = PH.Plotter((n_panels, 1), order="columnsfirst",
+        axmap=axmap, label=True, figsize=(4.0, 6.0))
+    P.resize(sizer)  # perform positioning magic
+    return P
 
 
 def analyzeVC(
         ax: object, fn: Union[Path, str], PD: dataclass, protocol: str,
     ) -> tuple:
+    ax = ax[:,0]
     changetimestamp = get_changetimestamp()
     x = get_data_file(fn, changetimestamp, PD)
     mtime = Path(fn).stat().st_mtime
@@ -565,25 +597,11 @@ def analyzeVC(
     print('Protocol: ', protocol)
     par, stitle, ivdatafile, filemode, d = x
     AR, SP, RMA = analyze_data(ivdatafile, filemode, protocol)
-        # for j in range(0, ntraces):
-        # if verbose:
-        #     print('    analyzing trace: %d' % (j))
-        # vss[j] = np.mean(V[j,tss[0]:tss[1]])  # steady-state voltage
-        # ic[j] = np.mean(I[j,tss[0]:tss[1]])  # corresponding currents
-        # vm[j] = np.mean(V[j, 0:int((ts-1.0)/dt)])  # resting potential - for 1 msec prior to step
-        # ax.plot(t, I[j])
-        # if verbose:
-        #     print('   >>> completed analyzing trace %d' % j)
-    # print(dir(AR))
-    # print(AR.tstart)
-    # print(AR.tstart_tdur)
-    # print(AR.tdur)
-    # print(AR.tend)
-    # print(AR.sample_rate)
-    # print(AR.commandLevels)
     tss = [0,0]
-    tss[0] = int(AR.tstart+(AR.tdur/4.0)/AR.sample_rate[0])  # wrong duration stored in traces - need to fix.
-    tss[1] = int((AR.tstart + AR.tdur*0.5)/AR.sample_rate[0])
+    sr = AR.sample_rate[0]
+    print('AR tstart, tdur: ', AR.tstart, AR.tdur)
+    tss[0] = int(AR.tstart/sr + (AR.tdur/2.0)/sr)  # wrong duration stored in traces - need to fix.
+    tss[1] = int(AR.tstart/sr + (AR.tdur/1.0)/sr)
     I = AR.traces.asarray()
     V = AR.cmd_wave
     ntraces = np.shape(V)[0]
@@ -592,40 +610,114 @@ def analyzeVC(
     vmin = np.zeros(ntraces)
     vrmss = np.zeros(ntraces)
     vm = np.zeros(ntraces)
+    i0 = np.zeros(ntraces)
     ic = np.zeros(ntraces)
-    # print(np.array(tss)*AR.sample_rate[0])
     for j in range(0, ntraces):
         vss[j] = np.mean(V[j,tss[0]:tss[1]])  # steady-state voltage
         ic[j] = np.mean(I[j,tss[0]:tss[1]])  # corresponding currents
         vm[j] = np.mean(V[j, 0:int((AR.tstart-1.0)/AR.sample_rate[0])])  # resting potential - for 1 msec prior to step
-        ax[0].plot(AR.time, V[j,:], 'k-')
+        i0[j] = np.mean(I[j, 0:int((AR.tstart-1.0)/AR.sample_rate[0])])  # resting/holding current - for 1 msec prior to step
+        ax[1].plot(AR.time, V[j,:], 'k-')
+        # ax[0].plot(AR.time[tss[0]:tss[1]], I[j,tss[0]:tss[1]], 'r--')
 
-    print(vss)
     # now fit traces to variation of g = gmax * I/(V-Vr)
-    gmodel = Model(boltzI)
-    # def boltzI(self, x, gmax, vhalf, k, E):
-#             return(gmax*(1./(np.exp((x-E)/k))))
-#
-    vss = np.array(vss)*1e3
-    # transform to g
-    Ek = -84.
+    gmodel = Model(boltzG)
+    Ek = -84.*1e-3 # mV to V
+    # transform to g to get conductance values and fit to Boltzmann
     gss = ic/(vss-Ek)
-    ax[1].plot(vss, ic, 'ko-', markersize=2)
-    print(ic)
-    gmodel.set_param_hint('gmax', value=2.e-10, min=0.,vary=True)
-    gmodel.set_param_hint('vhalf', value=-38., min=-90., max=90.)
-    gmodel.set_param_hint('k', value=7, min=0.05, max=200.0, vary=True)
+    gmodel.set_param_hint('gmax', value=20.e-9, min=0.,vary=True)
+    gmodel.set_param_hint('vhalf', value=-38e-3, min=-90e-3, max=90e-3)
+    gmodel.set_param_hint('k', value=7, min=0.05*1e-3, max=200.0*1e-3, vary=True)
     gmodel.set_param_hint('E', value=Ek, vary=False)
     gparams = gmodel.make_params()
     weights = np.ones_like(vss)
-    for i, w in enumerate(weights):
-        if vss[i] <= -100:
-            weights[i] = 0.
-    result = gmodel.fit(ic, method='nedler', params=gparams, x=vss, weights = weights, max_nfev=10000)
-    print(result.fit_report())
-    print(vss)
-    print(result.best_fit)
-    ax[1].plot(vss, result.best_fit, 'r-')
+    d_index = np.argwhere((vss >= -0.120) & (np.fabs(vss-Ek) > 0.008))
+    weights_sel = weights[d_index]
+    vss_sel = vss[d_index]
+    gss_sel = gss[d_index]
+    result = gmodel.fit(gss_sel, method='nedler', params=gparams, x=vss_sel, weights = weights_sel)
+    # print(result.fit_report())
+    # print(vss)
+    # print(result.best_fit)
+    
+    # capacitance transient. Use the single trace nearest to -70 mV for the fit.
+    mHypStep = np.argmin(np.fabs(vss-(-0.090)))
+    sr = AR.sample_rate[mHypStep]
+    t0 = int(AR.tstart/sr)
+
+    pts = int(5.0/sr)  # fit over first 5 msec
+    tfit = AR.time_base[t0+1:t0+pts]-AR.time_base[t0]
+    ifit = I[mHypStep, t0+1:t0+pts]
+    expmodel = Model(exp2decay)
+    # pars = expmodel.guess(ifit, x=tfit)
+    expmodel.set_param_hint('tau0', value=0.1, min=0.005, max=10.0)
+    expmodel.set_param_hint('tau1', value=0.3, min=0.005, max=10.0)
+    expmodel.set_param_hint('a0', value=-1e-9, min=-50e-9, max=1e-12)
+    expmodel.set_param_hint('a1', value=-1e-9, min=-50e-9, max=1e-12)
+    expmodel.set_param_hint('offset', value=0., min=-1e-8, max=1e-8, vary=True)
+    expparams = expmodel.make_params()
+    exp_result = expmodel.fit(ifit, expparams, x=tfit)
+    # print(exp_result.params)
+    deltaV = vss[mHypStep] - vm[mHypStep]
+    deltaI = I[mHypStep][t0] - i0[mHypStep]
+    deltaI2 = (exp_result.params['a0'].value + exp_result.params['a1'].value)
+    Q = np.trapz(I[mHypStep, t0:t0+2*pts], dx=sr*1e-3)
+    Cm = Q/deltaV
+    print(f"Q: {Q*1e12:.3f} pC  deltaV: {deltaV*1e3:.1f} mV, Cm: {Cm*1e12:.1f} pF")
+    Rs_est = deltaV/deltaI2  # Estimate of Rs from peak current
+    print(f"Estimated Rs: {Rs_est*1e-6:.1f} MOhm")
+    # print(deltaV, deltaI, deltaI2)
+    # other approach: use fastest tau in voltage clamp
+    #
+    tau0 = 1e-3*exp_result.params['tau0'].value  # convert to seconds
+    tau1 = 1e-3*exp_result.params['tau1'].value
+    a0 = exp_result.params['a0'].value
+    a1 = exp_result.params['a1'].value
+    #
+    # Here we use the fastest time constant and the 
+    # associated current from the fit to estimate cm (perisomatic)
+    # Note: do not use total input resistance!
+    # See Golowasch et al., J. Neurophysiol. 2009 and references therein
+
+    if tau0 < tau1:
+        tau = tau0
+        R0 = deltaV/a0
+        cm = tau/R0
+    else:
+        tau = tau1
+        R0 = deltaV/a1
+        cm = tau/R0
+    # for curiosity, weighted tau (as if compensation was done as
+    # much as possible for the whole transient)
+    #
+    tauw = (a0*tau0 + a1*tau1)/(a0+a1)
+    R0w = deltaV/a0
+    R1w = deltaV/a1
+    cm1 = tau1/R1w
+    cmw = ((a0*tau0/R0w) + (a1*tau1/R1w))/(a0+a1) # tauw/(R0w + R1w)
+    print('By Coeffs: ')
+    print(f"RCoeff0 = {R0*1e-6:.2f} MOhm, tau0: {tau*1e3:.3f} ms,  cm0: {cm*1e12:.1f} pF")
+    print(f"RCoeff1 = {R1w*1e-6:.2f} MOhm, tau1: {tau1*1e3:.3f} ms,  cm1: {cm1*1e12:.1f} pF")
+    print(f"Weighted: Rw={(R0w+R1w)*1e-6:.2f} tauw: {tauw*1e3:.3f} ms, Weighted cm: {cmw*1e12:.1f} pF")
+    tfit2 = AR.time_base[t0:t0+pts]-AR.time_base[t0]
+    bfit = expmodel.eval(params=exp_result.params, x=tfit2)
+    ax[0].plot(tfit2+AR.time_base[t0], bfit*1e9, 'r-', dashes=[6, 2], linewidth=1)
+    # ax[0].plot(tfit+AR.time_base[t0], exp_result.best_fit*1e9, 'r-')
+    # ax[0].plot(tfit+AR.time_base[t0], ifit*1e9, 'g--')
+    ax[2].plot(vss_sel, gss_sel*1e9, 'ko', markersize=2)
+    ax[2].plot(vss_sel, result.best_fit*1e9, 'r-')
+    # print('vhalf: ', result.params['vhalf'])
+    textstr =  r"g$_{max}$  = "
+    textstr += f"{result.params['gmax'].value*1e9:.1f} nS\n"
+    textstr += r"$V_{0.5}$  = "
+    textstr += f"{result.params['vhalf'].value*1e3:.1f} mV\n"
+    textstr += f"k  = {1e3*result.params['k'].value:.1f}\n"
+    textstr += f"Cm = {cm*1e12:.1f} pF\n"
+    textstr += r"$tau_{0}$ = "
+    textstr += f"{tau*1e3:.3f} ms"
+    props = dict(boxstyle='square', facecolor='None', alpha=0.5)
+    ax[2].text(0.05, 0.95, textstr, transform=ax[2].transAxes,
+        fontsize=8, verticalalignment='top', bbox=props)
     mpl.show()
     
 def plot_revcorr_map(
