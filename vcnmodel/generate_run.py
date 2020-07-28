@@ -168,7 +168,7 @@ class GenerateRun:
         print(f"   duration: {self.RunInfo.stimDur:8.2f} ms")
         print(f"   tstop:    {self.hf.h.tstop:8.2f} ms")
         print(f"   h.t:      {self.hf.h.t:8.2f} ms")
-        print(f"   h.dt      {self.hf.h.dt:8.2f} us")
+        print(f"   h.dt:    {self.hf.h.dt:8.3f} ms")
         print("\n----------------\n")
         self.monitor["time"].record(self.hf.h._ref_t)
 
@@ -214,7 +214,6 @@ class GenerateRun:
 
         self.RunInfo.celsius = self.cell.status["temperature"]
         self.hf.h.celsius = self.RunInfo.celsius
-        self.hf.h.dt = self.Params.dt
         self.clist = {}  # color list
         somasecs = list(self.hf.sec_groups["soma"])
         electrodeSection = somasecs[0]
@@ -222,23 +221,24 @@ class GenerateRun:
 
         # electrodeSection = list(self.hf.sec_groups[self.RunInfo.electrodeSection])[0]
         # self.electrode_site = self.hf.get_section(electrodeSection)
-        if self.RunInfo.postMode in ["vc", "VC", "vclamp"]:
+        if self.RunInfo.postMode == 'VC':
             # Note to self (so to speak): the hoc object returned b
             # by this call must have a life after
             # the routine exits. Thus, it must be "self." Same for the IC stimulus...
             cprint('c', f'Running VClamp experiment, holding={self.RunInfo.vstimHolding}')
+            self.hf.h.dt = self.Params.dtVC
             self.vcPost = self.hf.h.SEClamp(
                 0.5, sec=self.electrode_site
             )  # self.hf.sections[electrode_site])
-            self.vcPost.dur1 = 2
+            self.vcPost.dur1 = self.RunInfo.vstimDelay
             self.vcPost.amp1 = self.RunInfo.vstimHolding
             self.vcPost.dur2 = 1e9
             self.vcPost.amp2 = (
                 self.RunInfo.vstimHolding
             )  # just a tiny step to keep the system honest
-            self.vcPost.dur3 = 10.0
+            self.vcPost.dur3 = self.RunInfo.vstimPost
             self.vcPost.amp3 = self.RunInfo.vstimHolding
-            self.vcPost.rs = 1e-6
+            self.vcPost.rs = 1.0  # value is in meghoms
             stim = {}
             stim["NP"] = self.RunInfo.vnStim
             stim["Sfreq"] = self.RunInfo.vstimFreq  # stimulus frequency
@@ -273,8 +273,9 @@ class GenerateRun:
             self._finalPrep(maxt)
             
             
-        elif self.RunInfo.postMode in ["cc", "CC", "iclamp"]:
+        elif self.RunInfo.postMode == "CC":
             cprint('c', 'Running IClamp experiment')
+            self.hf.h.dt = self.Params.dtIC
             stim = {}
             stim["NP"] = self.RunInfo.nStim
             stim["Sfreq"] = self.RunInfo.stimFreq  # stimulus frequency
@@ -316,6 +317,7 @@ class GenerateRun:
         elif self.RunInfo.postMode in ["gifnoise"]:
             cprint('c', 'Running GIF Noise experiment')
             stim = {}
+            self.hf.h.dt = self.Params.dtIC
             self.stim = NG.NoiseGen()
             self.stim.generator(
                 dt=self.hf.h.dt,
@@ -407,10 +409,10 @@ class GenerateRun:
         # self.hf.update() # make sure channels are all up to date
         self.results = {}
         cprint('m', self.RunInfo.postMode)
-        if self.RunInfo.postMode in ["CC", "cc", "iclamp"]:
+        if self.RunInfo.postMode == "CC":
             ipulses = self.RunInfo.stimInj["pulse"]
             # ipulses = np.arange(s[0], s[1], s[2])
-        elif self.RunInfo.postMode in ['VC', 'vc', "vclamp"]:
+        elif self.RunInfo.postMode == 'VC':
             ipulses = self.RunInfo.stimVC["pulse"]
         else:
             ipulses = [0]
@@ -431,6 +433,7 @@ class GenerateRun:
                 self._prepareRun(inj=inj)  # build the recording arrays
                 self.run_initialized = cellInit.init_model(
                     self.cell,
+                    vinit=self.RunInfo.vstimHolding,
                     mode=self.RunInfo.postMode,
                     restore_from_file=restore_from_file,
                     filename=initfile,
@@ -451,7 +454,7 @@ class GenerateRun:
                 else:
                     self.plotRun(self.results[i], init=False)
         
-        if self.RunInfo.postMode in ["cc", "CC", "iclamp"]:
+        if self.RunInfo.postMode == "CC":
             if self.Params.verbose:
                 cprint("r", "doRun, calling IV")
             self.arun = ar.AnalyzeRun(
@@ -471,7 +474,7 @@ class GenerateRun:
                 # print (dir(self.ivplots))
                 self.ivplts.show()
 
-        if self.RunInfo.postMode in ["vc", "VC", "vclamp"]:
+        if self.RunInfo.postMode == "VC":
             if self.Params.verbose:
                 cprint("r", "doRun, calling VC")
             self.arun = ar.AnalyzeRun(
@@ -501,7 +504,10 @@ class GenerateRun:
             raise ValueError("generate_run:testRun needs initfile name")
         self._prepareRun(inj=0.0)
         self.run_initialized = cellInit.init_model(
-            self.cell, filename=initfile, restore_from_file=True
+            self.cell, 
+            vinit=self.RunInfo.vstimHolding,
+            filename=initfile, 
+            restore_from_file=True
         )
         self.hf.h.t = 0.0
         self.hf.h.tstop = 10

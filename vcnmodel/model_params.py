@@ -63,6 +63,7 @@ class CmdChoices:
         "normal",
         "passive",
         "active",
+        "allpassive"
     ]
     protocolChoices = [
         "initIV",
@@ -130,7 +131,8 @@ class Params:
 
     # cell specific parameters related to geometry
     fullhocfile: bool = False  # use the "full" hoc file (cellname_Full.hoc)
-    dt: float = 0.025
+    dtIC: float = 0.025 # ok.
+    dtVC: float = 0.005  # voltage clamp; need shorter steop size for transient measure
     celsius: float = 37  # set the temperature.
     Ra: float = 150.0  # ohm.cm
     soma_inflation: float = 1.0  # factor to multiply soma section areas by
@@ -199,8 +201,8 @@ def defVCsteps():
     """
     Steps are relative to HOLDING, which is typicall -60 mV
     """
-    start = -60.
-    stop = 100.
+    start = -20.
+    stop = 120.
     step = 10.
     npts = int((stop-start)/step)+1
     return {"pulse": np.linspace(start, stop, npts, endpoint=True)}
@@ -228,8 +230,8 @@ class RunInfo:
     ]  # testIV is default because it is fast and should be run often
     runName: str = "Run"
     manipulation: str = "Canonical"
-    preMode: str = "cc"
-    postMode: str = "cc"
+    preMode: str = "CC"
+    postMode: str = "CC"
     TargetCellType: str = ""  # celltype, # valid are "Bushy", "Stellate", "MNTB"
     electrodeSection: Union[object, str, None] = None  # electrodeSection
     electrodeSectionName: str = None
@@ -253,10 +255,10 @@ class RunInfo:
     vnStim: float = 1
     vstimFreq: float = 200.0  # hz
     vstimInj: float = 50  # mV amplitude of step (from holding)
-    vstimDur: float = 50.0  # msec
-    vstimDelay: float = 2.0  # msec
-    vstimPost: float = 3.0  # msec
-    vstimHolding: float = -60.0  # holding, mV
+    vstimDur: float = 100.0  # msec
+    vstimDelay: float = 5.0  # msec
+    vstimPost: float = 25.0  # msec
+    vstimHolding: float = -65.0  # holding, mV
 
     # sound parameters
     initialization_time: float = 50.0  # nominal time to let system settle, in msec
@@ -621,6 +623,15 @@ def build_parser():
         help="Automatically inflate dendrite area based on soma inflation",
     )
 
+    parser.add_argument(
+        "--hold",
+        type=float,
+        action="store",
+        dest="vstimHolding",
+        default=-80.0,
+        help="Holding voltage in VClamp (mV) (default: -80 mV)",
+    )
+    
     parser.add_argument(
         "--tagstring",
         type=str,

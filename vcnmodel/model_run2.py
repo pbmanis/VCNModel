@@ -1,6 +1,7 @@
 import copy
 import dataclasses
 import datetime
+import importlib
 import json
 import pickle
 import re
@@ -215,7 +216,7 @@ class ModelRun:
     def __init__(self, params: dataclass = None, runinfo: dataclass = None, args=None):
         self.Params = params
         self.RunInfo = runinfo
-        print(args)
+        # print(args)
 
         if self.Params.checkcommand:
             self.Params.commandline = sys.argv[1:]
@@ -365,7 +366,7 @@ class ModelRun:
         print("\nRUNPROTOCOL: ", self.RunInfo.runProtocol)
         if self.RunInfo.runProtocol in ["initIV", "initandrunIV", "runIV"]:
             simMode = "IV"
-            self.RunInfo.postMode = simMode
+            self.RunInfo.postMode = 'CC'
             initPath = Path(self.baseDirectory, self.cellID, self.initDirectory)
             self.mkdir_p(initPath)  # confirm existence of the initialization directory
             if self.Params.initStateFile is None:
@@ -439,7 +440,7 @@ class ModelRun:
             or self.RunInfo.runProtocol == "runANPSTH"
         ):
             simMode = "AN"
-            self.RunInfo.postMode = 'cc'
+            self.RunInfo.postMode = 'CC'
 
             initPath = Path(self.baseDirectory, self.cellID, self.initDirectory)
             self.mkdir_p(initPath)  # confirm existence of that file
@@ -622,214 +623,242 @@ class ModelRun:
         # instantiate cells
         if self.Params.cellType in ["Bushy", "bushy"]:
             print("Creating a bushy cell (run_model) ")
+            # We will use dynamic imports to get the table associated with the 
+            # selected channel mapping onto dendrites and sodium channel type
             from cnmodel import data
-
+            dmodes = {"normal": "", "passive": "_pasdend", "active": "_actdend", "allpassive": "_allpassive"}
             changes = None
             nach = None  # uses default
-            if (
-                self.Params.modelName == "XM13_nacncoop"
-                and self.Params.dendriteMode == "normal"
-            ):
-                from vcnmodel.model_data import data_XM13_nacncoop as CHAN
-
-                nach = "nacncoop"
-                changes = data.add_table_data(
-                    "XM13_nacncoop_channels",
-                    row_key="field",
-                    col_key="model_type",
-                    species="mouse",
-                    data=CHAN.ChannelData,
-                )
-                changes_c = data.add_table_data(
-                    "XM13_nacncoop_channels_compartments",
-                    row_key="parameter",
-                    col_key="compartment",
-                    species="mouse",
-                    model_type="II",
-                    data=CHAN.ChannelCompartments,
-                )
-
-            if (
-                self.Params.modelName == "XM13A_nacncoop"
-                and self.Params.dendriteMode == "normal"
-            ):
-                from vcnmodel.model_data import data_XM13A_nacncoop as CHAN
-
-                nach = "nacncoop"
-                changes = data.add_table_data(
-                    "XM13A_nacncoop_channels",
-                    row_key="field",
-                    col_key="model_type",
-                    species="mouse",
-                    data=CHAN.ChannelData,
-                )
-                changes_c = data.add_table_data(
-                    "XM13A_nacncoop_channels_compartments",
-                    row_key="parameter",
-                    col_key="compartment",
-                    species="mouse",
-                    model_type="II",
-                    data=CHAN.ChannelCompartments,
-                )
-                
-            if (
-                self.Params.modelName == "XM13_nacncoop"
-                and self.Params.dendriteMode == "passive"
-            ):
-                from vcnmodel.model_data import \
-                    data_XM13_nacncoop_pasdend as CHAN
-
-                nach = "nacncoop"
-                changes = data.add_table_data(
-                    "XM13_nacncoop_channels",
-                    row_key="field",
-                    col_key="model_type",
-                    species="mouse",
-                    data=CHAN.ChannelData,
-                )
-                changes_c = data.add_table_data(
-                    "XM13_nacncoop_channels_compartments",
-                    row_key="parameter",
-                    col_key="compartment",
-                    species="mouse",
-                    model_type="II",
-                    data=CHAN.ChannelCompartments,
-                )
-
-            if (
-                self.Params.modelName == "XM13A_nacncoop"
-                and self.Params.dendriteMode == "passive"
-            ):
-                from vcnmodel.model_data import \
-                    data_XM13A_nacncoop_pasdend as CHAN
-
-                nach = "nacncoop"
-                changes = data.add_table_data(
-                    "XM13A_nacncoop_channels",
-                    row_key="field",
-                    col_key="model_type",
-                    species="mouse",
-                    data=CHAN.ChannelData,
-                )
-                changes_c = data.add_table_data(
-                    "XM13A_nacncoop_channels_compartments",
-                    row_key="parameter",
-                    col_key="compartment",
-                    species="mouse",
-                    model_type="II",
-                    data=CHAN.ChannelCompartments,
-                )
+            table_name = f"vcnmodel.model_data.data_{self.Params.modelName:s}{dmodes[self.Params.dendriteMode]:s}"
+            name_parts = self.Params.modelName.split('_')
+            if len(name_parts) > 1:
+                nach = name_parts[1]
+            else:
+                nach = 'nav11'
+            CHAN = importlib.import_module(table_name)
+            channels = f"{name_parts[0]:s}_{nach:s}_channels"
+            compartments = f"{name_parts[0]:s}_{nach:s}_channels_compartments"
+            print('Channels: ', channels)
+            print('Compartments: ', compartments)
+            changes = data.add_table_data(
+                channels,
+                row_key="field",
+                col_key="model_type",
+                species="mouse",
+                data=CHAN.ChannelData,
+            )
+            changes_c = data.add_table_data(
+                compartments,
+                row_key="parameter",
+                col_key="compartment",
+                species="mouse",
+                model_type="II",
+                data=CHAN.ChannelCompartments,
+            )          
+            # if (
+            #     self.Params.modelName == "XM13_nacncoop"
+            #     and self.Params.dendriteMode == "normal"
+            # ):
+            #     from vcnmodel.model_data import data_XM13_nacncoop as CHAN
             #
-            # ACTIVE
+            #     nach = "nacncoop"
+            #     changes = data.add_table_data(
+            #         "XM13_nacncoop_channels",
+            #         row_key="field",
+            #         col_key="model_type",
+            #         species="mouse",
+            #         data=CHAN.ChannelData,
+            #     )
+            #     changes_c = data.add_table_data(
+            #         "XM13_nacncoop_channels_compartments",
+            #         row_key="parameter",
+            #         col_key="compartment",
+            #         species="mouse",
+            #         model_type="II",
+            #         data=CHAN.ChannelCompartments,
+            #     )
             #
+            # if (
+            #     self.Params.modelName == "XM13A_nacncoop"
+            #     and self.Params.dendriteMode == "normal"
+            # ):
+            #     from vcnmodel.model_data import data_XM13A_nacncoop as CHAN
+            #
+            #     nach = "nacncoop"
+            #     changes = data.add_table_data(
+            #         "XM13A_nacncoop_channels",
+            #         row_key="field",
+            #         col_key="model_type",
+            #         species="mouse",
+            #         data=CHAN.ChannelData,
+            #     )
+            #     changes_c = data.add_table_data(
+            #         "XM13A_nacncoop_channels_compartments",
+            #         row_key="parameter",
+            #         col_key="compartment",
+            #         species="mouse",
+            #         model_type="II",
+            #         data=CHAN.ChannelCompartments,
+            #     )
+            #
+            # if (
+            #     self.Params.modelName == "XM13_nacncoop"
+            #     and self.Params.dendriteMode == "passive"
+            # ):
+            #     from vcnmodel.model_data import \
+            #         data_XM13_nacncoop_pasdend as CHAN
+            #
+            #     nach = "nacncoop"
+            #     changes = data.add_table_data(
+            #         "XM13_nacncoop_channels",
+            #         row_key="field",
+            #         col_key="model_type",
+            #         species="mouse",
+            #         data=CHAN.ChannelData,
+            #     )
+            #     changes_c = data.add_table_data(
+            #         "XM13_nacncoop_channels_compartments",
+            #         row_key="parameter",
+            #         col_key="compartment",
+            #         species="mouse",
+            #         model_type="II",
+            #         data=CHAN.ChannelCompartments,
+            #     )
+            #
+            # if (
+            #     self.Params.modelName == "XM13A_nacncoop"
+            #     and self.Params.dendriteMode == "passive"
+            # ):
+            #     from vcnmodel.model_data import \
+            #         data_XM13A_nacncoop_pasdend as CHAN
+            #
+            #     nach = "nacncoop"
+            #     changes = data.add_table_data(
+            #         "XM13A_nacncoop_channels",
+            #         row_key="field",
+            #         col_key="model_type",
+            #         species="mouse",
+            #         data=CHAN.ChannelData,
+            #     )
+            #     changes_c = data.add_table_data(
+            #         "XM13A_nacncoop_channels_compartments",
+            #         row_key="parameter",
+            #         col_key="compartment",
+            #         species="mouse",
+            #         model_type="II",
+            #         data=CHAN.ChannelCompartments,
+            #     )
+            # #
+            # # ACTIVE
+            # #
+            #
+            # if (
+            #     self.Params.modelName == "XM13_nacncoop"
+            #     and self.Params.dendriteMode == "active"
+            # ):
+            #     from vcnmodel.model_data import \
+            #         data_XM13_nacncoop_actdend as CHAN
+            #
+            #     nach = "nacncoop"
+            #     changes = data.add_table_data(
+            #         "XM13_nacncoop_channels",
+            #         row_key="field",
+            #         col_key="model_type",
+            #         species="mouse",
+            #         data=CHAN.ChannelData,
+            #     )
+            #     changes_c = data.add_table_data(
+            #         "XM13_nacncoop_channels_compartments",
+            #         row_key="parameter",
+            #         col_key="compartment",
+            #         species="mouse",
+            #         model_type="II",
+            #         data=CHAN.ChannelCompartments,
+            #     )
+            #
+            # if (
+            #     self.Params.modelName == "XM13A_nacncoop"
+            #     and self.Params.dendriteMode == "active"
+            # ):
+            #     from vcnmodel.model_data import \
+            #         data_XM13A_nacncoop_actdend as CHAN
+            #
+            #     nach = "nacncoop"
+            #     changes = data.add_table_data(
+            #         "XM13A_nacncoop_channels",
+            #         row_key="field",
+            #         col_key="model_type",
+            #         species="mouse",
+            #         data=CHAN.ChannelData,
+            #     )
+            #     changes_c = data.add_table_data(
+            #         "XM13A_nacncoop_channels_compartments",
+            #         row_key="parameter",
+            #         col_key="compartment",
+            #         species="mouse",
+            #         model_type="II",
+            #         data=CHAN.ChannelCompartments,
+            #     )
                 
-            if (
-                self.Params.modelName == "XM13_nacncoop"
-                and self.Params.dendriteMode == "active"
-            ):
-                from vcnmodel.model_data import \
-                    data_XM13_nacncoop_actdend as CHAN
-
-                nach = "nacncoop"
-                changes = data.add_table_data(
-                    "XM13_nacncoop_channels",
-                    row_key="field",
-                    col_key="model_type",
-                    species="mouse",
-                    data=CHAN.ChannelData,
-                )
-                changes_c = data.add_table_data(
-                    "XM13_nacncoop_channels_compartments",
-                    row_key="parameter",
-                    col_key="compartment",
-                    species="mouse",
-                    model_type="II",
-                    data=CHAN.ChannelCompartments,
-                )
-
-            if (
-                self.Params.modelName == "XM13A_nacncoop"
-                and self.Params.dendriteMode == "active"
-            ):
-                from vcnmodel.model_data import \
-                    data_XM13A_nacncoop_actdend as CHAN
-
-                nach = "nacncoop"
-                changes = data.add_table_data(
-                    "XM13A_nacncoop_channels",
-                    row_key="field",
-                    col_key="model_type",
-                    species="mouse",
-                    data=CHAN.ChannelData,
-                )
-                changes_c = data.add_table_data(
-                    "XM13A_nacncoop_channels_compartments",
-                    row_key="parameter",
-                    col_key="compartment",
-                    species="mouse",
-                    model_type="II",
-                    data=CHAN.ChannelCompartments,
-                )
-                
-            elif self.Params.modelName == "XM13":
-                from model_data import data_XM13 as CHAN
-
-                nach = "nav11"
-                changes = data.add_table_data(
-                    "XM13_channels",
-                    row_key="field",
-                    col_key="model_type",
-                    species="mouse",
-                    data=CHAN.ChannelData,
-                )
-                changes_c = data.add_table_data(
-                    "XM13_channels_compartments",
-                    row_key="parameter",
-                    col_key="compartment",
-                    species="mouse",
-                    model_type="II",
-                    data=CHAN.ChannelCompartments,
-                )
-
-            elif self.Params.modelName == "XM13_nacn":
-                from model_data import data_XM13_nacn as CHAN
-
-                nach = "nacn"
-                changes = data.add_table_data(
-                    "XM13_nacn_channels",
-                    row_key="field",
-                    col_key="model_type",
-                    species="mouse",
-                    data=CHAN.ChannelData,
-                )
-                changes_c = data.add_table_data(
-                    "XM13_nacn_channels_compartments",
-                    row_key="parameter",
-                    col_key="compartment",
-                    species="mouse",
-                    model_type="II",
-                    data=CHAN.ChannelCompartments,
-                )
-
-            elif self.Params.modelName == "XM13_nabu":
-                from model_data import data_XM13_nabu as CHAN
-
-                nach = "nabu"
-                changes = data.add_table_data(
-                    "XM13_nabu_channels",
-                    row_key="field",
-                    col_key="model_type",
-                    species="mouse",
-                    data=CHAN.ChannelData,
-                )
-                changes_c = data.add_table_data(
-                    "XM13_nabu_channels_compartments",
-                    row_key="parameter",
-                    col_key="compartment",
-                    species="mouse",
-                    model_type="II",
-                    data=CHAN.ChannelCompartments,
-                )
+            # elif self.Params.modelName == "XM13":
+ #                from model_data import data_XM13 as CHAN
+ #
+ #                nach = "nav11"
+ #                changes = data.add_table_data(
+ #                    "XM13_channels",
+ #                    row_key="field",
+ #                    col_key="model_type",
+ #                    species="mouse",
+ #                    data=CHAN.ChannelData,
+ #                )
+ #                changes_c = data.add_table_data(
+ #                    "XM13_channels_compartments",
+ #                    row_key="parameter",
+ #                    col_key="compartment",
+ #                    species="mouse",
+ #                    model_type="II",
+ #                    data=CHAN.ChannelCompartments,
+ #                )
+ #
+ #            elif self.Params.modelName == "XM13_nacn":
+ #                from model_data import data_XM13_nacn as CHAN
+ #
+ #                nach = "nacn"
+ #                changes = data.add_table_data(
+ #                    "XM13_nacn_channels",
+ #                    row_key="field",
+ #                    col_key="model_type",
+ #                    species="mouse",
+ #                    data=CHAN.ChannelData,
+ #                )
+ #                changes_c = data.add_table_data(
+ #                    "XM13_nacn_channels_compartments",
+ #                    row_key="parameter",
+ #                    col_key="compartment",
+ #                    species="mouse",
+ #                    model_type="II",
+ #                    data=CHAN.ChannelCompartments,
+ #                )
+ #
+ #            elif self.Params.modelName == "XM13_nabu":
+ #                from model_data import data_XM13_nabu as CHAN
+ #
+ #                nach = "nabu"
+ #                changes = data.add_table_data(
+ #                    "XM13_nabu_channels",
+ #                    row_key="field",
+ #                    col_key="model_type",
+ #                    species="mouse",
+ #                    data=CHAN.ChannelData,
+ #                )
+ #                changes_c = data.add_table_data(
+ #                    "XM13_nabu_channels_compartments",
+ #                    row_key="parameter",
+ #                    col_key="compartment",
+ #                    species="mouse",
+ #                    model_type="II",
+ #                    data=CHAN.ChannelCompartments,
+ #                )
 
             if changes is not None:
                 data.report_changes(changes)
@@ -898,14 +927,16 @@ class ModelRun:
 
         if self.Params.soma_inflation != 1.0:
             cprint("c", "    Inflating soma")
-            self.post_cell.hr.h.finitialize()
-            rtau = self.post_cell.compute_rmrintau(
-                auto_initialize=True, vrange=[-80.0, -50.0]
-            )
+            print(self.RunInfo.postMode)
+            if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
+                self.post_cell.hr.h.finitialize()
+                rtau = self.post_cell.compute_rmrintau(
+                    auto_initialize=True, vrange=[-80.0, -50.0]
+                )
 
-            print(
-                f"    Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
-            )
+                print(
+                    f"    Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
+                )
             # origdiam = {}
 
             AdjA = AdjustAreas(method="pt3d")
@@ -913,11 +944,12 @@ class ModelRun:
             AdjA.adjust_diameters(sectypes=["soma", "Soma"], inflateRatio=inflateratio)
             # AdjA.plot_areas(pt3d)
 
-            rtau = self.post_cell.compute_rmrintau(
-                auto_initialize=True, vrange=[-80.0, -60.0]
-            )
-            print(f"    New Rin after somatic inflation: {rtau['Rin']:.2f}", end="")
-            print(f" , tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}")
+            if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
+                rtau = self.post_cell.compute_rmrintau(
+                    auto_initialize=True, vrange=[-80.0, -60.0]
+                )
+                print(f"    New Rin after somatic inflation: {rtau['Rin']:.2f}", end="")
+                print(f" , tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}")
         if self.Params.ASA_fromsoma:
             self.Params.ASA_inflation = self.Params.soma_inflation
 
@@ -935,24 +967,26 @@ class ModelRun:
 
         if self.Params.dendrite_inflation != 1.0:
             cprint("c", "    Inflating dendrite")
-            rtau = self.post_cell.compute_rmrintau(
-                auto_initialize=True, vrange=[-80.0, -55.0]
-            )
-            print(
-                f"     Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
-            )
+            if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
+                rtau = self.post_cell.compute_rmrintau(
+                    auto_initialize=True, vrange=[-80.0, -55.0]
+                )
+                print(
+                    f"     Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
+                )
 
             AdjA = AdjustAreas()
             AdjA.sethoc_fromCNcell(self.post_cell)
             AdjA.adjust_diameters(sectypes=dendrite_names, inflateRatio=inflateratio)
             # AdjA.plot_areas(pt3d)  # just to take a look at the adjustment
 
-            rtau = self.post_cell.compute_rmrintau(
-                auto_initialize=True, vrange=[-80.0, -55.0]
-            )
-            print(
-                f"     New Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
-            )
+            if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
+                rtau = self.post_cell.compute_rmrintau(
+                    auto_initialize=True, vrange=[-80.0, -55.0]
+                )
+                print(
+                    f"     New Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
+                )
 
         for group in list(self.post_cell.hr.sec_groups.keys()):
             g = self.post_cell.hr.sec_groups[group]
@@ -990,6 +1024,9 @@ class ModelRun:
         self._make_filenames()  # make filenames AFTER all manipulations of the cell
 
         self.Params.setup = True
+        # self.post_cell.print_soma_info()
+#         exit()
+
 
     def view_model(self, par_map: dict = None):
         if not self.Params.setup:
@@ -1071,6 +1108,7 @@ class ModelRun:
         )
         cellInit.get_initial_condition_state(
             self.post_cell,
+            mode=self.RunInfo.postMode,
             tdur=self.Params.initialization_time,
             filename=self.Params.initStateFile,
             electrode_site=self.R.electrode_site,
@@ -1083,6 +1121,7 @@ class ModelRun:
         )
         cellInit.test_initial_conditions(
             self.post_cell,
+            mode=self.RunInfo.postMode,
             filename=self.Params.initStateFile,
             electrode_site=self.R.electrode_site,
         )
@@ -1201,6 +1240,7 @@ class ModelRun:
         )
         cellInit.get_initial_condition_state(
             self.post_cell,
+            mode=self.RunInfo.postMode,
             tdur=self.Params.initialization_time,
             filename=self.Params.initStateFile,
             electrode_site=self.R.electrode_site,
@@ -1213,6 +1253,7 @@ class ModelRun:
         )
         cellInit.test_initial_conditions(
             self.post_cell,
+            mode=self.RunInfo.postMode,
             filename=self.Params.initStateFile,
             electrode_site=self.R.electrode_site,
         )
@@ -1317,9 +1358,9 @@ class ModelRun:
             "ID": self.idnum,
             "sequence": self.RunInfo.stimInj,
             "Vm": np.mean(self.R.VCResult["Vm"]),
-            "Rin": self.R.VCResult["Rinss"],
-            "taum": taum_mean,
-            "tauih": tauih_mean,
+            # "Rin": self.R.VCResult["Rinss"],
+            # "taum": taum_mean,
+            # "tauih": tauih_mean,
 
         }
         return self.VCSummary
@@ -1541,6 +1582,7 @@ class ModelRun:
             #                     self.initDirectory, self.Params.initStateFile)
             cellInit.get_initial_condition_state(
                 self.post_cell,
+                mode=self.RunInfo.postMode,
                 tdur=self.Params.initialization_time,
                 filename=self.Params.initStateFile,
                 electrode_site=self.electrode_site,
@@ -1552,6 +1594,7 @@ class ModelRun:
             )
             cellInit.test_initial_conditions(
                 self.post_cell,
+                mode=self.RunInfo.postMode,
                 filename=self.Params.initStateFile,
                 electrode_site=self.electrode_site,
             )
