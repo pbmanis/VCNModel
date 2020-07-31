@@ -182,7 +182,7 @@ class GenerateRun:
         Side Effects: A number of class variables are created and modified, mostly related to the
         generation of stimuli and monitoring of voltages and currents
         """
-        cprint('r', f"_prepareRun: {self.RunInfo.postMode:s}, inj={str(inj):s}")
+        cprint('w', f"_prepareRun: {self.RunInfo.postMode:s}, inj={str(inj):s}")
         if self.Params.verbose:
             print("_prepareRun")
         for group in self.hf.sec_groups.keys():  # get morphological components

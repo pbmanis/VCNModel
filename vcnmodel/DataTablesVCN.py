@@ -277,7 +277,7 @@ class DataTables:
         self.analyze_from_table(index.row())
 
     def handleSortIndicatorChanged(self, index, order):
-        print(dir(self.table.model()))
+        # print(dir(self.table.model()))
         pass
         # if index != 0:
   #           self.table.horizontalHeader().setSortIndicator(

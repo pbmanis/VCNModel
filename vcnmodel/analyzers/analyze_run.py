@@ -13,7 +13,7 @@ from lmfit import Model
 from lmfit.models import ExponentialModel
 
 
-verbose = True
+verbose = False
 
 class AnalyzeRun():
     def __init__(self, results):

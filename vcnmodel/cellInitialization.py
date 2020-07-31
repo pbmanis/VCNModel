@@ -61,7 +61,7 @@ def init_model(
         cell.hr.h.finitialize(
             vinit
         )  # this is sufficient for initialization in voltage clamp
-        cprint("c", "    Initializging for Vclamp")
+        cprint("c", "    Initializing for Vclamp")
         return True
 
 
