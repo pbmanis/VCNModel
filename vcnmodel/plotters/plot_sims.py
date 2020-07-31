@@ -480,28 +480,42 @@ def plot_traces(
     if protocol in ["IV"]:
         toptitle += f"\nRin={RMA['Rin']:.1f} M$\Omega$  $\\tau_m$={RMA['taum']:.2f} ms"
 
-        secax = PLS.create_inset_axes([0.4, 0, 0.4, 0.4], ax)
+
+        secax = PLS.create_inset_axes([0.4, 0, 0.4, 0.4], ax, label=str(ax))
         secax.plot(
-            RM.ivss_cmd * 1e12,
-            RM.ivss_v * 1e3,
+            RM.ivss_cmd_all * 1e12,
+            RM.ivss_v_all * 1e3,
             "ks-",
             markersize=3,
             markerfacecolor="k",
             zorder=10,
             clip_on=False,
         )
-        ltz = np.where(RM.ivss_cmd <= 0)[0]
+
+        ltz = np.where(RM.ivss_cmd_all <= 0.0)[0]
+
         secax.plot(
-            RM.ivss_cmd[ltz] * 1e12,
-            RM.ivpk_v[ltz] * 1e3,
+            RM.ivpk_cmd_all[ltz] * 1e12,
+            RM.ivpk_v_all[ltz] * 1e3,
             "ko-",
             markersize=3,
             markerfacecolor="w",
             zorder=10,
             clip_on=False,
         )
+        secax.plot(
+            RM.ivss_cmd[-1]*1e12,
+            RM.ivss_v[-1]*1e3,
+            'ro',
+            markersize=3,
+            markerfacecolor='r',
+            zorder=100,
+            clip_on=False,
+        )
         PH.crossAxes(
-            secax, xyzero=[0.0, -60.0], limits=[-1.0 * 1e3, -150, 1.0 * 1e3, -25.0]
+            secax, xyzero=[0.0, -60.0],
+            limits = [np.min(RM.ivss_cmd_all)*1e12, -120, np.max(RM.ivss_cmd_all)*1e12, -25.]#
+            #limits = [-1.0 * 1e3, -120, 2.0 * 1e3, -25.0]
         )
         PH.talbotTicks(
             secax,
@@ -696,7 +710,7 @@ def analyzeVC(
     cm1 = tau1/R1w
     cmw = ((a0*tau0/R0w) + (a1*tau1/R1w))/(a0+a1) # tauw/(R0w + R1w)
     print('By Coeffs: ')
-    print(f"RCoeff0 = {R0*1e-6:.2f} MOhm, tau0: {tau*1e3:.3f} ms,  cm0: {cm*1e12:.1f} pF")
+    print(f"RCoeff0 = {R0w*1e-6:.2f} MOhm, tau0: {tau0*1e3:.3f} ms,  cm0: {cm*1e12:.1f} pF")
     print(f"RCoeff1 = {R1w*1e-6:.2f} MOhm, tau1: {tau1*1e3:.3f} ms,  cm1: {cm1*1e12:.1f} pF")
     print(f"Weighted: Rw={(R0w+R1w)*1e-6:.2f} tauw: {tauw*1e3:.3f} ms, Weighted cm: {cmw*1e12:.1f} pF")
     tfit2 = AR.time_base[t0:t0+pts]-AR.time_base[t0]
@@ -1311,6 +1325,7 @@ def plot_tuning(args, filename=None, filenames=None):
     PD = PData()
     changetimestamp = get_changetimestamp()
     channel = "nacncoop"
+    channel = "klt"
     cols = 3
     rows = 2
     sizex = cols * 3
@@ -1333,20 +1348,23 @@ def plot_tuning(args, filename=None, filenames=None):
     print("...")
 
     truefile = {"Passive": "passive", "Canonical": "normal", "Active": "active"}
-    for ic, chdist in enumerate(["Passive", "Canonical", "Active"]):
+    
+    for ic, chdist in enumerate(truefile.keys()):
         args.dendritemode = truefile[chdist]
         if filename is None:
-            fna = select_filenames(filenames, args)
+            # fna = select_filenames(filenames, args)
+            fna = filenames
             print("\n plot data from: ".join([str(f) for f in fna]))
         else:
             fna = filename  # just one file
         fna = [Path(fn) for fn in fna if str(fn).find("ASA=") < 0]
-        print('fns: ', fna)
-        for k, fn in enumerate(fna):
-            plot_traces(P.axarr[0, k], fn, PD, args.protocol)
 
-        P.axarr[0, ic].text(50, 1.0, chdist, horizontalalignment="center")
-        basen = fn.parts[-4]
+        for k, fn in enumerate(fna):
+            if str(fn).find(args.dendritemode.lower()) > 0:
+                plot_traces(P.axarr[0, ic], fn, PD, args.protocol)
+
+                P.axarr[0, ic].text(50, 1.0, chdist, horizontalalignment="center")
+        basen = fn.parts[-5]
 
         pngfile = Path(PD.renderpath, f"{basen:s}_{channel:s}_{truefile[chdist]:s}.png")
         # print(pngfile)
@@ -1491,7 +1509,7 @@ def plot_AN_response(P, fn, PD, protocol):
     all_an_st = np.sort(np.array(all_an_st))/1000.
     # the histogram of the data
     hbins = np.arange(0., np.max(AR.time/1000.), 1e-3)  # 0.5 msec bins
-    print(all_bu_st.shape, np.max(all_bu_st), all_an_st.shape, np.max(all_an_st), np.max(hbins))
+    # print(all_bu_st.shape, np.max(all_bu_st), all_an_st.shape, np.max(all_an_st), np.max(hbins))
     if len(all_bu_st) > 0:
         P.axdict["B"].hist(all_bu_st, bins=hbins, facecolor="k", alpha=1)
         # n, bins, patch = mpl.hist(all_bu_st, hbins, facecolor="blue", alpha=1)
@@ -1753,67 +1771,83 @@ def cmdline_display(args, PD):
         PD.soma_inflate = False
         PD.dend_inflate = False
         stitle = "notScaled"
+    
+    if args.analysis == "tuning":
+        
+        fng = []
+        for ig, gbc in enumerate(PD.gradeA):
+            basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
+            pgbc = f"VCN_c{gbc:02d}"
+            allf = list(Path(basefn).glob('*'))
+            allfiles = sorted([f for f in allf if f.is_dir()])
+            # print(allfiles)
+            fnlast3 = allfiles[-3:]
+        for f in fnlast3:
+            fn = list(f.glob('*'))
+            fng.append(fn[0])
+        P = plot_tuning(args, filename=None, filenames=fng)
+        
+    else:
+        for ig, gbc in enumerate(PD.gradeA):
+            basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
+            pgbc = f"VCN_c{gbc:02d}"
+            if args.protocol == "IV":
+                name_start = f"IV_Result_VCN_c{gbc:02d}_inp=self_{modelName:s}*.p"
+                args.experiment = None
+            elif args.protocol == "AN":
+                name_start = f"AN_Result_VCN_c{gbc:02d}_*.p"
 
-    for ig, gbc in enumerate(PD.gradeA):
-        basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
-        pgbc = f"VCN_c{gbc:02d}"
-        if args.protocol == "IV":
-            name_start = f"IV_Result_VCN_c{gbc:02d}_inp=self_{modelName:s}*.p"
-            args.experiment = None
-        elif args.protocol == "AN":
-            name_start = f"AN_Result_VCN_c{gbc:02d}_*.p"
+            print(f"Searching for:  {str(Path(basefn, name_start)):s}")
+            fng = list(Path(basefn).glob(name_start))
+            print(f"Found: {len(fng):d} files.")
+            """ cull list by experiment and db """
 
-        print(f"Searching for:  {str(Path(basefn, name_start)):s}")
-        fng = list(Path(basefn).glob(name_start))
-        print(f"Found: {len(fng):d} files.")
-        """ cull list by experiment and db """
+            if args.check:
+                return
+            print("\nConditions: soma= ", PD.soma_inflate, "  dend=", PD.dend_inflate)
 
-        if args.check:
-            return
-        print("\nConditions: soma= ", PD.soma_inflate, "  dend=", PD.dend_inflate)
+            if args.analysis in ["traces", "revcorr"]:
+                fng = select_filenames(fng, args)
+                times = np.zeros(len(fng))
+                for i, f in enumerate(fng):
+                    times[i] = f.stat().st_mtime
+                # pick most recent file = this should be better managed (master file information)
 
-        if args.analysis in ["traces", "revcorr"]:
-            fng = select_filenames(fng, args)
-            times = np.zeros(len(fng))
-            for i, f in enumerate(fng):
-                times[i] = f.stat().st_mtime
-            # pick most recent file = this should be better managed (master file information)
+                ix = np.argmax(times)
+                fng = [fng[ix]]
 
-            ix = np.argmax(times)
-            fng = [fng[ix]]
-
-            if ig == 0:
-                P = PH.regular_grid(
-                    rows,
-                    cols,
-                    order="rowsfirst",
-                    figsize=(sizex, sizey),
-                    panel_labels=plabels,
-                    labelposition=(0.05, 0.95),
-                    margins={
-                        "leftmargin": 0.1,
-                        "rightmargin": 0.01,
-                        "topmargin": 0.15,
-                        "bottommargin": 0.15,
-                    },
-                )
-
-            ax = P.axdict[pgbc]
-            for fn in fng:
-                if args.analysis == "traces":
-                    plot_traces(ax, fn, PD, args.protocol)
-                elif args.analysis == "revcorr":
-                    res = compute_revcorr(
-                        ax, pgbc, fn, PD, args.protocol
+                if ig == 0:
+                    P = PH.regular_grid(
+                        rows,
+                        cols,
+                        order="rowsfirst",
+                        figsize=(sizex, sizey),
+                        panel_labels=plabels,
+                        labelposition=(0.05, 0.95),
+                        margins={
+                            "leftmargin": 0.1,
+                            "rightmargin": 0.01,
+                            "topmargin": 0.15,
+                            "bottommargin": 0.15,
+                        },
                     )
-                    if res is None:
-                        return
-        elif args.analysis == "singles":
-            fna = select_filenames(fng, args)
-            print(fna)
 
-        elif args.analysis == "tuning":
-            P = plot_tuning(args, filename=None, filenames=fng)
+                ax = P.axdict[pgbc]
+                for fn in fng:
+                    if args.analysis == "traces":
+                        plot_traces(ax, fn, PD, args.protocol)
+                    elif args.analysis == "revcorr":
+                        res = compute_revcorr(
+                            ax, pgbc, fn, PD, args.protocol
+                        )
+                        if res is None:
+                            return
+            elif args.analysis == "singles":
+                fna = select_filenames(fng, args)
+                print(fna)
+
+            elif args.analysis == "tuning":
+                P = plot_tuning(args, filename=None, filenames=fng)
     if chan == "_":
         chan = "nav11"
     else:
@@ -1867,6 +1901,9 @@ def getCommands():
     cmdline_display(args, PD)
     return (args, PD)
 
+def main():
+    args, PD = getCommands()
+    
 
 if __name__ == "__main__":
-    getCommands()
+    main()
