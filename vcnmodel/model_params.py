@@ -121,6 +121,7 @@ class Params:
     usedefaulthoc: bool = False
     cellType: str = CmdChoices.cellChoices[0]
     modelName: str = CmdChoices.modelNameChoices[0]
+    dataTable: str = ""
     dendriteMode: str = CmdChoices.dendriteChoices[0]
     modelType: str = CmdChoices.modelTypeChoices[0]
     SGCmodelType: str = CmdChoices.SGCmodelChoices[0]
@@ -351,6 +352,14 @@ def build_parser():
         default="normal",
         choices=CmdChoices.dendriteChoices,
         help="Choose dendrite table (normal, active, passive)",
+    )
+    parser.add_argument(
+        "--datatable",
+        type=str,
+        dest="dataTable",
+        action="store",
+        default="",
+        help="Specify the data table for this run",
     )
     parser.add_argument(
         "--sgcmodel",

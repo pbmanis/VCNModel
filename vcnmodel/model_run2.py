@@ -629,7 +629,11 @@ class ModelRun:
             dmodes = {"normal": "", "passive": "_pasdend", "active": "_actdend", "allpassive": "_allpassive"}
             changes = None
             nach = None  # uses default
-            table_name = f"vcnmodel.model_data.data_{self.Params.modelName:s}{dmodes[self.Params.dendriteMode]:s}"
+            if self.Params.dataTable is "":
+                table_name = f"vcnmodel.model_data.data_{self.Params.modelName:s}{dmodes[self.Params.dendriteMode]:s}"
+            else:
+                table_name = f"vcnmodel.model_data.{self.Params.dataTable:s}"
+                cprint('r', f"**** USING SPECIFIED DATA TABLE: {str(table_name):s}")
             name_parts = self.Params.modelName.split('_')
             if len(name_parts) > 1:
                 nach = name_parts[1]
