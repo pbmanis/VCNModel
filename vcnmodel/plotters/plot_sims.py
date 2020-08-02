@@ -762,7 +762,7 @@ def make_patch_spines_invisible(axn):
 def plot_revcorr2(ax: object, PD: dataclass, RCP: dataclass, RCD: dataclass):
     seaborn.set_style("ticks")
     # secax = twinax(P.figure_handle, ax, pos=maxwin)
-    secax = PLS.create_inset_axes([0, 0.5, 1, 0.5], ax)
+    secax = PLS.create_inset_axes([0, 0.5, 1, 0.5], ax, label=str(ax))
     PH.noaxes(secax, "xy")
 
     secax.set_facecolor((1, 1, 1, 0))
@@ -1282,7 +1282,7 @@ def compute_revcorr(
     # sax['B'].plot(np.arange(RCP.ninputs)+1, participation/nspikes, 'gx')
     sax["B"].plot(RCD.sites, participation / nspikes, "gx")
 
-    axcbar = PLS.create_inset_axes([0.8, 0.05, 0.05, 0.5], sax["C"])
+    axcbar = PLS.create_inset_axes([0.8, 0.05, 0.05, 0.5], sax["C"], label=str(sax["C"]))
     norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
     ticks = np.linspace(vmin, vmax, num=4, endpoint=True)
     cm_sns = mpl.cm.get_cmap(colormap)
