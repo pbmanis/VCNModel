@@ -634,6 +634,13 @@ class ModelRun:
             else:
                 table_name = f"vcnmodel.model_data.{self.Params.dataTable:s}"
                 cprint('r', f"**** USING SPECIFIED DATA TABLE: {str(table_name):s}")
+                knownmodes = ["normal", "actdend", "pasdend"]
+                for mode in knownmodes:
+                    if table_name.find(mode) > 0:
+                        self.Params.dendriteMode = mode
+                    else:
+                        self.Params.dendriteMode = "dend mode unknown"
+                        exit()
             name_parts = self.Params.modelName.split('_')
             if len(name_parts) > 1:
                 nach = name_parts[1]
