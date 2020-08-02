@@ -1125,7 +1125,6 @@ class ModelRun:
         )
         cellInit.test_initial_conditions(
             self.post_cell,
-            mode=self.RunInfo.postMode,
             filename=self.Params.initStateFile,
             electrode_site=self.R.electrode_site,
         )
@@ -1257,7 +1256,6 @@ class ModelRun:
         )
         cellInit.test_initial_conditions(
             self.post_cell,
-            mode=self.RunInfo.postMode,
             filename=self.Params.initStateFile,
             electrode_site=self.R.electrode_site,
         )
@@ -1598,7 +1596,6 @@ class ModelRun:
             )
             cellInit.test_initial_conditions(
                 self.post_cell,
-                mode=self.RunInfo.postMode,
                 filename=self.Params.initStateFile,
                 electrode_site=self.electrode_site,
             )
@@ -2363,7 +2360,7 @@ class ModelRun:
         self.post_cell.hr.h.tstop = self.RunInfo.run_duration * 1000.0
         self.post_cell.hr.h.t = 0.0
         self.post_cell.hr.h.batch_save()  # save nothing
-        self.post_cell.hr.h.dt = self.Params.dt
+        self.post_cell.hr.h.dt = self.Params.dtIC
         self.post_cell.hr.h.batch_run(
             self.post_cell.hr.h.tstop, self.post_cell.hr.h.dt, "an.dat"
         )
