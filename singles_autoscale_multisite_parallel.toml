@@ -1,9 +1,9 @@
 # Configuration for basic scaled inflation
 # Note that these are the variable names, not the command parser flags
 # 6/30/2020
-modelName='XM13_nacncoop'  # decoration data table in
+modelName='XM13A_nacncoop'  # decoration data table in
 fullhocfile=true  # use "full" hoc file
-soma_autoinflate=true  # inflat the soma according to the excel table (see 'wheres_my_data.toml"")
+soma_autoinflate=true  # inflate the soma according to the excel table (see 'wheres_my_data.toml')
 dendrite_autoinflate=true  # inflate the dendrite by the table
 ASA_fromsoma=false  # inflate the asa by the same amount as the soma
 dendrite_fromsoma=false  # if true, inflate the dendrite the same as the soma
