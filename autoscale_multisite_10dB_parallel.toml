@@ -1,7 +1,6 @@
-# Configuration for basic scaled inflation
+#  Configuration for basic scaled inflation
 # Note that these are the variable names, not the command parser flags
-# 6/30/2020
-modelName='XM13_nacncoop'  # decoration data table in
+modelName='XM13_nacncoop'  # decoration data table in 
 fullhocfile=true  # use "full" hoc file
 soma_autoinflate=true  # inflat the soma according to the excel table (see 'wheres_my_data.toml"")
 dendrite_autoinflate=true  # inflate the dendrite by the table
@@ -11,13 +10,13 @@ save_all_sections=false #
 SGCmodelType='cochlea'  # which sgc model to run
 SRType='HS'
 ANSynapseType='multisite'
-dB=50.0
+dB=10.0
 F0=16000.0
 pip_duration=1.0
 pip_start=0.2  # give model time to settle down
-pip_offduration=0.1
+pip_offduration=0.2
 soundtype="tonepip"  # or "tonepip" or "noise" or "SAM"
-fmod=100.0  # fmod and dmod are not applited for tonepip
+fmod=100.0
 dmod=0.0
 seed=9
 Parallel=true

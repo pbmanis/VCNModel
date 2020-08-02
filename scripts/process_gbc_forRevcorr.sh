@@ -1,20 +1,20 @@
 #!/bin/bash
 
-CELLNAMES="24 29" # "02 05 06 09 10 11 13 17 30"
+CELLNAMES="11" # "02 05 06 09 10 11 13 17 30"
 #CONFIG="noscale.toml" #"autoscale.toml"
-CONFIG="singles_autoscale_multisite_noparallel.toml"
-RUNTEXT="running the AN Single protocols"
+CONFIG="autoscale_multisite_10dB_parallel.toml"
+RUNTEXT="running the AN PSTH for Revcorr"
 echo $RUNTEXT
 for f in $CELLNAMES
 do
     echo $f
     # python vcnmodel/model_run2.py VCN_c$f  -F -P initAN --configfile $CONFIG
-    python vcnmodel/model_run2.py VCN_c$f  -F -P runANSingles -r 25 --configfile $CONFIG
+    python vcnmodel/model_run2.py VCN_c$f -F -P runANPSTH -r 100 --configfile $CONFIG
 done
 
 
 wait
-echo AN Singles complete
+echo AN PSTH for Revcorr complete
 # for f in $FILES
 # do
 #     echo "Cell: <$f>"

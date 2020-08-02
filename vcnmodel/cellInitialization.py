@@ -19,7 +19,7 @@ you to use saved states to continue previous runs.
 
 def init_model(
     cell: object,
-    mode: str = "iclamp",
+    mode: str = "CC",
     vinit: float = -65.0,
     restore_from_file: bool = False,
     filename: Path = None,
@@ -33,8 +33,8 @@ def init_model(
     Params
     ------
     cell : cell, including hoc_reader file object (as .hr)
-    mode : str (default: iclamp)
-        mode string ('iclamp', 'vc', 'vclamp'). 
+    mode : str (default: 'CC')
+        mode string ('CC', 'VC', 'gifnoise'). 
     vinit : float
         initial voltage to start initialization, in mV. Default -65 mV
     restore_from_file : boolean
@@ -55,14 +55,15 @@ def init_model(
     
     """
     # print('initmodel')
-    if mode in ["vc", "vclamp"]:
+    if mode not in ['CC', 'VC']:
+        raise ValueError('Mode must be "VC" or "CC". Got %s' % mode)
+    if mode in ["VC"]:
         cell.hr.h.finitialize(
             vinit
         )  # this is sufficient for initialization in voltage clamp
-        cprint("c", "    Initializging for Vclamp")
+        cprint("c", "    Initializing for Vclamp")
         return True
-    if mode not in ["iclamp"]:
-        raise ValueError('Mode must be "vc", "vclamp" or "iclamp"; got %s' % mode)
+
 
     # otherwise we are in current clamp
     # get state if one is specified
@@ -121,6 +122,7 @@ def printCellInfo(cell: object) -> None:
 def get_initial_condition_state(
     cell:object,
     filename:Path,
+    mode: str = "CC",
     tdur:float=2000.0, 
     electrode_site:object=None, 
     reinit:bool=False, 
@@ -153,12 +155,17 @@ def get_initial_condition_state(
     if filename is None:
         raise ValueError("cellInitialization:get_initial_condition_state: Filename must be specified")
 
-    cell.cell_initialize()
+    if mode == "VC":
+        cell.vm0 = -65.0  # 
+        cell.i_currents(cell.vm0)
+    else:
+        cell.cell_initialize()
+        
     # first to an initialization to get close
     cprint("c", f"\nGetting initial_condition_state: file={str(filename):s}")
     print("        starting t = %8.2f" % cell.hr.h.t)
     init_model(
-        cell, restore_from_file=False, electrode_site=electrode_site, reinit=reinit
+        cell, mode=mode, restore_from_file=False, electrode_site=electrode_site, reinit=reinit
     )
     cell.hr.h.tstop = tdur
     print("        running for %8.2f ms at %4.1f" % (tdur, cell.hr.h.celsius))

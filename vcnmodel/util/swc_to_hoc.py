@@ -57,7 +57,7 @@ sbem_sectype = {
     4: 'Apical_Dendrite',
     5: 'Custom',
     6: 'Unspecified_Neurites',
-    7: 'Glia_Processe',s
+    7: 'Glia_Processe',
     8: 'Blank',
     9: 'Blank',
     10: 'Axon_Hillock',
@@ -81,7 +81,7 @@ renaming = {'basal_dendrite': 'dendrite',
             'Proximal_Dendrite': 'dendrite',
             'distal_dendrite': 'dendrite',
             'Distal_Dendrite': 'dendrite',
-            'Dendritic_Swelling', 'dendrite',
+            'Dendritic_Swelling': 'dendrite',
             'hub': 'dendrite',
             'Dendritic_Hub': 'dendrite',
 

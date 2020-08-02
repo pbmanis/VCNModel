@@ -46,6 +46,15 @@ class STTC():
         print('npts: ', npts)
         self.time = np.arange(npts)*self.sample_rate
     
+    def calc_ccf_sttc(self, corrwindow=[-5., 1.], binwidth=0.1):
+        deltaT = np.arange(corrwindow[0], corrwindow[1], binwidth)
+        self.ccf = np.zeros_like(deltaT)
+        self.original_st2 = self.st2.copy()
+        for i, t in enumerate(deltaT):
+            self.st2 = self.original_st2 + t
+            self.ccf[i] = self.calc_sttc()
+        return self.ccf
+        
     def calc_sttc(self, tw=None):
         
         if tw is None:
@@ -86,6 +95,7 @@ class STTC():
     
     def proportion(self, st, tile):
         ist = [int(sti/self.sample_rate) for sti in st]
+        print(len(tile), self.sample_rate)
         p = np.sum(tile[ist])/len(st)
         return p
 
@@ -120,6 +130,7 @@ class STTC():
         print('# of spikes in spike train 1: {0:d}, in spike train 2: {1:d} '.format(st1.shape[0], st2.shape[0]))
         print('STTC value: {0:.3f} '.format(sttc))
         self.plot_sttc(st1, st2)
+
     
     def plot_sttc(self, st1, st2):
         mpl.figure()
@@ -143,16 +154,16 @@ class STTC():
         mpl.plot(self.time, ta*0.9, 'b-')
         mpl.plot(self.time, tb*0.95, 'r-')
         
-        mpl.ylim([0., 2.])
-        #mpl.show()
+        # mpl.ylim([0., 2.])
+        # #mpl.show()
     
 
 if __name__ == '__main__':
     
     S = STTC(seed=0)
-    S.tests(distribution='regular', pdelete=0.3, independent=False, dither=2.0,
+    S.tests(distribution='regular', pdelete=0.0, independent=False, dither=.0,
         tilewindow=2.0)
-    
+    mpl.show()
     
         
         

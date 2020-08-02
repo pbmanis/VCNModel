@@ -2,25 +2,22 @@ import time
 from pathlib import Path
 import argparse
 from dataclasses import dataclass, field
-from typing import Union, Dict, List
-import dataclasses
-from collections import OrderedDict
+from typing import Union
 import numpy as np
 import json
 import toml
-from pprint import PrettyPrinter
 
 
 display_orient_cells = {
-        "VCN_c02": [140.,    0.0, -144.0],
-        "VCN_c06": [140.,  -59.0,  -12.0],
-        "VCN_c05": [140.,  -46.0,  121.0],
-        "VCN_c09": [140.,  -74.0,   18.0],
-        "VCN_c11": [140.,   -2.0, -181.0],
-        "VCN_c10": [140.,    5.0,  -35.0],
-        "VCN_c13": [140.,  -22.0,  344.0],
-        "VCN_c17": [140., -158.0,   39.0],
-        "VCN_c30": [140., -134.0, -181.0],
+    "VCN_c02": [140.0, 0.0, -144.0],
+    "VCN_c06": [140.0, -59.0, -12.0],
+    "VCN_c05": [140.0, -46.0, 121.0],
+    "VCN_c09": [140.0, -74.0, 18.0],
+    "VCN_c11": [140.0, -2.0, -181.0],
+    "VCN_c10": [140.0, 5.0, -35.0],
+    "VCN_c13": [140.0, -22.0, 344.0],
+    "VCN_c17": [140.0, -158.0, 39.0],
+    "VCN_c30": [140.0, -134.0, -181.0],
 }
 """
 Define data structures used for:
@@ -38,6 +35,7 @@ class CmdChoices:
     modelNameChoices = [
         "XM13",
         "XM13_nacncoop",
+        "XM13A_nacncoop",
         "XM13_nacn",
         "XM13_nabu",
         "RM03",
@@ -51,7 +49,9 @@ class CmdChoices:
     SGCmodelChoices = [
         "Zilany",
         "cochlea",
-    ]  # cochlea is python model of Zilany data, no matlab, JIT computation; Zilany model creates matlab instance for every run.
+    ]
+    # cochlea is python model of Zilany data, no matlab, JIT computation;
+    # Zilany model creates matlab instance for every run.
     cmmrModeChoices = ["CM", "CD", "REF"]  # comodulated, codeviant, reference
     SRChoices = [
         "LS",
@@ -63,12 +63,15 @@ class CmdChoices:
         "normal",
         "passive",
         "active",
+        "allpassive"
     ]
     protocolChoices = [
         "initIV",
         "testIV",
         "runIV",
         "initandrunIV",
+        "initVC",
+        "runVC",
         "initAN",
         "runANPSTH",
         "runANIO",
@@ -77,15 +80,23 @@ class CmdChoices:
     ]
     soundChoices = ["tonepip", "noise", "stationaryNoise", "SAM", "CMMR"]
     speciesChoices = ["mouse", "guineapig"]
-    SpirouChoices = ["all", "max=mean", "all=mean", "removelargest", "largestonly",
-        "twolargest", "threelargest", "fourlargest"]
+    SpirouChoices = [
+        "all",
+        "max=mean",
+        "all=mean",
+        "removelargest",
+        "largestonly",
+        "twolargest",
+        "threelargest",
+        "fourlargest",
+    ]
     ANSynapseChoices = ["simple", "multisite"]
 
     srname = ["LS", "MS", "HS"]  # runs 0-2, not starting at 0
 
-    displayModeChoices = ['None', 'vm', 'sec-type', "mechanism"]
-    displayStyleChoices = ["cylinders", "graph", "volume", "surface",]
-    channelChoices = ['klt', 'kht','ihvcn', 'nacncoop', 'nacn', 'najsr']    
+    displayModeChoices = ["None", "vm", "sec-type", "mechanism"]
+    displayStyleChoices = ["cylinders", "graph", "volume", "surface"]
+    channelChoices = ["klt", "kht", "ihvcn", "nacncoop", "nacn", "najsr"]
 
 
 # set up the Params data structure. This should hold everything that might be modified
@@ -110,17 +121,19 @@ class Params:
     usedefaulthoc: bool = False
     cellType: str = CmdChoices.cellChoices[0]
     modelName: str = CmdChoices.modelNameChoices[0]
-    dendriteMode: str=CmdChoices.dendriteChoices[0]
+    dataTable: str = ""
+    dendriteMode: str = CmdChoices.dendriteChoices[0]
     modelType: str = CmdChoices.modelTypeChoices[0]
     SGCmodelType: str = CmdChoices.SGCmodelChoices[0]
     species: str = CmdChoices.speciesChoices[0]
     displayStyle: str = CmdChoices.displayStyleChoices[0]
     displayMechanism: str = CmdChoices.channelChoices[0]
     displayMode: str = CmdChoices.displayModeChoices[0]
-    
+
     # cell specific parameters related to geometry
     fullhocfile: bool = False  # use the "full" hoc file (cellname_Full.hoc)
-    dt: float = 0.025
+    dtIC: float = 0.025 # ok.
+    dtVC: float = 0.005  # voltage clamp; need shorter steop size for transient measure
     celsius: float = 37  # set the temperature.
     Ra: float = 150.0  # ohm.cm
     soma_inflation: float = 1.0  # factor to multiply soma section areas by
@@ -134,11 +147,10 @@ class Params:
     # spontaneous rate (group, in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
     srnames = ["LS", "MS", "HS"]  # runs 0-2, not starting at 0    # same as CmcChoices
     SRType: str = CmdChoices.SRChoices[2]
-    inputPattern:  Union[
-        str,
-        None,
+    inputPattern: Union[
+        str, None,
     ] = None  # ID of cellinput pattern (same as cellID): for substitute input patterns.
-    synno:  Union[int, None] = None  # for selection of single synaptic inputs
+    synno: Union[int, None] = None  # for selection of single synaptic inputs
 
     lastfile: Union[Path, str, None] = None
 
@@ -153,11 +165,12 @@ class Params:
     Parallel: bool = True
     verbose: bool = False
     save_all_sections: bool = False
-    commandline: str = ""  # store command line on run
+    commandline: str = ""  # store command line on run, all parser args
+    commands: str = ""  # store command line on run, the actual given commands
     checkcommand: bool = False
     configfile: Union[str, None] = None
-    tagstring:  Union[str, None] = None
-    initialization_time: float = 50.
+    tagstring: Union[str, None] = None
+    initialization_time: float = 50.0
 
 
 # claas ModelPar:
@@ -182,16 +195,31 @@ class Params:
 
 # runinfo parameters are filled by generate_run at the initialization of a single trace run
 def definj():
-    return{
-        "pulse": np.linspace(-1.0, 2.00, 16, endpoint=True)
-    }
+    return {"pulse": np.linspace(-1.0, 2.00, 16, endpoint=True)}
+
+
+def defVCsteps():
+    """
+    Steps are relative to HOLDING, which is typicall -60 mV
+    """
+    start = -20.
+    stop = 120.
+    step = 10.
+    npts = int((stop-start)/step)+1
+    return {"pulse": np.linspace(start, stop, npts, endpoint=True)}
+
 
 def defstarts():
     return [0.1]
+
+
 def defemptydict():
     return {}
+
+
 def defemptylist():
     return []
+
 
 @dataclass
 class RunInfo:
@@ -203,41 +231,44 @@ class RunInfo:
     ]  # testIV is default because it is fast and should be run often
     runName: str = "Run"
     manipulation: str = "Canonical"
-    preMode: str = "cc"
-    postMode: str = "cc"
+    preMode: str = "CC"
+    postMode: str = "CC"
     TargetCellType: str = ""  # celltype, # valid are "Bushy", "Stellate", "MNTB"
-    electrodeSection:Union[object, str, None] = None  # electrodeSection
-    electrodeSectionName:str = None
-    dendriticElectrodeSection:Union[object, str, None] = None  # dendriticElectrodeSection,
-    dendriticSectionDistance:float = 100.0  # microns.
+    electrodeSection: Union[object, str, None] = None  # electrodeSection
+    electrodeSectionName: str = None
+    dendriticElectrodeSection: Union[
+        object, str, None
+    ] = None  # dendriticElectrodeSection,
+    dendriticSectionDistance: float = 100.0  # microns.
 
     nReps: int = 1
-    seeds: list = field(default_factory = defemptylist)
+    seeds: list = field(default_factory=defemptylist)
     # current injection parameters
     sequence: str = ""  # sequence for run - may be string [start, stop, step]
     nStim: int = 1
     stimFreq: float = 200.0  # hz
-    stimInj: dict = field(default_factory = definj)
-      # iRange,  # nA, a list of test levels for current clamp
+    stimInj: dict = field(default_factory=definj)
+    stimVC: dict = field(default_factory=defVCsteps)
+    # iRange,  # nA, a list of test levels for current clamp
     stimDur: float = 100.0  # msec
     stimDelay: float = 5.0  # msec
     stimPost: float = 3.0  # msec
     vnStim: float = 1
     vstimFreq: float = 200.0  # hz
     vstimInj: float = 50  # mV amplitude of step (from holding)
-    vstimDur: float = 50.0  # msec
-    vstimDelay: float = 2.0  # msec
-    vstimPost: float = 3.0  # msec
-    vstimHolding: float = -60  # holding, mV
+    vstimDur: float = 100.0  # msec
+    vstimDelay: float = 5.0  # msec
+    vstimPost: float = 25.0  # msec
+    vstimHolding: float = -65.0  # holding, mV
 
     # sound parameters
     initialization_time: float = 50.0  # nominal time to let system settle, in msec
     run_duration: float = 0.35  # in sec
     soundtype: str = "SAM"  # or 'tonepip'
     pip_duration: float = 0.1  # duration in seconds for tone pip
-    pip_start: list = field(default_factory = defstarts)  # start (delay to start of pip)
+    pip_start: list = field(default_factory=defstarts)  # start (delay to start of pip)
     pip_offduration: float = 0.05  # time after pip ends to keep running
-    
+
     Fs: float = 100e3  # cochlea/zilany model rate
     F0: float = 16000.0  # stimulus frequency
     dB: float = 30.0  # in SPL
@@ -261,7 +292,9 @@ class RunInfo:
     inFile: Union[str, Path, None] = None
     # 'ANFiles/AN10000Hz.txt', # if this is not None, then we will use these spike times...
     inFileRep: int = 1  # which rep to use (or array of reps)
-    spikeTimeList: dict = field(default_factory = defemptydict)  # Dictionary of spike times
+    spikeTimeList: dict = field(
+        default_factory=defemptydict
+    )  # Dictionary of spike times
     v_init: float = -61.0  # from Rothman type II model - not appropriate in all cases
     useSaveState: bool = True  # useSavedState,  # use the saved state.
 
@@ -314,11 +347,19 @@ def build_parser():
         help="Define the model type (default: XM13)",
     )
     parser.add_argument(
-        '--dendritemode',
+        "--dendritemode",
         dest="dendriteMode",
         default="normal",
         choices=CmdChoices.dendriteChoices,
         help="Choose dendrite table (normal, active, passive)",
+    )
+    parser.add_argument(
+        "--datatable",
+        type=str,
+        dest="dataTable",
+        action="store",
+        default="",
+        help="Specify the data table for this run",
     )
     parser.add_argument(
         "--sgcmodel",
@@ -365,32 +406,31 @@ def build_parser():
         "--style",
         dest="displayStyle",
         default=CmdChoices.displayStyleChoices[0],
-        choices=CmdChoices.displayStyleChoices, 
-        help="Render cell with neuronvis with style: {str(CmdChoices.displayStyleChoices):s}"
+        choices=CmdChoices.displayStyleChoices,
+        help="Render cell with neuronvis with style: {str(CmdChoices.displayStyleChoices):s}",
     )
     parser.add_argument(
         "--mechanism",
         dest="displayMechanism",
-        default= CmdChoices.channelChoices[0],
-        help=f"Render cell with neuronvis to view channel mechanism decorations for: {str(CmdChoices.channelChoices):s}"
+        default=CmdChoices.channelChoices[0],
+        help=f"Render channel mechanisms: {str(CmdChoices.channelChoices):s}",
     )
     parser.add_argument(
         "--displaymode",
         dest="displayMode",
         default=CmdChoices.displayModeChoices[0],
         choices=CmdChoices.displayModeChoices,
-        help=f"Render cell with neuronvis : set mode to one of {str(CmdChoices.displayModeChoices):s}"
+        help=f"Render cell with neuronvis : set mode to one of {str(CmdChoices.displayModeChoices):s}",
     )
-    
+
     parser.add_argument(
         "--displayscale",
         dest="displayscale",
         action="store_true",
         default=False,
-        help="use display scale and orientation from table for generating renderings"
+        help="use display scale and orientation from table for generating renderings",
     )
-    
-    
+
     parser.add_argument(
         "--inputpattern",
         "-i",
@@ -491,7 +531,7 @@ def build_parser():
         default=0.1,
         dest="pip_start",
         help="Set delay to onset of acoustic stimulus",
-    )   
+    )
     parser.add_argument(
         "--pip_duration",
         type=float,
@@ -506,7 +546,7 @@ def build_parser():
         dest="pip_offduration",
         help="Time to continue simulation AFTER sound ends",
     )
-    
+
     parser.add_argument(
         "--fmod",
         type=float,
@@ -592,6 +632,15 @@ def build_parser():
         help="Automatically inflate dendrite area based on soma inflation",
     )
 
+    parser.add_argument(
+        "--hold",
+        type=float,
+        action="store",
+        dest="vstimHolding",
+        default=-80.0,
+        help="Holding voltage in VClamp (mV) (default: -80 mV)",
+    )
+    
     parser.add_argument(
         "--tagstring",
         type=str,
@@ -741,9 +790,13 @@ def getCommands():
                 # print("Getting parser variable: ", c)
                 vargs[c] = config[c]
             else:
-                raise ValueError(f"config variable {c:s} does not match with comand parser variables")
+                raise ValueError(
+                    f"config variable {c:s} does not match with comand parser variables"
+                )
 
         print("   ... All configuration file variables read OK")
+    else:
+        vargs = vars(args)
     # now copy into the Param dataclass
     params = Params()
     runinfo = RunInfo()
@@ -756,8 +809,8 @@ def getCommands():
             exec(f"params.{key:s} = {value!r}")
         elif key in runnames:
             exec(f"runinfo.{key:s} = {value!r}")
-    
-    return(args, params, runinfo)
+
+    return (args, params, runinfo)
 
 
 if __name__ == "__main__":
