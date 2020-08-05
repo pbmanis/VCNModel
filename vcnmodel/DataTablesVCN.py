@@ -12,12 +12,12 @@ import toml
 from pylibrary.plotting import plothelpers as PH
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
-
 from vcnmodel import table_manager as table_manager
-from vcnmodel.plotters import plot_sims as PS
+from vcnmodel.plotters import plot_sims
 from pylibrary.tools import cprint as CP
 import correlation_calcs
 import spikestatistics
+
 
 cprint = CP.cprint
 """
@@ -28,7 +28,7 @@ files/runs and enabling analysis via a GUI
 
 all_modules = [
     table_manager,
-    PS,
+    plot_sims,
     correlation_calcs,
     spikestatistics,
 ]
@@ -42,8 +42,8 @@ cellvalues = [
     11,
     13,
     17,
-    24,
-    29,
+    # 24,
+    # 29,
     30,
 ]
 modeltypes = [
@@ -91,6 +91,8 @@ class TableModel(QtGui.QStandardItemModel):
 
 class DataTables:
     def __init__(self):
+        self.PLT = plot_sims.PlotSims(parent=self)
+        self.QColor = QtGui.QColor # for access in plotsims (pass so we can reload)
         self.modeltypes = {
             "b": "Bushy",
             "t": "TStellate",
@@ -239,7 +241,8 @@ class DataTables:
         self.ptree = ParameterTree()
         self.ptreedata = Parameter.create(name="Models", type="group", children=self.params)
         self.ptree.setParameters(self.ptreedata)
-        self.ptree.setMaximumWidth(250)
+        self.ptree.setMaximumWidth(300)
+        self.ptree.setMinimumWidth(250)
         # build layout for plots and parameters
         self.layout.addWidget(self.ptree, 0, 0, 8, 1)  # Parameter Tree on left
         # add space for the graphs
@@ -247,7 +250,14 @@ class DataTables:
         self.layout2 = pg.GraphicsLayout(border=(0, 0, 0))
         self.view.setCentralItem(self.layout2)
         self.layout.addWidget(self.view, 0, 1, 8, 8)
-        self.layout.addWidget(self.table, 0, 1, 8, 8)  # data plots on right
+        self.layout.addWidget(self.table, 0, 1, 6, 8)  # table
+        
+        self.layout3 = pg.GraphicsLayout(border=(0, 0, 0))
+        self.textbox =QtWidgets.QTextEdit()
+        self.textbox.setReadOnly(True)
+        self.textbox.setText("Text Edit box (RO)")
+        self.layout.addWidget(self.textbox, 6, 1, 2, 8)  # text
+
         self.win.show()
 
         self.table.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
@@ -352,6 +362,7 @@ class DataTables:
                     for module in all_modules:
                         print("reloading: ", module)
                         importlib.reload(module)
+                    self.PLT = plot_sims.PlotSims(parent=self)
                     self.table_manager = table_manager.TableManager(
                         self.table, self.basepath, self.selvals, self.altColors
                     )
@@ -421,7 +432,7 @@ class DataTables:
             panel_labels=None,
         )
 
-        PD = PS.PData()
+        PD = plot_sims.PData()
         sfi = sorted(selected.files)
 
         df = pd.DataFrame(
@@ -429,13 +440,13 @@ class DataTables:
             columns=["cell", "syn#", "nout", "nin", "efficacy"],
         )
         for i in range(nfiles):
-            synno, nout, nin = PS.plot_traces(
+            synno, nout, nin = self.PLT.plot_traces(
                 P.axarr[i, 0], sfi[i], PD, selected.runProtocol
             )
             eff = float(nout) / nin
             df.iloc[i] = [self.cellID, synno, nout, nin, eff]
         u = df.head(n=nfiles)
-        print(df.to_csv(sep="\t"))
+        self.PLT.textappend(df.to_csv(sep="\t"))
         # print(u)
 
         P.figure_handle.show()
@@ -466,9 +477,9 @@ class DataTables:
             panel_labels=None,
         )
 
-        PD = PS.PData()
+        PD = plot_sims.PData()
         sfi = Path(selected.simulation_path, selected.files[0])
-        PS.plot_traces(P.axarr[0, 0], sfi, PD, protocol = selected.runProtocol)
+        self.PLT.plot_traces(P.axarr[0, 0], sfi, PD, protocol = selected.runProtocol)
         P.figure_handle.show()
 
     def analyze_IV(self):
@@ -478,7 +489,7 @@ class DataTables:
         # index_row = self.selected_index_row
         # selected = self.table_manager.table_data[index_row]
         # P = PS.setup_PSTH()
-        # PD = PS.PData()
+        # PD = plot_sims.PData()
         # index_row = self.selected_index_row
         # selected = self.table_manager.table_data[index_row]
         # sfi = Path(selected.simulation_path, selected.files[0])
@@ -492,7 +503,7 @@ class DataTables:
         selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
         if selected is None:
             return
-        P =PS.setup_VC_plots()
+        P = self.PLT.setup_VC_plots()
         # P = PH.regular_grid(
         #     3,
         #     1,
@@ -512,10 +523,10 @@ class DataTables:
         #     panel_labels=None,
         # )
 
-        PD = PS.PData()
+        PD = plot_sims.PData()
         sfi = Path(selected.simulation_path, selected.files[0])
-        PS.plot_traces(P.axarr[0, 0], sfi, PD, protocol = selected.runProtocol)
-        PS.analyzeVC(P.axarr, sfi, PD, protocol = selected.runProtocol)
+        self.PLT.plot_traces(P.axarr[0, 0], sfi, PD, protocol = selected.runProtocol)
+        self.PLT.analyzeVC(P.axarr, sfi, PD, protocol = selected.runProtocol)
         P.figure_handle.show()
 
         
@@ -523,13 +534,13 @@ class DataTables:
         if self.selected_index_row is None:
             return
         P = PS.setup_PSTH()
-        PD = PS.PData()
+        PD = plot_sims.PData()
         index_row = self.selected_index_row
         selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
         if selected is None:
             return
         sfi = Path(selected.simulation_path, selected.files[0])
-        PS.plot_AN_response(P, sfi, PD, selected.runProtocol)
+        self.PLT.plot_AN_response(P, sfi, PD, selected.runProtocol)
         P.figure_handle.show()
 
     def analyze_revcorr(self, revcorrtype):
@@ -539,7 +550,7 @@ class DataTables:
         selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
         if selected is None:
             return
-        PD = PS.PData()
+        PD = plot_sims.PData()
         rows = 1
         cols = 1  # just a single selection
         sizex = 6.0
@@ -562,9 +573,9 @@ class DataTables:
             },
         )
 
-        PD = PS.PData()
+        PD = plot_sims.PData()
         sfi = Path(selected.simulation_path, selected.files[0])
-        res = PS.compute_revcorr(P.axarr[0, 0], pgbc, sfi, PD, selected.runProtocol, revcorrtype)
+        res = self.PLT.compute_revcorr(P.axarr[0, 0], pgbc, sfi, PD, selected.runProtocol, revcorrtype)
 
         P.figure_handle.show()
 

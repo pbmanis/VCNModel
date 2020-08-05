@@ -1714,8 +1714,8 @@ class ModelRun:
                     self.set_synapse(
                         synapse[i], 0.0, 0.0,
                     )
-            cprint("g", "    Revised synapse values:")
-            self.get_synapses(synapse, printvalues=True)
+        cprint("g", "    Revised synapse values:")
+        self.get_synapses(synapse, printvalues=True)
 
         # run using pyqtgraph's parallel support
         if self.Params.Parallel:
@@ -1839,7 +1839,7 @@ class ModelRun:
             Nothing
 
         """
-        print("\n****AN Singles****\n")
+        cprint('c', "\n****AN Singles****\n")
         self.start_time = time.time()
 
         if self.Params.inputPattern is not None:
@@ -1870,47 +1870,28 @@ class ModelRun:
         self.nrn_run_time = 0.0
         self.an_setup_time = 0.0
         # get the gMax's
-        gMax = np.zeros(len(synapse))
-        gMaxNMDA = np.zeros(len(synapse))
+        # gMax = np.zeros(len(synapse))
+        # gMaxNMDA = np.zeros(len(synapse))
 
-        for i, s in enumerate(synapse):
-            for p in s.psd.ampa_psd:
-                gMax[i] = p.gmax
-            for p in s.psd.nmda_psd:
-                gMaxNMDA[i] = p.gmax
-        print("gmaxAmpa: ", gMax)
-        print("gmaxNMDA: ", gMaxNMDA)
+        gMax, ngMax, nSyn = self.get_synapses(synapse)
         result = {}
         for k in range(nSyns):
-            # only enable gsyn on the selected input
-            if exclude:
+            # only enable or disable gsyn on the selected input
+            if exclude:  # disable the one
                 tagname = "ExcludeSyn%03d" % k
-                for i, s in enumerate(synapse):
-                    for p in s.psd.ampa_psd:
-                        if i == k:
-                            p.gmax = 0.0  # disable the one
-                        else:
-                            p.gmax = gMax[i]  # leaving the others set
-            else:
+                for i in range(nSyns):
+                    if i != k:  # set values for all others
+                        self.set_synapse(synapse[k], gMax[k]/nSyn[k], ngMax[k]/nSyn[k])
+                self.set_synapse(synapse[k], 0., 0.) # but turn this one off
+
+            if not exclude:  # enable a single synapse
                 tagname = "Syn%03d" % k
-                for i, s in enumerate(synapse):
-                    for p in s.psd.ampa_psd:
-                        if i != k:
-                            p.gmax = 0.0  # disable all
-                            p.gmax = 0.0
-                        else:
-                            p.gmax = gMax[i]  # except the chosen one
-                    for p in s.psd.nmda_psd:
-                        if i != k:
-                            p.gmax = 0.0  # disable all
-                            p.gmax = 0.0
-                        else:
-                            p.gmax = gMaxNMDA[i]  # except the chosen one
-            print("Syn #%d   synapse gMax: %f " % (k, gMax[k]))
-            # for i, s in enumerate(synapse):
-            #     for p in s.psd.ampa_psd:
-            #         print(f"Synapse: {i:d}  gmax={p.gmax:.6f}")
-            # print("tag: %s" % tagname)
+                self.set_synapse(synapse[k], gMax[k]/nSyn[k], ngMax[k]/nSyn[k]) # set value for selected one
+                for i in range(nSyns):
+                    if i != k:
+                        self.set_synapse(synapse[i], 0., 0.) # but turn all others off
+
+            self.get_synapses(synapse, printvalues=True)
 
             tresults = [None] * nReps
 
@@ -2158,7 +2139,7 @@ class ModelRun:
                 try:
                     srindex = self.Params.srnames.index(self.Params.SRType)
                     print(
-                        f"Retrieved index {srindex:d} with SR type {self.Params.SRType:s}",
+                        f"(configure_cell): Retrieved SR index {srindex:d} with SR type {self.Params.SRType:s}",
                         end=" ",
                     )
                 except ValueError:
