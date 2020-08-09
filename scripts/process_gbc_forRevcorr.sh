@@ -1,17 +1,22 @@
 #!/bin/bash
 
-CELLNAMES="11" # "02 05 06 09 10 11 13 17 30"
+CELLNAMES="02 05 06 09 10 11 13 17 30"
 #CONFIG="noscale.toml" #"autoscale.toml"
 CONFIG="autoscale_multisite_10dB_parallel.toml"
 RUNTEXT="running the AN PSTH for Revcorr"
-echo $RUNTEXT
-for f in $CELLNAMES
-do
-    echo $f
-    # python vcnmodel/model_run2.py VCN_c$f  -F -P initAN --configfile $CONFIG
-    python vcnmodel/model_run2.py VCN_c$f -F -P runANPSTH -r 100 --configfile $CONFIG
-done
+TABLES="data_XM13A_nacncoop_pasdend data_XM13A_nacncoop_actdend"
 
+echo $RUNTEXT
+for t in $TABLES
+    do
+    echo $t
+    for f in $CELLNAMES
+    do
+        echo $f
+        # python vcnmodel/model_run2.py VCN_c$f  -F -P initAN --configfile $CONFIG
+        python vcnmodel/model_run2.py VCN_c$f -F -P runANPSTH -r 25 --configfile $CONFIG --datatable $t
+    done
+done
 
 wait
 echo AN PSTH for Revcorr complete

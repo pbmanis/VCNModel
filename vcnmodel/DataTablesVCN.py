@@ -15,8 +15,8 @@ from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 from vcnmodel import table_manager as table_manager
 from vcnmodel.plotters import plot_sims
 from pylibrary.tools import cprint as CP
-import correlation_calcs
-import spikestatistics
+import vcnmodel.correlation_calcs
+import vcnmodel.spikestatistics
 
 
 cprint = CP.cprint
@@ -29,8 +29,8 @@ files/runs and enabling analysis via a GUI
 all_modules = [
     table_manager,
     plot_sims,
-    correlation_calcs,
-    spikestatistics,
+    vcnmodel.correlation_calcs,
+    vcnmodel.spikestatistics,
 ]
 
 cellvalues = [

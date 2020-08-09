@@ -6,6 +6,7 @@ import pickle
 from dataclasses import dataclass, field
 from collections import OrderedDict
 from pathlib import Path
+import time
 from typing import Union, List, Tuple
 
 import numpy as np
@@ -27,6 +28,7 @@ from cnmodel.util import vector_strength
 from vcnmodel import sttc as STTC
 import lmfit
 from lmfit import Model
+
 # try using a standard ccf
 # import neo
 # from quantities import s, Hz, ms
@@ -35,6 +37,7 @@ from lmfit import Model
 # from elephant.conversion import BinnedSpikeTrain
 
 from vcnmodel import correlation_calcs as CXC
+
 cprint = CP.cprint
 
 """
@@ -183,9 +186,13 @@ class RevCorrPars:
 @dataclass
 class RevCorrData:
     C: list = field(default_factory=def_empty_list)  # using Brian 1.4 correlation
-    CB: list = field(default_factory=def_empty_list)  # using elephant/neo, binned correlation
-    CBT: list = field(default_factory=def_empty_list)  # using elephant/neo, binned correlation
-    TC: float = 0. # list = field(default_factory=def_empty_list)
+    CB: list = field(
+        default_factory=def_empty_list
+    )  # using elephant/neo, binned correlation
+    CBT: list = field(
+        default_factory=def_empty_list
+    )  # using elephant/neo, binned correlation
+    TC: float = 0.0  # list = field(default_factory=def_empty_list)
     st: np.array = field(default_factory=def_empty_np)
     tx: np.array = field(default_factory=def_empty_np)
     ti: np.array = field(default_factory=def_empty_np)
@@ -237,41 +244,48 @@ def get_changetimestamp():
     changetimestamp = datetime.datetime.timestamp(dts)
     return changetimestamp
 
+
 def boltzI(x, gmax, vhalf, k, E):
-    return(gmax*(x-E)*(1./(1.0+np.exp(-(x-vhalf)/k))))
+    return gmax * (x - E) * (1.0 / (1.0 + np.exp(-(x - vhalf) / k)))
+
 
 def boltzG(x, gmax, vhalf, k, E):
-    return(gmax*(1./(1.0+np.exp(-(x-vhalf)/k))))
+    return gmax * (1.0 / (1.0 + np.exp(-(x - vhalf) / k)))
+
 
 def expdecay(x, decay, amplitude, offset):
-    return(offset + amplitude*np.exp(-x/decay))
+    return offset + amplitude * np.exp(-x / decay)
+
 
 def exp2decay(x, a0, a1, tau0, tau1, offset):
-     return(offset + a0*np.exp(-x/tau0) + a1*np.exp(-x/tau1))
+    return offset + a0 * np.exp(-x / tau0) + a1 * np.exp(-x / tau1)
+
 
 from numba import jit
 
-@jit(parallel=True, cache=True,)
+
+@jit(
+    parallel=True, cache=True,
+)
 def nb_revcorr(st1, st2, binwidth, corrwindow):
-    xds  = np.zeros(int((corrwindow[1]-corrwindow[0])/binwidth))
+    xds = np.zeros(int((corrwindow[1] - corrwindow[0]) / binwidth))
     print(xds.shape)
     # [None]*len(st1)
     for i, sp in enumerate(st1):
         diff = st2 - sp
         v = np.where((corrwindow[0] <= diff) & (diff <= corrwindow[1]))
         # print('v: ', v)
-       #  if len(v) > 0:
-       #      iv = [int(vx/binwidth) for vx in v]
-       #      xds[iv] = 1
-       #      print('xds: ', xds)# for d in diff:
-        #     if corrwindow[0] <= d <= corrwindow[1]:
-        #         xds[i] = d
+    #  if len(v) > 0:
+    #      iv = [int(vx/binwidth) for vx in v]
+    #      xds[iv] = 1
+    #      print('xds: ', xds)# for d in diff:
+    #     if corrwindow[0] <= d <= corrwindow[1]:
+    #         xds[i] = d
     # print(np.array(xds))
     # print(np.array(xds).ravel().shape)
-    return xds, len(st1)  # return the n postsynaptic spikes 
+    return xds, len(st1)  # return the n postsynaptic spikes
 
 
-     
 def clean_spiketimes(spikeTimes, mindT=0.7):
     """
     Clean up spike time array, removing all less than mindT
@@ -288,45 +302,70 @@ def clean_spiketimes(spikeTimes, mindT=0.7):
         spikeTimes = st[~np.isnan(st)]
     return spikeTimes
 
+
 def winprint(func):
     """
-    Wrapper for functions that clears the print area first,
-    and puts a line of * when finished
+    Wrapper decorator for functions that print to the text area
+    Clears the print area first,
+    and puts a line of '*' when the function returns
     """
+
     @functools.wraps(func)
     def wrapper_print(self, *args, **kwargs):
         self.textclear()
-        # start_time = time.perf_counter()    # 1
         value = func(self, *args, **kwargs)
         # end_time = time.perf_counter()      # 2
         # run_time = end_time - start_time    # 3
-        self.textappend("*"*80)
+        self.textappend("*" * 80)
         # print(f"Finished {func.__name__!r} in {run_time:.4f} secs")
         return value
+
     return wrapper_print
-        
-class PlotSims():
+
+
+def time_func(func):
+    """
+    Decorator to ime functions.
+    Place inside (after) winprint if using
+    Output is to terminal.
+    """
+
+    @functools.wraps(func)
+    def wrapper_timer(self, *args, **kwargs):
+        print(f"Starting : {func.__name__!r}")
+        start_time = time.perf_counter()  # 1
+        value = func(self, *args, **kwargs)
+        end_time = time.perf_counter()  # 2
+        run_time = end_time - start_time  # 3
+        print(f"Finished {func.__name__!r} in {run_time:.4f} secs")
+        return value
+
+    return wrapper_timer
+
+
+class PlotSims:
     def __init__(self, parent):
-        self.parent = parent # mostly to provide access to datatables elements (display)
+        self.parent = (
+            parent  # mostly to provide access to datatables elements (display)
+        )
 
     def textclear(self):
         if self.parent is None:
-            print('parent is None')
+            print("parent is None")
             raise ValueError()
         else:
             self.parent.textbox.clear()
-    
-    def textappend(self, text, color='white'):
+
+    def textappend(self, text, color="white"):
         if self.parent is None:
             cprint(color, text)  # just go straight to the terminal
         else:
             self.parent.textbox.setTextColor(self.parent.QColor(color))
             self.parent.textbox.append(text)
-            self.parent.textbox.setTextColor(self.parent.QColor('white'))
-            
+            self.parent.textbox.setTextColor(self.parent.QColor("white"))
+
     def get_data_file(
-        self,
-        fn: Union[str, Path], changetimestamp: object, PD: dataclass
+        self, fn: Union[str, Path], changetimestamp: object, PD: dataclass
     ) -> Union[None, tuple]:
         """
         Get a data file, and also parse information from the file
@@ -343,7 +382,9 @@ class PlotSims():
             self.textappend(f"   File: {str(fnp):s} OK")
             # print(f"   File {str(fnp):s} found.")
         mtime = fnp.stat().st_mtime
-        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d-%H:%M")
+        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
+            "%Y-%m-%d-%H:%M"
+        )
         self.textappend(f"pgbcivr2: Checking file: {fnp.name:s} [{timestamp_str:s}]")
         # print(mtime, changetimestamp)
         if mtime > changetimestamp:
@@ -405,20 +446,22 @@ class PlotSims():
             stitle = "No scaling (S, D)"
             print(stitle)
         else:
-            self.textappend(f"Unable to match soma/dendrite inflation conditions", "red")
+            self.textappend(
+                f"Unable to match soma/dendrite inflation conditions", "red"
+            )
             return None
 
-        if ivdatafile is None  or not ivdatafile.is_file():
+        if ivdatafile is None or not ivdatafile.is_file():
             self.textappend(f"no file matching conditions : {str(ivdatafile):s}")
             return None
 
         self.textappend(f"\npgbcivr2: datafile to read: {str(ivdatafile):s}")
         return par, stitle, ivdatafile, filemode, d
 
-
-    def analyze_data(self,
-            ivdatafile: Union[Path, str],
-            filemode, protocol: str) -> tuple:
+    @time_func
+    def analyze_data(
+        self, ivdatafile: Union[Path, str], filemode, protocol: str
+    ) -> tuple:
         """
         Provide basic spike detection, shape analysis, and
         IV analysis if appropriate
@@ -469,35 +512,35 @@ class PlotSims():
 
         return AR, SP, RMA
 
-
     @winprint
     def plot_traces(
-        self,
-        ax: object, fn: Union[Path, str], PD: dataclass, protocol: str,
+        self, ax: object, fn: Union[Path, str], PD: dataclass, protocol: str,
     ) -> tuple:
         changetimestamp = get_changetimestamp()
         x = self.get_data_file(fn, changetimestamp, PD)
         mtime = Path(fn).stat().st_mtime
-        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d-%H:%M")
+        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
+            "%Y-%m-%d-%H:%M"
+        )
         if x is None:
             print("No simulation found that matched conditions")
             print(fn)
             return
         # unpack x
-        inx = str(fn).find('_Syn')
+        inx = str(fn).find("_Syn")
         synno = None
         if inx > 0:
-            synno = int(str(fn)[inx+4:inx+7])
+            synno = int(str(fn)[inx + 4 : inx + 7])
         if protocol in ["IV", "runIV"]:
             protocol = "IV"
         elif protocol in ["VC", "runVC"]:
             protocol = "VC"
-        print('Protocol: ', protocol)
+        print("Protocol: ", protocol)
         par, stitle, ivdatafile, filemode, d = x
         AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
         ntr = len(AR.traces)  # number of trials
         v0 = -160.0
-        deadtime = 50.
+        deadtime = 50.0
         trstep = 25.0 / ntr
         inpstep = 5.0 / ntr
         sz = 50.0 / ntr
@@ -507,22 +550,23 @@ class PlotSims():
             AR.traces[trial][0] = AR.traces[trial][1]
             if protocol in ["VC", "vc", "vclamp"]:
                 AR.traces[trial] = AR.traces[trial].asarray() * 1e6
-            ax.plot(AR.time_base, AR.traces[trial] * 1e3, 'k-', linewidth=0.5)
+            ax.plot(AR.time_base, AR.traces[trial] * 1e3, "k-", linewidth=0.5)
             ax.plot(
                 AR.time_base[SP.spikeIndices[trial]],
                 AR.traces[trial][SP.spikeIndices[trial]] * 1e3,
                 "ro",
                 markersize=2.5,
             )
- 
-            sinds = np.array(SP.spikeIndices[trial])*AR.sample_rate[trial]
+
+            sinds = np.array(SP.spikeIndices[trial]) * AR.sample_rate[trial]
             noutspikes += len(np.argwhere(sinds > deadtime))
             if protocol in ["AN", "runANSingles"]:
-                if (trial in list(d['Results'].keys())
-                    and "inputSpikeTimes" in list(d["Results"][trial].keys())):
-                        spkt = d["Results"][trial]["inputSpikeTimes"]
-                elif "inputSpikeTimes" in list(d['Results'].keys()):
-                     spkt = d["Results"]["inputSpikeTimes"][trial]
+                if trial in list(d["Results"].keys()) and "inputSpikeTimes" in list(
+                    d["Results"][trial].keys()
+                ):
+                    spkt = d["Results"][trial]["inputSpikeTimes"]
+                elif "inputSpikeTimes" in list(d["Results"].keys()):
+                    spkt = d["Results"]["inputSpikeTimes"][trial]
                 # print('input spike trains: ', len(spkt))
                 # print('spkt: ', spkt)
                 tr_y = trial * (trstep + len(spkt) * inpstep)
@@ -540,8 +584,8 @@ class PlotSims():
                 #                 print(spkt[ian])
                 ax.set_ylim(-140.0, 40.0)
             elif protocol in ["VC", "vc", "vclamp"]:
-                pass #
-                #ax.set_ylim((-100.0, 100.0))
+                pass  #
+                # ax.set_ylim((-100.0, 100.0))
             else:
                 ax.set_ylim(-200.0, 50.0)
                 ax.set_xlim(0.080, np.max(AR.time_base))
@@ -552,8 +596,9 @@ class PlotSims():
         ftname = ftname[:ip] + "...\n" + ftname[ip:]
         toptitle = f"{ftname:s}"
         if protocol in ["IV"]:
-            toptitle += f"\nRin={RMA['Rin']:.1f} M$\Omega$  $\\tau_m$={RMA['taum']:.2f} ms"
-
+            toptitle += (
+                f"\nRin={RMA['Rin']:.1f} M$\Omega$  $\\tau_m$={RMA['taum']:.2f} ms"
+            )
 
             secax = PLS.create_inset_axes([0.4, 0, 0.4, 0.4], ax, label=str(ax))
             secax.plot(
@@ -578,18 +623,24 @@ class PlotSims():
                 clip_on=False,
             )
             secax.plot(
-                RM.ivss_cmd[-1]*1e12,
-                RM.ivss_v[-1]*1e3,
-                'ro',
+                RM.ivss_cmd[-1] * 1e12,
+                RM.ivss_v[-1] * 1e3,
+                "ro",
                 markersize=3,
-                markerfacecolor='r',
+                markerfacecolor="r",
                 zorder=100,
                 clip_on=False,
             )
             PH.crossAxes(
-                secax, xyzero=[0.0, -60.0],
-                limits = [np.min(RM.ivss_cmd_all)*1e12, -120, np.max(RM.ivss_cmd_all)*1e12, -25.]#
-                #limits = [-1.0 * 1e3, -120, 2.0 * 1e3, -25.0]
+                secax,
+                xyzero=[0.0, -60.0],
+                limits=[
+                    np.min(RM.ivss_cmd_all) * 1e12,
+                    -120,
+                    np.max(RM.ivss_cmd_all) * 1e12,
+                    -25.0,
+                ]  #
+                # limits = [-1.0 * 1e3, -120, 2.0 * 1e3, -25.0]
             )
             PH.talbotTicks(
                 secax,
@@ -601,15 +652,15 @@ class PlotSims():
                 floatAdd={"x": 0, "y": 0},
             )
         elif protocol in ["VC", "vc", "vclamp"]:
-            maxt  = np.max(AR.time_base)
-            tlen = 10. # ms
+            maxt = np.max(AR.time_base)
+            tlen = 10.0  # ms
             PH.calbar(
                 ax,
-                calbar=[maxt-tlen, 2.0, tlen, 5],
-                orient='right',
+                calbar=[maxt - tlen, 2.0, tlen, 5],
+                orient="right",
                 unitNames={"x": "ms", "y": "nA"},
                 fontsize=9,
-            )    
+            )
         else:
             PH.calbar(
                 ax,
@@ -629,8 +680,8 @@ class PlotSims():
             )
         toptitle += f"\n{timestamp_str:s}"
         ax.set_title(toptitle, y=1.0, fontsize=8, verticalalignment="top")
-        return(synno, noutspikes, ninspikes)
-       
+        return (synno, noutspikes, ninspikes)
+
     def setup_VC_plots(self):
         sizer = OrderedDict(
             [
@@ -644,41 +695,49 @@ class PlotSims():
             (a, a + 1, 0, 1) for a in range(0, n_panels)
         ]  # just generate subplots - shape does not matter
         axmap = OrderedDict(zip(sizer.keys(), gr))
-        P = PH.Plotter((n_panels, 1), order="columnsfirst",
-            axmap=axmap, label=True, figsize=(4.0, 6.0))
+        P = PH.Plotter(
+            (n_panels, 1),
+            order="columnsfirst",
+            axmap=axmap,
+            label=True,
+            figsize=(4.0, 6.0),
+        )
         P.resize(sizer)  # perform positioning magic
         return P
 
-
     @winprint
-    def analyzeVC(self,
-    
-            ax: object, fn: Union[Path, str], PD: dataclass, protocol: str,
-        ) -> tuple:
-        ax = ax[:,0]
+    @time_func
+    def analyzeVC(
+        self, ax: object, fn: Union[Path, str], PD: dataclass, protocol: str,
+    ) -> tuple:
+        ax = ax[:, 0]
         changetimestamp = get_changetimestamp()
         x = self.get_data_file(fn, changetimestamp, PD)
         mtime = Path(fn).stat().st_mtime
-        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d-%H:%M")
+        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
+            "%Y-%m-%d-%H:%M"
+        )
         if x is None:
             self.textappend("No simulation found that matched conditions", color="red")
             self.textappend(fn, color="red")
             return
         # unpack x
-        inx = str(fn).find('_Syn')
+        inx = str(fn).find("_Syn")
         synno = None
         if inx > 0:
-            synno = int(fn[inx+4:inx+7])
-        if protocol in["VC", "runVC"]:
+            synno = int(fn[inx + 4 : inx + 7])
+        if protocol in ["VC", "runVC"]:
             protocol = "VC"
         self.textappend(f"Protocol: {protocol:s}")
         par, stitle, ivdatafile, filemode, d = x
-        AR, SP, RMA =self.analyze_data(ivdatafile, filemode, protocol)
-        tss = [0,0]
+        AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
+        tss = [0, 0]
         sr = AR.sample_rate[0]
         # print('AR tstart, tdur: ', AR.tstart, AR.tdur)
-        tss[0] = int(AR.tstart/sr + (AR.tdur/2.0)/sr)  # wrong duration stored in traces - need to fix.
-        tss[1] = int(AR.tstart/sr + (AR.tdur/1.0)/sr)
+        tss[0] = int(
+            AR.tstart / sr + (AR.tdur / 2.0) / sr
+        )  # wrong duration stored in traces - need to fix.
+        tss[1] = int(AR.tstart / sr + (AR.tdur / 1.0) / sr)
         I = AR.traces.asarray()
         V = AR.cmd_wave
         ntraces = np.shape(V)[0]
@@ -690,101 +749,119 @@ class PlotSims():
         i0 = np.zeros(ntraces)
         ic = np.zeros(ntraces)
         for j in range(0, ntraces):
-            vss[j] = np.mean(V[j,tss[0]:tss[1]])  # steady-state voltage
-            ic[j] = np.mean(I[j,tss[0]:tss[1]])  # corresponding currents
-            vm[j] = np.mean(V[j, 0:int((AR.tstart-1.0)/AR.sample_rate[0])])  # resting potential - for 1 msec prior to step
-            i0[j] = np.mean(I[j, 0:int((AR.tstart-1.0)/AR.sample_rate[0])])  # resting/holding current - for 1 msec prior to step
-            ax[1].plot(AR.time, V[j,:], 'k-')
+            vss[j] = np.mean(V[j, tss[0] : tss[1]])  # steady-state voltage
+            ic[j] = np.mean(I[j, tss[0] : tss[1]])  # corresponding currents
+            vm[j] = np.mean(
+                V[j, 0 : int((AR.tstart - 1.0) / AR.sample_rate[0])]
+            )  # resting potential - for 1 msec prior to step
+            i0[j] = np.mean(
+                I[j, 0 : int((AR.tstart - 1.0) / AR.sample_rate[0])]
+            )  # resting/holding current - for 1 msec prior to step
+            ax[1].plot(AR.time, V[j, :], "k-")
             # ax[0].plot(AR.time[tss[0]:tss[1]], I[j,tss[0]:tss[1]], 'r--')
 
         # now fit traces to variation of g = gmax * I/(V-Vr)
         gmodel = Model(boltzG)
-        Ek = -84.*1e-3 # mV to V
+        Ek = -84.0 * 1e-3  # mV to V
         # transform to g to get conductance values and fit to Boltzmann
-        gss = ic/(vss-Ek)
-        gmodel.set_param_hint('gmax', value=20.e-9, min=0.,vary=True)
-        gmodel.set_param_hint('vhalf', value=-38e-3, min=-90e-3, max=90e-3)
-        gmodel.set_param_hint('k', value=7, min=0.05*1e-3, max=200.0*1e-3, vary=True)
-        gmodel.set_param_hint('E', value=Ek, vary=False)
+        gss = ic / (vss - Ek)
+        gmodel.set_param_hint("gmax", value=20.0e-9, min=0.0, vary=True)
+        gmodel.set_param_hint("vhalf", value=-38e-3, min=-90e-3, max=90e-3)
+        gmodel.set_param_hint(
+            "k", value=7, min=0.05 * 1e-3, max=200.0 * 1e-3, vary=True
+        )
+        gmodel.set_param_hint("E", value=Ek, vary=False)
         gparams = gmodel.make_params()
         weights = np.ones_like(vss)
-        d_index = np.argwhere((vss >= -0.120) & (np.fabs(vss-Ek) > 0.008))
+        d_index = np.argwhere((vss >= -0.120) & (np.fabs(vss - Ek) > 0.008))
         weights_sel = weights[d_index]
         vss_sel = vss[d_index]
         gss_sel = gss[d_index]
-        result = gmodel.fit(gss_sel, method='nedler', params=gparams, x=vss_sel, weights = weights_sel)
+        result = gmodel.fit(
+            gss_sel, method="nedler", params=gparams, x=vss_sel, weights=weights_sel
+        )
         # print(result.fit_report())
         # print(vss)
         # print(result.best_fit)
-    
-        # capacitance transient. Use the single trace nearest to -70 mV for the fit.
-        mHypStep = np.argmin(np.fabs(vss-(-0.090)))
-        sr = AR.sample_rate[mHypStep]
-        t0 = int(AR.tstart/sr)
 
-        pts = int(5.0/sr)  # fit over first 5 msec
-        tfit = AR.time_base[t0+1:t0+pts]-AR.time_base[t0]
-        ifit = I[mHypStep, t0+1:t0+pts]
+        # capacitance transient. Use the single trace nearest to -70 mV for the fit.
+        mHypStep = np.argmin(np.fabs(vss - (-0.090)))
+        sr = AR.sample_rate[mHypStep]
+        t0 = int(AR.tstart / sr)
+
+        pts = int(5.0 / sr)  # fit over first 5 msec
+        tfit = AR.time_base[t0 + 1 : t0 + pts] - AR.time_base[t0]
+        ifit = I[mHypStep, t0 + 1 : t0 + pts]
         expmodel = Model(exp2decay)
         # pars = expmodel.guess(ifit, x=tfit)
-        expmodel.set_param_hint('tau0', value=0.1, min=0.005, max=10.0)
-        expmodel.set_param_hint('tau1', value=0.3, min=0.005, max=10.0)
-        expmodel.set_param_hint('a0', value=-1e-9, min=-50e-9, max=1e-12)
-        expmodel.set_param_hint('a1', value=-1e-9, min=-50e-9, max=1e-12)
-        expmodel.set_param_hint('offset', value=0., min=-1e-8, max=1e-8, vary=True)
+        expmodel.set_param_hint("tau0", value=0.1, min=0.005, max=10.0)
+        expmodel.set_param_hint("tau1", value=0.3, min=0.005, max=10.0)
+        expmodel.set_param_hint("a0", value=-1e-9, min=-50e-9, max=1e-12)
+        expmodel.set_param_hint("a1", value=-1e-9, min=-50e-9, max=1e-12)
+        expmodel.set_param_hint("offset", value=0.0, min=-1e-8, max=1e-8, vary=True)
         expparams = expmodel.make_params()
         exp_result = expmodel.fit(ifit, expparams, x=tfit)
         # print(exp_result.params)
         deltaV = vss[mHypStep] - vm[mHypStep]
         deltaI = I[mHypStep][t0] - i0[mHypStep]
-        deltaI2 = (exp_result.params['a0'].value + exp_result.params['a1'].value)
-        Q = np.trapz(I[mHypStep, t0:t0+2*pts], dx=sr*1e-3)
-        Cm = Q/deltaV
-        self.textappend(f"Q: {Q*1e12:.3f} pC  deltaV: {deltaV*1e3:.1f} mV, Cm: {Cm*1e12:.1f} pF")
-        Rs_est = deltaV/deltaI2  # Estimate of Rs from peak current
+        deltaI2 = exp_result.params["a0"].value + exp_result.params["a1"].value
+        Q = np.trapz(I[mHypStep, t0 : t0 + 2 * pts], dx=sr * 1e-3)
+        Cm = Q / deltaV
+        self.textappend(
+            f"Q: {Q*1e12:.3f} pC  deltaV: {deltaV*1e3:.1f} mV, Cm: {Cm*1e12:.1f} pF"
+        )
+        Rs_est = deltaV / deltaI2  # Estimate of Rs from peak current
         self.textappend(f"Estimated Rs: {Rs_est*1e-6:.1f} MOhm")
         # print(deltaV, deltaI, deltaI2)
         # other approach: use fastest tau in voltage clamp
         #
-        tau0 = 1e-3*exp_result.params['tau0'].value  # convert to seconds
-        tau1 = 1e-3*exp_result.params['tau1'].value
-        a0 = exp_result.params['a0'].value
-        a1 = exp_result.params['a1'].value
+        tau0 = 1e-3 * exp_result.params["tau0"].value  # convert to seconds
+        tau1 = 1e-3 * exp_result.params["tau1"].value
+        a0 = exp_result.params["a0"].value
+        a1 = exp_result.params["a1"].value
         #
-        # Here we use the fastest time constant and the 
+        # Here we use the fastest time constant and the
         # associated current from the fit to estimate cm (perisomatic)
         # Note: do not use total input resistance!
         # See Golowasch et al., J. Neurophysiol. 2009 and references therein
 
         if tau0 < tau1:
             tau = tau0
-            R0 = deltaV/a0
-            cm = tau/R0
+            R0 = deltaV / a0
+            cm = tau / R0
         else:
             tau = tau1
-            R0 = deltaV/a1
-            cm = tau/R0
+            R0 = deltaV / a1
+            cm = tau / R0
         # for curiosity, weighted tau (as if compensation was done as
         # much as possible for the whole transient)
         #
-        tauw = (a0*tau0 + a1*tau1)/(a0+a1)
-        R0w = deltaV/a0
-        R1w = deltaV/a1
-        cm1 = tau1/R1w
-        cmw = ((a0*tau0/R0w) + (a1*tau1/R1w))/(a0+a1) # tauw/(R0w + R1w)
-        self.textappend('By Coeffs: ')
-        self.textappend(f"RCoeff0 = {R0w*1e-6:.2f} MOhm, tau0: {tau0*1e3:.3f} ms,  cm0: {cm*1e12:.1f} pF")
-        self.textappend(f"RCoeff1 = {R1w*1e-6:.2f} MOhm, tau1: {tau1*1e3:.3f} ms,  cm1: {cm1*1e12:.1f} pF")
-        self.textappend(f"Weighted: Rw={(R0w+R1w)*1e-6:.2f} tauw: {tauw*1e3:.3f} ms, Weighted cm: {cmw*1e12:.1f} pF")
-        tfit2 = AR.time_base[t0:t0+pts]-AR.time_base[t0]
+        tauw = (a0 * tau0 + a1 * tau1) / (a0 + a1)
+        R0w = deltaV / a0
+        R1w = deltaV / a1
+        cm1 = tau1 / R1w
+        cmw = ((a0 * tau0 / R0w) + (a1 * tau1 / R1w)) / (a0 + a1)  # tauw/(R0w + R1w)
+        self.textappend("By Coeffs: ")
+        self.textappend(
+            f"RCoeff0 = {R0w*1e-6:.2f} MOhm, tau0: {tau0*1e3:.3f} ms,  cm0: {cm*1e12:.1f} pF"
+        )
+        self.textappend(
+            f"RCoeff1 = {R1w*1e-6:.2f} MOhm, tau1: {tau1*1e3:.3f} ms,  cm1: {cm1*1e12:.1f} pF"
+        )
+        self.textappend(
+            f"Weighted: Rw={(R0w+R1w)*1e-6:.2f} tauw: {tauw*1e3:.3f} ms, Weighted cm: {cmw*1e12:.1f} pF"
+        )
+        tfit2 = AR.time_base[t0 : t0 + pts] - AR.time_base[t0]
         bfit = expmodel.eval(params=exp_result.params, x=tfit2)
-        ax[0].plot(tfit2+AR.time_base[t0], bfit*1e9, 'r-', dashes=[6, 2], linewidth=1)
+        ax[0].plot(
+            tfit2 + AR.time_base[t0], bfit * 1e9, "r-", dashes=[6, 2], linewidth=1
+        )
         # ax[0].plot(tfit+AR.time_base[t0], exp_result.best_fit*1e9, 'r-')
         # ax[0].plot(tfit+AR.time_base[t0], ifit*1e9, 'g--')
-        ax[2].plot(vss_sel, gss_sel*1e9, 'ko', markersize=2)
-        ax[2].plot(vss_sel, result.best_fit*1e9, 'r-')
+        ax[2].plot(vss_sel, gss_sel * 1e9, "ko", markersize=2)
+        ax[2].plot(vss_sel, result.best_fit * 1e9, "r-")
         # print('vhalf: ', result.params['vhalf'])
-        textstr =  r"g$_{max}$  = "
+        textstr = r"g$_{max}$  = "
         textstr += f"{result.params['gmax'].value*1e9:.1f} nS\n"
         textstr += r"$V_{0.5}$  = "
         textstr += f"{result.params['vhalf'].value*1e3:.1f} mV\n"
@@ -792,11 +869,18 @@ class PlotSims():
         textstr += f"Cm = {cm*1e12:.1f} pF\n"
         textstr += r"$tau_{0}$ = "
         textstr += f"{tau*1e3:.3f} ms"
-        props = dict(boxstyle='square', facecolor='None', alpha=0.5)
-        ax[2].text(0.05, 0.95, textstr, transform=ax[2].transAxes,
-            fontsize=8, verticalalignment='top', bbox=props)
+        props = dict(boxstyle="square", facecolor="None", alpha=0.5)
+        ax[2].text(
+            0.05,
+            0.95,
+            textstr,
+            transform=ax[2].transAxes,
+            fontsize=8,
+            verticalalignment="top",
+            bbox=props,
+        )
         mpl.show()
-    
+
     def plot_revcorr_map(
         self,
         P,
@@ -816,7 +900,7 @@ class PlotSims():
         window,
     ):
         pass
-    
+
     def make_patch_spines_invisible(self, axn):
         axn.set_frame_on(True)
         axn.patch.set_visible(False)
@@ -834,7 +918,7 @@ class PlotSims():
         ax.spines["top"].set_visible(False)
         # ax.set_facecolor((0.7, 0.7, 0.7))
         ax2 = ax.twinx()
-        ax2.spines['right'].set_position(("axes", 0.9))
+        ax2.spines["right"].set_position(("axes", 0.9))
         summarySiteTC = {}
         maxrevcorr = 0
         for isite in range(
@@ -849,7 +933,7 @@ class PlotSims():
             else:
                 sel = list(range(0, RCD.sv_all.shape[0], 1))
             sel = list(range(0, RCD.sv_all.shape[0], 1))
-            refzero = int(RCP.minwin/RCP.binw)
+            refzero = int(RCP.minwin / RCP.binw)
             if RCD.C[isite] is not None:
                 # print('plotting C')
                 nc = int(len(RCD.C[isite]) / 2)
@@ -861,7 +945,6 @@ class PlotSims():
                 maxrevcorr = np.max((maxrevcorr, np.max(RCD.CB[isite])))
                 totalrevcorr = np.sum(RCD.CB[isite])
 
-
                 self.make_patch_spines_invisible(ax2)
                 if isite in range(RCP.ninputs):
                     if RCP.algorithm == "RevcorrSPKS":
@@ -869,33 +952,44 @@ class PlotSims():
                             RCD.tx,
                             RCD.C[isite][:nc],
                             color=color,
-                            label=("Input {0:2d} N={1:3d}".format(isite, int(RCD.sites[isite]))),
+                            label=(
+                                "Input {0:2d} N={1:3d}".format(
+                                    isite, int(RCD.sites[isite])
+                                )
+                            ),
                             linewidth=1.5,
                             zorder=5,
                         )
 
                     # print(RCD.npost_spikes)
-         #            print(RCD.CB[isite])
+                    #            print(RCD.CB[isite])
                     elif RCP.algorithm == "RevcorrSimple":
                         ax.plot(
-                            RCD.CBT - RCP.maxwin, 
-                            RCD.CB[isite]/float(RCD.npost_spikes),
+                            RCD.CBT - RCP.maxwin,
+                            RCD.CB[isite] / float(RCD.npost_spikes),
                             color=color,
-                            label=("Input {0:2d} N={1:3d}".format(isite, int(RCD.sites[isite]))),
+                            label=(
+                                "Input {0:2d} N={1:3d}".format(
+                                    isite, int(RCD.sites[isite])
+                                )
+                            ),
                             linewidth=1,
                             zorder=5,
-                            alpha=1.0
+                            alpha=1.0,
                         )
-                    elif RCP.algorithm  == "RevcorrSTTC": # use spike time tiling method
-                       ax.plot(
-                           RCD.tx,
-                           RCD.STTC[isite][:nc],
-                           color=color,
-                           label=("Input {0:2d} N={1:3d}".format(isite, int(RCD.sites[isite]))),
-                           linewidth=1.5,
-                           zorder=5,
-                       )
-
+                    elif RCP.algorithm == "RevcorrSTTC":  # use spike time tiling method
+                        ax.plot(
+                            RCD.tx,
+                            RCD.STTC[isite][:nc],
+                            color=color,
+                            label=(
+                                "Input {0:2d} N={1:3d}".format(
+                                    isite, int(RCD.sites[isite])
+                                )
+                            ),
+                            linewidth=1.5,
+                            zorder=5,
+                        )
 
                 RCD.max_coin_rate = np.max((RCD.max_coin_rate, np.max(RCD.C[:nc])))
 
@@ -904,7 +998,11 @@ class PlotSims():
             ):  # only plot the first time through - the APs are the same no matter the input
                 for t in sel:
                     secax.plot(
-                        RCD.ti_avg, RCD.sv_all[t], color="#666666", linewidth=0.2, zorder=1
+                        RCD.ti_avg,
+                        RCD.sv_all[t],
+                        color="#666666",
+                        linewidth=0.2,
+                        zorder=1,
                     )
 
                 secax.plot(RCD.ti_avg, RCD.sv_avg, color="k", linewidth=0.75, zorder=2)
@@ -957,16 +1055,13 @@ class PlotSims():
         #     horizontalalignment='left', fontsize=6)
         return summarySiteTC
 
-
     def get_synaptic_info(self, gbc: str) -> tuple:
         SC = cell_config.CellConfig()
         syninfo = SC.VCN_Inputs[gbc]
         return (SC, syninfo)
 
-
     def get_data(
-        self, 
-        fn: Union[Path, str], PD: dataclass, changetimestamp, protocol
+        self, fn: Union[Path, str], PD: dataclass, changetimestamp, protocol
     ) -> Union[None, tuple]:
 
         X = self.get_data_file(fn, changetimestamp, PD)
@@ -1007,37 +1102,45 @@ class PlotSims():
         RCD.tx = np.arange(RCP.minwin, 0, RCP.binw)
         return (d, AR, SP, RMA, RCP, RCD)
 
-
-
+    @time_func
     def revcorr(
         self,
-        st1: Union[np.ndarray, List]= None,
-        st2: Union[np.ndarray, List]= None,
-        binwidth:float=0.1,
-        datawindow:Union[List, Tuple]= [0., 100.], # time window for selecteing spikes
-        corrwindow:Union[List, Tuple]= [-5., 1.], # time window to examine correlation relative to st1
-        ) -> np.ndarray:
+        st1: Union[np.ndarray, List] = None,
+        st2: Union[np.ndarray, List] = None,
+        binwidth: float = 0.1,
+        datawindow: Union[List, Tuple] = [
+            0.0,
+            100.0,
+        ],  # time window for selecteing spikes
+        corrwindow: Union[List, Tuple] = [
+            -5.0,
+            1.0,
+        ],  # time window to examine correlation relative to st1
+    ) -> np.ndarray:
         if st1 is None or st2 is None:
-            raise ValueError("coincident_spikes_correlation: reference and comparator must be defined")
-        refa = st1 # [a for a in st1 if (datawindow[0] <= a <= datawindow[1])]
-        refb = st2 # [b for b in st2 if (datawindow[0] <= b <= datawindow[1])]    
+            raise ValueError(
+                "coincident_spikes_correlation: reference and comparator must be defined"
+            )
+        refa = st1  # [a for a in st1 if (datawindow[0] <= a <= datawindow[1])]
+        refb = st2  # [b for b in st2 if (datawindow[0] <= b <= datawindow[1])]
         # xds  = [None]*len(refa)
-        xds  = np.zeros(int((corrwindow[1]-corrwindow[0])/binwidth))
+        xds = np.zeros(int((corrwindow[1] - corrwindow[0]) / binwidth))
         for i, sp in enumerate(refa):
             diff = refb - sp
             v = diff[np.where((corrwindow[0] <= diff) & (diff <= corrwindow[1]))]
             # print('v: ', v)
             if len(v) > 0:
-                indxs = [int(vx/binwidth) for vx in v]
+                indxs = [int(vx / binwidth) for vx in v]
                 xds[indxs] = xds[indxs] + 1
             # for d in diff:
             #     if corrwindow[0] <= d <= corrwindow[1]:
             #         xds.append(d)
         # print(np.array(xds))
         # print(np.array(xds).ravel().shape)
-        return xds, len(st1)  # return the n postsynaptic spikes 
+        return xds, len(st1)  # return the n postsynaptic spikes
 
     @winprint
+    @time_func
     def compute_revcorr(
         self,
         ax: object,
@@ -1045,17 +1148,17 @@ class PlotSims():
         fn: Union[str, Path],
         PD: object,
         protocol: str,
-        revcorrtype: str = 'RevcorrSPKS',
+        revcorrtype: str = "RevcorrSPKS",
         thr: float = -20.0,
         width: float = 4.0,
-        ) -> Union[None, tuple]:
+    ) -> Union[None, tuple]:
 
         changetimestamp = get_changetimestamp()
 
         #
         # 1. Gather data
         #
-        print('Getting data')
+        print("Getting data")
         SC, syninfo = self.get_synaptic_info(gbc)
 
         res = self.get_data(fn, PD, changetimestamp, protocol)
@@ -1063,10 +1166,10 @@ class PlotSims():
             return None
         (d, AR, SP, RMA, RCP, RCD) = res
         RCP.algorithm = revcorrtype
-        if RCP.algorithm == 'RevcorrSTTC':
+        if RCP.algorithm == "RevcorrSTTC":
             sttccorr = STTC.STTC()
-        
-        print('Preparing for computation')
+
+        print("Preparing for computation")
         RCP.ninputs = len(syninfo[1])
         RCD.sites = np.zeros(RCP.ninputs)
         for isite in range(RCP.ninputs):  # precompute areas
@@ -1084,17 +1187,17 @@ class PlotSims():
         si = d["Params"]
         ri = d["runInfo"]
         if isinstance(si, dict):
-            min_time = (si["pip_start"] + 0.025 )*1000. # push onset out of the way
-            max_time = (si["pip_start"]+si["pip_duration"])*1000.
-            F0 = si['F0']
-            dB = si["dB"],
+            min_time = (si["pip_start"] + 0.025) * 1000.0  # push onset out of the way
+            max_time = (si["pip_start"] + si["pip_duration"]) * 1000.0
+            F0 = si["F0"]
+            dB = (si["dB"],)
         else:
             if isinstance(ri.pip_start, list):
                 start = ri.pip_start[0]
             else:
                 start = ri.pip_start
-            min_time = (start+0.025)*1000.
-            max_time = (start+ri.pip_duration)*1000.
+            min_time = (start + 0.025) * 1000.0
+            max_time = (start + ri.pip_duration) * 1000.0
 
         RCD.sv_sites = []
         RCD.C = [None] * RCP.ninputs
@@ -1111,9 +1214,9 @@ class PlotSims():
         #
         # 3. Prepare storage arrays
         #
-        nbins = int((max_time-min_time)/RCP.binw)
-    
-        RCD.CBT = np.arange(RCP.minwin, RCP.maxwin, RCP.binw) # refcorr time base
+        nbins = int((max_time - min_time) / RCP.binw)
+
+        RCD.CBT = np.arange(RCP.minwin, RCP.maxwin, RCP.binw)  # refcorr time base
         for isite in range(RCP.ninputs):
             RCD.CB[isite] = np.zeros_like(RCD.CBT)
             ncpts = len(np.arange(RCP.minwin, -RCP.minwin, RCP.binw))
@@ -1123,13 +1226,13 @@ class PlotSims():
         #
         # sum across trials, and sort by inputs
         #
-        print('starting loop')
+        print("starting loop")
         start_time = datetime.datetime.now()
         for trial in range(RCP.ntrials):  # sum across trials
             stx = AR.time_base[SP.spikeIndices[trial]]
             stx = stx[  # get postsynaptic spikes and trim to analysis window
                 (stx > RCP.min_time) & (stx < RCP.max_time)
-            ]  
+            ]
             if len(stx) == 0:
                 continue
             RCD.npost_spikes += len(stx)
@@ -1140,12 +1243,14 @@ class PlotSims():
                 areltime = np.argwhere(
                     (RCP.minwin <= reltime) & (reltime <= RCP.maxwin)
                 ).squeeze()
-            
-                if RCD.nsp_avg == 0: # init arrays
+
+                if RCD.nsp_avg == 0:  # init arrays
                     RCD.sv_avg = d["Results"][trial]["somaVoltage"][areltime]
                     RCD.nsp_avg = 1
                     RCD.ti_avg = RCD.ti[0 : len(areltime)] + RCP.minwin
-                    RCD.sv_all = np.zeros((RCP.ntrials, RCD.ti_avg.shape[0]))  # initialize the array
+                    RCD.sv_all = np.zeros(
+                        (RCP.ntrials, RCD.ti_avg.shape[0])
+                    )  # initialize the array
                 else:
                     if len(areltime) > len(RCD.sv_avg):
                         areltime = areltime[0 : len(RCD.sv_avg)]
@@ -1157,37 +1262,42 @@ class PlotSims():
                         )
                     RCD.sv_avg += d["Results"][trial]["somaVoltage"][areltime]
                     RCD.nsp_avg += 1
-                RCD.sv_all[trial] =  d["Results"][trial]["somaVoltage"][areltime]
-
+                RCD.sv_all[trial] = d["Results"][trial]["somaVoltage"][areltime]
 
                 nspk_plot += RCD.nsp_avg
                 RCD.sv_sites.append(RCD.sv_all)
 
-            # Now get reverse  correlation for each input        
-            for isite in range(RCP.ninputs): # for each ANF input
-                anx = d["Results"][trial]["inputSpikeTimes"][isite] # get input an spikes and trim
+            # Now get reverse  correlation for each input
+            for isite in range(RCP.ninputs):  # for each ANF input
+                anx = d["Results"][trial]["inputSpikeTimes"][
+                    isite
+                ]  # get input an spikes and trim
                 anx = anx[(anx > RCP.min_time) & (anx < RCP.max_time)]
                 if len(anx) == 0:
                     continue
-            
+
                 if revcorrtype == "RevcorrSPKS":
                     RCD.C[isite] += SPKS.correlogram(
                         stx, anx, width=-RCP.minwin, binwidth=RCP.binw, T=None
-                        )
-           
+                    )
+
                 elif revcorrtype == "RevcorrSimple":
-                    refcorr, npost = self.revcorr(stx, anx,
-                        binwidth=  RCP.binw,
-                        datawindow = [RCP.min_time, RCP.max_time],
-                        corrwindow=[RCP.minwin, RCP.maxwin]
-                        )
+                    refcorr, npost = self.revcorr(
+                        stx,
+                        anx,
+                        binwidth=RCP.binw,
+                        datawindow=[RCP.min_time, RCP.max_time],
+                        corrwindow=[RCP.minwin, RCP.maxwin],
+                    )
                     RCD.CB[isite] = RCD.CB[isite] + refcorr
 
                 elif revcorrtype == "RevcorrSTTC":
                     sttccorr.set_spikes(RCP.binw, stx, anx, RCP.binw)
-                    refcorr = sttccorr.calc_ccf_sttc(corrwindow=[RCP.minwin, RCP.maxwin], binwidth=RCP.binw)
+                    refcorr = sttccorr.calc_ccf_sttc(
+                        corrwindow=[RCP.minwin, RCP.maxwin], binwidth=RCP.binw
+                    )
                     RCD.STTC[isite] = RCD.STTC[isite] + refcorr
-                 
+
                 tct = SPKS.total_correlation(anx, stx, width=-RCP.minwin, T=None)
                 if ~np.isnan(tct):
                     RCD.TC += tct
@@ -1198,16 +1308,16 @@ class PlotSims():
                 maxtc = 1.0
         if RCD.nsp_avg > 0:
             RCD.sv_avg /= RCD.nsp_avg
-    
+
         elapsed_time = datetime.datetime.now() - start_time
-        print('Time for calculation: ', elapsed_time)
+        print("Time for calculation: ", elapsed_time)
         pre_w = [-2.7, -0.7]
 
         summarySiteTC = self.plot_revcorr2(ax, PD, RCP, RCD)
 
         ax.set_title(
             f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}",
-            fontsize=11
+            fontsize=11,
         )
         # return summarySiteTC, RCD.sites
 
@@ -1317,7 +1427,11 @@ class PlotSims():
             pclip[np.where(pclip == 0)] = np.nan
             pclipped = pclip - np.nanmin(pclip)
             sax["C"].scatter(
-                pos[:, :, 0], pos[:, :, 1], s=200 * pairwise / maxp, c=pclipped, cmap=colormap
+                pos[:, :, 0],
+                pos[:, :, 1],
+                s=200 * pairwise / maxp,
+                c=pclipped,
+                cmap=colormap,
             )
             vmax = np.nanmax(pclip) * 100
             vmin = np.nanmin(pclip) * 100
@@ -1328,11 +1442,15 @@ class PlotSims():
         # sax['B'].plot(np.arange(RCP.ninputs)+1, participation/nspikes, 'gx')
         sax["B"].plot(RCD.sites, participation / nspikes, "gx")
 
-        axcbar = PLS.create_inset_axes([0.8, 0.05, 0.05, 0.5], sax["C"], label=str(sax["C"]))
+        axcbar = PLS.create_inset_axes(
+            [0.8, 0.05, 0.05, 0.5], sax["C"], label=str(sax["C"])
+        )
         norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
         ticks = np.linspace(vmin, vmax, num=4, endpoint=True)
         cm_sns = mpl.cm.get_cmap(colormap)
-        c2 = matplotlib.colorbar.ColorbarBase(axcbar, cmap=cm_sns, ticks=ticks, norm=norm)
+        c2 = matplotlib.colorbar.ColorbarBase(
+            axcbar, cmap=cm_sns, ticks=ticks, norm=norm
+        )
 
         # PH.nice_plot(sax['C'], position=-0.2)
         sax["D"].plot(np.arange(RCP.ninputs) + 1, ynspike, "m^-")
@@ -1347,26 +1465,35 @@ class PlotSims():
         sax["B"].set_ylabel("Participation")
         sax["C"].set_ylabel("Input #")
         sax["C"].set_xlabel("Input #")
-        sax["D"].set_xlabel(f"# Inputs in [{pre_w[0]:.1f} to {pre_w[1]:.1f}] before spike")
+        sax["D"].set_xlabel(
+            f"# Inputs in [{pre_w[0]:.1f} to {pre_w[1]:.1f}] before spike"
+        )
 
         PH.cleanAxes(PSum.axarr.ravel())
         # PH.talbotTicks(sax["C"])
         PH.talbotTicks(sax["A"])
 
-        PH.talbotTicks(sax["B"], tickPlacesAdd={"x": 0, "y": 1}, floatAdd={"x": 0, "y": 2})
-        PH.talbotTicks(sax["D"], tickPlacesAdd={"x": 0, "y": 1}, floatAdd={"x": 0, "y": 2})
         PH.talbotTicks(
-            axcbar, tickPlacesAdd={"x": 0, "y": 2}, floatAdd={"x": 0, "y": 2}, pointSize=7
+            sax["B"], tickPlacesAdd={"x": 0, "y": 1}, floatAdd={"x": 0, "y": 2}
+        )
+        PH.talbotTicks(
+            sax["D"], tickPlacesAdd={"x": 0, "y": 1}, floatAdd={"x": 0, "y": 2}
+        )
+        PH.talbotTicks(
+            axcbar,
+            tickPlacesAdd={"x": 0, "y": 2},
+            floatAdd={"x": 0, "y": 2},
+            pointSize=7,
         )
         PSum.figure_handle.suptitle(
             f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}",
-            fontsize=11
+            fontsize=11,
         )
         mpl.show()
 
         return (summarySiteTC, RCD.sites)
 
-
+    @time_func
     def plot_tuning(self, args, filename=None, filenames=None):
         PD = PData()
         changetimestamp = get_changetimestamp()
@@ -1394,7 +1521,7 @@ class PlotSims():
         print("...")
 
         truefile = {"Passive": "passive", "Canonical": "normal", "Active": "active"}
-    
+
         for ic, chdist in enumerate(truefile.keys()):
             args.dendritemode = truefile[chdist]
             if filename is None:
@@ -1412,7 +1539,9 @@ class PlotSims():
                     P.axarr[0, ic].text(50, 1.0, chdist, horizontalalignment="center")
             basen = fn.parts[-5]
 
-            pngfile = Path(PD.renderpath, f"{basen:s}_{channel:s}_{truefile[chdist]:s}.png")
+            pngfile = Path(
+                PD.renderpath, f"{basen:s}_{channel:s}_{truefile[chdist]:s}.png"
+            )
             # print(pngfile)
             imaged = mpl.imread(pngfile)
             P.axarr[1, ic].imshow(imaged)
@@ -1437,8 +1566,13 @@ class PlotSims():
             (a, a + 1, 0, 1) for a in range(0, n_panels)
         ]  # just generate subplots - shape does not matter
         axmap = OrderedDict(zip(sizer.keys(), gr))
-        P = PH.Plotter((n_panels, 1), order="columnsfirst",
-            axmap=axmap, label=True, figsize=(8.0, 6.0))
+        P = PH.Plotter(
+            (n_panels, 1),
+            order="columnsfirst",
+            axmap=axmap,
+            label=True,
+            figsize=(8.0, 6.0),
+        )
         P.resize(sizer)  # perform positioning magic
         P.axdict["A"].set_ylabel("mV", fontsize=8)
 
@@ -1459,13 +1593,14 @@ class PlotSims():
 
         return P
 
-
     @winprint
     def plot_AN_response(self, P, fn, PD, protocol):
         changetimestamp = get_changetimestamp()
         x = self.get_data_file(fn, changetimestamp, PD)
         mtime = Path(fn).stat().st_mtime
-        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d-%H:%M")
+        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
+            "%Y-%m-%d-%H:%M"
+        )
         if x is None:
             print("No simulation found that matched conditions")
             print(fn)
@@ -1492,15 +1627,20 @@ class PlotSims():
                 + si["pip_duration"]
                 + si["pip_offduration"]
             )
-            soundtype = si['soundtype']
+            soundtype = si["soundtype"]
             pip_start = si["pip_start"]
             pip_duration = si["pip_duration"]
-            F0 = si['F0']
-            dB = si["dB"],
-            fmod = si["fmod"],
-            dmod = si["dmod"],
+            F0 = si["F0"]
+            dB = (si["dB"],)
+            fmod = (si["fmod"],)
+            dmod = (si["dmod"],)
         else:
-            totaldur = (ri.pip_start + np.max(ri.pip_start) + ri.pip_duration + ri.pip_offduration)
+            totaldur = (
+                ri.pip_start
+                + np.max(ri.pip_start)
+                + ri.pip_duration
+                + ri.pip_offduration
+            )
             pip_start = ri.pip_start
             pip_duration = ri.pip_duration
             soundtype = ri.soundtype
@@ -1515,27 +1655,22 @@ class PlotSims():
         all_an_st = []
         all_bu_st = []
         for i in range(ntr):  # for all trials in the measure.
-            vtrial = AR.traces[i]*1e3
-            trd = d['Results'][i]
+            vtrial = AR.traces[i] * 1e3
+            trd = d["Results"][i]
             w = trd["stimWaveform"]
             stb = trd["stimTimebase"]
             all_bu_st.extend(trd["spikeTimes"])
             # print('max bu spktimes: ', np.max(trd["spikeTimes"]))# Panel A: traces
             if i < 1:
+                P.axdict["A"].plot(AR.time_base / 1000.0, vtrial, "k-", linewidth=0.5)
                 P.axdict["A"].plot(
-                    AR.time_base / 1000.0,
-                    vtrial,
-                    'k-',
-                    linewidth=0.5
-                    )
-                P.axdict["A"].plot(
-                    AR.time_base[SP.spikeIndices[i]]/1000.,
+                    AR.time_base[SP.spikeIndices[i]] / 1000.0,
                     vtrial[SP.spikeIndices[i]],
                     "ro",
                     markersize=1.5,
                 )
             if i == 0:
-                P.axdict["C"].plot(stb, w, 'k-', linewidth=0.5)  # stimulus underneath
+                P.axdict["C"].plot(stb, w, "k-", linewidth=0.5)  # stimulus underneath
             P.axdict["D"].plot(
                 trd["spikeTimes"] / 1000.0,
                 i * np.ones(len(trd["spikeTimes"])),
@@ -1545,56 +1680,79 @@ class PlotSims():
             )
             inputs = len(trd["inputSpikeTimes"])
             for k in range(inputs):
-                tk =trd["inputSpikeTimes"][k]
+                tk = trd["inputSpikeTimes"][k]
                 all_an_st.extend(tk)
                 y = (i + 0.1 + k * 0.05) * np.ones(len(tk))
                 if i % 10 == 0:
-                    P.axdict["G"].plot(tk/1000., y, "|", markersize=2.5, color="k", linewidth=0.5)
+                    P.axdict["G"].plot(
+                        tk / 1000.0, y, "|", markersize=2.5, color="k", linewidth=0.5
+                    )
                 # print('max an spktimes: ', np.max(tk))# Panel A: traces
 
-        all_bu_st = np.sort(np.array(all_bu_st))/1000.
-        all_an_st = np.sort(np.array(all_an_st))/1000.
+        all_bu_st = np.sort(np.array(all_bu_st)) / 1000.0
+        all_an_st = np.sort(np.array(all_an_st)) / 1000.0
         # the histogram of the data
-        hbins = np.arange(0., np.max(AR.time/1000.), 1e-3)  # 0.5 msec bins
+        hbins = np.arange(0.0, np.max(AR.time / 1000.0), 1e-3)  # 0.5 msec bins
         # print(all_bu_st.shape, np.max(all_bu_st), all_an_st.shape, np.max(all_an_st), np.max(hbins))
         if len(all_bu_st) > 0:
             P.axdict["B"].hist(all_bu_st, bins=hbins, facecolor="k", alpha=1)
             # n, bins, patch = mpl.hist(all_bu_st, hbins, facecolor="blue", alpha=1)
-       #      print('Spikes in PSTH: ', np.sum(n))
-       #      print(n)
-       #      print(bins)
+        #      print('Spikes in PSTH: ', np.sum(n))
+        #      print(n)
+        #      print(bins)
         else:
-            P.axdict["B"].text(0.5, 0.5, "No Spikes", fontsize=14, 
-                color='r', transform=P.axdict["C"].transAxes, horizontalalignment="center")
+            P.axdict["B"].text(
+                0.5,
+                0.5,
+                "No Spikes",
+                fontsize=14,
+                color="r",
+                transform=P.axdict["C"].transAxes,
+                horizontalalignment="center",
+            )
         if len(all_an_st) > 0:
             P.axdict["H"].hist(all_an_st, bins=hbins, facecolor="k", alpha=1)
         else:
-            P.axdict["H"].text(0.5, 0.5, "No Spikes", fontsize=14, 
-                color='r', transform=P.axdict["H"].transAxes, horizontalalignment="center")
-     
+            P.axdict["H"].text(
+                0.5,
+                0.5,
+                "No Spikes",
+                fontsize=14,
+                color="r",
+                transform=P.axdict["H"].transAxes,
+                horizontalalignment="center",
+            )
+
         for a in ["A", "B", "C", "D", "F", "G", "H"]:  # set some common layout scaling
             P.axdict[a].set_xlim((0.0, totaldur))
             # P.axdict[a].set_xlabel("T (s)")
 
         if soundtype == "SAM":  # calculate vs and plot histogram
             if len(all_bu_st) == 0:
-                P.axdict["H"].text(0.5, 0.5, "No Spikes", fontsize=14, color='r', 
-                transform=P.axdict["H"].transAxes, horizontalalignment="center")
+                P.axdict["H"].text(
+                    0.5,
+                    0.5,
+                    "No Spikes",
+                    fontsize=14,
+                    color="r",
+                    transform=P.axdict["H"].transAxes,
+                    horizontalalignment="center",
+                )
             else:
-                  
+
                 # combine all spikes into one array, plot PSTH
-            # allst = []
-           #  for trial in range(ntr):
-           #      trd = d['Results'][trial]
-           #      allst.extend(trd["spikeTimes"] / 1000.0)
-           #  allst = np.array(allst)
-           #  allst = np.sort(allst)
-           #  # the histogram of the data
-           #  if len(allst) > 0:
-           #      P.axdict["F"].hist(allst, 100, density=True, facecolor="blue", alpha=0.75)
-           #  else:
-           #      P.axdict["F"].text(0.5, 0.5, "No Spikes", fontsize=14, color='r')
-            # print('allst: ', allst)
+                # allst = []
+                #  for trial in range(ntr):
+                #      trd = d['Results'][trial]
+                #      allst.extend(trd["spikeTimes"] / 1000.0)
+                #  allst = np.array(allst)
+                #  allst = np.sort(allst)
+                #  # the histogram of the data
+                #  if len(allst) > 0:
+                #      P.axdict["F"].hist(allst, 100, density=True, facecolor="blue", alpha=0.75)
+                #  else:
+                #      P.axdict["F"].text(0.5, 0.5, "No Spikes", fontsize=14, color='r')
+                # print('allst: ', allst)
                 phasewin = [
                     pip_start[0] + 0.25 * pip_duration,
                     pip_start[0] + pip_duration,
@@ -1605,25 +1763,18 @@ class PlotSims():
 
                 # set freq for VS calculation
                 if soundtype == "tone":
-                    print(
-                        "Tone: F0=%.3f at %3.1f dbSPL, cell CF=%.3f"
-                        % (F0, dB, F0)
-                    )
+                    print("Tone: F0=%.3f at %3.1f dbSPL, cell CF=%.3f" % (F0, dB, F0))
                 if soundtype == "SAM":
                     tstring = (
                         "SAM Tone: F0=%.3f at %3.1f dbSPL, fMod=%3.1f  dMod=%5.2f, cell CF=%.3f"
-                        % (
-                            F0,
-                            dB,
-                            fmod,
-                            dmod,
-                            F0,
-                        )
+                        % (F0, dB, fmod, dmod, F0,)
                     )
                     # print(tstring)
                     P.figure_handle.suptitle(tstring, fontsize=10)
                 # print('spikes: ', spikesinwin)
-                vs = vector_strength(spikesinwin * 1000.0, fmod)  # vs expects spikes in msec
+                vs = vector_strength(
+                    spikesinwin * 1000.0, fmod
+                )  # vs expects spikes in msec
                 print(" Sound type: ", soundtype)
                 print(
                     "AN Vector Strength at %.1f: %7.3f, d=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d"
@@ -1639,8 +1790,8 @@ class PlotSims():
                 )
 
         # P.figure_handle.savefig("AN_res.pdf")
-    #     plt.show()
 
+    #     plt.show()
 
     def select_filenames(self, fng, args) -> Union[list, None]:
         # print(fng)
@@ -1819,22 +1970,22 @@ def cmdline_display(args, PD):
         PD.soma_inflate = False
         PD.dend_inflate = False
         stitle = "notScaled"
-    
+
     if args.analysis == "tuning":
-        
+
         fng = []
         for ig, gbc in enumerate(PD.gradeA):
             basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
             pgbc = f"VCN_c{gbc:02d}"
-            allf = list(Path(basefn).glob('*'))
+            allf = list(Path(basefn).glob("*"))
             allfiles = sorted([f for f in allf if f.is_dir()])
             # print(allfiles)
             fnlast3 = allfiles[-3:]
         for f in fnlast3:
-            fn = list(f.glob('*'))
+            fn = list(f.glob("*"))
             fng.append(fn[0])
         P = PS.plot_tuning(args, filename=None, filenames=fng)
-        
+
     else:
         for ig, gbc in enumerate(PD.gradeA):
             basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
@@ -1885,9 +2036,7 @@ def cmdline_display(args, PD):
                     if args.analysis == "traces":
                         PS.plot_traces(ax, fn, PD, args.protocol)
                     elif args.analysis == "revcorr":
-                        res = PS.compute_revcorr(
-                            ax, pgbc, fn, PD, args.protocol
-                        )
+                        res = PS.compute_revcorr(ax, pgbc, fn, PD, args.protocol)
                         if res is None:
                             return
             elif args.analysis == "singles":
@@ -1948,9 +2097,10 @@ def getCommands():
     cmdline_display(args, PD)
     return (args, PD)
 
+
 def main():
     args, PD = getCommands()
-    
+
 
 if __name__ == "__main__":
     main()
