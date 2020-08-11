@@ -203,8 +203,27 @@ wheres_the_data.toml
 
 """
 
+from math import floor, log10
+# convenience functions for exp
+def powerise10(x):
+    """ Returns x as a*10**b with 0 <= a < 10
+    """
+    if x == 0: return 0,0
+    Neg = x < 0
+    if Neg: x = -x
+    a = 1.0 * x / 10**(floor(log10(x)))
+    b = int(floor(log10(x)))
+    if Neg: a = -a
+    return a,b
 
-# import pylibrary.plotting.pyqtgraph_plothelpers as pgh
+
+def eng(x):
+    """Return a string representing x in an engineer friendly notation"""
+    a,b = powerise10(x)
+    if -3 < b < 3: return "%.4g" % x
+    a = a * 10**(b % 3)
+    b = b - b % 3
+    return "%8.4gE%s" % (a,b)
 
 
 showCell = True
@@ -1507,8 +1526,10 @@ class ModelRun:
                 for p in s.psd.nmda_psd:
                     ngMax[i] = ngMax[i] + p.gmax
         if self.Params.verbose or printvalues:
+            print(f"  getsyn")
+            print(f"  Syn#    nsites    AMPA gmax    NMDA gmax")
             for i, s in enumerate(synapses):
-                print("getsyn: i nsyn gmax nmdagmax  : ", i, nSyn[i], gMax[i], ngMax[i])
+                print(f"  {i:>4d}   {int(nSyn[i]):>5d}    {eng(gMax[i]):>9s}    {eng(ngMax[i]):>9s}")
         return (gMax, ngMax, nSyn)
 
     def set_synapse(self, synapse: list, gampa: float, gnmda: float):
@@ -1558,7 +1579,6 @@ class ModelRun:
             cprint("g", "\n*** Initializing for an_run\n")
         else:
             cprint("g", "\n*** an_run\n")
-
         if self.Params.inputPattern is not None:
             fromdict = self.Params.inputPattern
             print(f"Cell id: {self.cellID:s} using input pattern: {fromdict:s}")
@@ -1644,25 +1664,22 @@ class ModelRun:
         if self.RunInfo.Spirou != "all":
             print(f"   Spirou test type: {self.RunInfo.Spirou:s}")
 
-        elif self.RunInfo.Spirou in ["all=mean"]:
-            print("    setting ALL to the mean of all inputs (no variance)")
+        if self.RunInfo.Spirou in ["all=mean"]:
+            cprint('c', "    Setting ALL to the mean of all inputs (no variance)")
             gMax, gnMax, nSyn = self.get_synapses(synapse)
 
             meangmax = np.mean(gMax)  # mean conductance each synapse
             meangnmax = np.mean(gnMax)
             imaxgmax = np.argmax(gMax)  # synapse with largest conductance
-            print(self.RunInfo.Spirou)
             print("    AMPA: mean, gmax, imax: ", meangmax, gMax, imaxgmax)
             print("    NMDA: mean, gnmax: ", meangnmax, gnMax)
             gMax[imaxgmax] = meangmax
             gnMax[imaxgmax] = meangnmax
             for i in range(len(synapse)):
                 self.set_synapse(synapse[i], meangmax / nSyn[i], meangnmax / nSyn[i])
-            cprint("g", "    Revised synapse values:")
-            self.get_synapses(synapse, printvalues=True)
 
         elif self.RunInfo.Spirou in ["max=mean"]:
-            cprint("c", "Setting largest to mean of all inputs")
+            cprint("c", "    Setting largest to mean of all inputs")
             gMax, gnMax, nSyn = self.get_synapses(synapse)
             meangmax = np.mean(gMax)  # mean conductance each synapse
             meangnmax = np.mean(gnMax)
@@ -1674,11 +1691,9 @@ class ModelRun:
             self.set_synapse(
                 synapse[imaxgmax], meangmax / nSyn[imaxgmax], meangnmax / nSyn[imaxgmax]
             )
-            cprint("g", "    Revised synapse values:")
-            self.get_synapses(synapse, printvalues=True)
 
         elif self.RunInfo.Spirou in ["removelargest"]:
-            cprint("c", "Setting largest terminal to 0")
+            cprint("c", "    Setting largest terminal to 0")
             gMax, gnMax, nSyn = self.get_synapses(synapse)
             imaxgmax = np.argmax(gMax)  # synapse with largest conductance
             print("    AMPA:  gMax, imax: ", gMax, imaxgmax)
@@ -1688,27 +1703,30 @@ class ModelRun:
             self.set_synapse(
                 synapse[imaxgmax], 0.0, 0.0,
             )
-            cprint("g", "    Revised synapse values:")
-            self.get_synapses(synapse, printvalues=True)
 
         elif self.RunInfo.Spirou in ["largestonly"]:
             nlarge = 1
-            cprint("c", "Setting all terminal inputs to 0 except the one largest")
+            cprint("c", "    Setting all terminal inputs to 0 except the one largest")
         elif self.RunInfo.Spirou in ["twolargest"]:
             nlarge = 2
-            cprint("c", "Setting all terminal inputs to 0 except the two largest")
+            cprint("c", "    Setting all terminal inputs to 0 except the two largest")
         elif self.RunInfo.Spirou in ["threelargest"]:
             nlarge = 3
-            cprint("c", "Setting all terminal inputs to 0 except the three largest")
+            cprint("c", "    Setting all terminal inputs to 0 except the three largest")
         elif self.RunInfo.Spirou in ["fourlargest"]:
             nlarge = 4
-            cprint("c", "Setting all terminal inputs to 0 except the four largest")
-        if self.RunInfo.Spirou.find("largest") >= 0:
+            cprint("c", "    Setting all terminal inputs to 0 except the four largest")
+        if self.RunInfo.Spirou in ['largestonly',
+                                    "twolargest",
+                                    "threelargest",
+                                    "fourlargest",
+                                    ]:
             gMax, gnMax, nSyn = self.get_synapses(synapse)
             i_gMaxSorted = np.argsort(gMax)  # synapse with largest conductance
             print("    AMPA:  gMax, imax: ", gMax, i_gMaxSorted)
             print("    NMDA:  gnmax: ", gnMax)
-
+            # print(f">>>> experiment: {self.RunInfo.Spirou:s}")
+            # print(f">>>> nlarge: {nlarge:d}")
             for i in range(len(gMax)):
                 if i not in i_gMaxSorted[-nlarge:]:
                     self.set_synapse(
@@ -1716,7 +1734,9 @@ class ModelRun:
                     )
         cprint("g", "    Revised synapse values:")
         self.get_synapses(synapse, printvalues=True)
-
+        if self.Params.testsetup:
+            return
+        
         # run using pyqtgraph's parallel support
         if self.Params.Parallel:
             with MP.Parallelize(
@@ -1894,6 +1914,8 @@ class ModelRun:
             self.get_synapses(synapse, printvalues=True)
 
             tresults = [None] * nReps
+            if self.Params.testsetup:
+                continue
 
             if parallel and self.Params.nWorkers > 1:
                 nWorkers = self.Params.nWorkers
@@ -1957,6 +1979,8 @@ class ModelRun:
 
             self.analysis_filewriter(self.Params.cell, result[k], tag=tagname)
             self.print_timing()
+        if self.Params.testsetup:
+            return
         if self.Params.plotFlag:
             self.plot_an(celltime, result)
 
@@ -2019,7 +2043,8 @@ class ModelRun:
             tagname = "SynIO%03d"
             gmaxs = np.zeros(nReps)
             tresults = [None] * nReps
-
+            if self.Params.testsetup:
+                continue
             if parallel and self.Params.nWorkers > 1:
                 nWorkers = self.Params.nWorkers
                 TASKS = [s for s in range(nReps)]
@@ -2086,6 +2111,8 @@ class ModelRun:
             }
 
             self.analysis_filewriter(self.Params.cell, result, tag=tagname % k)
+        if self.Params.testsetup:
+            return
         if self.Params.plotFlag:
             self.plot_an(celltime, result)
 

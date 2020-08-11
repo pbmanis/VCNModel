@@ -168,6 +168,7 @@ class Params:
     commandline: str = ""  # store command line on run, all parser args
     commands: str = ""  # store command line on run, the actual given commands
     checkcommand: bool = False
+    testsetup: bool=False
     configfile: Union[str, None] = None
     tagstring: Union[str, None] = None
     initialization_time: float = 50.0
@@ -457,6 +458,12 @@ def build_parser():
         default=False,
         dest="checkcommand",
         help="Only check command line for valid input; do not run model",
+    )
+    parser.add_argument(
+        "--testsetup",
+        action="store_true",
+        default=False,
+        help="Test all setup, but do not run simulations"
     )
     parser.add_argument(
         "-C",
