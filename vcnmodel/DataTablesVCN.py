@@ -234,7 +234,10 @@ class DataTables:
             {
                 "name": "Tools",
                 "type": "group",
-                "children": [{"name": "Reload", "type": "action"}],
+                "children": [
+                    {"name": "Reload", "type": "action"},
+                    {"name": "View IndexFile", "type": "action"},
+                ],
             },
             {"name": "Quit", "type": "action"},
         ]
@@ -298,45 +301,17 @@ class DataTables:
 
         for param, change, data in changes:
             path = self.ptreedata.childPath(param)
-            # print("Path: ", path[0])
-            # if path[0] == "Pick Cell":
-            #     self.selvals["Cell"] = data
-            #     self.setPaths('AN', cell=data)
-            #     self.table_manager.build_table(mode="scan")
+
             if path[0] == "Quit":
                 exit()
             if path[0] == "Scan Runs":
                 self.table_manager.build_table(mode="scan")
             if path[0] == "Update Runs":
                 self.table_manager.build_table(mode="update")
-            # if path[0] == "Build Index":
-            #     self.setPaths(self.runtype, cell=data)
-            #     dpath = Path(self.datapaths['baseDirectory'],
-            #         f"VCN_{self.cellID:02d}",
-            #         "Simulations",
-            #         self.runtype)
-            #     # print(self.datapaths)
-            #     # print(self.runtype)
-            #     self.table_manager.find_build_indexfiles(dpath,
-            #         force=False)
-            # if path[0] == "Update Index":
-            #     self.setPaths(self.runtype, cell=data)
-            #     self.table_manager.find_build_indexfiles(
-            #           Path(self.datapaths['baseDirectory'],
-            #               f"VCN_{self.cellID:02d}",
-            #               "Simulations",
-            #               self.runtype),
-            #          force=True)
+
             if path[0] == "Selections":
                 self.selvals[path[1]][1] = str(data)
                 self.cellID = self.selvals["Cells"][1]
-                # if path[1] == "Run Type":
-                #     self.runtype = str(data)
-                # elif path[1] == "Cells":
-                #     self.cellID = str(data)
-                # elif path[1] == "ModelType":
-                #     self.modeltype = str(data)
-                # elif path[1] == ""
                 self.setPaths("AN", cell=data)
                 self.table_manager.build_table(mode="scan")
 
@@ -368,11 +343,17 @@ class DataTables:
                     )
                     print("   reload ok")
                     print("-" * 80)
-
-                self.table.setSortingEnabled(True)
-                self.table.horizontalHeader().sortIndicatorChanged.connect(
-                    self.handleSortIndicatorChanged
-                )
+                    self.table_manager.build_table(mode="scan")
+                    self.table.setSortingEnabled(True)
+                    self.table.horizontalHeader().sortIndicatorChanged.connect(
+                        self.handleSortIndicatorChanged
+                    )
+                elif path[1] == "View IndexFile":
+                    index_row = self.selected_index_row
+                    selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
+                    if selected is None:
+                        return
+                    self.table_manager.print_indexfile(index_row)
 
     def setColortoRow(self, rowIndex, color):
         for j in range(self.table.columnCount()):

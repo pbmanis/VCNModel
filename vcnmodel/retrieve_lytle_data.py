@@ -12,9 +12,8 @@ remote_update.py is for pulling data from lytle for the vcnmodel results
 
 The program:
 1. logs in through ssh
-2. changes directories to the right directory (PyNeuronLibrary/Cortex_STDP in this case)
+2. changes directories to the right directory
 3. uploads the source files in the list sourceFiles
-4. changes directories to Desktop/Python, copies: pylibrary, nrnlibrary,
 4. submits the job using bsub and requesting an appropriate number of processors
 4. (optionally) patiently waits for the results to become available.
 5. (optionally) downloads the result file
@@ -32,7 +31,7 @@ if len(sys.argv) > 1:
 else:
     machine = "Lytle"
 
-gradeACells = [2, 5, 6, 9, 10, 11, 13, 17, 24, 29, 30]
+gradeACells = [2, 5, 6, 9, 10, 11, 13, 17, 30]
 
 
 class Retiever(object):
@@ -111,7 +110,9 @@ class Retiever(object):
             bwLimit = ''
             excludeStr = ''
             trash = ''
-            dryrun = '' # '--dry-run'
+            dryrun = '--dry-run'
+            # daysback = 3
+ #            datelimit = f"--files-from=<(find {dpath:s} -mtime -{daysback:d} -type f -exec basename {} \;)"
             print('dpath:     ', dpath)
             backupDir = str(Path(backupDir).parent) + '/'
             print('backupDir: ', backupDir)

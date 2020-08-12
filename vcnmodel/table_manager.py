@@ -71,7 +71,7 @@ class IndexData:
     elapsed: float = 0.0
     runProtocol: str = ""
     synapsetype: str = ""
-    synapse_experiment: str = ""
+    synapseExperiment: str = ""
 
 
 class TableManager:
@@ -148,10 +148,10 @@ class TableManager:
             return None
         if 'runInfo' not in list(d.keys()):
             cprint('r', 'SKIPPING: File is too old (missing "runinfo"); re-run for new structure')
-            return(None)
+            return None
         if "Params" not in list(d.keys()):
             cprint('r', 'SKIPPING: File is too old (missing "Params"); re-run for new structure')
-            return(None)
+            return None
         return (d["Params"], d["runInfo"], str(datafile.name))  # just the dicts
 
     def make_indexdata(self, params, runinfo, fn=None, indexdir=None):
@@ -189,7 +189,7 @@ class TableManager:
             mtime = Path(Index_data.simulation_path, fn).stat().st_mtime
         elif Index_data.filetype == "D":
             mtime = Path(Index_data.simulation_path, indexdir).stat().st_mtime
-        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d-%H:%M")
+        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime("%F-%T:.%f") # "%Y-%m-%d-%H:%M:%S")
         Index_data.datestr = timestamp_str
 
 
@@ -207,26 +207,35 @@ class TableManager:
             Index_data.cellType = params["cellType"]
             Index_data.modelType = params["modelType"]
             Index_data.modelName = params["modelName"]
-            Index_data.temperature = 37.0  # params["Celsius"]  Not always in the file information we retrieve
-
+            Index_data.runProtocol = params["runProtocol"]
+            Index_data.synapsetype = params["ANSynapseType"]
+            Index_data.synapseExperiment = params["spirou"]
+            Index_data.dBspl = params["dB"]
+            Index_data.SRType = params["SRType"]
             try:
                 Index_data.dt = params["dt"]
             except:
                 Index_data.dt = 20e-6
-            Index_data.runProtocol = params["runProtocol"]
-            Index_data.synapsetype = params["ANSynapseType"]
-            Index_data.synapse_experiment = params["spirou"]
-            Index_data.dBspl = params["dB"]
-            Index_data.SRType = params["SRType"]
+            try:
+                Index_data.temperature = params["Celsius"] #  Not always in the file information we retrieve
+            except:
+                Index_data.temperature = 0. # mark if missing
+
         else:  # new style files with dataclasses
             Index_data.cellType = params.cellType
             Index_data.modelType = params.modelType
             Index_data.modelName = params.modelName
+            Index_data.runProtocol = runinfo.runProtocol
+            Index_data.synapsetype = params.ANSynapseType
+            Index_data.synapseExperiment = runinfo.Spirou
+            Index_data.dBspl = runinfo.dB
+            Index_data.nReps = runinfo.nReps
+            Index_data.SRType = params.SRType
+            Index_data.temperature = params.celsius
             try:
                 Index_data.dendriteMode = params.dendriteMode
             except:
                 Index_data.dendriteMode = "normal"
-            Index_data.temperature = params.celsius
             try:
                 Index_data.dt = params.dt
             except:
@@ -236,13 +245,6 @@ class TableManager:
                     Index_data.dt = params.dtVC
                 else:
                     raise ValueError('Rininfo postmode not known: ', runinfo.postMode)
-            Index_data.runProtocol = runinfo.runProtocol
-            Index_data.synapsetype = params.ANSynapseType
-            Index_data.synapse_experiment = runinfo.Spirou
-            Index_data.dBspl = runinfo.dB
-            Index_data.nReps = runinfo.nReps
-            Index_data.SRType = params.SRType
-
         return Index_data
         
     def write_indexfile(self, params, runinfo, indexdir):
@@ -263,6 +265,26 @@ class TableManager:
             indexdata = pickle.load(fh, encoding="latin1")
         return indexdata
 
+    def print_indexfile(self, indexrow):
+        """
+        Print the values in the index file
+        """
+        print('='*80)
+        print('\n Index file and data file params')
+        cprint('c', f"Index row: {indexrow:d}")
+        data = self.get_table_data(indexrow)
+        print('Data: ', data)
+        for f in data.files:
+            with open(f, "rb") as fh:
+                fdata = pickle.load(fh, encoding="latin1")
+                print('*'*80)
+                cprint('y', f)
+                print(fdata.keys())
+                print(fdata['Params'])
+                print('-'*80)
+                print(fdata['runInfo'])
+                print('*'*80)
+    
     def build_table(self, mode="scan"):
         if mode == 'scan':
             force = False
@@ -298,9 +320,12 @@ class TableManager:
                 indxs.append(self.read_indexfile(f))
                 # if indxs[-1] is None:
                 # cprint('y', f"None in #{i:d} :{str(f):s}")
+                print('\nfile: ', str(f))
+                print('     index spriou: ', indxs[i].synapseExperiment)
 
         runfiles = list(thispath.glob("*.p"))
         dfiles = sorted(list(runfiles))  # regular data files
+        valid_dfiles = []
         for i, f in enumerate(dfiles):
             p = self.read_pfile_params(f)
             if p is None:
@@ -309,8 +334,10 @@ class TableManager:
             else:
                 params, runinfo, fn = p  # ok to unpack
                 indxs.append(self.make_indexdata(params, runinfo, fn))
+                valid_dfiles.append(f)  # keep track of accepted files
+        dfiles = valid_dfiles  # replace with shorter list with only the valid files
         indexfiles = indexfiles + dfiles
-
+        
         # print(indxs)
         # for i in range(len(indexfiles)):
         #     try:
@@ -332,7 +359,7 @@ class TableManager:
                     indxs[i].modelName,
                     indxs[i].runProtocol,
                     indxs[i].dendriteMode,
-                    indxs[i].synapse_experiment,
+                    indxs[i].synapseExperiment,
                     indxs[i].dBspl,
                     indxs[i].nReps, # command_line["nReps"],
                     len(indxs[i].files),

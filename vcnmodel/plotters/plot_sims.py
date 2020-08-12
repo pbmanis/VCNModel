@@ -1102,7 +1102,7 @@ class PlotSims:
         RCD.tx = np.arange(RCP.minwin, 0, RCP.binw)
         return (d, AR, SP, RMA, RCP, RCD)
 
-    @time_func
+    # @time_func
     def revcorr(
         self,
         st1: Union[np.ndarray, List] = None,
@@ -1140,7 +1140,7 @@ class PlotSims:
         return xds, len(st1)  # return the n postsynaptic spikes
 
     @winprint
-    @time_func
+    # @time_func
     def compute_revcorr(
         self,
         ax: object,
@@ -1311,21 +1311,21 @@ class PlotSims:
 
         elapsed_time = datetime.datetime.now() - start_time
         print("Time for calculation: ", elapsed_time)
-        pre_w = [-2.7, -0.7]
+        pre_w = [-2.2, -1.0]
 
         summarySiteTC = self.plot_revcorr2(ax, PD, RCP, RCD)
 
         ax.set_title(
-            f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}",
+            f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}" +
+            f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s}",
             fontsize=11,
         )
         # return summarySiteTC, RCD.sites
 
         ################
-        # now some pariwise, etc. stats on events prior to a spike
+        # now some pariwise and partticipation stats on input events prior to a spike
         ################
 
-        # tind = np.where((RCD.tx > pre_w[0]) & (RCD.tx < pre_w[1]))[0]
         pairwise = np.zeros((RCP.ninputs, RCP.ninputs))
         participation = np.zeros(RCP.ninputs)
         nperspike = []
@@ -1335,41 +1335,43 @@ class PlotSims:
             for s in spks:  # for each postsynaptic spike
                 if (
                     s < RCP.min_time or s > RCP.max_time
-                ):  # trim to those only in a response window
+                ):  # restrict post spikes to those only in a response window
                     continue
                 # print('pre: ', s)
-                nspikes += 1
+                nspikes += 1 # number of post spikes evaluated
                 nps = 0
-                for isite in range(RCP.ninputs):  # test inputs in a window prior
-                    anxi = d["Results"][trial]["inputSpikeTimes"][
+                for isite in range(RCP.ninputs):  # examine each input
+                    an_i = d["Results"][trial]["inputSpikeTimes"][
                         isite
                     ]  # input spike times for one input
-                    anxi = anxi[
-                        (anxi > RCP.min_time) & (anxi < RCP.max_time)
-                    ]  # trim to those only in a response window
-                    ani = anxi - s
+                    an_i = an_i[
+                        (an_i > RCP.min_time) & (an_i < RCP.max_time)
+                    ]  # restrict to those only within the response window
+                    an_i = an_i - s  # get relative latency from spike to it's inputs
                     # print('ani: ', ani)
-                    nevi = len(
-                        np.where((ani >= pre_w[0]) & (ani <= pre_w[1]))[0]
-                    )  # count spikes in ith window
-                    if nevi > 0:
-                        participation[isite] += 1
-                        nps += 1
-                    for jsite in range(isite + 1, RCP.ninputs):
-
-                        anxj = d["Results"][trial]["inputSpikeTimes"][jsite]
-                        anxj = anxj[(anxj > RCP.min_time) & (anxj < RCP.max_time)]
-                        anj = anxj - s
-                        nevj = len(np.where((anj >= pre_w[0]) & (anj <= pre_w[1]))[0])
-                        if isite != jsite:
-                            if nevj > 0 and nevi > 0:
-                                # print(nevi, nevi)
-                                pairwise[isite, jsite] += 1
-                        else:
-                            if nevj > 0:
-                                pairwise[isite, jsite] += 1
+                    npre_i = len(
+                        np.where((an_i >= pre_w[0]) & (an_i <= pre_w[1]))[0]
+                    )  # count spikes narrow pre window before the ith pre spike
+                    if npre_i > 0:
+                        participation[isite] += 1  # any spikes in the window = participation (but only count as 1)
+                        nps += npre_i
+                    else:
+                        continue  # no timed spikes, so move on
+                    for jsite in range(isite+1, RCP.ninputs):  # now do for joint combinations with other remaining inputs
+                        an_j = d["Results"][trial]["inputSpikeTimes"][jsite] # get spike times 
+                        an_j = an_j[(an_j > RCP.min_time) & (an_j < RCP.max_time)] # limit to response window
+                        an_j = an_j - s  # delay between j_th input and post spike
+                        npre_j = len(np.where((an_j >= pre_w[0]) & (an_j <= pre_w[1]))[0])  # count spikes in window
+                        if npre_j > 0: # accumulate if coincident for this pair
+                            # print(nevi, nevi)
+                            pairwise[isite, jsite] += 1
+                    # else:  # incase iste and jsite are the same,
+ #                            if nev_i > 0:
+ #                                pairwise[isite, jsite] += 1
                 nperspike.append(nps)
+        print(pairwise)
 
+        npartipating = np.sum(participation)
         s_pair = np.sum(pairwise)
         if s_pair > 0.0:
             pairwise /= s_pair
@@ -1393,9 +1395,9 @@ class PlotSims:
         for j, i in enumerate(nperspike[0]):
             # print(i, j, nperspike[1,j])
             ynspike[i - 1] = nperspike[1, j]
-
+        
         ynspike = np.cumsum(ynspike / nspikes)
-
+        
         # print(RCD.sites)
         # print(pos)
         maxp = np.max(pairwise)
@@ -1486,7 +1488,8 @@ class PlotSims:
             pointSize=7,
         )
         PSum.figure_handle.suptitle(
-            f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}",
+            f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}" +
+            f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s}",
             fontsize=11,
         )
         mpl.show()
