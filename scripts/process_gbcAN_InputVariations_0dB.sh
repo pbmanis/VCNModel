@@ -3,7 +3,7 @@ CONFIG="autoscale_multisite_0dB_parallel.toml"
 RUNTEXT="running the individual initialization and running AN PSTH protocols"
 CELLNAMES="02 05 06 09 10 11 13 17 30"
 TABLES="data_XM13A_nacncoop_normal data_XM13A_nacncoop_pasdend data_XM13A_nacncoop_actdend"
-EXPERIMENT="all=mean max=mean removelargest largestonly twolargest"
+EXPERIMENT="all" # all=mean max=mean removelargest largestonly twolargest"
 REPS=10
 TEST="" # "--testsetup"  # or "--testsetup"
 echo $RUNTEXT
