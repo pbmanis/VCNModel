@@ -4,6 +4,9 @@
 
 black==19.10b0
 Cython==0.29.7
+Pint==0.14
+isort==5.0.2
+mypy==0.782
 
 dill==0.3.1.1
 envisage==4.7.2
@@ -30,6 +33,7 @@ pycparser==2.19
 
 PyOpenGL==3.1.5
 PyOpenGL-accelerate==3.1.5
+pynwb
 pyparsing==2.4.0
 pyqt5==5.12.3
 pyqt5-sip==4.19.18
@@ -52,20 +56,22 @@ imreg_dft>=2.0
 descartes
 mahotas
 
-#-e git+https://github.com/pbmanis/montager.git@578ba75af12bb2321e377451f35921977656041a#egg=montage
-#-e git+https://github.com/pbmanis/neuronvis@Python3#egg=neuronvis
-
+-e /Users/pbmanis/Desktop/Python/pyqtgraph
+-e /Users/pbmanis/Desktop/Python/neuronvis
 -e /Users/pbmanis/Desktop/Python/pylibrary
 -e /Users/pbmanis/Desktop/Python/ephys
 -e /Users/pbmanis/Desktop/Python/montage
--e /Users/pbmanis/Desktop/Python/neuronvis
--e /Users/pbmanis/Desktop/Python/cnmodel_pbm
--e git+https://github.com/pbmanis/pyqtgraph.git#egg=pyqtgraph
 
+#-e git+https://github.com/pbmanis/pyqtgraph.git@e3ac16b3a220f76b69bf26c295edf140e2e928b4#egg=pyqtgraph
+#-e git+https://github.com/pbmanis/pylibrary.git@f16bcbe490e8a11d99792dfd65d3ed18a0cd6756#egg=pylibrary
+#-e git+https://github.com/pbmanis/ephys.git#egg=ephys
+#-e git+https://github.com/pbmanis/montager.git@578ba75af12bb2321e377451f35921977656041a#egg=montage
+
+# the following are handled by the shell script makeenv_local.sh
 #-e git+https://github.com/pbmanis/cnmodel.git@5522473356de7d1733212ce5a652cd5cc0fb7c9b#egg=cnmodel
 
 # this has to be last as the compilation depends on getting Cython and numpy installed first
--e git+https://github.com/pbmanis/cochlea-1.git#egg=cochlea
+#-e git+https://github.com/pbmanis/cochlea-1.git#egg=cochlea
 
 
 
