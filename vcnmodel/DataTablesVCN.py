@@ -113,11 +113,13 @@ class DataTables:
         self.layout = pg.QtGui.QGridLayout()
         self.win.setLayout(self.layout)
         self.win.setWindowTitle("Model DataTables/FileSelector")
-        self.win.resize(1280, 1024)
+        self.win.resize(1600, 1024)
 
         self.table = pg.TableWidget(sortable=True)
+        self.table.setSelectionMode(pg.QtGui.QAbstractItemView.ExtendedSelection)
         style = "::section {background-color: darkblue; }"
-        self.selected_index_row = None
+        self.selected_index_row = None  # for single selection mode
+        self.selected_index_rows = None  # for multirow selection mode
         self.table.horizontalHeader().setStyleSheet(style)
         self.model = None
         # self.table.sortingEnabled(True)
@@ -138,6 +140,9 @@ class DataTables:
             "Analysis": [analysistypes, self.analysistype],
             "Dendrites": [dendriteChoices, self.dendriteChoices],
         }
+        self.filters = {'Use Filter': False, 'dBspl': None, 'nReps': None, 'Protocol': None,
+                'Experiment': None, 'modelName': None, 'dendMode': None, 'dataTable': None}
+
         self.params = [
             # {"name": "Pick Cell", "type": "list", "values": cellvalues, "value": cellvalues[0]},
             {"name": "Scan Runs", "type": "action"},
@@ -229,7 +234,19 @@ class DataTables:
                  {"name": "Protocol", "type": "str", "value": "None"},
                  {"name": "Experiment", "type": "str", "value": "None"},
                  {"name": "modelName", "type": "str", "value": "None"},
+                 {"name": "dataTable", "type": "str", "value": "None"},
+                 {"name": "dendMode", "type": "str", "value": "None"},
+                 {'name': "Apply", "type": "action"},
                  ],
+            },
+            {
+              "name": "Figures",
+              "type": "group",
+              "children": [
+                  {"name": "IV Figure", "type": "action"},
+                  {"name": "Reccorr Comparison", "type": "action"},
+                  
+              ],  
             },
             {
                 "name": "Tools",
@@ -264,10 +281,10 @@ class DataTables:
         self.win.show()
 
         self.table.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
-        self.table_manager = table_manager.TableManager(
-            self.table, self.basepath, self.selvals, self.altColors
+        self.table_manager = table_manager.TableManager(parent = self,
+            table=self.table, basepath=self.basepath, selvals=self.selvals, altcolormethod=self.altColors
         )
-        self.table.itemDoubleClicked.connect(functools.partial(self.on_Click, self.table))
+        self.table.itemDoubleClicked.connect(functools.partial(self.on_double_Click, self.table))
         self.table.clicked.connect(functools.partial(self.on_Single_Click, self.table))
         self.ptreedata.sigTreeStateChanged.connect(self.command_dispatcher)
 
@@ -279,15 +296,19 @@ class DataTables:
             self.datapaths = {"baseDirectory": Path("../VCN-SBEM-Data", "VCN_Cells",)}
         self.basepath = self.datapaths["baseDirectory"]
 
-    def on_Click(self, w):
+    def on_double_Click(self, w):
         index = w.selectionModel().currentIndex()
         self.selected_index_row = index.row()
         self.analyze_from_table(index.row())
 
     def on_Single_Click(self, w):
-        index = w.selectionModel().currentIndex()
-        self.selected_index_row = index.row()
-        self.analyze_from_table(index.row())
+        selrows = w.selectionModel().selectedRows()
+        self.selected_index_rows = selrows
+        if len(selrows) == 0:
+            self.selected_index_rows = None
+        # for index in selrows:
+        #     self.selected_index_row = index.row()
+        #     self.analyze_from_table(index.row())
 
     def handleSortIndicatorChanged(self, index, order):
         # print(dir(self.table.model()))
@@ -318,9 +339,9 @@ class DataTables:
             if path[0] == "Analysis":
                 if path[1] == "Traces":
                     self.analyze_traces()
-                if path[1] == "IV":
+                elif path[1] == "IV":
                     self.analyze_IV()
-                if path[1] == "VC":
+                elif path[1] == "VC":
                     self.analyze_VC()
                 elif path[1] == "PSTH":
                     self.analyze_PSTH()
@@ -331,6 +352,31 @@ class DataTables:
                 elif path[1] == "CMMR Summary":
                     self.analyze_cmmr_summary()
 
+            if path[0] == 'Filters':
+                if path[1] == 'Use Filter':
+                    # print(data)
+                    self.filters['Use Filter'] = data
+                elif path[1] in ['dBspl', 'nReps']:
+                    # print('dbspl/nreps: ', data)
+                    if data is not 'None':
+                        self.filters[path[1]] = int(data)
+                    else:
+                        self.filters[path[1]] = None
+                elif path[1] in ["Protocol", "Experiment", "modelName", "dendMode"]:
+                    if data is not 'None':
+                        self.filters[path[1]] = str(data)
+                    else:
+                        self.filters[path[1]] = None
+                elif path[1] in ["Apply"]:
+                    self.table_manager.apply_filter(self.filters, QtCore=QtCore)
+                # print('Filters: ', self.filters)
+            
+            if path[0] == "Figures":
+                if path[1] == "IV Figure":
+                    pass
+                if path[1] == "Reccorr Comparison":
+                    self.PLT.compare_revcorrs()
+            
             if path[0] == "Tools":
                 if path[1] == "Reload":
                     print("reloading...")
@@ -338,9 +384,10 @@ class DataTables:
                         print("reloading: ", module)
                         importlib.reload(module)
                     self.PLT = plot_sims.PlotSims(parent=self)
-                    self.table_manager = table_manager.TableManager(
-                        self.table, self.basepath, self.selvals, self.altColors
+                    self.table_manager = table_manager.TableManager(parent = self,
+                        table=self.table, basepath=self.basepath, selvals=self.selvals, altcolormethod=self.altColors
                     )
+
                     print("   reload ok")
                     print("-" * 80)
                     self.table_manager.build_table(mode="scan")
@@ -348,12 +395,17 @@ class DataTables:
                     self.table.horizontalHeader().sortIndicatorChanged.connect(
                         self.handleSortIndicatorChanged
                     )
+                    self.table_manager.apply_filter(self.filters)
+                    self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)  # by date
+                    self.altColors()  # reset the color list.
+                    
                 elif path[1] == "View IndexFile":
-                    index_row = self.selected_index_row
-                    selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
-                    if selected is None:
-                        return
-                    self.table_manager.print_indexfile(index_row)
+                    for index_row in self.selected_index_rows:
+                        selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
+                        if selected is None:
+                            return
+                        self.table_manager.print_indexfile(index_row)
+                
 
     def setColortoRow(self, rowIndex, color):
         for j in range(self.table.columnCount()):
@@ -386,9 +438,9 @@ class DataTables:
         return fn
 
     def analyze_singles(self):
-        if self.selected_index_row is None:
+        if self.selected_index_rows is None:
             return
-        index_row = self.selected_index_row
+        index_row = self.selected_index_rows[0]
         selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
         if selected is None:
             return
@@ -433,17 +485,35 @@ class DataTables:
         P.figure_handle.show()
 
     def analyze_traces(self):
-        if self.selected_index_row is None:
+        if self.selected_index_rows is None:
             return
-        index_row = self.selected_index_row
-        selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
-        if selected is None:
+        self.plot_traces(rows=len(self.selected_index_rows), 
+                         cols=1,
+                         height=len(self.selected_index_rows),
+                         width=6.0,
+                         stack=True,
+                         ymin = -80.,
+                         ymax = 20.,
+                         )
+
+    def analyze_IV(self):
+        if self.selected_index_rows is None:
             return
+        self.plot_traces(rows=1,
+                         cols=len(self.selected_index_rows), 
+                         height=3.0, width=3*len(self.selected_index_rows),
+                         stack=False,
+                         ymin=-120., ymax=20.)
+        return
+        
+            
+    def plot_traces(self, rows=1, cols=1, width=5., height=4.0, stack=True,
+            ymin=-120., ymax=0.):
         P = PH.regular_grid(
-            1,
-            1,
+            rows,
+            cols,
             order="rowsfirst",
-            figsize=(6.0, 6.0),
+            figsize=(width, height),
             showgrid=False,
             verticalspacing=0.01,
             horizontalspacing=0.01,
@@ -459,28 +529,25 @@ class DataTables:
         )
 
         PD = plot_sims.PData()
-        sfi = Path(selected.simulation_path, selected.files[0])
-        self.PLT.plot_traces(P.axarr[0, 0], sfi, PD, protocol = selected.runProtocol)
+        for iax, index_row in enumerate(self.selected_index_rows):
+            selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
+            if selected is None:
+                return
+            sfi = Path(selected.simulation_path, selected.files[0])
+            if stack:
+                self.PLT.plot_traces(P.axarr[iax, 0], sfi, PD, protocol = selected.runProtocol,
+                ymin = ymin, ymax=ymax, iax=iax)
+            else:
+                self.PLT.plot_traces(P.axarr[0, iax], sfi, PD, protocol = selected.runProtocol,
+                 ymin = ymin, ymax=ymax, iax=iax)
         P.figure_handle.show()
 
-    def analyze_IV(self):
-        return
-        # if self.selected_index_row is None:
-        #     return
-        # index_row = self.selected_index_row
-        # selected = self.table_manager.table_data[index_row]
-        # P = PS.setup_PSTH()
-        # PD = plot_sims.PData()
-        # index_row = self.selected_index_row
-        # selected = self.table_manager.table_data[index_row]
-        # sfi = Path(selected.simulation_path, selected.files[0])
-        # PS.plot_AN_response(P, sfi, PD, selected.runProtocol)
-        # P.figure_handle.show()
+
 
     def analyze_VC(self):
-        if self.selected_index_row is None:
+        if self.selected_index_rows is None:
             return
-        index_row = self.selected_index_row
+        index_row = self.selected_index_rows[0]
         selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
         if selected is None:
             return
@@ -512,11 +579,11 @@ class DataTables:
 
         
     def analyze_PSTH(self):
-        if self.selected_index_row is None:
+        if self.selected_index_rows is None:
             return
         P = PS.setup_PSTH()
         PD = plot_sims.PData()
-        index_row = self.selected_index_row
+        index_row = self.selected_index_rows[0]
         selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
         if selected is None:
             return
@@ -525,45 +592,19 @@ class DataTables:
         P.figure_handle.show()
 
     def analyze_revcorr(self, revcorrtype):
-        if self.selected_index_row is None:
+        if self.selected_index_rows is None:
             return
-        index_row = self.selected_index_row
+        index_row = self.selected_index_rows[0]
         selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
         if selected is None:
             return
-        PD = plot_sims.PData()
-        rows = 1
-        cols = 1  # just a single selection
-        sizex = 6.0
-        sizey = 6.0
+        self.PLT.plot_revcorr_figure(selected, revcorrtype)
 
-        plabels = [f"VCN_c{int(self.cellID):02d}"]
-        pgbc = plabels[0]
-        P = PH.regular_grid(
-            rows,
-            cols,
-            order="rowsfirst",
-            figsize=(sizex, sizey),
-            panel_labels=plabels,
-            labelposition=(0.05, 0.95),
-            margins={
-                "leftmargin": 0.1,
-                "rightmargin": 0.01,
-                "topmargin": 0.15,
-                "bottommargin": 0.15,
-            },
-        )
-
-        PD = plot_sims.PData()
-        sfi = Path(selected.simulation_path, selected.files[0])
-        res = self.PLT.compute_revcorr(P.axarr[0, 0], pgbc, sfi, PD, selected.runProtocol, revcorrtype)
-
-        P.figure_handle.show()
-
+                
     def analyze_from_table(self, i):
-        if self.selected_index_row is None:
+        if self.selected_index_rows is None:
             return
-        index_row = self.selected_index_row
+        index_row = self.selected_index_rows[0]
         selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
         if selected is None:
             return

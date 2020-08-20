@@ -145,6 +145,16 @@ def grAList() -> list:
 
     return [2, 5, 6, 9, 10, 11, 13, 17, 30]
 
+SpirouChoices = [
+    "all",
+    "max=mean",
+    "all=mean",
+    "removelargest",
+    "largestonly",
+    "twolargest",
+    "threelargest",
+    "fourlargest",
+]
 
 @dataclass
 class PData:
@@ -515,6 +525,7 @@ class PlotSims:
     @winprint
     def plot_traces(
         self, ax: object, fn: Union[Path, str], PD: dataclass, protocol: str,
+        ymin=-100., ymax=20., iax=None
     ) -> tuple:
         changetimestamp = get_changetimestamp()
         x = self.get_data_file(fn, changetimestamp, PD)
@@ -587,7 +598,7 @@ class PlotSims:
                 pass  #
                 # ax.set_ylim((-100.0, 100.0))
             else:
-                ax.set_ylim(-200.0, 50.0)
+                ax.set_ylim(ymin, ymax)
                 ax.set_xlim(0.080, np.max(AR.time_base))
         # print('Nout/Nin: ', float(noutspikes)/ninspikes)
 
@@ -599,8 +610,15 @@ class PlotSims:
             toptitle += (
                 f"\nRin={RMA['Rin']:.1f} M$\Omega$  $\\tau_m$={RMA['taum']:.2f} ms"
             )
-
-            secax = PLS.create_inset_axes([0.4, 0, 0.4, 0.4], ax, label=str(ax))
+            
+            if iax == 2:
+                PH.calbar(ax, calbar=[120., -30., 10., 20.], 
+                scale=[1.0, 1.0], axesoff=True, orient='right', 
+                unitNames={'x': 'ms', 'y': 'mV'}, fontsize=11, weight='normal', color='k', font='Arial')
+            else:
+                PH.noaxes(ax)
+            # insert IV curve
+            secax = PLS.create_inset_axes([0.45, -0.05, 0.3, 0.3], ax, label=str(ax))
             secax.plot(
                 RM.ivss_cmd_all * 1e12,
                 RM.ivss_v_all * 1e3,
@@ -664,7 +682,7 @@ class PlotSims:
         else:
             PH.calbar(
                 ax,
-                calbar=[20.0, -160.0, 10.0, 20.0],
+                calbar=[20.0, ymin, 10.0, 20.0],
                 unitNames={"x": "ms", "y": "mV"},
                 fontsize=9,
             )
@@ -907,19 +925,22 @@ class PlotSims:
         for sp in axn.spines.values():
             sp.set_visible(False)
 
-    def plot_revcorr2(self, ax: object, PD: dataclass, RCP: dataclass, RCD: dataclass):
+    def plot_revcorr2(self, P: object, PD: dataclass, RCP: dataclass, RCD: dataclass):
         seaborn.set_style("ticks")
         # secax = twinax(P.figure_handle, ax, pos=maxwin)
-        secax = PLS.create_inset_axes([0, 0.5, 1, 0.5], ax, label=str(ax))
+        ax = P.axdict["B"]
+        secax = P.axdict["A"]
+        # secax = PLS.create_inset_axes([0, 0.5, 1, 0.5], ax, label=str(ax))
         PH.noaxes(secax, "xy")
 
         secax.set_facecolor((1, 1, 1, 0))
-        secax.spines["bottom"].set_visible(False)
+        # secax.spines["bottom"].set_visible(False)
         ax.spines["top"].set_visible(False)
         # ax.set_facecolor((0.7, 0.7, 0.7))
-        ax2 = ax.twinx()
-        ax2.spines["right"].set_position(("axes", 0.9))
+        # ax2 = ax.twinx()
+        # ax2.spines["right"].set_position(("axes", 0.9))
         summarySiteTC = {}
+        RCD.max_coin_rate = 0.
         maxrevcorr = 0
         for isite in range(
             RCP.ninputs
@@ -945,7 +966,7 @@ class PlotSims:
                 maxrevcorr = np.max((maxrevcorr, np.max(RCD.CB[isite])))
                 totalrevcorr = np.sum(RCD.CB[isite])
 
-                self.make_patch_spines_invisible(ax2)
+                # self.make_patch_spines_invisible(ax2)
                 if isite in range(RCP.ninputs):
                     if RCP.algorithm == "RevcorrSPKS":
                         ax.plot(
@@ -960,6 +981,7 @@ class PlotSims:
                             linewidth=1.5,
                             zorder=5,
                         )
+                        RCD.max_coin_rate = np.max((RCD.max_coin_rate, np.max(RCD.C[:nc])))
 
                     # print(RCD.npost_spikes)
                     #            print(RCD.CB[isite])
@@ -977,6 +999,8 @@ class PlotSims:
                             zorder=5,
                             alpha=1.0,
                         )
+                        RCD.max_coin_rate = np.max((RCD.max_coin_rate, np.max(RCD.CB[isite]/float(RCD.npost_spikes))))
+                        
                     elif RCP.algorithm == "RevcorrSTTC":  # use spike time tiling method
                         ax.plot(
                             RCD.tx,
@@ -991,7 +1015,6 @@ class PlotSims:
                             zorder=5,
                         )
 
-                RCD.max_coin_rate = np.max((RCD.max_coin_rate, np.max(RCD.C[:nc])))
 
             if (
                 isite == 0
@@ -1006,29 +1029,38 @@ class PlotSims:
                     )
 
                 secax.plot(RCD.ti_avg, RCD.sv_avg, color="k", linewidth=0.75, zorder=2)
+                secax.plot([0.0, 0.0], [-120.0, 10.0], "r", linewidth=0.5)
+                PH.noaxes(secax)
                 PH.calbar(
                     secax,
-                    calbar=[1.0, -10, 1.0, 20.0],
+                    calbar=[1.35, -30, 1.0, 20.0],
                     axesoff=True,
                     orient="right",
                     unitNames={"x": "ms", "y": "mV"},
                 )
                 PH.referenceline(secax, -60.0)
-                seaborn.despine(ax=secax)
+                # seaborn.despine(ax=secax)
+                PH.noaxes(secax)
         print(f"Total spikes plotted: {RCD.nsp_avg:d}")
 
-        secax.plot([0.0, 0.0], [-120.0, 10.0], "r", linewidth=0.5)
+
 
         seaborn.despine(ax=ax)
-        secax.set_ylabel("Rate of coincidences/bin (Hz)", fontsize=10)
+        ax.set_ylabel("Rate of coincidences/bin (Hz)", fontsize=10)
         ax.set_xlabel("T (ms)", fontsize=10)
         ax.set_xlim((RCP.minwin, RCP.maxwin))
-        if 0.2 < RCD.max_coin_rate < 1.0:
-            ax.set_ylim(0, 1)
-        elif 0.2 >= RCD.max_coin_rate:
+        # if 0.2 < RCD.max_coin_rate < 1.0:
+#             ax.set_ylim(0, 1)
+#         elif 0.2 >= RCD.max_coin_rate:
+#             ax.set_ylim(0, 0.25)
+#         elif RCD.max_coin_rate > 1.0:
+#             ax.set_ylim(0, 2.0)
+        print(RCD.max_coin_rate)
+        if RCD.max_coin_rate > 0.:
+            ns = PH.NiceScale(0., RCD.max_coin_rate)
+            ax.set_ylim(0, ns.niceMax)
+        else:
             ax.set_ylim(0, 0.25)
-        elif RCD.max_coin_rate > 1.0:
-            ax.set_ylim(0, 2.0)
         yls = ax.get_ylim()
         # ax2.set_ylim(yls)
         secax.set_ylim([-70.0, 10.0])
@@ -1038,9 +1070,9 @@ class PlotSims:
         ax.tick_params(direction="in", length=5.0, width=1.0, labelsize=9)
         # ax2.set_ylabel('Total Correlation W=%.1f-%0.1f'% (tcwidth[0], tcwidth[1]), fontsize=12)
         # ax2.set_ylim(0, 1.0) # maxtc*1.2)
-        # PH.talbotTicks(ax2, axes='xy',
-        #                density=(1.0, 1.0), insideMargin=0.05, pointSize=10,
-        #                tickPlacesAdd={'x': 0, 'y': 1}, floatAdd={'x': 0, 'y': 1})
+        PH.talbotTicks(ax, axes='xy',
+                       density=(1.0, 1.0), insideMargin=0.05, pointSize=10,
+                       tickPlacesAdd={'x': 1, 'y': 1}, floatAdd={'x': 1, 'y': 1})
 
         # a = re_self.search(fn[p])
         # b = re_c10.search(fn[p])
@@ -1102,6 +1134,94 @@ class PlotSims:
         RCD.tx = np.arange(RCP.minwin, 0, RCP.binw)
         return (d, AR, SP, RMA, RCP, RCD)
 
+    @time_func
+    def compare_revcorrs(self):
+        plabels = [f"VCN_c{int(self.parent.cellID):02d}"]
+        pgbc = plabels[0]
+        revcorrtype = "RevcorrSimple"
+        PSum = PH.regular_grid(
+            rows=1,
+            cols=1,
+            order="rowsfirst",
+            figsize=(6, 6),
+            showgrid=False,
+            verticalspacing=0.1,
+            horizontalspacing=0.1,
+            margins={
+                "bottommargin": 0.15,
+                "leftmargin": 0.15,
+                "rightmargin": 0.15,
+                "topmargin": 0.15,
+            },
+            label=["A"],
+            labelposition=(-0.05, 1.05),
+        )
+        
+        for iax, index_row in enumerate(self.parent.selected_index_rows):
+            selected = self.parent.table_manager.get_table_data(index_row) #table_data[index_row]
+            if selected is None:
+                return
+            sfi = Path(selected.simulation_path, selected.files[0])
+            res = self.compute_revcorr(None, pgbc, sfi, PData(), selected.runProtocol, revcorrtype)
+            # unpack
+            ninputs, ynspike, sites, participation, nspikes = res
+            PSum.axarr[0,0].plot(np.arange(ninputs) + 1, ynspike, label=f"{selected.dendriteMode:s} {selected.synapseExperiment}")
+            PSum.axarr[0,0].set_ylim(0, 1.0)
+        
+        PSum.axarr[0,0].legend(fontsize=7)
+        PSum.axarr[0,0].set_xlabel('# of inputs active prior to spike', fontsize=10)
+        PSum.axarr[0,0].set_ylabel('Cumulative Fraction of bushy spikes', fontsize=10)
+        
+        PSum.figure_handle.show()
+
+    def plot_revcorr_figure(self, selected, revcorrtype):
+        PD = PData()
+
+        plabels = [f"VCN_c{int(self.parent.cellID):02d}"]
+        pgbc = plabels[0]
+    
+        sizer = {"A": {"pos": [0.05, 0.40, 0.52, 0.40], 'labelpos': (0.02, 1.00), 'noaxes': True}, 
+                 "B": {"pos": [0.05, 0.40, 0.08, 0.35], 'labelpos': (0.02, 1.00)}, 
+                 "C": {"pos": [0.52, 0.20, 0.52, 0.28], 'labelpos': (-0.15, 1.00)}, 
+                 "D": {"pos": [0.52, 0.20, 0.08, 0.28], 'labelpos': (-0.15, 1.00)}, 
+                 "E": {"pos": [0.78, 0.20, 0.52, 0.28], 'labelpos': (-0.15, 1.00)}, 
+                 "F": {"pos": [0.78, 0.20, 0.08, 0.28], 'labelpos': (-0.15, 1.00)}, 
+                 } # dict pos elements are [left, width, bottom, height] for the axes in the plot. gr = [(a, a+1, 0, 1) for a in range(0, 8)] # just generate subplots - shape do not matter axmap = OrderedDict(zip(sizer.keys(), gr)) 
+        nplots = len(sizer.keys())
+        gr = [(a, a+1, 0, 1) for a in range(0, nplots)] 
+        axmap = OrderedDict(zip(sizer.keys(), gr)) 
+        P = PH.Plotter(
+            (nplots, 1),
+            axmap = axmap,
+            order="columnsfirst",
+            figsize=(9, 5),
+            label=True,
+            # verticalspacing=0.12,
+            # horizontalspacing=0.12,
+            margins={
+                "bottommargin": 0.1,
+                "leftmargin": 0.1,
+                "rightmargin": 0.1,
+                "topmargin": 0.1,
+            },
+            # label=["A", "A1", "B", "C", "D", "E"],
+            # labelposition=(-0.05, 1.05),
+            fontsize = {'tick': 7, 'label': 9, 'panel':12},
+            fontweight = {'tick': 'normal', 'label': "normal", 'panel': 'bold'},
+        )
+
+        P.resize(sizer)
+        # PH.show_figure_grid(P.figure_handle)
+        # P.figure_handle.show()
+        # return
+        dPD = PData()
+        sfi = Path(selected.simulation_path, selected.files[0])
+        res = self.compute_revcorr(P, pgbc, sfi, PD, selected.runProtocol, revcorrtype)
+
+        P.figure_handle.show()
+        
+        
+
     # @time_func
     def revcorr(
         self,
@@ -1139,11 +1259,26 @@ class PlotSims:
         # print(np.array(xds).ravel().shape)
         return xds, len(st1)  # return the n postsynaptic spikes
 
+    def _count_spikes_in_window(self, d, trial, site, s, RCP, pre_w):
+        an_i = d["Results"][trial]["inputSpikeTimes"][
+            site
+        ]  # input spike times for one input
+        an_i = an_i[
+            (an_i > RCP.min_time) & (an_i < RCP.max_time)
+        ]  # restrict to those only within the response window
+        an_i = an_i - s  # get relative latency from spike to it's inputs
+        # print('ani: ', ani)
+        npre_i = len(
+            np.where((an_i >= pre_w[0]) & (an_i <= pre_w[1]))[0]
+        )  # count spikes narrow pre window before the ith pre spike
+        return npre_i
+
+
     @winprint
     # @time_func
     def compute_revcorr(
         self,
-        ax: object,
+        P: object,
         gbc: str,
         fn: Union[str, Path],
         PD: object,
@@ -1198,6 +1333,8 @@ class PlotSims:
                 start = ri.pip_start
             min_time = (start + 0.025) * 1000.0
             max_time = (start + ri.pip_duration) * 1000.0
+        expt = ri.Spirou
+        print('expt: ', expt)
 
         RCD.sv_sites = []
         RCD.C = [None] * RCP.ninputs
@@ -1313,63 +1450,51 @@ class PlotSims:
         print("Time for calculation: ", elapsed_time)
         pre_w = [-2.2, -1.0]
 
-        summarySiteTC = self.plot_revcorr2(ax, PD, RCP, RCD)
-
-        ax.set_title(
-            f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}" +
-            f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s}",
-            fontsize=11,
-        )
-        # return summarySiteTC, RCD.sites
 
         ################
-        # now some pariwise and partticipation stats on input events prior to a spike
+        # now some pariwise and participation stats on input events prior to a spike
         ################
 
         pairwise = np.zeros((RCP.ninputs, RCP.ninputs))
         participation = np.zeros(RCP.ninputs)
+        pre_spike_counts = np.zeros(RCP.ninputs+1)  # there could be 0, or up to RCP.ninputs pre spikes
         nperspike = []
         nspikes = 0
+        sellist = [True]*RCP.ninputs
+        if ri.Spirou == 'largestonly':
+            for i in range(1,len(sellist)):
+                sellist[i] = False
+        elif ri.Spirou == 'twolargest':
+            for i in range(2,len(sellist)):
+                sellist[i] = False
+        elif ri.Spirou == 'removelargest':
+            sellist[0] = False
+        
         for trial in range(RCP.ntrials):  # accumulate across all trials
-            spks = AR.time_base[SP.spikeIndices[trial]]
+            spks = AR.time_base[SP.spikeIndices[trial]]  # get spikes for the trial
             for s in spks:  # for each postsynaptic spike
                 if (
                     s < RCP.min_time or s > RCP.max_time
                 ):  # restrict post spikes to those only in a response window
                     continue
-                # print('pre: ', s)
                 nspikes += 1 # number of post spikes evaluated
-                nps = 0
+                npre_spikes = 0  # number of pre spikes associated with this post spike
                 for isite in range(RCP.ninputs):  # examine each input
-                    an_i = d["Results"][trial]["inputSpikeTimes"][
-                        isite
-                    ]  # input spike times for one input
-                    an_i = an_i[
-                        (an_i > RCP.min_time) & (an_i < RCP.max_time)
-                    ]  # restrict to those only within the response window
-                    an_i = an_i - s  # get relative latency from spike to it's inputs
-                    # print('ani: ', ani)
-                    npre_i = len(
-                        np.where((an_i >= pre_w[0]) & (an_i <= pre_w[1]))[0]
-                    )  # count spikes narrow pre window before the ith pre spike
+                    if not sellist[isite]:
+                        continue
+                    npre_i = self._count_spikes_in_window(d, trial, isite, s, RCP, pre_w)
                     if npre_i > 0:
                         participation[isite] += 1  # any spikes in the window = participation (but only count as 1)
-                        nps += npre_i
-                    else:
-                        continue  # no timed spikes, so move on
-                    for jsite in range(isite+1, RCP.ninputs):  # now do for joint combinations with other remaining inputs
-                        an_j = d["Results"][trial]["inputSpikeTimes"][jsite] # get spike times 
-                        an_j = an_j[(an_j > RCP.min_time) & (an_j < RCP.max_time)] # limit to response window
-                        an_j = an_j - s  # delay between j_th input and post spike
-                        npre_j = len(np.where((an_j >= pre_w[0]) & (an_j <= pre_w[1]))[0])  # count spikes in window
-                        if npre_j > 0: # accumulate if coincident for this pair
-                            # print(nevi, nevi)
-                            pairwise[isite, jsite] += 1
-                    # else:  # incase iste and jsite are the same,
- #                            if nev_i > 0:
- #                                pairwise[isite, jsite] += 1
-                nperspike.append(nps)
+                        npre_spikes += 1
+                        print(' spk: ', s, 'isite: ', isite)
+                        for jsite in range(isite+1, RCP.ninputs):  # now do for joint combinations with other remaining inputs
+                            npre_j = self._count_spikes_in_window( d, trial, jsite, s, RCP, pre_w)
+                            if npre_j > 0: # accumulate if coincident for this pair
+                                pairwise[isite, jsite] += 1
+                pre_spike_counts[npre_spikes] += 1  # increment the number of times there were npre_spikes input to this post spike
+                            
         print(pairwise)
+        print('pre spike_count associated with a post spike: ', pre_spike_counts)
 
         npartipating = np.sum(participation)
         s_pair = np.sum(pairwise)
@@ -1385,50 +1510,49 @@ class PlotSims:
                 pos[i, j, 1] = j + 1
 
         # print(np.unique(nperspike, return_counts=True))
-        nperspike = [n for n in nperspike if n != 0]
-        nperspike = scipy.stats.itemfreq(nperspike).T
+        # nperspike = [n for n in nperspike if n != 0]
+        # nperspike = scipy.stats.itemfreq(nperspike).T
         # print('nperspike counts: ', nperspike)
         # nperspike = np.array(np.unique(nperspike, return_counts=True))/nspikes
         # properly fill out output
         # xnspike = np.arange(RCP.ninputs)
-        ynspike = np.zeros(RCP.ninputs)
-        for j, i in enumerate(nperspike[0]):
-            # print(i, j, nperspike[1,j])
-            ynspike[i - 1] = nperspike[1, j]
+        # ynspike = np.zeros(RCP.ninputs)
+        # for j, i in enumerate(nperspike[0]):
+        #     # print(i, j, nperspike[1,j])
+        #     ynspike[i - 1] = nperspike[1, j]
         
-        ynspike = np.cumsum(ynspike / nspikes)
-        
+        # ynspike = np.cumsum(ynspike / nspikes)
+        ynspike = np.cumsum(pre_spike_counts[1:])/np.sum(pre_spike_counts[1:])
         # print(RCD.sites)
         # print(pos)
         maxp = np.max(pairwise)
-        PSum = PH.regular_grid(
-            rows=2,
-            cols=2,
-            order="rowsfirst",
-            figsize=(6, 6),
-            showgrid=False,
-            verticalspacing=0.1,
-            horizontalspacing=0.1,
-            margins={
-                "bottommargin": 0.1,
-                "leftmargin": 0.1,
-                "rightmargin": 0.1,
-                "topmargin": 0.15,
-            },
-            label=["A", "B", "C", "D"],
-            labelposition=(-0.05, 1.05),
-        )
-        sax = PSum.axdict
+
+        
+        if P is None:
+            return( RCP.ninputs, ynspike, RCD.sites, participation, nspikes)
+
+        ax = P.axdict["B"]
+        summarySiteTC = self.plot_revcorr2(P, PD, RCP, RCD)
+
+        # ax.set_title(
+        #     f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}" +
+        #     f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s}",
+        #     fontsize=11,
+        # )
+        # return summarySiteTC, RCD.sites
+        
+
+        sax = P.axdict
         # f, sax = mpl.subplots(3,1)
         # f.set_size_inches( w=3.5, h=9)
-        sax["A"].plot(np.arange(RCP.ninputs) + 1, RCD.sites, "bo")
+        sax['C'].plot(np.arange(RCP.ninputs) + 1, RCD.sites, "bo")
         # print('pairwise: ', pairwise)
         colormap = "plasma"
         if s_pair > 0.0:
             pclip = np.clip(pairwise, np.min(np.where(pairwise > 0)), np.max(pairwise))
             pclip[np.where(pclip == 0)] = np.nan
             pclipped = pclip - np.nanmin(pclip)
-            sax["C"].scatter(
+            sax["D"].scatter(
                 pos[:, :, 0],
                 pos[:, :, 1],
                 s=200 * pairwise / maxp,
@@ -1442,10 +1566,10 @@ class PlotSims:
             vmin = 0
             vmax = 1
         # sax['B'].plot(np.arange(RCP.ninputs)+1, participation/nspikes, 'gx')
-        sax["B"].plot(RCD.sites, participation / nspikes, "gx")
+        sax["E"].plot(RCD.sites, participation / nspikes, "gx")
 
         axcbar = PLS.create_inset_axes(
-            [0.8, 0.05, 0.05, 0.5], sax["C"], label=str(sax["C"])
+            [0.8, 0.05, 0.05, 0.5], sax["D"], label=str(P.axdict["D"])
         )
         norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
         ticks = np.linspace(vmin, vmax, num=4, endpoint=True)
@@ -1455,31 +1579,40 @@ class PlotSims:
         )
 
         # PH.nice_plot(sax['C'], position=-0.2)
-        sax["D"].plot(np.arange(RCP.ninputs) + 1, ynspike, "m^-")
+        sax["F"].plot(np.arange(len(ynspike))+1, ynspike, "m^-")
 
-        sax["A"].set_ylim(bottom=0)
-        sax["B"].set_ylim((0, 1.0))
-        sax["B"].set_xlim(left=0)
-        sax["D"].set_ylim(0, 1.05)
-        sax["A"].set_ylabel("# Release Sites")
-        sax["A"].set_xlabel("Input #")
-        sax["B"].set_xlabel("# Release Sites")
-        sax["B"].set_ylabel("Participation")
-        sax["C"].set_ylabel("Input #")
+        sax["C"].set_ylim(bottom=0)
+        sax["E"].set_ylim((0, 1.0))
+        sax["E"].set_xlim(left=0)
+        sax["F"].set_ylim(0, 1.05)
+        sax["C"].set_ylabel("# Release Sites")
         sax["C"].set_xlabel("Input #")
-        sax["D"].set_xlabel(
+        sax["E"].set_xlabel("# Release Sites")
+        sax["E"].set_ylabel("Participation")
+        sax["D"].set_ylabel("Input #")
+        sax["D"].set_xlabel("Input #")
+        sax["F"].set_xlabel(
             f"# Inputs in [{pre_w[0]:.1f} to {pre_w[1]:.1f}] before spike"
         )
 
-        PH.cleanAxes(PSum.axarr.ravel())
+        PH.cleanAxes(P.axarr.ravel())
         # PH.talbotTicks(sax["C"])
-        PH.talbotTicks(sax["A"])
 
         PH.talbotTicks(
-            sax["B"], tickPlacesAdd={"x": 0, "y": 1}, floatAdd={"x": 0, "y": 2}
+            sax["B"],
+            tickPlacesAdd={"x": 1, "y": 2},
+            floatAdd={"x": 1, "y": 2},
+            pointSize=7,
+        )
+        PH.talbotTicks(sax["C"], pointSize=7,)
+
+        PH.talbotTicks(
+            sax["E"], tickPlacesAdd={"x": 0, "y": 1}, floatAdd={"x": 0, "y": 2},
+                        pointSize=7,
         )
         PH.talbotTicks(
-            sax["D"], tickPlacesAdd={"x": 0, "y": 1}, floatAdd={"x": 0, "y": 2}
+            sax["F"], tickPlacesAdd={"x": 0, "y": 1}, floatAdd={"x": 0, "y": 2},
+                        pointSize=7,
         )
         PH.talbotTicks(
             axcbar,
@@ -1487,7 +1620,7 @@ class PlotSims:
             floatAdd={"x": 0, "y": 2},
             pointSize=7,
         )
-        PSum.figure_handle.suptitle(
+        P.figure_handle.suptitle(
             f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}" +
             f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s}",
             fontsize=11,

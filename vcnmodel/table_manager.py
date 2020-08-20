@@ -2,6 +2,7 @@ import dataclasses
 from dataclasses import dataclass, field
 import datetime
 import pickle
+import pprint
 import subprocess
 from collections import OrderedDict
 from pathlib import Path
@@ -23,6 +24,7 @@ pbm 7/1/2020
 """
 
 cprint = CP.cprint
+PP = pprint.PrettyPrinter(indent=8, width=80)
 
 # Get the git has of he repositories so we know exactly what code was run (assumed the repo
 # was updated and committed ahead of the run)
@@ -72,10 +74,13 @@ class IndexData:
     runProtocol: str = ""
     synapsetype: str = ""
     synapseExperiment: str = ""
+    dataTable: str = ""
 
 
 class TableManager:
-    def __init__(self, table, basepath, selvals, altcolormethod):
+    def __init__(self, parent=None, table:object=None, basepath:Union[str, Path]="", selvals:dict={}, altcolormethod:object=None):
+        assert parent is not None
+        self.parent = parent
         self.table = table
         self.basepath = basepath
         self.selvals = selvals
@@ -220,6 +225,11 @@ class TableManager:
                 Index_data.temperature = params["Celsius"] #  Not always in the file information we retrieve
             except:
                 Index_data.temperature = 0. # mark if missing
+            try:
+                Index_data.dataTable = params['dataTable']
+            except:
+                Index_data.dataTable = params["modelName"]
+                cprint('r', 'Inserted dataTable with usedict')
 
         else:  # new style files with dataclasses
             Index_data.cellType = params.cellType
@@ -232,6 +242,11 @@ class TableManager:
             Index_data.nReps = runinfo.nReps
             Index_data.SRType = params.SRType
             Index_data.temperature = params.celsius
+            try:
+                Index_data.dataTable = params.dataTable
+            except:
+                Index_data.dataTable = params.modelName
+                cprint('r', 'Inserted dataTable with dataclasses')
             try:
                 Index_data.dendriteMode = params.dendriteMode
             except:
@@ -265,6 +280,7 @@ class TableManager:
             indexdata = pickle.load(fh, encoding="latin1")
         return indexdata
 
+
     def print_indexfile(self, indexrow):
         """
         Print the values in the index file
@@ -278,11 +294,12 @@ class TableManager:
             with open(f, "rb") as fh:
                 fdata = pickle.load(fh, encoding="latin1")
                 print('*'*80)
-                cprint('y', f)
+                cprint('c', f)
                 print(fdata.keys())
-                print(fdata['Params'])
+                # print(dir(fdata['Params']))
+                PP.pprint(fdata['Params'].__dict__) # , sort_dicts=True)
                 print('-'*80)
-                print(fdata['runInfo'])
+                PP.pprint(fdata['runInfo'].__dict__) # , sort_dicts=True
                 print('*'*80)
     
     def build_table(self, mode="scan"):
@@ -322,6 +339,10 @@ class TableManager:
                 # cprint('y', f"None in #{i:d} :{str(f):s}")
                 print('\nfile: ', str(f))
                 print('     index spriou: ', indxs[i].synapseExperiment)
+                try:
+                    x = indxs[i].dataTable
+                except:
+                    indxs[i]
 
         runfiles = list(thispath.glob("*.p"))
         dfiles = sorted(list(runfiles))  # regular data files
@@ -349,6 +370,7 @@ class TableManager:
         #            print(ix, end="\n\n")
         self.table_data = indxs
         # transfer to the data array for the table
+
         self.data = np.array(
             [
                 (
@@ -363,6 +385,7 @@ class TableManager:
                     indxs[i].dBspl,
                     indxs[i].nReps, # command_line["nReps"],
                     len(indxs[i].files),
+                    indxs[i].dataTable,
                     str(Path("/".join(indexfiles[i].parts[-4:]))),
                 )
                 for i in range(len(indxs))
@@ -383,20 +406,58 @@ class TableManager:
                 ("dBspl", object),
                 ("nReps", object),
                 ("# Files", object),
+                ("Data Table", object),
                 ("Filename", object),
                 # ("SRType", object),
                 # ("# files", object),
                 # ("synapsetype", object),
             ],
         )
-        self.table.setData(self.data)
-       
+        self.update_table(self.data)
+        
+    def update_table(self, data, QtCore=None):
+        self.table.setData(data)
         style = "section:: {font-size: 4pt; color:black; font:TimesRoman;}"
         self.table.setStyleSheet(style)
-        self.altColors()
+        if QtCore is not None:
+            print('sorting by a column')
+            self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)
+        self.altColors()  # reset the coloring for alternate lines
         # self.table.setStyle(QtGui.QFont('Arial', 6))
         self.table.resizeRowsToContents()
         self.table.resizeColumnsToContents()
+        self.current_table_data = data
+
+    def apply_filter(self, filter, QtCore=None):
+        """
+        self.filters = {'Use Filter': False, 'dBspl': None, 'nReps': None, 'Protocol': None,
+                'Experiment': None, 'modelName': None, 'dendMode': None, "dataTable": None,}
+        """
+        if not self.parent.filters['Use Filter']:  # no filter, so update to show whole table
+            self.update_table(self.data)
+        
+        else:
+            coldict = {'dBspl': 8, 'nReps': 9, 'Experiment': 7, 'Protocol': 5, 'dendMode': 6,
+                        'modelName': 4, "dataTable": 11}
+            filtered_table = self.data.copy()
+            matchsets = dict([(x, set()) for x in self.parent.filters.keys() if x != 'Use Filter'])
+            for k, d in enumerate(self.data):
+                for f, v in self.parent.filters.items():
+                    if (f in list(coldict.keys())) and (v is not None) and (self.data[k][coldict[f]] == v):
+                        # print("f: ", f, "   v: ", v)
+                        matchsets[f].add(k)
+
+            baseset = set()
+            for k, v in matchsets.items():
+                if len(v) > 0:
+                    baseset = v
+                    break
+            # and logic:
+            finds = [v for k, v in matchsets.items() if len(v) > 0]
+            keep_index = baseset.intersection(*finds)
+            # print('Filter index: ', keep_index)
+            filtered_table = [filtered_table[ft] for ft in keep_index]
+            self.update_table(filtered_table, QtCore)
 
     def setColortoRow(self, rowIndex, color):
         for j in range(self.table.columnCount()):
@@ -407,8 +468,9 @@ class TableManager:
         Regardless of the sort, read the current index row and
         map it back to the data in the table.
         """
-        index = self.table.currentIndex()
-        value = index.sibling(index.row(), 1).data()
+
+        # print('gettabledata: indexrow: ', index_row, index_row.row())
+        value = index_row.sibling(index_row.row(), 1).data()
         for i, d in enumerate(self.data):
             if self.data[i][1] == value:
                 return self.table_data[i]
