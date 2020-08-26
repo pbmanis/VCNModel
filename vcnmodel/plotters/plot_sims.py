@@ -18,6 +18,8 @@ import matplotlib.colors
 import matplotlib.colorbar
 from matplotlib import pyplot as mpl
 from matplotlib import rc
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.plotting import styler as PLS
 from pylibrary.tools import cprint as CP
@@ -170,7 +172,20 @@ class PData:
     renderpath: str = "/Users/pbmanis/Desktop/Python/vcnmodel/Renderings"
     thiscell: str = ""
 
-
+@dataclass
+class SpikeData:
+    """
+    Data class to hold information about each spike
+    """
+    trial: int = -1  # the trial the spike came from
+    time_index: int = 0  # index into the time array for this spike
+    dt: float = 0.025  # sample interval, msec
+    start_win: float=-5.
+    end_win: float=5.
+    waveform: np.array = None # the waveform of this postspike, clipped
+    prespikes: np.array = None  # time indices to pre spikes
+    
+    
 def def_empty_np():
     return np.array(0)
 
@@ -212,6 +227,7 @@ class RevCorrData:
     sites: np.array = field(default_factory=def_empty_np)
     nsp_avg: int = 0
     npost_spikes: int = 0
+    npre_spikes: int = 0
     max_coin_rate: float = 0
 
 
@@ -553,7 +569,7 @@ class PlotSims:
         v0 = -160.0
         deadtime = 50.0
         trstep = 25.0 / ntr
-        inpstep = 5.0 / ntr
+        inpstep = 2.0 / ntr
         sz = 50.0 / ntr
         noutspikes = 0
         ninspikes = 0
@@ -708,19 +724,11 @@ class PlotSims:
                 ("C", {"pos": [0.125, 0.75, 0.06, 0.32]}),
             ]
         )  # dict elements are [left, width, bottom, height] for the axes in the plot.
-        n_panels = len(sizer.keys())
-        gr = [
-            (a, a + 1, 0, 1) for a in range(0, n_panels)
-        ]  # just generate subplots - shape does not matter
-        axmap = OrderedDict(zip(sizer.keys(), gr))
-        P = PH.Plotter(
-            (n_panels, 1),
+        P = PH.arbitrary_grid(sizer,
             order="columnsfirst",
-            axmap=axmap,
             label=True,
             figsize=(4.0, 6.0),
         )
-        P.resize(sizer)  # perform positioning magic
         return P
 
     @winprint
@@ -898,6 +906,183 @@ class PlotSims:
             bbox=props,
         )
         mpl.show()
+
+
+    def trace_viewer(self, filename:Union[Path, str], PD:Union[object, None]=None, runProtocol:Union[str, None]=None):
+        movie = False
+        changetimestamp = get_changetimestamp()
+        x = self.get_data_file(filename, changetimestamp, PD)
+        mtime = Path(filename).stat().st_mtime
+        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
+            "%Y-%m-%d-%H:%M"
+        )
+        if x is None:
+            print("No simulation found that matched conditions")
+            print(filename)
+            return
+        # unpack x
+        inx = str(filename).find("_Syn")
+        synno = None
+        if inx > 0: 
+            synno = int(str(filename)[inx + 4 : inx + 7])
+        if runProtocol in ["IV", "runIV"]:
+            runProtocol = "IV"
+        elif runProtocol in ["VC", "runVC"]:
+            runProtocol = "VC"
+        print("Protocol: ", runProtocol)
+        par, stitle, ivdatafile, filemode, d = x
+        AR, SP, RMA = self.analyze_data(ivdatafile, filemode, runProtocol)
+      
+        self.ntr = len(AR.traces)  # number of trials
+        self.pwin = None
+        self.pfull = None
+        # self.parent.trace_plots.clear()
+        self.lines = []
+        self.punchtape = None
+        self.pt_text = None
+        self.inputtimes = None
+        self.first = False
+        if self.allspikes is not None:
+            self.nspikes = len(self.allspikes)
+            print('len allspikes: ', self.nspikes)
+            for i in range(0, self.parent.n_trace_sel):
+                self.plot_spikes_withinputs(int(i), color=pg.intColor(i, hues=20), first=self.first)
+            self.parent.trace_selector_plot.setXRange(0, self.nspikes)
+            self.parent.trace_selector.setBounds((0, self.nspikes))
+            self.parent.frameTicks.setXVals(range(0, self.nspikes, self.parent.n_trace_sel))
+            self.parent.trace_selector.setValue(0)
+            self.first=False
+            QtGui.QApplication.processEvents()
+        else:
+            return
+        # for s in [self.timeLine, self.normRgn]:
+        #     s.setBounds([start, stop])
+        self.parent.Dock_Traces.raiseDock()
+        self.parent.trace_selector.sigPositionChanged.connect(self.timeLineChanged)
+
+        nrep = 1
+        self.parent.trace_plots.setXRange(-5., 2.5, padding=0.1)
+        self.check_yscaling()
+        self.parent.trace_plots.clear()
+        print('movie state: ', self.parent.movie_state)
+
+        if self.parent.movie_state:  # start with the movie button
+
+            while self.parent.movie_state:
+                for i in range(0, nrep*self.nspikes, self.parent.n_trace_sel):
+                # self.parent.trace_selector.setValue(int(np.mod(i, self.nspikes)))
+                    self.parent.trace_plots.clear()
+
+                    # QtGui.QApplication.processEvents()
+                    for ix, trn in enumerate(range(i, i+self.parent.n_trace_sel)):
+                        self.plot_spikes_withinputs(ix, trn, color=pg.intColor(np.mod(trn, self.parent.n_trace_sel), hues=self.parent.n_trace_sel),
+                        first=self.first)
+
+                    QtGui.QApplication.processEvents()
+                    if not self.parent.movie_state:
+                        break
+                    time.sleep(self.parent.frame_interval)
+                    QtGui.QApplication.processEvents()
+                # print(self.parent.movie_state)
+                QtGui.QApplication.processEvents()
+            return
+        else:
+            i = 0
+            # self.parent.trace_plots.clear()
+        
+            # QtGui.QApplication.processEvents()
+            for ix, trn in enumerate(range(i, i+self.parent.n_trace_sel)):
+                self.plot_spikes_withinputs(ix, trn, color=pg.intColor(np.mod(trn, self.parent.n_trace_sel), hues=self.parent.n_trace_sel))
+            QtGui.QApplication.processEvents()
+
+    def check_yscaling(self):
+        if self.parent.V_disp_sel == 'dV/dt':
+            self.parent.trace_plots.setYRange(-100., 200., padding=0.1)
+        else:
+            self.parent.trace_plots.setYRange(-75., 10., padding=0.1)
+        
+
+    def timeLineChanged(self):
+        t = int(self.parent.trace_selector.value())
+        if t < 0:
+            self.parent.trace_selector.setValue(0)
+            t = 0
+        if t >= self.nspikes-self.parent.n_trace_sel:
+            self.parent.trace_selector.setValue(self.nspikes-self.parent.n_trace_sel)
+            t = self.nspikes-self.parent.n_trace_sel
+        if np.mod(t, self.parent.n_trace_sel) == 0:
+            self.parent.trace_plots.clear()
+            for ix, trn in enumerate(range(t, t+self.parent.n_trace_sel)):
+                self.plot_spikes_withinputs(ix, trn, color=pg.intColor(np.mod(trn, self.parent.n_trace_sel), hues=self.parent.n_trace_sel))
+
+    def plot_spikes_withinputs(self, ix:int=0, n:int = 0, color:object=None, first=False):
+        """
+            plot a spike and indicate its inputs.
+        ix : index into this run (counter): for plotting a block of spikes
+        n : spike to plot within the block
+        color: indexed color.
+        """
+        if self.nspikes > n and n >= 0:
+            self.check_yscaling()
+                # print('n: ', n)
+            spk = self.allspikes[n]
+            if self.parent.V_disp_sel == 'dV/dt':
+                if first:
+                    pll = self.parent.trace_plots.plot(spk.dt*np.arange(0, len(spk.waveform))[:-1]+spk.start_win, np.diff(spk.waveform/spk.dt), pen=color)
+                    self.lines.append(pll)
+                else:
+                    self.parent.trace_plots.plot(spk.dt*np.arange(0, len(spk.waveform))[:-1]+spk.start_win, np.diff(spk.waveform/spk.dt), pen=color)
+                    #self.lines[ix].setData(spk.dt*np.arange(0, len(spk.waveform))[:-1]+spk.start_win, np.diff(spk.waveform/spk.dt), pen=color)
+                papertape_yoff = 120.
+                spkin_off = -50.
+                dy = 5.
+            else:
+                if first:
+                    pll = self.parent.trace_plots.plot(spk.dt*np.arange(0, len(spk.waveform))+spk.start_win, spk.waveform, pen=color)
+                    self.lines.append(pll)
+                else:
+                    self.parent.trace_plots.plot(spk.dt*np.arange(0, len(spk.waveform))+spk.start_win, spk.waveform, pen=color)
+                    #self.lines[ix].setData(spk.dt*np.arange(0, len(spk.waveform))+spk.start_win, spk.waveform, pen=color) 
+                papertape_yoff = 0.
+                spkin_off = -65.
+                dy = 2.
+
+            # print('first: ', first, 'lines: ', self.lines)
+            prespt = np.zeros(len(spk.prespikes))
+            prespv = np.nan*np.zeros(len(spk.prespikes))
+            prespk_time = np.zeros(len(spk.prespikes))
+            prespv2 = np.nan*np.zeros(len(spk.prespikes))
+            # print(spk.prespikes)
+            for i, prespk in enumerate(spk.prespikes):
+                if prespk is not np.nan:
+                    prespt[i] = 0. - 2.5 + 0.07*np.mod(n, self.parent.n_trace_sel) # prespk
+                    # prespk_time[i] = prespk
+                    prespv[i] = -i * dy + papertape_yoff
+                    prespv2[i] = spkin_off - i*dy
+            if ix == 0:
+                for j in range(self.ninputs):
+                    text = pg.TextItem(f"{j:>2d}", anchor=(1.0, 0.5))
+                    if first:
+                        self.pttext = self.parent.trace_plots.addItem(text)
+                    text.setPos(0 - 2.7, -j*dy + papertape_yoff)
+            indices = np.logical_not(np.logical_or(np.isnan(prespt), np.isnan(prespv)))     
+            indices = np.array(indices)
+            sysizes = np.zeros((len(prespt), len(prespv)))
+            
+            # prespt = prespt[indices]
+            # prespv = prespv[indices]
+            # print(prespt, prespv)
+            # print(prespt, prespv)
+            # if len(prespt) > 0:
+            if first:
+                self.punchtape = self.parent.trace_plots.plot(prespt, prespv, pen=None, symbol='o', symbolBrush=color, symbolSize=8)
+                self.inputtimes = self.parent.trace_plots.plot(spk.prespikes, prespv2, pen=None, symbol='o', symbolBrush=color, symbolSize=8)
+            else:
+                # self.punchtape.setData(prespt, prespv, pen=None, symbol='o', symbolBrush=color, symbolSize=8)
+                # self.inputtimes.setData(spk.prespikes, prespv2, pen=None, symbol='o', symbolBrush=color, symbolSize=8)
+                self.parent.trace_plots.plot(prespt, prespv, pen=None, symbol='o', symbolBrush=color, symbolSize=8)
+                self.parent.trace_plots.plot(spk.prespikes, prespv2, pen=None, symbol='o', symbolBrush=color, symbolSize=8)
+                    
 
     def plot_revcorr_map(
         self,
@@ -1187,12 +1372,8 @@ class PlotSims:
                  "E": {"pos": [0.78, 0.20, 0.52, 0.28], 'labelpos': (-0.15, 1.00)}, 
                  "F": {"pos": [0.78, 0.20, 0.08, 0.28], 'labelpos': (-0.15, 1.00)}, 
                  } # dict pos elements are [left, width, bottom, height] for the axes in the plot. gr = [(a, a+1, 0, 1) for a in range(0, 8)] # just generate subplots - shape do not matter axmap = OrderedDict(zip(sizer.keys(), gr)) 
-        nplots = len(sizer.keys())
-        gr = [(a, a+1, 0, 1) for a in range(0, nplots)] 
-        axmap = OrderedDict(zip(sizer.keys(), gr)) 
-        P = PH.Plotter(
-            (nplots, 1),
-            axmap = axmap,
+        P = PH.arbitrary_grid(
+            sizer,
             order="columnsfirst",
             figsize=(9, 5),
             label=True,
@@ -1204,14 +1385,36 @@ class PlotSims:
                 "rightmargin": 0.1,
                 "topmargin": 0.1,
             },
-            # label=["A", "A1", "B", "C", "D", "E"],
-            # labelposition=(-0.05, 1.05),
             fontsize = {'tick': 7, 'label': 9, 'panel':12},
             fontweight = {'tick': 'normal', 'label': "normal", 'panel': 'bold'},
         )
 
-        P.resize(sizer)
-        # PH.show_figure_grid(P.figure_handle)
+
+        # nplots = len(sizer.keys())
+       #  gr = [(a, a+1, 0, 1) for a in range(0, nplots)]
+       #  axmap = OrderedDict(zip(sizer.keys(), gr))
+       #  P = PH.Plotter(
+       #      (nplots, 1),
+       #      axmap = axmap,
+       #      order="columnsfirst",
+       #      figsize=(9, 5),
+       #      label=True,
+       #      # verticalspacing=0.12,
+       #      # horizontalspacing=0.12,
+       #      margins={
+       #          "bottommargin": 0.1,
+       #          "leftmargin": 0.1,
+       #          "rightmargin": 0.1,
+       #          "topmargin": 0.1,
+       #      },
+       #      # label=["A", "A1", "B", "C", "D", "E"],
+       #      # labelposition=(-0.05, 1.05),
+       #      fontsize = {'tick': 7, 'label': 9, 'panel':12},
+       #      fontweight = {'tick': 'normal', 'label': "normal", 'panel': 'bold'},
+       #  )
+       #
+       #  P.resize(sizer)
+       #  # PH.show_figure_grid(P.figure_handle)
         # P.figure_handle.show()
         # return
         dPD = PData()
@@ -1224,19 +1427,19 @@ class PlotSims:
 
     # @time_func
     def revcorr(
-        self,
-        st1: Union[np.ndarray, List] = None,
-        st2: Union[np.ndarray, List] = None,
-        binwidth: float = 0.1,
-        datawindow: Union[List, Tuple] = [
-            0.0,
-            100.0,
-        ],  # time window for selecteing spikes
-        corrwindow: Union[List, Tuple] = [
-            -5.0,
-            1.0,
-        ],  # time window to examine correlation relative to st1
-    ) -> np.ndarray:
+            self,
+            st1: Union[np.ndarray, List] = None,
+            st2: Union[np.ndarray, List] = None,
+            binwidth: float = 0.1,
+            datawindow: Union[List, Tuple] = [
+                0.0,
+                100.0,
+            ],  # time window for selecteing spikes
+            corrwindow: Union[List, Tuple] = [
+                -5.0,
+                1.0,
+            ],  # time window to examine correlation relative to st1
+        ) -> np.ndarray:
         if st1 is None or st2 is None:
             raise ValueError(
                 "coincident_spikes_correlation: reference and comparator must be defined"
@@ -1268,10 +1471,16 @@ class PlotSims:
         ]  # restrict to those only within the response window
         an_i = an_i - s  # get relative latency from spike to it's inputs
         # print('ani: ', ani)
-        npre_i = len(
-            np.where((an_i >= pre_w[0]) & (an_i <= pre_w[1]))[0]
-        )  # count spikes narrow pre window before the ith pre spike
-        return npre_i
+        pre_indx = np.asarray((an_i >= pre_w[0]) & (an_i <= pre_w[1])).nonzero()[0]
+        pre_times = [an_i[k] for k in pre_indx]
+        if len(pre_times) > 0:
+            # print("pre times, prewindow: ", pre_times, pre_w)
+
+            npre_i = len(pre_times)
+        else:
+            npre_i = 0
+            pre_times = []
+        return npre_i, pre_times
 
 
     @winprint
@@ -1289,6 +1498,7 @@ class PlotSims:
     ) -> Union[None, tuple]:
 
         changetimestamp = get_changetimestamp()
+        self.allspikes = None
 
         #
         # 1. Gather data
@@ -1306,6 +1516,7 @@ class PlotSims:
 
         print("Preparing for computation")
         RCP.ninputs = len(syninfo[1])
+        self.ninputs = RCP.ninputs # save for trace viewer.
         RCD.sites = np.zeros(RCP.ninputs)
         for isite in range(RCP.ninputs):  # precompute areas
             area = syninfo[1][isite][0]
@@ -1364,6 +1575,7 @@ class PlotSims:
         # sum across trials, and sort by inputs
         #
         print("starting loop")
+
         start_time = datetime.datetime.now()
         for trial in range(RCP.ntrials):  # sum across trials
             stx = AR.time_base[SP.spikeIndices[trial]]
@@ -1373,14 +1585,14 @@ class PlotSims:
             if len(stx) == 0:
                 continue
             RCD.npost_spikes += len(stx)
-
+            
             # accumulate spikes and calculate average spike
             for n in range(len(stx)):
                 reltime = np.around(RCD.ti, 5) - np.around(stx[n], 5)
                 areltime = np.argwhere(
                     (RCP.minwin <= reltime) & (reltime <= RCP.maxwin)
                 ).squeeze()
-
+ 
                 if RCD.nsp_avg == 0:  # init arrays
                     RCD.sv_avg = d["Results"][trial]["somaVoltage"][areltime]
                     RCD.nsp_avg = 1
@@ -1408,11 +1620,11 @@ class PlotSims:
             for isite in range(RCP.ninputs):  # for each ANF input
                 anx = d["Results"][trial]["inputSpikeTimes"][
                     isite
-                ]  # get input an spikes and trim
+                ]  # get input AN spikes and trim list to window
                 anx = anx[(anx > RCP.min_time) & (anx < RCP.max_time)]
                 if len(anx) == 0:
                     continue
-
+                RCD.npre_spikes += len(anx)  # count up pre spikes.
                 if revcorrtype == "RevcorrSPKS":
                     RCD.C[isite] += SPKS.correlogram(
                         stx, anx, width=-RCP.minwin, binwidth=RCP.binw, T=None
@@ -1448,13 +1660,14 @@ class PlotSims:
 
         elapsed_time = datetime.datetime.now() - start_time
         print("Time for calculation: ", elapsed_time)
-        pre_w = [-2.2, -1.0]
+        pre_w = [-5, -0.5]
 
 
         ################
         # now some pariwise and participation stats on input events prior to a spike
         ################
-
+        spikedata = SpikeData()  # storage in a dataclass
+        self.allspikes = []
         pairwise = np.zeros((RCP.ninputs, RCP.ninputs))
         participation = np.zeros(RCP.ninputs)
         pre_spike_counts = np.zeros(RCP.ninputs+1)  # there could be 0, or up to RCP.ninputs pre spikes
@@ -1469,33 +1682,56 @@ class PlotSims:
                 sellist[i] = False
         elif ri.Spirou == 'removelargest':
             sellist[0] = False
-        
+
         for trial in range(RCP.ntrials):  # accumulate across all trials
-            spks = AR.time_base[SP.spikeIndices[trial]]  # get spikes for the trial
-            for s in spks:  # for each postsynaptic spike
+            spks = AR.time_base[SP.spikeIndices[trial]]  # get postsynaptic spikes for the trial
+            for n, s in enumerate(spks):  # for each postsynaptic spike
                 if (
                     s < RCP.min_time or s > RCP.max_time
                 ):  # restrict post spikes to those only in a response window
                     continue
+                reltime = np.around(RCD.ti, 5) - np.around(s, 5)
+                areltime = np.argwhere(
+                    (RCP.minwin <= reltime) & (reltime <= RCP.maxwin)
+                ).squeeze()
+                spikedata = SpikeData()  # storage in a dataclass
+                spikedata.trial = trial
+                spikedata.waveform = d["Results"][trial]["somaVoltage"][areltime]
+
+                spikedata.time_index = n
+                spikedata.prespikes = [np.nan]*RCP.ninputs
                 nspikes += 1 # number of post spikes evaluated
                 npre_spikes = 0  # number of pre spikes associated with this post spike
                 for isite in range(RCP.ninputs):  # examine each input
                     if not sellist[isite]:
                         continue
-                    npre_i = self._count_spikes_in_window(d, trial, isite, s, RCP, pre_w)
+                    npre_i, pre_times = self._count_spikes_in_window(d, trial, isite, s, RCP, pre_w)
                     if npre_i > 0:
+                        spikedata.prespikes[isite] = pre_times[0]  # save all event times even if more thn=an one 
+                        # print('tiime of pre spikes: ', pre_index*AR.sample_rate[0]+pre_w[0])
                         participation[isite] += 1  # any spikes in the window = participation (but only count as 1)
                         npre_spikes += 1
-                        print(' spk: ', s, 'isite: ', isite)
+                        # print(' spk: ', s, 'isite: ', isite)
                         for jsite in range(isite+1, RCP.ninputs):  # now do for joint combinations with other remaining inputs
-                            npre_j = self._count_spikes_in_window( d, trial, jsite, s, RCP, pre_w)
+                            npre_j, pre_times = self._count_spikes_in_window( d, trial, jsite, s, RCP, pre_w)
+                            # print(npre_j)
                             if npre_j > 0: # accumulate if coincident for this pair
                                 pairwise[isite, jsite] += 1
                 pre_spike_counts[npre_spikes] += 1  # increment the number of times there were npre_spikes input to this post spike
+                self.allspikes.append(spikedata)
                             
         print(pairwise)
-        print('pre spike_count associated with a post spike: ', pre_spike_counts)
-
+        # print('pre spike_count associated with a post spike: ', pre_spike_counts)
+        # plot the position of the prespikes for every trial as determined by the
+        # second trial loop above.
+        # f, ax = mpl.subplots(1,1)
+        # for i in range(len(self.allspikes)):
+        #     y = i*np.ones(len(self.allspikes[i].prespikes))
+        #     print(list(self.allspikes[i].prespikes))
+        #     print(y)
+        #     ax.plot(self.allspikes[i].prespikes, y)
+        # mpl.show()
+        # print(self.allspikes)
         npartipating = np.sum(participation)
         s_pair = np.sum(pairwise)
         if s_pair > 0.0:
@@ -1684,7 +1920,7 @@ class PlotSims:
         return P
 
     def setup_PSTH(self):
-        sizer = OrderedDict(
+        sizer = OrderedDict(  # define figure layout
             [
                 ("A", {"pos": [0.08, 0.4, 0.81, 0.15]}),
                 ("B", {"pos": [0.08, 0.4, 0.50, 0.27]}),
@@ -1697,19 +1933,13 @@ class PlotSims:
                 ("H", {"pos": [0.55, 0.4, 0.07, 0.18]}),
             ]
         )  # dict elements are [left, width, bottom, height] for the axes in the plot.
-        n_panels = len(sizer.keys())
-        gr = [
-            (a, a + 1, 0, 1) for a in range(0, n_panels)
-        ]  # just generate subplots - shape does not matter
-        axmap = OrderedDict(zip(sizer.keys(), gr))
-        P = PH.Plotter(
-            (n_panels, 1),
-            order="columnsfirst",
-            axmap=axmap,
-            label=True,
-            figsize=(8.0, 6.0),
-        )
-        P.resize(sizer)  # perform positioning magic
+        print("Using new arbitrary grid")
+        P = PH.arbitrary_grid(sizer, 
+                    order="columnsfirst",
+                    label=True,
+                    figsize=(8.0, 6.0),
+                )
+
         P.axdict["A"].set_ylabel("mV", fontsize=8)
 
         P.axdict["D"].set_title("Bushy Spike Raster", fontsize=9)
@@ -1752,6 +1982,12 @@ class PlotSims:
         # print(dir(AR))
         si = d["Params"]
         ri = d["runInfo"]
+        gbc = f"VCN_c{int(self.parent.cellID):02d}"
+        P.figure_handle.suptitle(
+            f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}" +
+            f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s}",
+            fontsize=11,
+        )
         # print(si)
         # print(ri)
         # print(isinstance(si, dict))
@@ -1825,13 +2061,15 @@ class PlotSims:
                     )
                 # print('max an spktimes: ', np.max(tk))# Panel A: traces
 
-        all_bu_st = np.sort(np.array(all_bu_st)) / 1000.0
+        # print(all_bu_st)
+#         print(np.array(all_bu_st).ravel().shape)
+        all_bu_st = np.array(all_bu_st) / 1000.0
         all_an_st = np.sort(np.array(all_an_st)) / 1000.0
         # the histogram of the data
-        hbins = np.arange(0.0, np.max(AR.time / 1000.0), 1e-3)  # 0.5 msec bins
+        hbins = np.arange(0.0, np.max(AR.time / 1000.0), 1e-3)  # 1 ms msec bins
         # print(all_bu_st.shape, np.max(all_bu_st), all_an_st.shape, np.max(all_an_st), np.max(hbins))
         if len(all_bu_st) > 0:
-            P.axdict["B"].hist(all_bu_st, bins=hbins, facecolor="k", alpha=1)
+            P.axdict["B"].hist(all_bu_st, bins=hbins, facecolor="k", edgecolor='k', alpha=1)
             # n, bins, patch = mpl.hist(all_bu_st, hbins, facecolor="blue", alpha=1)
         #      print('Spikes in PSTH: ', np.sum(n))
         #      print(n)
@@ -1847,7 +2085,7 @@ class PlotSims:
                 horizontalalignment="center",
             )
         if len(all_an_st) > 0:
-            P.axdict["H"].hist(all_an_st, bins=hbins, facecolor="k", alpha=1)
+            P.axdict["H"].hist(all_an_st, bins=hbins, facecolor="k", edgecolor='k', alpha=1)
         else:
             P.axdict["H"].text(
                 0.5,
@@ -1876,19 +2114,6 @@ class PlotSims:
                 )
             else:
 
-                # combine all spikes into one array, plot PSTH
-                # allst = []
-                #  for trial in range(ntr):
-                #      trd = d['Results'][trial]
-                #      allst.extend(trd["spikeTimes"] / 1000.0)
-                #  allst = np.array(allst)
-                #  allst = np.sort(allst)
-                #  # the histogram of the data
-                #  if len(allst) > 0:
-                #      P.axdict["F"].hist(allst, 100, density=True, facecolor="blue", alpha=0.75)
-                #  else:
-                #      P.axdict["F"].text(0.5, 0.5, "No Spikes", fontsize=14, color='r')
-                # print('allst: ', allst)
                 phasewin = [
                     pip_start[0] + 0.25 * pip_duration,
                     pip_start[0] + pip_duration,
@@ -1917,7 +2142,7 @@ class PlotSims:
                     % (F0, vs["r"], vs["d"] * 1e6, vs["R"], vs["p"], vs["n"])
                 )
                 # print(vs['ph'])
-                P.axdict["E"].hist(vs["ph"], bins=2 * np.pi * np.arange(30) / 30.0)
+                P.axdict["E"].hist(vs["ph"], bins=2 * np.pi * np.arange(30) / 30.0, facecolor='k', edgecolor='k')
                 P.axdict["E"].set_xlim((0.0, 2 * np.pi))
                 P.axdict["E"].set_title(
                     "Phase (VS = {0:.3f})".format(vs["r"]),

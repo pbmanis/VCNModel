@@ -69,6 +69,7 @@ class IndexData:
     threshold: Union[float, None] = None
     dBspl: float = 0.0
     nReps: int = 0
+    pipDur: float = 0.0
     SRType: str = ""
     elapsed: float = 0.0
     runProtocol: str = ""
@@ -153,10 +154,16 @@ class TableManager:
             return None
         if 'runInfo' not in list(d.keys()):
             cprint('r', 'SKIPPING: File is too old (missing "runinfo"); re-run for new structure')
+            # print('  Avail keys: ', list(d.keys()))
             return None
         if "Params" not in list(d.keys()):
             cprint('r', 'SKIPPING: File is too old (missing "Params"); re-run for new structure')
+            # print('  Avail keys: ', list(d.keys()))
+            # print(d['Results'][0])
             return None
+        # print(d["Params"])
+        # print(d["runInfo"])
+        # exit()
         return (d["Params"], d["runInfo"], str(datafile.name))  # just the dicts
 
     def make_indexdata(self, params, runinfo, fn=None, indexdir=None):
@@ -217,6 +224,7 @@ class TableManager:
             Index_data.synapseExperiment = params["spirou"]
             Index_data.dBspl = params["dB"]
             Index_data.SRType = params["SRType"]
+            
             try:
                 Index_data.dt = params["dt"]
             except:
@@ -230,8 +238,16 @@ class TableManager:
             except:
                 Index_data.dataTable = params["modelName"]
                 cprint('r', 'Inserted dataTable with usedict')
+            try:
+                Index_data.pipDur = params['pip_duration']
+            except:
+
+                cprint('r', 'cant find pipdur')
+                print(params)
+                return
 
         else:  # new style files with dataclasses
+            # print('runinfo: ', runinfo)
             Index_data.cellType = params.cellType
             Index_data.modelType = params.modelType
             Index_data.modelName = params.modelName
@@ -240,6 +256,7 @@ class TableManager:
             Index_data.synapseExperiment = runinfo.Spirou
             Index_data.dBspl = runinfo.dB
             Index_data.nReps = runinfo.nReps
+            Index_data.pipDur = runinfo.pip_duration
             Index_data.SRType = params.SRType
             Index_data.temperature = params.celsius
             try:
@@ -287,7 +304,7 @@ class TableManager:
         """
         print('='*80)
         print('\n Index file and data file params')
-        cprint('c', f"Index row: {indexrow:d}")
+        cprint('c', f"Index row: {str(indexrow):s}")
         data = self.get_table_data(indexrow)
         print('Data: ', data)
         for f in data.files:
@@ -337,8 +354,8 @@ class TableManager:
                 indxs.append(self.read_indexfile(f))
                 # if indxs[-1] is None:
                 # cprint('y', f"None in #{i:d} :{str(f):s}")
-                print('\nfile: ', str(f))
-                print('     index spriou: ', indxs[i].synapseExperiment)
+                # print('\nfile: ', str(f))
+                # print('     index spriou: ', indxs[i].synapseExperiment)
                 try:
                     x = indxs[i].dataTable
                 except:
@@ -359,15 +376,17 @@ class TableManager:
         dfiles = valid_dfiles  # replace with shorter list with only the valid files
         indexfiles = indexfiles + dfiles
         
-        # print(indxs)
-        # for i in range(len(indexfiles)):
-        #     try:
-        #         print(   indxs[i].command_line["nReps"],)
-        #     except:
-        #         print("......", indxs[i].command_line)
-        # print('*'*80)
-        # for ix in indxs:
-        #            print(ix, end="\n\n")
+        # if True:
+#             print(indxs)
+#             for i in range(len(indexfiles)):
+#                 try:
+#                     print(   indxs[i].command_line["nReps"],)
+#                 except:
+#                     print("......", indxs[i].command_line)
+#             print('*'*80)
+#             for ix in indxs:
+#                        print(ix, end="\n\n")
+        
         self.table_data = indxs
         # transfer to the data array for the table
 
@@ -384,6 +403,7 @@ class TableManager:
                     indxs[i].synapseExperiment,
                     indxs[i].dBspl,
                     indxs[i].nReps, # command_line["nReps"],
+                    indxs[i].pipDur,
                     len(indxs[i].files),
                     indxs[i].dataTable,
                     str(Path("/".join(indexfiles[i].parts[-4:]))),
@@ -405,6 +425,7 @@ class TableManager:
                 # ("Freq", object),
                 ("dBspl", object),
                 ("nReps", object),
+                ("pipDur", object),
                 ("# Files", object),
                 ("Data Table", object),
                 ("Filename", object),
@@ -427,6 +448,7 @@ class TableManager:
         self.table.resizeRowsToContents()
         self.table.resizeColumnsToContents()
         self.current_table_data = data
+        self.parent.Dock_Table.raiseDock()
 
     def apply_filter(self, filter, QtCore=None):
         """
@@ -458,6 +480,7 @@ class TableManager:
             # print('Filter index: ', keep_index)
             filtered_table = [filtered_table[ft] for ft in keep_index]
             self.update_table(filtered_table, QtCore)
+
 
     def setColortoRow(self, rowIndex, color):
         for j in range(self.table.columnCount()):

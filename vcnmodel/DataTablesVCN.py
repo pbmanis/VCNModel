@@ -11,6 +11,7 @@ import pyqtgraph as pg
 import toml
 from pylibrary.plotting import plothelpers as PH
 from pyqtgraph.parametertree import Parameter, ParameterTree
+import pyqtgraph.dockarea as PGD
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 from vcnmodel import table_manager as table_manager
 from vcnmodel.plotters import plot_sims
@@ -47,30 +48,38 @@ cellvalues = [
     30,
 ]
 modeltypes = [
+    "None",
     "XM13_nacncoop",
+    "XM13A_nacncoop",
     "mGBC",
     "XM13",
     "RM03",
 ]
 runtypes = ["AN", "IV", "VC", "IO", "gifnoise"]
 experimenttypes = [
-    "default",
+    "None",
+    "all",
     "delays",
     "largestonly",
     "removelargest",
     "mean",
-    "allmean",
+    "max=mean",
+    "all=mean",
     "twolargest",
     "threelargest",
     "fourlargest",
 ]
 modetypes = ["find", "singles", "IO", "multi"]
-analysistypes = ["traces", "PSTH", "revcorr", "SAC", "tuning"]
+analysistypes = ["traces", "PSTH", "revcorr", "SAC", "tuning", "traceviewer"]
 revcorrtypes = ["RevcorrSPKS", 
                 "RevcorrSimple",
                 "RevcorrSTTC", ]
+dbValues = list(range(0, 91, 10))
+dbValues.insert(0, "None")
+
 
 dendriteChoices = [
+    "None",
     "normal",
     "passive",
     "active",
@@ -109,13 +118,29 @@ class DataTables:
         #         if hasattr(QStyleFactory, 'AA_UseHighDpiPixmaps'):
         #             self.app.setAttribute(Qt.AA_UseHighDpiPixmaps)
 
-        self.win = pg.QtGui.QWidget()
-        self.layout = pg.QtGui.QGridLayout()
-        self.win.setLayout(self.layout)
+        self.win = pg.QtGui.QMainWindow()
+        # use dock system instead of layout.
+        self.dockArea = PGD.DockArea()
+        self.win.setCentralWidget(self.dockArea)
         self.win.setWindowTitle("Model DataTables/FileSelector")
         self.win.resize(1600, 1024)
+        # Initial Dock Arrangment
+        self.Dock_Params = PGD.Dock("Params", size=(250, 1024))
+        self.Dock_Table = PGD.Dock("Simulation Table", size=(1000, 800))
+        self.Dock_Report = PGD.Dock("Reporting", size=(1000, 200))
+        self.Dock_Traces = PGD.Dock("Traces", size=(1000, 700))
 
+        self.dockArea.addDock(self.Dock_Params, 'left')
+        self.dockArea.addDock(self.Dock_Table, 'right', self.Dock_Params)
+        self.dockArea.addDock(self.Dock_Traces, 'below', self.Dock_Table)
+        self.dockArea.addDock(self.Dock_Report, 'bottom', self.Dock_Table)
+        # self.dockArea.addDock(self.Dock_Traces_Slider, 'below', self.Dock_Traces)
+
+        # self.Dock_Traces.addContainer(type=pg.QtGui.QGridLayout, obj=self.trace_layout)
         self.table = pg.TableWidget(sortable=True)
+        self.Dock_Table.addWidget(self.table)
+        self.Dock_Table.raiseDock()
+        
         self.table.setSelectionMode(pg.QtGui.QAbstractItemView.ExtendedSelection)
         style = "::section {background-color: darkblue; }"
         self.selected_index_row = None  # for single selection mode
@@ -142,7 +167,14 @@ class DataTables:
         }
         self.filters = {'Use Filter': False, 'dBspl': None, 'nReps': None, 'Protocol': None,
                 'Experiment': None, 'modelName': None, 'dendMode': None, 'dataTable': None}
-
+        self.trvalues = [1, 2, 4, 8, 16, 32]
+        self.n_trace_sel = self.trvalues[2]
+        self.V_disp = ['Vm', 'dV/dt']
+        self.V_disp_sel = self.V_disp[0]
+        self.movie_state = False
+        self.frame_intervals = [0.033, 0.05, 0.1, 0.2, 0.3, 0.5, 1.0, 2.0]
+        self.frame_interval = self.frame_intervals[3]
+        
         self.params = [
             # {"name": "Pick Cell", "type": "list", "values": cellvalues, "value": cellvalues[0]},
             {"name": "Scan Runs", "type": "action"},
@@ -219,6 +251,10 @@ class DataTables:
                         "type": "action",
                         # "default": False,
                     },
+                    {
+                        "name": "Trace Viewer",
+                        "type": "action",
+                    },
                     {"name": "RevcorrSPKS", "type": "action"},
                     {"name": "RevcorrSimple", "type": "action"},
                     {"name": "RevcorrSTTC", "type": "action"},
@@ -228,16 +264,30 @@ class DataTables:
             {"name": "Filters",
              "type": "group",
              "children": [
-                 {"name": "Use Filter", "type": "bool", "value": False},
-                 {"name": "dBspl", "type": "str", "value": "None"},
-                 {"name": "nReps", "type": "str", "value": "None"},
-                 {"name": "Protocol", "type": "str", "value": "None"},
-                 {"name": "Experiment", "type": "str", "value": "None"},
-                 {"name": "modelName", "type": "str", "value": "None"},
-                 {"name": "dataTable", "type": "str", "value": "None"},
-                 {"name": "dendMode", "type": "str", "value": "None"},
-                 {'name': "Apply", "type": "action"},
+                 # {"name": "Use Filter", "type": "bool", "value": False},
+                 {"name": "dBspl", "type": "list", "values": dbValues, "value": "None"},
+                 {"name": "nReps", "type": "list",  "values": ["None", 1, 5, 10, 20, 25, 50, 100], "value": "None"},
+                 {"name": "Protocol", "type": "list",  "values": ["None", 'runIV','runANPSTH', 'runANSingles'], "value": "None"},
+                 {"name": "Experiment", "type": "list",  "values": experimenttypes, "value": "None"},
+                 {"name": "modelName", "type": "list",  "values": modeltypes, "value": "None"},
+                 {"name": "dataTable", "type": "str",  "value": "None"},
+                 {"name": "dendMode", "type": "list",  "values": ["None", 'actdend', 'normal', 'pasdend'], "value": "None"},
+                 {'name': "Filter Actions", "type": "group", "children": [
+                     {"name": "Apply", "type": "action"},
+                     {"name": "Clear", "type": "action"},
                  ],
+                 },
+             ],
+            },
+            {
+                "name": "Options",
+                "type": "group",
+                "children": [
+                    {"name": "Viewer #traces", "type": "list", "values": self.trvalues, "value": self.n_trace_sel},
+                    {"name": "Vm or dV/dt", "type": "list", "values": self.V_disp, "value": self.V_disp_sel},
+                    {"name": "Movie", "type": "action"},
+                    {"name": "Frame Interval", "type": "list", "values": self.frame_intervals, "value": self.frame_interval}
+                ]
             },
             {
               "name": "Figures",
@@ -263,20 +313,35 @@ class DataTables:
         self.ptree.setParameters(self.ptreedata)
         self.ptree.setMaximumWidth(300)
         self.ptree.setMinimumWidth(250)
-        # build layout for plots and parameters
-        self.layout.addWidget(self.ptree, 0, 0, 8, 1)  # Parameter Tree on left
-        # add space for the graphs
-        self.view = pg.GraphicsView()
-        self.layout2 = pg.GraphicsLayout(border=(0, 0, 0))
-        self.view.setCentralItem(self.layout2)
-        self.layout.addWidget(self.view, 0, 1, 8, 8)
-        self.layout.addWidget(self.table, 0, 1, 6, 8)  # table
-        
-        self.layout3 = pg.GraphicsLayout(border=(0, 0, 0))
+
+        self.Dock_Params.addWidget(self.ptree) # put the parameter three here
+
+        self.trace_plots = pg.PlotWidget(title='Trace Plots')
+        self.Dock_Traces.addWidget(self.trace_plots, rowspan=5, colspan=1)
+        self.trace_plots.setXRange(-5., 2.5, padding=0.2)
+        self.trace_plots.setContentsMargins(10, 10, 10, 10)
+        # Build the trace selector 
+        self.trace_selector = pg.graphicsItems.InfiniteLine.InfiniteLine(0, movable=True, markers=[('^', 0), ('v', 1)])
+        self.trace_selector.setPen((255, 255, 0, 200))  # should be yellow
+        self.trace_selector.setZValue(1)
+        self.trace_selector_plot = pg.PlotWidget(title="Trace selector")
+        self.trace_selector_plot.hideAxis('left')
+        self.frameTicks = pg.graphicsItems.VTickGroup.VTickGroup(yrange=[0.8, 1], pen=0.4)
+        self.trace_selector_plot.setXRange(0., 10., padding=0.2)
+        self.trace_selector.setBounds((0, 10))
+        self.trace_selector_plot.addItem(self.frameTicks, ignoreBounds=True) 
+        self.trace_selector_plot.addItem(self.trace_selector) 
+        self.trace_selector_plot.setMaximumHeight(100)
+        self.trace_plots.setContentsMargins(10., 10., 10., 10.)
+
+        # print(dir(self.trace_selector_plot))
+        self.Dock_Traces.addWidget(self.trace_selector_plot, row=5, col=0, rowspan=1, colspan=1)
+               
+
         self.textbox =QtWidgets.QTextEdit()
         self.textbox.setReadOnly(True)
         self.textbox.setText("Text Edit box (RO)")
-        self.layout.addWidget(self.textbox, 6, 1, 2, 8)  # text
+        self.Dock_Report.addWidget(self.textbox)
 
         self.win.show()
 
@@ -319,7 +384,13 @@ class DataTables:
   #           )
 
     def command_dispatcher(self, param, changes):
-
+        """
+        Dispatcher for the commands from parametertree
+        path[0] will be the command name
+        path[1] will be the parameter (if there is one)
+        path[2] will have the subcommand, if there is one
+        data will be the field data (if there is any)
+        """
         for param, change, data in changes:
             path = self.ptreedata.childPath(param)
 
@@ -337,23 +408,21 @@ class DataTables:
                 self.table_manager.build_table(mode="scan")
 
             if path[0] == "Analysis":
-                if path[1] == "Traces":
-                    self.analyze_traces()
-                elif path[1] == "IV":
-                    self.analyze_IV()
-                elif path[1] == "VC":
-                    self.analyze_VC()
-                elif path[1] == "PSTH":
-                    self.analyze_PSTH()
-                elif path[1] in revcorrtypes:
-                    self.analyze_revcorr(path[1])
-                elif path[1] == "Singles":
-                    self.analyze_singles()
-                elif path[1] == "CMMR Summary":
-                    self.analyze_cmmr_summary()
+                analyze_map = {'Traces': self.analyze_traces,
+                               'IV': self.analyze_IV,
+                               'VC': self.analyze_VC,
+                               'PSTH': self.analyze_PSTH,
+                               'Singles': self.analyze_singles,
+                               # 'CMMR_Summary': self.analyze_cmmr_summary,
+                               "RevcorrSPKS": self.analyze_revcorr, 
+                               "RevcorrSimple": self.analyze_revcorr, 
+                               "RevcorrSTTC": self.analyze_revcorr,
+                               "Trace Viewer": self.trace_viewer,
+                              }
+                analyze_map[path[1]](path[1])  # call the analysis function
 
             if path[0] == 'Filters':
-                if path[1] == 'Use Filter':
+                if path[1] == 'Use Filter':  # currently not an option
                     # print(data)
                     self.filters['Use Filter'] = data
                 elif path[1] in ['dBspl', 'nReps']:
@@ -367,10 +436,29 @@ class DataTables:
                         self.filters[path[1]] = str(data)
                     else:
                         self.filters[path[1]] = None
-                elif path[1] in ["Apply"]:
-                    self.table_manager.apply_filter(self.filters, QtCore=QtCore)
+                elif path[1]  == "Filter Actions":
+                    if path[2] in ["Apply"]:
+                        self.filters['Use Filter'] = True
+                        self.table_manager.apply_filter(self.filters, QtCore=QtCore)
+                    elif path[2] in ["Clear"]:
+                        self.filters['Use Filter'] = False
+                        self.table_manager.apply_filter(self.filters, QtCore=QtCore)
+                    
                 # print('Filters: ', self.filters)
-            
+            if path[0] == 'Options':
+                if path[1] == "Viewer #traces":
+                    self.n_trace_sel = int(data)
+                elif path[1] == "Vm or dV/dt":
+                    self.V_disp_sel = str(data)
+                elif path[1] == "Movie":
+                    if not self.movie_state:
+                        self.movie_state = True
+                        self.trace_viewer()
+                    else:
+                        self.movie_state = False
+                elif path[1] == "Frame Interval":
+                    self.frame_interval = float(data)
+                
             if path[0] == "Figures":
                 if path[1] == "IV Figure":
                     pass
@@ -398,6 +486,7 @@ class DataTables:
                     self.table_manager.apply_filter(self.filters)
                     self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)  # by date
                     self.altColors()  # reset the color list.
+                    self.Dock_Table.raiseDock()
                     
                 elif path[1] == "View IndexFile":
                     for index_row in self.selected_index_rows:
@@ -437,7 +526,7 @@ class DataTables:
             fn = Path(fn)
         return fn
 
-    def analyze_singles(self):
+    def analyze_singles(self, ana_name=None):
         if self.selected_index_rows is None:
             return
         index_row = self.selected_index_rows[0]
@@ -484,7 +573,23 @@ class DataTables:
 
         P.figure_handle.show()
 
-    def analyze_traces(self):
+    def trace_viewer(self, ana_name=None):
+        if self.selected_index_rows is None:
+            return
+        index_row = self.selected_index_rows[0]
+        selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
+        if selected is None:
+            return
+        nfiles = len(selected.files)
+        print(' nfiles: ', nfiles)
+        print('selected files: ', selected.files)
+        # if nfiles > 1:
+        #     self.PLT.textappend('Please select only one file to view')
+        # else:
+        PD = plot_sims.PData()
+        self.PLT.trace_viewer(selected.files[0], PD, selected.runProtocol)
+   
+    def analyze_traces(self, ana_name=None):
         if self.selected_index_rows is None:
             return
         self.plot_traces(rows=len(self.selected_index_rows), 
@@ -496,7 +601,7 @@ class DataTables:
                          ymax = 20.,
                          )
 
-    def analyze_IV(self):
+    def analyze_IV(self, ana_name=None):
         if self.selected_index_rows is None:
             return
         self.plot_traces(rows=1,
@@ -544,7 +649,7 @@ class DataTables:
 
 
 
-    def analyze_VC(self):
+    def analyze_VC(self, ana_name=None):
         if self.selected_index_rows is None:
             return
         index_row = self.selected_index_rows[0]
@@ -578,10 +683,10 @@ class DataTables:
         P.figure_handle.show()
 
         
-    def analyze_PSTH(self):
+    def analyze_PSTH(self, ana_name=None):
         if self.selected_index_rows is None:
             return
-        P = PS.setup_PSTH()
+        P = self.PLT.setup_PSTH()
         PD = plot_sims.PData()
         index_row = self.selected_index_rows[0]
         selected = self.table_manager.get_table_data(index_row) #table_data[index_row]
@@ -591,7 +696,9 @@ class DataTables:
         self.PLT.plot_AN_response(P, sfi, PD, selected.runProtocol)
         P.figure_handle.show()
 
-    def analyze_revcorr(self, revcorrtype):
+    
+    def analyze_revcorr(self, ana_name):
+        revcorrtype = ana_name
         if self.selected_index_rows is None:
             return
         index_row = self.selected_index_rows[0]
