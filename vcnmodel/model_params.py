@@ -85,6 +85,7 @@ class CmdChoices:
         "max=mean",
         "all=mean",
         "removelargest",
+        "removetwolargest",
         "largestonly",
         "twolargest",
         "threelargest",

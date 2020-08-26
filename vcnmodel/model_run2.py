@@ -363,6 +363,8 @@ class ModelRun:
             add_Pars = "allmean"
         elif self.RunInfo.Spirou == "removelargest":
             add_Pars = "removelargest"
+        elif self.RunInfo.Spirou == "removetwolargest":
+            add_Pars = "removetwolargest"
         elif self.RunInfo.Spirou == "largestonly":
             add_Pars = "largestonly"
         elif self.RunInfo.Spirou == "twolargest":
@@ -1703,6 +1705,21 @@ class ModelRun:
             self.set_synapse(
                 synapse[imaxgmax], 0.0, 0.0,
             )
+        elif self.RunInfo.Spirou in ["removetwolargest"]:
+            cprint("c", "    Setting TWO largest terminals to 0")
+            gMax, gnMax, nSyn = self.get_synapses(synapse)
+            igMax = np.argsort(gMax)
+            print('igmax: ', igMax)
+            for i in igMax[-2:]:
+                gMax[i] = 0.
+                gnMax[i] = 0.
+                print("    removed : AMPA:  gMax, imax: ", gMax, igMax)
+                print("                     NMDA:  gnmax: ", gnMax)
+                self.set_synapse(
+                    synapse[i], 0.0, 0.0,
+                )
+            gm, gnm, ns = self.get_synapses(synapse, printvalues=True)
+            # exit()
 
         elif self.RunInfo.Spirou in ["largestonly"]:
             nlarge = 1
