@@ -8,33 +8,45 @@
 # Note we do not have a full reconstruction for cell 18
 # in that dataset.
 #######################################################
-CELLNAMES="13 17 30"
+CELLNAMES="05 30"
 #CONFIG="noscale.toml" #"autoscale.toml"
-CONFIG="autoscale_xm13a_multisite_50dB_parallel.toml"
+CONFIG="autoscale_xm13a_multisite_parallel.toml"
 RUNTEXT="running the individual initialization and running AN PSTH protocols"
+REPS="100"
 echo $RUNTEXT
 for f in $CELLNAMES
 do
     echo $f
     python vcnmodel/model_run2.py VCN_c$f  -F -P initAN --configfile $CONFIG  --datatable data_XM13A_nacncoop
-    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r 50 --configfile $CONFIG  --datatable data_XM13A_nacncoop
+    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r $REPS --dB 10 --Spirou all --configfile $CONFIG --datatable data_XM13A_nacncoop
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r $REPS --dB 10 --Spirou largest --configfile $CONFIG --datatable data_XM13A_nacncoop
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r $REPS --dB 10 --Spirou removelargest --configfile $CONFIG --datatable data_XM13A_nacncoop
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
 done
 
-wait
-echo $RUNTEXT
-for f in $CELLNAMES
-do
-    echo $f
-    python vcnmodel/model_run2.py VCN_c$f  -F -P initAN --configfile $CONFIG  --datatable data_XM13A_nacncoop_pasdend
-    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r 50 --configfile $CONFIG  --datatable data_XM13A_nacncoop_pasdend
-done
-echo $RUNTEXT
-for f in $CELLNAMES
-do
-    echo $f
-    python vcnmodel/model_run2.py VCN_c$f  -F -P initAN --configfile $CONFIG  --datatable data_XM13A_nacncoop_actdend
-    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r 50 --configfile $CONFIG  --datatable data_XM13A_nacncoop_actdend
-done
+# wait
+# echo $RUNTEXT
+# for f in $CELLNAMES
+# do
+#     echo $f
+#     python vcnmodel/model_run2.py VCN_c$f  -F -P initAN --configfile $CONFIG  --datatable data_XM13A_nacncoop_pasdend
+#     python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r 50 --configfile $CONFIG  --datatable data_XM13A_nacncoop_pasdend
+# done
+# echo $RUNTEXT
+# for f in $CELLNAMES
+# do
+#     echo $f
+#     python vcnmodel/model_run2.py VCN_c$f  -F -P initAN --configfile $CONFIG  --datatable data_XM13A_nacncoop_actdend
+#     python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r 50 --configfile $CONFIG  --datatable data_XM13A_nacncoop_actdend
+# done
 echo AN runs complete
 # with "A", we do all cells in grade A
 # python vcnmodel/plotters/plot_gbc_ivresults_2.py "A" -s
