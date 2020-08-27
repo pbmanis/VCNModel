@@ -21,7 +21,7 @@ from cnmodel.util import sound
 from matplotlib import pyplot as mpl
 from neuronvis import hoc_graphics as hoc_graphics
 from pylibrary.tools import cprint as CP
-from pylibrary.tools import utility as pu  # access to a spike finder routine
+# from pylibrary.tools import utility as pu  # access to a spike finder routine
 from pyqtgraph import multiprocess as MP
 
 import vcnmodel.model_params
@@ -29,9 +29,9 @@ from vcnmodel import cell_config as cell_config
 from vcnmodel import cellInitialization as cellInit
 from vcnmodel.adjust_areas import AdjustAreas
 from vcnmodel.generate_run import GenerateRun
+from ephys.ephysanalysis.Utility import Utility as EPU
 
 matplotlib.use("Qt5Agg")
-
 """
 model_run.py
 
@@ -1767,14 +1767,15 @@ class ModelRun:
             # retreive the data
             for j, N in enumerate(range(nReps)):
                 celltime.append(tresults[j]["time"])  # (self.time)
-                spikeTimes = pu.findspikes(
+                spikeTimes = EPU.findspikes(
                     tresults[j]["time"],
                     tresults[j]["Vsoma"],
                     threshold,
                     t0=0.0,
                     t1=self.RunInfo.run_duration * 1000.0,
-                    dt=1.0,
+                    dt=self.post_cell.hr.h.dt,
                     mode="peak",
+                    detector="Kalluri",
                 )
                 spikeTimes = self.clean_spiketimes(spikeTimes)
                 inputSpikeTimes = tresults[j][
@@ -1808,13 +1809,13 @@ class ModelRun:
                 )
 
                 celltime.append(tresults[j]["time"])  # (self.time)
-                spikeTimes = pu.findspikes(
+                spikeTimes = EPU.findspikes(
                     tresults[j]["time"],
                     tresults[j]["Vsoma"],
                     threshold,
                     t0=0.0,
                     t1=self.RunInfo.run_duration * 1000.0,
-                    dt=1.0,
+                    dt=self.post_cell.hr.h.dt,
                     mode="peak",
                 )
                 spikeTimes = self.clean_spiketimes(spikeTimes)
@@ -1965,13 +1966,13 @@ class ModelRun:
             stim = {}
             for j, N in enumerate(range(nReps)):
                 celltime.append(tresults[j]["time"])  # (self.time)
-                spikeTimes[N] = pu.findspikes(
+                spikeTimes[N] = EPU.findspikes(
                     tresults[j]["time"],
                     tresults[j]["Vsoma"],
                     threshold,
                     t0=0.0,
                     t1=self.RunInfo.run_duration * 1000,
-                    dt=1.0,
+                    dt=self.post_cell.hr.h.dt,
                     mode="peak",
                 )
                 spikeTimes[N] = self.clean_spiketimes(spikeTimes[N])
@@ -2101,13 +2102,13 @@ class ModelRun:
             ]
             for j, N in enumerate(range(nReps)):
                 celltime.append(tresults[j]["time"])  # (self.time)
-                spikeTimes[N] = pu.findspikes(
+                spikeTimes[N] = EPU.findspikes(
                     tresults[j]["time"],
                     tresults[j]["Vsoma"],
                     threshold,
                     t0=0.0,
                     t1=self.RunInfo.run_duration * 1000,
-                    dt=1.0,
+                    dt=self.post_cell.hr.h.dt,
                     mode="peak",
                 )
                 spikeTimes[N] = self.clean_spiketimes(spikeTimes[N])
