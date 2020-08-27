@@ -1770,7 +1770,7 @@ class ModelRun:
                 spikeTimes = EPU.findspikes(
                     tresults[j]["time"],
                     tresults[j]["Vsoma"],
-                    threshold,
+                    thresh=threshold,
                     t0=0.0,
                     t1=self.RunInfo.run_duration * 1000.0,
                     dt=self.post_cell.hr.h.dt,
@@ -1812,11 +1812,12 @@ class ModelRun:
                 spikeTimes = EPU.findspikes(
                     tresults[j]["time"],
                     tresults[j]["Vsoma"],
-                    threshold,
+                    thresh=threshold,
                     t0=0.0,
                     t1=self.RunInfo.run_duration * 1000.0,
                     dt=self.post_cell.hr.h.dt,
                     mode="peak",
+                    detector="Kalluri",
                 )
                 spikeTimes = self.clean_spiketimes(spikeTimes)
                 inputSpikeTimes = tresults[j][
@@ -1969,11 +1970,12 @@ class ModelRun:
                 spikeTimes[N] = EPU.findspikes(
                     tresults[j]["time"],
                     tresults[j]["Vsoma"],
-                    threshold,
+                    thresh=threshold,
                     t0=0.0,
                     t1=self.RunInfo.run_duration * 1000,
                     dt=self.post_cell.hr.h.dt,
                     mode="peak",
+                    detector="Kalluri",
                 )
                 spikeTimes[N] = self.clean_spiketimes(spikeTimes[N])
                 inputSpikeTimes[N] = tresults[j][
@@ -2105,11 +2107,12 @@ class ModelRun:
                 spikeTimes[N] = EPU.findspikes(
                     tresults[j]["time"],
                     tresults[j]["Vsoma"],
-                    threshold,
+                    thresh=threshold,
                     t0=0.0,
                     t1=self.RunInfo.run_duration * 1000,
                     dt=self.post_cell.hr.h.dt,
                     mode="peak",
+                    detector="Kalluri",
                 )
                 spikeTimes[N] = self.clean_spiketimes(spikeTimes[N])
                 inputSpikeTimes[N] = tresults[j][
