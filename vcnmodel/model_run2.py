@@ -29,7 +29,8 @@ from vcnmodel import cell_config as cell_config
 from vcnmodel import cellInitialization as cellInit
 from vcnmodel.adjust_areas import AdjustAreas
 from vcnmodel.generate_run import GenerateRun
-from ephys.ephysanalysis.Utility import Utility as EPU
+import ephys.ephysanalysis.Utility
+EPU = ephys.ephysanalysis.Utility.Utility()
 
 matplotlib.use("Qt5Agg")
 """
@@ -103,94 +104,94 @@ positional arguments:
   cell                  Select the cell (no default)
 
 optional arguments:
-  -h, --help            show this help message and exit
-  --type {Bushy,TStellate,DStellate}, -T {Bushy,TStellate,DStellate}
-                        Define the cell type (default: Bushy)
-  --model {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr},
-                -M {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}
-                        Define the model type (default: XM13)
-  --modeltype {II,II-I,I-II,I-c,I-t,II-o}
-                        Define the model type (default: XM13)
-  --sgcmodel {Zilany,cochlea}
-                        Define the SGC model type (default: Zilany)
-  --protocol {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,runANIO,
-                runANSingles,runANOmitOne,gifnoise}
-                , -P {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,runANIO,
-                runANSingles,runANOmitOne,gifnoise}
-                        Protocol to use for simulation (default: IV)
-  -H, --defaulthoc      Use default hoc file for this cell
-  --hocfile HOCFILE     hoc file to use for simulation (default is the
-                        selected "cell".hoc)
-  -F, --full            Use "full" hoc file as in "VCN_c02_Full.hoc instead of
-                        VCN_c02.hoc")
-  --inputpattern INPUTPATTERN, -i INPUTPATTERN
-                        cell input pattern to use (substitute) from
-                        cell_config.py
-  --stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}, -s {tonepip,noise,stationaryNoise,SAM,CMMR}
-                        Define the stimulus type (default: tonepip)
-  --check, -/           Only check command line for valid input; do not run
-                        model
-  -C CONFIGFILE, --configfile CONFIGFILE
-                        Read a formatted configuration file (JSON, TOML) for
-                        commands
-  -d DB, --dB DB        Set sound intensity dB SPL (default 30)
-  -f F0, --frequency F0
-                        Set tone frequency, Hz (default 4000)
-  --duration PIP_DURATION
-                        Set sound stimulus duration (sec; default 0.1)
-  -r NREPS, --reps NREPS
-                        # repetitions
-  --seed SEED           AN starting seed
-  -S {LS,MS,HS,fromcell}, --SRType {LS,MS,HS,fromcell}
-                        Specify SR type (from: ['LS', 'MS', 'HS', 'fromcell'])
-  --synapsetype {simple,multisite}
-                        Specify AN synapse type (from: ['simple',
-                        'multisite'])
-  --depression {0,1}    Specify AN depression flag for multisite synapses
-                        (from: [0, 1])
-  --fmod FMOD           Set SAM modulation frequency
-  --dmod DMOD           Set SAM modulation depth (in percent)
-  --S2M SIGNALTOMASKER  Signal to Masker ratio (dB)
-  --cmmrmode {CM,CD,REF}
-                        Specify mode (from: ['CM', 'CD', 'REF'])
-  --spirou {all,max=mean,all=mean}
-                        Specify spirou experiment type....
-  --soma_inflate SOMA_INFLATION
-                        Specify factor by which to inflate soma AREA
-  --soma_autoinflate    Automatically inflate soma based on table
-  --dendrite_inflate DENDRITE_INFLATION
-                        Specify factor by which to inflate total dendritic
-                        AREA
-  --dendrite_autoinflate
-                        Automatically inflate dendrite area based on table
-  --dendrite_from_soma  Automatically inflate dendrite area based on soma
-                        inflation
-  --ASA_from_soma       Automatically inflate dendrite area based on soma
-                        inflation
-  --tagstring TAGSTRING
-                        Add a tag string to the output filename to distinguish
-                        it
-  -a AMPASCALE, --AMPAScale AMPASCALE
-                        Set AMPAR conductance scale factor (default 1.0)
-  --allmodes            Force run of all modes (CMR, CMD, REF) for stimulus
-                        configuration.
-  --sequence SEQUENCE   Specify a sequence for the primary run parameters
-  --plot                Plot results as they are generated - requires user
-                        intervention...
-  --workers NWORKERS    Number of "workers" for parallel processing (default:
-                        4)
-  --noparallel          Use parallel or not (default: True)
-  --auto                Force auto initialization if reading the state fails
-                        in initialization
-  --saveall             Save data from all sections in model
-  --verbose             Print out extra stuff for debugging
-  --gifi GIF_I0         Set Noise for GIF current level (default 0 nA)
-  --gifsigma GIF_SIGMA  Set Noise for GIF variance (default 0.2 nA)
-  --giffmod GIF_FMOD    Set Noise for GIF fmod (default 0.2 Hz)
-  --giftau GIF_TAU      Set Noise for GIF tau (default 0.3 ms)
-  --gifdur GIF_DUR      Set Noise for GIF duration (default 10 s)
-  --gifskew GIF_SKEW    Set Noise for GIF to have skewed distribution (0 =
-                        normal)
+    -h, --help            show this help message and exit
+    --type {Bushy,TStellate,DStellate}, -T {Bushy,TStellate,DStellate}
+                          Define the cell type (default: Bushy)
+    --model {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr},
+                  -M {XM13,XM13_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}
+                          Define the model type (default: XM13)
+    --modeltype {II,II-I,I-II,I-c,I-t,II-o}
+                          Define the model type (default: XM13)
+    --sgcmodel {Zilany,cochlea}
+                          Define the SGC model type (default: Zilany)
+    --protocol {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,runANIO,
+                  runANSingles,runANOmitOne,gifnoise}
+                  , -P {initIV,testIV,runIV,initandrunIV,initAN,runANPSTH,runANIO,
+                  runANSingles,runANOmitOne,gifnoise}
+                          Protocol to use for simulation (default: IV)
+    -H, --defaulthoc      Use default hoc file for this cell
+    --hocfile HOCFILE     hoc file to use for simulation (default is the
+                          selected "cell".hoc)
+    -F, --full            Use "full" hoc file as in "VCN_c02_Full.hoc instead of
+                          VCN_c02.hoc")
+    --inputpattern INPUTPATTERN, -i INPUTPATTERN
+                          cell input pattern to use (substitute) from
+                          cell_config.py
+    --stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}, -s {tonepip,noise,stationaryNoise,SAM,CMMR}
+                          Define the stimulus type (default: tonepip)
+    --check, -/           Only check command line for valid input; do not run
+                          model
+    -C CONFIGFILE, --configfile CONFIGFILE
+                          Read a formatted configuration file (JSON, TOML) for
+                          commands
+    -d DB, --dB DB        Set sound intensity dB SPL (default 30)
+    -f F0, --frequency F0
+                          Set tone frequency, Hz (default 4000)
+    --duration PIP_DURATION
+                          Set sound stimulus duration (sec; default 0.1)
+    -r NREPS, --reps NREPS
+                          # repetitions
+    --seed SEED           AN starting seed
+    -S {LS,MS,HS,fromcell}, --SRType {LS,MS,HS,fromcell}
+                          Specify SR type (from: ['LS', 'MS', 'HS', 'fromcell'])
+    --synapsetype {simple,multisite}
+                          Specify AN synapse type (from: ['simple',
+                          'multisite'])
+    --depression {0,1}    Specify AN depression flag for multisite synapses
+                          (from: [0, 1])
+    --fmod FMOD           Set SAM modulation frequency
+    --dmod DMOD           Set SAM modulation depth (in percent)
+    --S2M SIGNALTOMASKER  Signal to Masker ratio (dB)
+    --cmmrmode {CM,CD,REF}
+                          Specify mode (from: ['CM', 'CD', 'REF'])
+    --spirou {all,max=mean,all=mean}
+                          Specify spirou experiment type....
+    --soma_inflate SOMA_INFLATION
+                          Specify factor by which to inflate soma AREA
+    --soma_autoinflate    Automatically inflate soma based on table
+    --dendrite_inflate DENDRITE_INFLATION
+                          Specify factor by which to inflate total dendritic
+                          AREA
+    --dendrite_autoinflate
+                          Automatically inflate dendrite area based on table
+    --dendrite_from_soma  Automatically inflate dendrite area based on soma
+                          inflation
+    --ASA_from_soma       Automatically inflate dendrite area based on soma
+                          inflation
+    --tagstring TAGSTRING
+                          Add a tag string to the output filename to distinguish
+                          it
+    -a AMPASCALE, --AMPAScale AMPASCALE
+                          Set AMPAR conductance scale factor (default 1.0)
+    --allmodes            Force run of all modes (CMR, CMD, REF) for stimulus
+                          configuration.
+    --sequence SEQUENCE   Specify a sequence for the primary run parameters
+    --plot                Plot results as they are generated - requires user
+                          intervention...
+    --workers NWORKERS    Number of "workers" for parallel processing (default:
+                          4)
+    --noparallel          Use parallel or not (default: True)
+    --auto                Force auto initialization if reading the state fails
+                          in initialization
+    --saveall             Save data from all sections in model
+    --verbose             Print out extra stuff for debugging
+    --gifi GIF_I0         Set Noise for GIF current level (default 0 nA)
+    --gifsigma GIF_SIGMA  Set Noise for GIF variance (default 0.2 nA)
+    --giffmod GIF_FMOD    Set Noise for GIF fmod (default 0.2 Hz)
+    --giftau GIF_TAU      Set Noise for GIF tau (default 0.3 ms)
+    --gifdur GIF_DUR      Set Noise for GIF duration (default 10 s)
+    --gifskew GIF_SKEW    Set Noise for GIF to have skewed distribution (0 =
+                          normal)
 Example:
 Set up initialization:
 python model_run.py VCN_c18 --hoc gbc18_w_axon_rescaled.hoc --protocol initIV --model XM13
@@ -686,7 +687,7 @@ class ModelRun:
                 species="mouse",
                 model_type="II",
                 data=CHAN.ChannelCompartments,
-            )          
+            )
             # if (
             #     self.Params.modelName == "XM13_nacncoop"
             #     and self.Params.dendriteMode == "normal"
@@ -831,7 +832,7 @@ class ModelRun:
             #         model_type="II",
             #         data=CHAN.ChannelCompartments,
             #     )
-                
+
             # elif self.Params.modelName == "XM13":
  #                from model_data import data_XM13 as CHAN
  #
@@ -1058,7 +1059,6 @@ class ModelRun:
         self.Params.setup = True
         # self.post_cell.print_soma_info()
 #         exit()
-
 
     def view_model(self, par_map: dict = None):
         if not self.Params.setup:
@@ -1550,6 +1550,58 @@ class ModelRun:
         if self.Params.verbose:
             print("setsyn: total ampa, nmda: ", totalg, totaln)
 
+    def retrieve_data(self, tresults):
+        """
+        Do a bit of massaging from the data returned in tresults
+        to build the result array and ancillary arrays for storage
+        """
+        celltime = tresults["time"]  # (self.time)
+        spikeTimes = EPU.findspikes(
+            x=tresults["time"]/1000.,  # in msec, convert to sec
+            v=tresults["Vsoma"]*1e-3,  # in mV
+            thresh=self.RunInfo.threshold*1e-3,  # in units of vsoma, so mV
+            t0=0.0,  # / sec
+            t1=self.RunInfo.run_duration,  # leave in sec
+            dt=self.post_cell.hr.h.dt*1e-3,  # convert to sec
+            mode="peak",
+            detector="Kalluri",
+            refract=0.0007,  # min refractory period, msec
+        )
+        allDendriteVoltages = []
+        # print('v[;50] =',  tresults[j]["Vsoma"][:50]*1e-3)
+        # print('threshold: ', self.RunInfo.threshold*1e03)
+        # print('max time: ', np.max(tresults[j]["time"]/1000.))
+        # print('h.dt: ',  self.post_cell.hr.h.dt*1e-3)
+        # print('dur: ', self.RunInfo.run_duration)
+        # spikeTimes = spikeTimes
+        # print('spike times: ', spikeTimes)
+        # spikeTimes = self.clean_spiketimes(spikeTimes, mindT=0.0007)
+        # print('spike times: ', spikeTimes)
+        # exit()
+        inputSpikeTimes = tresults[
+            "ANSpikeTimes"
+        ]  # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
+        somaVoltage = np.array(tresults["Vsoma"])
+        dendriteVoltage = np.array(tresults["Vdend"])
+        stimWaveform = np.array(tresults["stimWaveform"])
+        stimTimebase = np.array(tresults["stimTimebase"])
+        # print('input spikes: ', inputSpikeTimes)
+        result = {
+            "spikeTimes": spikeTimes,
+            "inputSpikeTimes": inputSpikeTimes,
+            "time": np.array(celltime),
+            "somaVoltage": somaVoltage,
+            "dendriteVoltage": dendriteVoltage,
+            "allDendriteVoltages": allDendriteVoltages,
+            "stimWaveform": stimWaveform,
+            "stimTimebase": stimTimebase,
+        }
+        if self.Params.save_all_sections:  # just save soma sections
+            # for section in list(g):
+            allDendriteVoltages = tresults["allsecVec"]
+
+        return celltime, result, allDendriteVoltages
+
     def an_run_init(self):
         self.an_run(make_an_intial_conditions=True)
 
@@ -1600,7 +1652,6 @@ class ModelRun:
         #     print 'delay for input %d is %8.4f msec' % (i, s[1])
 
         nReps = self.RunInfo.nReps
-        threshold = self.RunInfo.threshold  # spike threshold, mV
 
         preCell, synapse, self.electrode_site = self.configure_cell(
             self.post_cell, synapseConfig=synapseConfig, celltype=celltype
@@ -1632,16 +1683,12 @@ class ModelRun:
 
         seeds = self.compute_seeds(nReps, synapseConfig)
         self.RunInfo.seeds = seeds  # keep the seed values too.
-        # spikeTimes = {}
-        # inputSpikeTimes = {}
-        # somaVoltage = {}
-        # dendriteVoltage = {}
-        celltime = []
-        # stim = {}
-        # stimWaveform = {}
+
+        celltime = [None]*nReps
         allDendriteVoltages = (
             {}
         )  # Saving of all dendrite voltages is controlled by --saveall flag
+        result = {}
         self.setup_time = time.time() - self.start_time
         self.nrn_run_time = 0.0
         self.an_setup_time = 0.0
@@ -1649,7 +1696,7 @@ class ModelRun:
         nWorkers = self.Params.nWorkers
         TASKS = [s for s in range(nReps)]
         tresults = [None] * len(TASKS)
-        result = {}
+
 
         # manipulate syanptic strengths to test hypotheses here.
         allsf = self.Params.AMPAScale
@@ -1734,10 +1781,10 @@ class ModelRun:
             nlarge = 4
             cprint("c", "    Setting all terminal inputs to 0 except the four largest")
         if self.RunInfo.Spirou in ['largestonly',
-                                    "twolargest",
-                                    "threelargest",
-                                    "fourlargest",
-                                    ]:
+                                   "twolargest",
+                                   "threelargest",
+                                   "fourlargest",
+                                  ]:
             gMax, gnMax, nSyn = self.get_synapses(synapse)
             i_gMaxSorted = np.argsort(gMax)  # synapse with largest conductance
             print("    AMPA:  gMax, imax: ", gMax, i_gMaxSorted)
@@ -1753,7 +1800,7 @@ class ModelRun:
         self.get_synapses(synapse, printvalues=True)
         if self.Params.testsetup:
             return
-        
+
         # run using pyqtgraph's parallel support
         if self.Params.Parallel:
             with MP.Parallelize(
@@ -1763,41 +1810,7 @@ class ModelRun:
                     tresults = self.single_an_run(
                         j, synapseConfig, seeds, preCell, self.an_setup_time,
                     )
-                    tasker.results[j] = tresults
-            # retreive the data
-            for j, N in enumerate(range(nReps)):
-                celltime.append(tresults[j]["time"])  # (self.time)
-                spikeTimes = EPU.findspikes(
-                    tresults[j]["time"],
-                    tresults[j]["Vsoma"],
-                    thresh=threshold,
-                    t0=0.0,
-                    t1=self.RunInfo.run_duration * 1000.0,
-                    dt=self.post_cell.hr.h.dt,
-                    mode="peak",
-                    detector="Kalluri",
-                )
-                spikeTimes = self.clean_spiketimes(spikeTimes)
-                inputSpikeTimes = tresults[j][
-                    "ANSpikeTimes"
-                ]  # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
-                somaVoltage = np.array(tresults[j]["Vsoma"])
-                dendriteVoltage = np.array(tresults[j]["Vdend"])
-                stimWaveform = np.array(tresults[j]["stimWaveform"])
-                stimTimebase = np.array(tresults[j]["stimTimebase"])
-                result[N] = {
-                    "spikeTimes": spikeTimes,
-                    "inputSpikeTimes": inputSpikeTimes,
-                    "time": np.array(celltime[0]),
-                    "somaVoltage": somaVoltage,
-                    "dendriteVoltage": dendriteVoltage,
-                    "allDendriteVoltages": allDendriteVoltages,
-                    "stimWaveform": stimWaveform,
-                    "stimTimebase": stimTimebase,
-                }
-                if self.Params.save_all_sections:  # just save soma sections
-                    # for section in list(g):
-                    allDendriteVoltages[N] = tresults[j]["allsecVec"]
+                    tasker.results[j] = tresults 
 
         else:
             # Non parallelized version (with --noparallel flag - useful for debugging):
@@ -1807,39 +1820,9 @@ class ModelRun:
                 tresults[j] = self.single_an_run(
                     j, synapseConfig, seeds, preCell, self.an_setup_time,
                 )
+        for j, N in enumerate(range(nReps)):
+            celltime[N], result[N], allDendriteVoltages[N] = self.retrieve_data(tresults[j])
 
-                celltime.append(tresults[j]["time"])  # (self.time)
-                spikeTimes = EPU.findspikes(
-                    tresults[j]["time"],
-                    tresults[j]["Vsoma"],
-                    thresh=threshold,
-                    t0=0.0,
-                    t1=self.RunInfo.run_duration * 1000.0,
-                    dt=self.post_cell.hr.h.dt,
-                    mode="peak",
-                    detector="Kalluri",
-                )
-                spikeTimes = self.clean_spiketimes(spikeTimes)
-                inputSpikeTimes = tresults[j][
-                    "ANSpikeTimes"
-                ]  # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
-                somaVoltage = np.array(tresults[j]["Vsoma"])
-                dendriteVoltage = np.array(tresults[j]["Vdend"])
-                stimWaveform = np.array(tresults[j]["stimWaveform"])
-                stimTimebase = np.array(tresults[j]["stimTimebase"])
-                # stim = np.array(tresults[j]["stim"])  # save the stimulus
-                result[N] = {
-                    "spikeTimes": spikeTimes,
-                    "inputSpikeTimes": inputSpikeTimes,
-                    "time": np.array(celltime[0]),
-                    "somaVoltage": somaVoltage,
-                    "dendriteVoltage": dendriteVoltage,
-                    "allDendriteVoltages": allDendriteVoltages,
-                    "stimWaveform": stimWaveform,
-                    "stimTimebase": stimTimebase,
-                }
-                if self.Params.save_all_sections:  # save data for all sections
-                    allDendriteVoltages[N] = tresults[j]["allsecVec"]
         self.print_timing()
 
         if self.Params.save_all_sections:
@@ -1904,6 +1887,7 @@ class ModelRun:
         somaVoltage = {}
         dendriteVoltage = {}
         celltime = []
+        allDendriteVoltages = {}
         parallel = self.Params.Parallel
         self.setup_time = time.time() - self.start_time
         self.nrn_run_time = 0.0
@@ -1921,14 +1905,14 @@ class ModelRun:
                 for i in range(nSyns):
                     if i != k:  # set values for all others
                         self.set_synapse(synapse[k], gMax[k]/nSyn[k], ngMax[k]/nSyn[k])
-                self.set_synapse(synapse[k], 0., 0.) # but turn this one off
+                self.set_synapse(synapse[k], 0., 0.)  # but turn this one off
 
             if not exclude:  # enable a single synapse
                 tagname = "Syn%03d" % k
-                self.set_synapse(synapse[k], gMax[k]/nSyn[k], ngMax[k]/nSyn[k]) # set value for selected one
+                self.set_synapse(synapse[k], gMax[k]/nSyn[k], ngMax[k]/nSyn[k])  # set value for selected one
                 for i in range(nSyns):
                     if i != k:
-                        self.set_synapse(synapse[i], 0., 0.) # but turn all others off
+                        self.set_synapse(synapse[i], 0., 0.)  # but turn all others off
 
             self.get_synapses(synapse, printvalues=True)
 
@@ -1959,43 +1943,9 @@ class ModelRun:
                         preCell,
                         self.an_setup_time,
                     )
-            spikeTimes = {}
-            inputSpikeTimes = {}
-            somaVoltage = {}
-            dendriteVoltage = {}
             celltime = []
-            stim = {}
             for j, N in enumerate(range(nReps)):
-                celltime.append(tresults[j]["time"])  # (self.time)
-                spikeTimes[N] = EPU.findspikes(
-                    tresults[j]["time"],
-                    tresults[j]["Vsoma"],
-                    thresh=threshold,
-                    t0=0.0,
-                    t1=self.RunInfo.run_duration * 1000,
-                    dt=self.post_cell.hr.h.dt,
-                    mode="peak",
-                    detector="Kalluri",
-                )
-                spikeTimes[N] = self.clean_spiketimes(spikeTimes[N])
-                inputSpikeTimes[N] = tresults[j][
-                    "ANSpikeTimes"
-                ]  # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
-                somaVoltage[N] = np.array(tresults[j]["Vsoma"])
-                dendriteVoltage[N] = np.array(tresults[j]["Vdend"])
-                stim[N] = np.array(tresults[j]["stim"])
-            stimWaveform = np.array(tresults[0]["stim"])
-            stimTimebase = np.array(tresults[0]["stimTimebase"])
-
-            result[k] = {
-                "spikeTimes": spikeTimes,
-                "inputSpikeTimes": inputSpikeTimes,
-                "somaVoltage": somaVoltage,
-                "dendriteVoltage": dendriteVoltage,
-                "time": np.array(tresults[j]["time"]),
-                "stimWaveform": stimWaveform,
-                "stimTimebase": stimTimebase,
-            }
+                celltime[N], result[N], allDendriteVoltages[N] = self.retrieve_data(tresults[j])
 
             self.analysis_filewriter(self.Params.cell, result[k], tag=tagname)
             self.print_timing()
@@ -2044,10 +1994,11 @@ class ModelRun:
         seeds = self.compute_seeds()
         nSyns = len(preCell)
         k = 0
-        spikeTimes = {}
-        inputSpikeTimes = {}
-        somaVoltage = {}
-        dendriteVoltage = {}
+        # spikeTimes = {}
+        # inputSpikeTimes = {}
+        # somaVoltage = {}
+        # dendriteVoltage = {}
+        allDendriteVoltages = {}
         celltime = []
         parallel = self.Params.Parallel
         self.setup_time = time.time() - self.start_time
@@ -2103,33 +2054,7 @@ class ModelRun:
                 4.0 * float(j + 1) * gMax[0] / float(nReps + 1) for j in range(nReps)
             ]
             for j, N in enumerate(range(nReps)):
-                celltime.append(tresults[j]["time"])  # (self.time)
-                spikeTimes[N] = EPU.findspikes(
-                    tresults[j]["time"],
-                    tresults[j]["Vsoma"],
-                    thresh=threshold,
-                    t0=0.0,
-                    t1=self.RunInfo.run_duration * 1000,
-                    dt=self.post_cell.hr.h.dt,
-                    mode="peak",
-                    detector="Kalluri",
-                )
-                spikeTimes[N] = self.clean_spiketimes(spikeTimes[N])
-                inputSpikeTimes[N] = tresults[j][
-                    "ANSpikeTimes"
-                ]  # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
-                somaVoltage[N] = np.array(tresults[j]["Vsoma"])
-                dendriteVoltage[N] = np.array(tresults[j]["Vdend"])
-            self.RunInfo.gSyns = gmaxs
-            self.print_timing()
-
-            result = {
-                "spikeTimes": spikeTimes,
-                "inputSpikeTimes": inputSpikeTimes,
-                "somaVoltage": somaVoltage,
-                "dendriteVoltage": dendriteVoltage,
-                "time": np.array(tresults[j]["time"]),
-            }
+                celltime[N], result[N], allDendriteVoltages[N] = self.retrieve_data(tresults[j])
 
             self.analysis_filewriter(self.Params.cell, result, tag=tagname % k)
         if self.Params.testsetup:
@@ -2417,20 +2342,21 @@ class ModelRun:
             anresult["allsecVec"] = self.allsecVec
         return anresult
 
-    def clean_spiketimes(self, spikeTimes, mindT=0.7):
-        """
-        Clean up spike time array, removing all less than mindT
-        spikeTimes is a 1-D list or array
-        mindT is difference in time, same units as spikeTimes
-        If 1 or 0 spikes in array, just return the array
-        """
-        if len(spikeTimes) > 1:
-            dst = np.diff(spikeTimes)
-            st = np.array(spikeTimes[0])  # get first spike
-            sok = np.where(dst > mindT)
-            st = np.append(st, [spikeTimes[s + 1] for s in sok])
-            spikeTimes = st
-        return spikeTimes
+    # def clean_spiketimes(self, spikeTimes, mindT=0.0007):
+    #     """
+    #     Clean up spike time array, removing all less than mindT
+    #     spikeTimes is a 1-D list or array
+    #     mindT is difference in time, same units as spikeTimes (nominally, seconds)
+    #     If 1 or 0 spikes in array, just return the array
+    #     Note: assumption is that all arrays are in msec and mindT is in msec
+    #     """
+    #     if len(spikeTimes) > 1:
+    #         dst = np.diff(spikeTimes)
+    #         st = np.array(spikeTimes[0])  # get first spike
+    #         sok = np.where(dst > mindT)
+    #         st = np.append(st, [spikeTimes[s + 1] for s in sok])
+    #         spikeTimes = st
+    #     return spikeTimes
 
     def plot_an(self, celltime, result):
         """
