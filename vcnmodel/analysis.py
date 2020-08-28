@@ -9,13 +9,13 @@ import sys
 import os.path
 import pickle
 import argparse
-import pylibrary.utility as pu  # access to spike finder routine
+import pylibrary.tools.utility as pu  # access to spike finder routine
 import time
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 import pylibrary.plotting.pyqtgraph_plothelpers as pgh
-import analyze_run as ar
-import calyxPlots as cp
+import vcnmodel.analyzers.analyze_run as ar
+#import calyxPlots as cp
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -25,7 +25,7 @@ from collections import OrderedDict
 import seaborn
 from matplotlib import rc
 rc('text', usetex=False)
-import cell_config as CFG
+import vcnmodel.cell_config as CFG
 import vcnmodel.analyzers.analyze_run as analyze_run
 
 
@@ -132,13 +132,15 @@ def ANfspike(spikes, stime, nReps):
         np.count_nonzero(~np.isnan(sl1))))
     print ('   mean Second spike latency: %8.3f ms stdev: %8.3f  (N=%3d)' % (np.nanmean(sl2), np.nanstd(sl2),
         np.count_nonzero(~np.isnan(sl2)))
-)
+        )
+    return(sl1, sl2)
+    
 
 def getFirstSpikes(spikes, stime, nReps):
     sl1 = np.full(nReps, np.nan)
     sl2 = np.full(nReps, np.nan)
     for r in range(nReps):
-        rs = np.where(spikes[r] > stime)[0]  # get spike times post stimulus onset
+        rs = np.where(np.array(spikes[r]) > stime)[0]  # get spike times post stimulus onset
         if len(spikes[r]) > 0 and len(rs) > 0:
             sl1[r] = spikes[r][rs[0]]
         if len(spikes[r]) > 1 and len(rs) > 1:

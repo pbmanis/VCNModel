@@ -19,7 +19,6 @@ from pylibrary.tools import cprint as CP
 import vcnmodel.correlation_calcs
 import vcnmodel.spikestatistics
 
-
 cprint = CP.cprint
 """
 Use pyqtgraph tablewidget to build a table showing simulation
@@ -32,6 +31,8 @@ all_modules = [
     plot_sims,
     vcnmodel.correlation_calcs,
     vcnmodel.spikestatistics,
+    vcnmodel.analysis,
+
 ]
 
 cellvalues = [
