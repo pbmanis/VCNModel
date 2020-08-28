@@ -109,7 +109,7 @@ class CmdChoices:
 class Params:
 
     setup: bool = False  # true once we have setup the cell and filenames
-    cellID: str = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
+    cellID: Union[str, None] = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
     cell: object = None  # model instance (neuron/hoc)
     AMPAScale: float = 1.0  # Use the default scale for AMPAR conductances
     ANSynapseType: str = "simple"  # or multisite
@@ -237,7 +237,7 @@ class RunInfo:
     postMode: str = "CC"
     TargetCellType: str = ""  # celltype, # valid are "Bushy", "Stellate", "MNTB"
     electrodeSection: Union[object, str, None] = None  # electrodeSection
-    electrodeSectionName: str = None
+    electrodeSectionName: Union[str, None] = None
     dendriticElectrodeSection: Union[
         object, str, None
     ] = None  # dendriticElectrodeSection,
