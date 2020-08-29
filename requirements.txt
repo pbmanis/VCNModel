@@ -1,6 +1,6 @@
 # vcnmodel requirements
 # 7 May 2020
-# P. Manismate 
+# P. Manis
 
 black==19.10b0
 Cython==0.29.7
@@ -12,6 +12,7 @@ dill==0.3.1.1
 envisage==4.7.2
 
 lmfit==0.9.13
+llvmlite==0.32.1  # required for numba version to avoid "TypeError: create_target_machine() got an unexpected keyword 
 
 matplotlib==3.2.0
 matplotlib-scalebar==0.5.1
@@ -62,6 +63,7 @@ mahotas
 -e /Users/pbmanis/Desktop/Python/pylibrary
 -e /Users/pbmanis/Desktop/Python/ephys
 -e /Users/pbmanis/Desktop/Python/montage
+-e /Users/pbmanis/Desktop/Python/cnmodel_pbm
 
 #-e git+https://github.com/pbmanis/pyqtgraph.git@e3ac16b3a220f76b69bf26c295edf140e2e928b4#egg=pyqtgraph
 #-e git+https://github.com/pbmanis/pylibrary.git@f16bcbe490e8a11d99792dfd65d3ed18a0cd6756#egg=pylibrary
