@@ -133,20 +133,32 @@ def ANfspike(spikes, stime, nReps):
     print ('   mean Second spike latency: %8.3f ms stdev: %8.3f  (N=%3d)' % (np.nanmean(sl2), np.nanstd(sl2),
         np.count_nonzero(~np.isnan(sl2)))
         )
-    return(sl1, sl2)
+
     
 
-def getFirstSpikes(spikes, stime, nReps):
+def getFirstSpikes(spikes, stime, nReps, minfsl=2.5):
     sl1 = np.full(nReps, np.nan)
     sl2 = np.full(nReps, np.nan)
+    # print(spikes)
     for r in range(nReps):
-        rs = np.where(np.array(spikes[r]) > stime)[0]  # get spike times post stimulus onset
-        if len(spikes[r]) > 0 and len(rs) > 0:
-            sl1[r] = spikes[r][rs[0]]
-        if len(spikes[r]) > 1 and len(rs) > 1:
-            sl2[r] = spikes[r][rs[1]]  # second spikes
+        if len(spikes[r]) == 0:
+            continue
+        rs = np.argwhere(np.array(spikes[r]).T > stime+minfsl)  # get spike times post stimulus onset
+        if len(rs) == 0:
+            continue
+        rs = [r[0] for r in rs] # flattend the array
+        # print('rs: ', rs)
+        # print('fsl: ', spikes[r][rs[0]]-stime, rs)
+        # print(f"r: {r:d}   rs: {str(rs):s}")
+        # print(f"     {str(np.array(spikes[rs])):s}")
+        if len(rs) > 0:
+            sl1[r] = spikes[r][rs[0]]-stime
+        if len(rs) > 1:
+            sl2[r] = spikes[r][rs[1]]-stime  # second spikes
+            # print('sl2: ', sl2)
     sl1 = sl1[~np.isnan(sl1)]  # in case of no spikes at all
     sl2 = sl2[~np.isnan(sl2)]  # in case of no second spikes
+    # print(len(sl1), len(sl2))
     return(sl1, sl2)
 
 

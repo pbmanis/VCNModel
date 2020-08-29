@@ -965,23 +965,24 @@ class PlotSims:
         self.ntr = len(AR.traces)  # number of trials
         self.pwin = None
         self.pfull = None
-        self.lines = []
+        self.lines = [None]*self.parent.n_trace_sel
         self.punchtape = None
         self.pt_text = None
         self.inputtimes = None
-        self.first = False
+        self.first = True
+        self.parent.trace_selector.setValue(0)
         if self.allspikes is not None:
             self.nspikes = len(self.allspikes)
-            for i in range(0, self.parent.n_trace_sel):
+            for i, trn in enumerate(range(0, self.parent.n_trace_sel)):
                 self.plot_spikes_withinputs(
-                    int(i), color=pg.intColor(i, hues=20), first=self.first
+                    int(i), n=trn, color=pg.intColor(i, hues=20), first=self.first
                 )
+
             self.parent.trace_selector_plot.setXRange(0, self.nspikes)
             self.parent.trace_selector.setBounds((0, self.nspikes))
             self.parent.frameTicks.setXVals(
                 range(0, self.nspikes, self.parent.n_trace_sel)
             )
-            self.parent.trace_selector.setValue(0)
             self.first = False
             QtGui.QApplication.processEvents()
         else:
@@ -1044,8 +1045,12 @@ class PlotSims:
             self.parent.trace_plots.setYRange(-100.0, 200.0, padding=0.1)
         else:
             self.parent.trace_plots.setYRange(-75.0, 10.0, padding=0.1)
+            pass
 
     def timeLineChanged(self):
+        # cprint('r', 'Time line changed')
+        if self.first:
+            return
         t = int(self.parent.trace_selector.value())
         if t < 0:
             self.parent.trace_selector.setValue(0)
@@ -1074,112 +1079,137 @@ class PlotSims:
         n : spike to plot within the block
         color: indexed color.
         """
+        print(self.nspikes, color, first, ix, n)
+        # self.parent.trace_plots.plot(np.arange(10), np.ones(10))
         if self.nspikes > n and n >= 0:
             self.check_yscaling()
             # print('n: ', n)
             spk = self.allspikes[n]
             if self.parent.V_disp_sel == "dV/dt":
                 if first:
-                    pll = self.parent.trace_plots.plot(
+                    self.lines[ix] = self.parent.trace_plots.plot(
                         spk.dt * np.arange(0, len(spk.waveform))[:-1] + spk.start_win,
                         np.diff(spk.waveform / spk.dt),
                         pen=color,
                     )
-                    self.lines.append(pll)
                 else:
-                    self.parent.trace_plots.plot(
-                        spk.dt * np.arange(0, len(spk.waveform))[:-1] + spk.start_win,
-                        np.diff(spk.waveform / spk.dt),
-                        pen=color,
-                    )
-                    # self.lines[ix].setData(spk.dt*np.arange(0, len(spk.waveform))[:-1]+spk.start_win, np.diff(spk.waveform/spk.dt), pen=color)
+                    # self.parent.trace_plots.plot(
+                    #     spk.dt * np.arange(0, len(spk.waveform))[:-1] + spk.start_win,
+                    #     np.diff(spk.waveform / spk.dt),
+                    #     pen=color,
+                    # )
+                    self.lines[ix].setData(
+                        spk.dt*np.arange(0, len(spk.waveform))[:-1]+spk.start_win, 
+                        np.diff(spk.waveform/spk.dt), 
+                        pen=color)
                 papertape_yoff = 120.0
                 spkin_off = -50.0
                 dy = 5.0
             else:
                 if first:
-                    pll = self.parent.trace_plots.plot(
-                        spk.dt * np.arange(0, len(spk.waveform)) + spk.start_win,
-                        spk.waveform,
-                        pen=color,
+                    print('plotting first')
+                    tx = spk.dt * np.arange(0, len(spk.waveform)) + spk.start_win
+                    # print(np.min(tx), np.max(tx), tx.shape)
+ #                    print(np.min(spk.waveform), np.max(spk.waveform), spk.waveform.shape)
+                    # print(dir(self.parent.trace_plots))
+                    self.parent.trace_plots.setEnabled(True)
+                    self.parent.trace_plots.plotItem.plot(np.arange(10), np.ones(10)*ix, pen="r")
+                    self.lines[ix] = self.parent.trace_plots.plotItem.plot(
+                        x=tx,
+                        y=spk.waveform,
+                        # pen=color,
                     )
-                    self.lines.append(pll)
+                    self.lines[ix].curve.show()
+                    #print(dir(self.lines[ix]))
+                 
                 else:
-                    self.parent.trace_plots.plot(
-                        spk.dt * np.arange(0, len(spk.waveform)) + spk.start_win,
-                        spk.waveform,
-                        pen=color,
-                    )
-                    # self.lines[ix].setData(spk.dt*np.arange(0, len(spk.waveform))+spk.start_win, spk.waveform, pen=color)
+                    self.check_yscaling()
+                    # self.parent.trace_plots.plot(
+                    #     spk.dt * np.arange(0, len(spk.waveform)) + spk.start_win,
+                    #     spk.waveform,
+                    #     pen=color,
+                    # )
+                    self.parent.trace_plots.setEnabled(True)
+                    u = self.parent.trace_plots.plotItem.plot(np.arange(10), np.ones(10)*ix, pen='b')
+                    tx = spk.dt * np.arange(0, len(spk.waveform)) + spk.start_win
+                    print(np.min(tx), np.max(tx), tx.shape)
+                    print(np.min(spk.waveform), np.max(spk.waveform), spk.waveform.shape)
+                    print(dir(self.lines[ix]))
+                    self.lines[ix].curve.setData(
+                        x=tx,
+                        y=spk.waveform,
+                        pen='w',# pen=color,
+                        )
+                    self.lines[ix].curve.show()
                 papertape_yoff = 0.0
                 spkin_off = -65.0
                 dy = 2.0
-
+            # QtGui.QApplication.processEvents()
             # print('first: ', first, 'lines: ', self.lines)
-            prespt = np.zeros(len(spk.prespikes))
-            prespv = np.nan * np.zeros(len(spk.prespikes))
-            prespk_time = np.zeros(len(spk.prespikes))
-            prespv2 = np.nan * np.zeros(len(spk.prespikes))
-            # print(spk.prespikes)
-            for i, prespk in enumerate(spk.prespikes):
-                if prespk is not np.nan:
-                    prespt[i] = (
-                        0.0 - 2.5 + 0.07 * np.mod(n, self.parent.n_trace_sel)
-                    )  # prespk
-                    # prespk_time[i] = prespk
-                    prespv[i] = -i * dy + papertape_yoff
-                    prespv2[i] = spkin_off - i * dy
-            if ix == 0:
-                for j in range(self.ninputs):
-                    text = pg.TextItem(f"{j:>2d}", anchor=(1.0, 0.5))
-                    if first:
-                        self.pttext = self.parent.trace_plots.addItem(text)
-                    text.setPos(0 - 2.7, -j * dy + papertape_yoff)
-            indices = np.logical_not(np.logical_or(np.isnan(prespt), np.isnan(prespv)))
-            indices = np.array(indices)
-            sysizes = np.zeros((len(prespt), len(prespv)))
-
-            # prespt = prespt[indices]
-            # prespv = prespv[indices]
-            # print(prespt, prespv)
-            # print(prespt, prespv)
-            # if len(prespt) > 0:
-            if first:
-                self.punchtape = self.parent.trace_plots.plot(
-                    prespt,
-                    prespv,
-                    pen=None,
-                    symbol="o",
-                    symbolBrush=color,
-                    symbolSize=8,
-                )
-                self.inputtimes = self.parent.trace_plots.plot(
-                    spk.prespikes,
-                    prespv2,
-                    pen=None,
-                    symbol="o",
-                    symbolBrush=color,
-                    symbolSize=8,
-                )
-            else:
-                # self.punchtape.setData(prespt, prespv, pen=None, symbol='o', symbolBrush=color, symbolSize=8)
-                # self.inputtimes.setData(spk.prespikes, prespv2, pen=None, symbol='o', symbolBrush=color, symbolSize=8)
-                self.parent.trace_plots.plot(
-                    prespt,
-                    prespv,
-                    pen=None,
-                    symbol="o",
-                    symbolBrush=color,
-                    symbolSize=8,
-                )
-                self.parent.trace_plots.plot(
-                    spk.prespikes,
-                    prespv2,
-                    pen=None,
-                    symbol="o",
-                    symbolBrush=color,
-                    symbolSize=8,
-                )
+            # prespt = np.zeros(len(spk.prespikes))
+            # prespv = np.nan * np.zeros(len(spk.prespikes))
+            # prespk_time = np.zeros(len(spk.prespikes))
+            # prespv2 = np.nan * np.zeros(len(spk.prespikes))
+            # # print(spk.prespikes)
+            # for i, prespk in enumerate(spk.prespikes):
+            #     if prespk is not np.nan:
+            #         prespt[i] = (
+            #             0.0 - 2.5 + 0.07 * np.mod(n, self.parent.n_trace_sel)
+            #         )  # prespk
+            #         # prespk_time[i] = prespk
+            #         prespv[i] = -i * dy + papertape_yoff
+            #         prespv2[i] = spkin_off - i * dy
+            # if ix == 0:
+            #     for j in range(self.ninputs):
+            #         text = pg.TextItem(f"{j:>2d}", anchor=(1.0, 0.5))
+            #         if first:
+            #             self.pttext = self.parent.trace_plots.addItem(text)
+            #         text.setPos(0 - 2.7, -j * dy + papertape_yoff)
+            # indices = np.logical_not(np.logical_or(np.isnan(prespt), np.isnan(prespv)))
+            # indices = np.array(indices)
+            # sysizes = np.zeros((len(prespt), len(prespv)))
+            #
+            # # prespt = prespt[indices]
+            # # prespv = prespv[indices]
+            # # print(prespt, prespv)
+            # # print(prespt, prespv)
+            # # if len(prespt) > 0:
+            # if first:
+            #     self.punchtape = self.parent.trace_plots.plot(
+            #         prespt,
+            #         prespv,
+            #         pen=None,
+            #         symbol="o",
+            #         symbolBrush=color,
+            #         symbolSize=8,
+            #     )
+            #     self.inputtimes = self.parent.trace_plots.plot(
+            #         spk.prespikes,
+            #         prespv2,
+            #         pen=None,
+            #         symbol="o",
+            #         symbolBrush=color,
+            #         symbolSize=8,
+            #     )
+            # else:
+            #     # self.punchtape.setData(prespt, prespv, pen=None, symbol='o', symbolBrush=color, symbolSize=8)
+            #     # self.inputtimes.setData(spk.prespikes, prespv2, pen=None, symbol='o', symbolBrush=color, symbolSize=8)
+            #     self.parent.trace_plots.plot(
+            #         prespt,
+            #         prespv,
+            #         pen=None,
+            #         symbol="o",
+            #         symbolBrush=color,
+            #         symbolSize=8,
+            #     )
+            #     self.parent.trace_plots.plot(
+            #         spk.prespikes,
+            #         prespv2,
+            #         pen=None,
+            #         symbol="o",
+            #         symbolBrush=color,
+            #         symbolSize=8,
+            #     )
 
     def plot_revcorr_map(
         self,
@@ -2133,7 +2163,14 @@ class PlotSims:
                         tk / 1000.0, y, "|", markersize=2.5, color="k", linewidth=0.5
                     )
         # get first spike latency information
-        fsl, ssl = SPKANA.CNfspike(all_bu_st, ri.pip_start, ntr)
+        fsl, ssl = SPKANA.CNfspike(all_bu_st, ri.pip_start*1e3, ntr)
+        index_row = self.parent.selected_index_rows[0]
+        selected = self.parent.table_manager.get_table_data(
+            index_row
+        )
+        print(f"'{int(self.parent.cellID):d}','{selected.synapseExperiment:s}',", end="")
+        print(f"{np.nanmean(fsl):.3f},{np.nanstd(fsl):.3f},", end="")
+        print(f"{np.nanmean(ssl):.3f},{np.nanstd(ssl):.3f}")
         all_bu_st_flat = functools.reduce(operator.iconcat, all_bu_st, [])
         all_bu_st = np.array(all_bu_st_flat) / 1000.0
         all_an_st = np.sort(np.array(all_an_st)) / 1000.0
@@ -2163,7 +2200,7 @@ class PlotSims:
             P.axdict["F"].text(
                 1.0,
                 0.9,
-                f"FSL: {np.nanmean(ssl):8.3f} (SD {np.nanstd(ssl):8.3f} N={np.count_nonzero(~np.isnan(ssl)):3d})",
+                f"SSL: {np.nanmean(ssl):8.3f} (SD {np.nanstd(ssl):8.3f} N={np.count_nonzero(~np.isnan(ssl)):3d})",
                 fontsize=7,
                 color="r",
                 fontfamily="monospace",
