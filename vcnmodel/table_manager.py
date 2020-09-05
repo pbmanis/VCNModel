@@ -70,6 +70,8 @@ class IndexData:
     dBspl: float = 0.0
     nReps: int = 0
     pipDur: float = 0.0
+    soundType: str = ""
+    fmod: Union[float, None]= None
     SRType: str = ""
     elapsed: float = 0.0
     runProtocol: str = ""
@@ -224,7 +226,9 @@ class TableManager:
             Index_data.synapseExperiment = params["spirou"]
             Index_data.dBspl = params["dB"]
             Index_data.SRType = params["SRType"]
-            
+            Index_data.soundType = params["soundtype"]
+            Index_data.fmod = params["fmod"]
+
             try:
                 Index_data.dt = params["dt"]
             except:
@@ -258,7 +262,22 @@ class TableManager:
             Index_data.nReps = runinfo.nReps
             Index_data.pipDur = runinfo.pip_duration
             Index_data.SRType = params.SRType
+            
+            Index_data.soundType = runinfo.soundtype
+            Index_data.fmod = runinfo.fmod
             Index_data.temperature = params.celsius
+            Index_data.simulation_path = str(
+                    Path(
+                        self.basepath,
+                        # f"VCN_c{int(self.selvals['Cells'][1]):02d}",
+   #                      "Simulations",
+   #                      self.selvals["Run Type"][1],
+                    )
+                )    
+            try:
+                Index_data.stimVC = runinfo.stimVC
+            except:
+                Index_data.stimVC = None
             try:
                 Index_data.dataTable = params.dataTable
             except:
@@ -404,8 +423,11 @@ class TableManager:
                     indxs[i].dBspl,
                     indxs[i].nReps, # command_line["nReps"],
                     indxs[i].pipDur,
+                    indxs[i].soundType,
+                    indxs[i].fmod,
                     len(indxs[i].files),
                     indxs[i].dataTable,
+                    indxs[i].simulation_path,
                     str(Path("/".join(indexfiles[i].parts[-4:]))),
                 )
                 for i in range(len(indxs))
@@ -426,8 +448,11 @@ class TableManager:
                 ("dBspl", object),
                 ("nReps", object),
                 ("pipDur", object),
+                ("soundType", object),
+                ("fmod", object),
                 ("# Files", object),
-                ("Data Table", object),
+                ("DataTable", object),
+                ('simulation_path', object),
                 ("Filename", object),
                 # ("SRType", object),
                 # ("# files", object),
@@ -441,7 +466,7 @@ class TableManager:
         style = "section:: {font-size: 4pt; color:black; font:TimesRoman;}"
         self.table.setStyleSheet(style)
         if QtCore is not None:
-            print('sorting by a column')
+            # print('sorting by a column')
             self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)
         self.altColors()  # reset the coloring for alternate lines
         # self.table.setStyle(QtGui.QFont('Arial', 6))
@@ -450,7 +475,7 @@ class TableManager:
         self.current_table_data = data
         self.parent.Dock_Table.raiseDock()
 
-    def apply_filter(self, filter, QtCore=None):
+    def apply_filter(self,QtCore=None):
         """
         self.filters = {'Use Filter': False, 'dBspl': None, 'nReps': None, 'Protocol': None,
                 'Experiment': None, 'modelName': None, 'dendMode': None, "dataTable": None,}
@@ -459,13 +484,19 @@ class TableManager:
             self.update_table(self.data)
         
         else:
-            coldict = {'dBspl': 8, 'nReps': 9, 'Experiment': 7, 'Protocol': 5, 'dendMode': 6,
-                        'modelName': 4, "dataTable": 11}
+            self.filter_table(self.parent.filters, QtCore)
+        
+    def filter_table(self, filters, QtCore):
+            
+            coldict = {'modelName': 4, 'Protocol': 5, 'dendMode': 6, 'Experiment': 7, 'dBspl': 8, 'nReps': 9,
+                         "pipDur": 10, "soundType": 11, "fmod": 12, "DataTable": 14,}
             filtered_table = self.data.copy()
-            matchsets = dict([(x, set()) for x in self.parent.filters.keys() if x != 'Use Filter'])
+            matchsets = dict([(x, set()) for x in filters.keys() if x != 'Use Filter'])
             for k, d in enumerate(self.data):
-                for f, v in self.parent.filters.items():
-                    if (f in list(coldict.keys())) and (v is not None) and (self.data[k][coldict[f]] == v):
+                for f, v in filters.items():
+                    if (v is not None) and (coldict.get(f, False)) and (self.data[k][coldict[f]] == v):
+                        #and f in list(coldict.keys())) and
+                        # if (self.data[k][coldict[f]] == v):
                         # print("f: ", f, "   v: ", v)
                         matchsets[f].add(k)
 
@@ -477,6 +508,7 @@ class TableManager:
             # and logic:
             finds = [v for k, v in matchsets.items() if len(v) > 0]
             keep_index = baseset.intersection(*finds)
+            self.keep_index = keep_index  # we might want this later!
             # print('Filter index: ', keep_index)
             filtered_table = [filtered_table[ft] for ft in keep_index]
             self.update_table(filtered_table, QtCore)

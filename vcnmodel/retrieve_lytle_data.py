@@ -111,13 +111,15 @@ class Retiever(object):
             excludeStr = ''
             trash = ''
             dryrun = '--dry-run'
-            # daysback = 3
- #            datelimit = f"--files-from=<(find {dpath:s} -mtime -{daysback:d} -type f -exec basename {} \;)"
+            daysback = 3
+            datelimit = f"--files-from=<(find {dpath:s} -mtime -{daysback:d}"
             print('dpath:     ', dpath)
+            datelimit +=  "-type f -exec basename {} \;)"
             backupDir = str(Path(backupDir).parent) + '/'
             print('backupDir: ', backupDir)
             #continue
-            cmd = f"rsync -rtDuv {dryrun:s} --chmod=Du=rwx,Dg=rwx,Do=,Fu=rw,Fg=rw,Fo= {bwLimit:s}"
+            # note this uses the brew installed rsync, V3.2.3 as of 8/28/2020. The "system" version is 2.6.9
+            cmd = f"/usr/local/bin/rsync -rtDuv {dryrun:s} --chmod=Du=rwx,Dg=rwx,Do=,Fu=rw,Fg=rw,Fo= {bwLimit:s}"
             cmd += f" --itemize-changes --out-format='%n' -e ssh pbmanis@152.19.86.111:{dpath:s} {backupDir:s}"
             p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             logstr = ''

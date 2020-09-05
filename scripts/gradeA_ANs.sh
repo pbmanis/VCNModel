@@ -22,7 +22,7 @@ do
     if [ $? -ne 0 ]; then
         exit 1
     fi
-    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r $REPS --dB 10 --Spirou largest --configfile $CONFIG --datatable data_XM13A_nacncoop
+    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r $REPS --dB 10 --Spirou largestonly --configfile $CONFIG --datatable data_XM13A_nacncoop
     if [ $? -ne 0 ]; then
         exit 1
     fi

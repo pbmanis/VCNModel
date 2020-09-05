@@ -14,10 +14,11 @@ import lmfit
 import matplotlib.colorbar  # type: ignore
 import matplotlib.colors  # type: ignore
 import numpy as np  # type: ignore
+import pyperclip
 import pyqtgraph as pg  # type: ignore
 import scipy.stats  # type: ignore
 import seaborn
-from cnmodel.util import vector_strength
+# from cnmodel.util import vector_strength
 from ephys.ephysanalysis import MakeClamps, RmTauAnalysis, SpikeAnalysis
 from lmfit import Model  # type: ignore
 from matplotlib import pyplot as mpl  # type: ignore
@@ -346,6 +347,23 @@ def winprint(func):
 
     return wrapper_print
 
+def winprint_continuous(func):
+    """
+    Wrapper decorator for functions that print to the text area
+    Clears the print area first,
+    and puts a line of '*' when the function returns
+    """
+
+    @functools.wraps(func)
+    def wrapper_print(self, *args, **kwargs):
+        value = func(self, *args, **kwargs)
+        # end_time = time.perf_counter()      # 2
+        # run_time = end_time - start_time    # 3
+        # print(f"Finished {func.__name__!r} in {run_time:.4f} secs")
+        return value
+
+    return wrapper_print
+    
 
 def time_func(func):
     """
@@ -372,6 +390,7 @@ class PlotSims:
         self.parent = (
             parent  # mostly to provide access to datatables elements (display)
         )
+        self.firstline = True
 
     def textclear(self):
         if self.parent is None:
@@ -398,24 +417,27 @@ class PlotSims:
         fnp = Path(fn)
         fns = str(fn)
         ivdatafile = None
-        if not fnp.is_file():
+        if self.firstline:
+            if not fnp.is_file():
             # cprint('r', f"   File: {str(fnp):s} NOT FOUND")
-            self.textappend(f"   File: {str(fnp):s} NOT FOUND", color="red")
-            return None
-        else:
-            self.textappend(f"   File: {str(fnp):s} OK")
+                self.textappend(f"   File: {str(fnp):s} NOT FOUND", color="red")
+                return None
+            else:
+                self.textappend(f"   File: {str(fnp):s} OK")
             # print(f"   File {str(fnp):s} found.")
         mtime = fnp.stat().st_mtime
         timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
             "%Y-%m-%d-%H:%M"
         )
-        self.textappend(f"pgbcivr2: Checking file: {fnp.name:s} [{timestamp_str:s}]")
+        if self.firstline:
+            self.textappend(f"pgbcivr2: Checking file: {fnp.name:s} [{timestamp_str:s}]")
         # print(mtime, changetimestamp)
         if mtime > changetimestamp:
             filemode = "vcnmodel.v1"
         else:
             filemode = "vcnmodel.v0"
-        self.textappend(f"pgbcivr2: file mode: {filemode:s}")
+        if self.firstline:
+            self.textappend(f"pgbcivr2: file mode: {filemode:s}")
         with (open(fnp, "rb")) as fh:
             d = pickle.load(fh)
 
@@ -468,10 +490,12 @@ class PlotSims:
             return None
 
         if ivdatafile is None or not ivdatafile.is_file():
-            self.textappend(f"no file matching conditions : {str(ivdatafile):s}")
+            if self.flirstline:
+                self.textappend(f"no file matching conditions : {str(ivdatafile):s}")
             return None
 
-        self.textappend(f"\npgbcivr2: datafile to read: {str(ivdatafile):s}")
+        if self.firstline:
+            self.textappend(f"\npgbcivr2: datafile to read: {str(ivdatafile):s}")
         if "time" in list(d["Results"].keys()):
             d["Results"] = self._data_flip(d["Results"])
         return par, stitle, ivdatafile, filemode, d
@@ -2064,8 +2088,118 @@ class PlotSims:
 
         return P
 
-    @winprint
-    def plot_AN_response(self, P, fn, PD, protocol):
+    def vector_strength(self, spikes, freq, dmod, dB, experiment):
+        """
+        Calculate vector strength and related parameters from a spike train, for the specified frequency
+        :param spikes: Spike train, in sec.
+        :param freq: Stimulus frequency in Hz
+        :return: a dictionary containing:
+    
+            r: vector strength
+            n: number of spikes
+            R: Rayleigh coefficient
+            p: p value (is distribution not flat?)
+            ph: the circularized spike train over period of the stimulus freq, freq, in radians
+            d: the "dispersion" computed according to Ashida et al., 2010, etc.
+        """
+    
+        per = 1/freq # c
+        ph = 2*np.pi*np.fmod(spikes, per)/(per) # convert to radians within a cycle
+        sumcos = np.sum(np.cos(ph))
+        sumsin = np.sum(np.sin(ph))
+        mean_phase = np.arctan2(sumsin,sumcos)
+        sumc2 = sumcos**2
+        sums2 = sumsin**2
+        n = len(spikes)
+
+        SC, syninfo = self.get_synaptic_info(f"VCN_c{int(self.parent.cellID):02d}")
+        ninputs = len(syninfo[1])
+        sites = np.zeros(ninputs)
+        amax = 0.
+        for isite in range(ninputs):  # precompute areas
+            area = syninfo[1][isite][0]
+            if area > amax:
+                amax = area
+            sites[isite] = int(np.around(area * SC.synperum2))
+
+        if n == 0:
+            return{'r': np.nan, 'n': 0, 'R': np.nan, 'p': 1.0, 'ph': np.nan, 'd': np.nan, 'amax': amax, 'ninputs': ninputs}
+        vs = (1./n)*np.sqrt(sumc2+sums2)  # standard vector strength computation
+        R = 2*n*vs*vs  # Raleigh coefficient
+        Rp = np.exp(-n*vs*vs)  # p value for n > 50 (see Ashida et al. 2010).
+        dx = np.sqrt(2.*(1-vs))/(2*np.pi*freq)
+        self.spikes = spikes
+        index_row = self.parent.selected_index_rows[0]
+        selected = self.parent.table_manager.get_table_data(
+            index_row
+        )
+
+
+        d = {'r': vs, 'n': n, 'R': R, 'p': Rp, 'ph': ph, 'd': dx, 'amax': amax, 'ninputs': ninputs}
+        return d
+        
+    @winprint_continuous
+    def print_VS(self, d, freq, dmod, dB, experiment):
+        colnames  = f"Cell,Configuration,frequency,dmod,dB,VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,AN_VS,maxArea,ninputs"
+        if 'an_vs' in d.keys():
+            anvs = d['an_vs']
+        else:
+            anvs = np.nan
+        print('anvs: ', anvs)
+        line = f"{int(self.parent.cellID):d},{experiment:s},"
+        line += f"{freq:.1f},{dmod:.1f},{dB:.1f},"
+        line += f"{d['r']:.4f},"
+        line += f"{d['n']:d},"
+        line += f"{scipy.stats.circmean(d['ph'])/(2*np.pi):.4f},"
+        line += f"{scipy.stats.circstd(d['ph'])/(2.*np.pi):.4f},"
+        line += f"{d['R']:.4f},"
+        line += f"{d['p']:.4e},"
+        line += f"{anvs:.4f},"
+        line += f"{d['amax']:.4f},"
+        line += f"{d['ninputs']:d},"
+        if self.firstline:
+            self.textappend(colnames)
+        self.textappend(line)
+        # put on clipboard
+        pyperclip.copy(line)
+        pyperclip.paste()
+        
+        return d
+    
+    def psth_vs(self):
+        """
+        Generate tables of vs measures for all cells
+        across the frequencies listed
+        """
+        self.textclear() # just at start
+        PD = PData()
+        if self.parent.selected_index_rows is None:
+            return
+        # P = self.PLT.setup_PSTH()
+        P = None
+        PD = PData()
+        selrows = self.parent.table.selectionModel().selectedRows()
+        for i,  index_row in enumerate(selrows):
+            selected = self.parent.table_manager.get_table_data(index_row)  # table_data[index_row]
+            if selected is None:
+                return
+            sfi = Path(selected.simulation_path, selected.files[0])
+            if i == 0:
+                self.firstline = True
+            else:
+                self.firstline = False
+            self.plot_AN_response(P, sfi, PD, selected.runProtocol)
+        self.firstline = True
+
+    @winprint_continuous
+    def plot_AN_response(self, P:Union[object, None]=None, 
+            fn:Union[str, Path, None]=None, 
+            PD: object=None,
+            protocol:str=''):
+        if P is None:
+            plotflag = False
+        else:
+            plotflag = True
         changetimestamp = get_changetimestamp()
         x = self.get_data_file(fn, changetimestamp, PD)
         mtime = Path(fn).stat().st_mtime
@@ -2088,11 +2222,12 @@ class PlotSims:
         si = d["Params"]
         ri = d["runInfo"]
         gbc = f"VCN_c{int(self.parent.cellID):02d}"
-        P.figure_handle.suptitle(
-            f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}"
-            + f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s}",
-            fontsize=11,
-        )
+        if plotflag:
+            P.figure_handle.suptitle(
+                f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}"
+                + f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s}",
+                fontsize=11,
+            )
 
         if isinstance(si, dict):
             totaldur = (
@@ -2133,7 +2268,7 @@ class PlotSims:
             waveform = trd["stimWaveform"].tolist()
             stb = trd["stimTimebase"]
             all_bu_st.append(trd["spikeTimes"])
-            if i < 1:
+            if i < 1 and plotflag:
                 P.axdict["A"].plot(AR.time_base / 1000.0, vtrial, "k-", linewidth=0.5)
                 spikeindex = [int(t / si.dtIC) for t in trd["spikeTimes"]]
                 P.axdict["A"].plot(
@@ -2142,23 +2277,24 @@ class PlotSims:
                     "ro",
                     markersize=1.5,
                 )
-            if i == 0 and waveform is not None:
+            if i == 0 and waveform is not None and plotflag:
                 P.axdict["C"].plot(
                     stb, waveform, "k-", linewidth=0.5
                 )  # stimulus underneath
-            P.axdict["D"].plot(
-                np.array(trd["spikeTimes"]) / timescale,
-                i * np.ones(len(trd["spikeTimes"])),
-                "|",
-                markersize=1.5,
-                color="b",
-            )
+            if plotflag:
+                P.axdict["D"].plot(
+                    np.array(trd["spikeTimes"]) / timescale,
+                    i * np.ones(len(trd["spikeTimes"])),
+                    "|",
+                    markersize=1.5,
+                    color="b",
+                )
             inputs = len(trd["inputSpikeTimes"])
             for k in range(inputs):
                 tk = trd["inputSpikeTimes"][k]
                 all_an_st.extend(tk)
                 y = (i + 0.1 + k * 0.05) * np.ones(len(tk))
-                if i % 10 == 0:
+                if i % 10 == 0 and plotflag:
                     P.axdict["G"].plot(
                         tk / 1000.0, y, "|", markersize=2.5, color="k", linewidth=0.5
                     )
@@ -2177,79 +2313,80 @@ class PlotSims:
 
         if soundtype == "tonepip":  # use panel F for FSL/SSL distributions
             sl_hbins = np.arange(0.0, 25.0, 0.5)
-            if (len(fsl)) > 0.0:
+            if (len(fsl)) > 0.0 and plotflag:
                 P.axdict["F"].hist(
                     fsl, bins=sl_hbins, facecolor="b", edgecolor="b", alpha=0.6
                 )
-            if (len(ssl)) > 0.0:
+            if (len(ssl)) > 0.0 and plotflag:
                 P.axdict["F"].hist(
                     ssl, bins=sl_hbins, facecolor="r", edgecolor="r", alpha=0.6
                 )
-            P.axdict["F"].set_xlim(0.0, 25.0)
-            P.axdict["F"].text(
-                1.0,
-                1.0,
-                f"FSL: {np.nanmean(fsl):8.3f} (SD {np.nanstd(fsl):8.3f} N={np.count_nonzero(~np.isnan(fsl)):3d})",
-                fontsize=7,
-                color="b",
-                fontfamily="monospace",
-                transform=P.axdict["F"].transAxes,
-                horizontalalignment="right",
-                verticalalignment="top",
-            )
-            P.axdict["F"].text(
-                1.0,
-                0.9,
-                f"SSL: {np.nanmean(ssl):8.3f} (SD {np.nanstd(ssl):8.3f} N={np.count_nonzero(~np.isnan(ssl)):3d})",
-                fontsize=7,
-                color="r",
-                fontfamily="monospace",
-                transform=P.axdict["F"].transAxes,
-                horizontalalignment="right",
-                verticalalignment="top",
-            )
-        # the histogram of the data
-        bu_hbins = np.arange(
-            0.0, np.max(AR.time / timescale), 1.0 / timescale
-        )  # 1 ms msec bins
-        st_hbins = np.arange(0.0, np.max(AR.time / 1000.0), 1e-3)  # 1 ms msec bins
+            if plotflag:
+                P.axdict["F"].set_xlim(0.0, 25.0)
+                P.axdict["F"].text(
+                    1.0,
+                    1.0,
+                    f"FSL: {np.nanmean(fsl):8.3f} (SD {np.nanstd(fsl):8.3f} N={np.count_nonzero(~np.isnan(fsl)):3d})",
+                    fontsize=7,
+                    color="b",
+                    fontfamily="monospace",
+                    transform=P.axdict["F"].transAxes,
+                    horizontalalignment="right",
+                    verticalalignment="top",
+                )
+                P.axdict["F"].text(
+                    1.0,
+                    0.9,
+                    f"SSL: {np.nanmean(ssl):8.3f} (SD {np.nanstd(ssl):8.3f} N={np.count_nonzero(~np.isnan(ssl)):3d})",
+                    fontsize=7,
+                    color="r",
+                    fontfamily="monospace",
+                    transform=P.axdict["F"].transAxes,
+                    horizontalalignment="right",
+                    verticalalignment="top",
+                )
+            # the histogram of the data
+            bu_hbins = np.arange(
+                0.0, np.max(AR.time / timescale), 1.0 / timescale
+            )  # 1 ms msec bins
+            st_hbins = np.arange(0.0, np.max(AR.time / 1000.0), 1e-3)  # 1 ms msec bins
 
-        if len(all_bu_st) > 0:
-            P.axdict["B"].hist(
-                all_bu_st, bins=bu_hbins, facecolor="k", edgecolor="k", alpha=1
-            )
-        else:
-            P.axdict["B"].text(
-                0.5,
-                0.5,
-                "No Spikes",
-                fontsize=14,
-                color="r",
-                transform=P.axdict["C"].transAxes,
-                horizontalalignment="center",
-            )
-        if len(all_an_st) > 0:
-            P.axdict["H"].hist(
-                all_an_st, bins=st_hbins, facecolor="k", edgecolor="k", alpha=1
-            )
-        else:
-            P.axdict["H"].text(
-                0.5,
-                0.5,
-                "No Spikes",
-                fontsize=14,
-                color="r",
-                transform=P.axdict["H"].transAxes,
-                horizontalalignment="center",
-            )
+            if len(all_bu_st) > 0:
+                P.axdict["B"].hist(
+                    all_bu_st, bins=bu_hbins, facecolor="k", edgecolor="k", alpha=1
+                )
+            else:
+                P.axdict["B"].text(
+                    0.5,
+                    0.5,
+                    "No Spikes",
+                    fontsize=14,
+                    color="r",
+                    transform=P.axdict["C"].transAxes,
+                    horizontalalignment="center",
+                )
+            if len(all_an_st) > 0:
+                P.axdict["H"].hist(
+                    all_an_st, bins=st_hbins, facecolor="k", edgecolor="k", alpha=1
+                )
+            else:
+                P.axdict["H"].text(
+                    0.5,
+                    0.5,
+                    "No Spikes",
+                    fontsize=14,
+                    color="r",
+                    transform=P.axdict["H"].transAxes,
+                    horizontalalignment="center",
+                )
 
-        for a in ["A", "B", "C", "D", "G", "H"]:  # set some common layout scaling
-            P.axdict[a].set_xlim((0.0, totaldur))
-        if a in ["F"] and soundtype == "SAM":
-            P.axdict[a].set_xlim((0.0, totaldur))
+            for a in ["A", "B", "C", "D", "G", "H"]:  # set some common layout scaling
+                P.axdict[a].set_xlim((0.0, totaldur))
+            if a in ["F"] and soundtype == "SAM":
+                P.axdict[a].set_xlim((0.0, totaldur))
 
         if soundtype == "SAM":  # calculate vs and plot histogram
-            if len(all_bu_st) == 0:
+            if len(all_bu_st) == 0 and plotflag:
                 P.axdict["H"].text(
                     0.5,
                     0.5,
@@ -2262,17 +2399,18 @@ class PlotSims:
             else:
 
                 phasewin = [
-                    pip_start[0] + 0.25 * pip_duration,
-                    pip_start[0] + pip_duration,
+                    pip_start + 0.25 * pip_duration,
+                    pip_start + pip_duration,
                 ]
-                # print (phasewin)
-                spkin = all_bu_st[np.where(all_bu_st > phasewin[0])]
-                spikesinwin = spkin[np.where(spkin <= phasewin[1])]
 
+                spkin = all_bu_st[np.where(all_bu_st > phasewin[0])]  # bu spikes
+                spikesinwin = spkin[np.where(spkin <= phasewin[1])]
+                an_spkin = all_an_st[np.where(all_an_st > phasewin[0])]  # matching AN spikes
+                an_spikesinwin = an_spkin[np.where(an_spkin <= phasewin[1])]
                 # set freq for VS calculation
                 if soundtype == "tone":
                     print("Tone: F0=%.3f at %3.1f dbSPL, cell CF=%.3f" % (F0, dB, F0))
-                if soundtype == "SAM":
+                if soundtype == "SAM" and plotflag:
                     tstring = (
                         "SAM Tone: F0=%.3f at %3.1f dbSPL, fMod=%3.1f  dMod=%5.2f, cell CF=%.3f"
                         % (F0, dB, fmod, dmod, F0,)
@@ -2280,27 +2418,39 @@ class PlotSims:
                     # print(tstring)
                     P.figure_handle.suptitle(tstring, fontsize=10)
                 # print('spikes: ', spikesinwin)
-                vs = vector_strength(
-                    spikesinwin * 1000.0, fmod
+                # print('fmod: ', fmod, '# spikes: ', len(spikesinwin),' spikesinwin: ', spikesinwin)
+                vs = self.vector_strength(
+                    spikesinwin, fmod, dmod, dB, ri.Spirou, # time must be in msec
+                )  # vs expects spikes in msec
+                print(" Sound type: ", soundtype)
+                print(
+                    "CN Vector Strength at %.1f: %7.3f, d=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d"
+                    % (F0, vs["r"], vs["d"] * 1e6, vs["R"], vs["p"], vs["n"])
+                )
+                vs_an = self.vector_strength(
+                    an_spikesinwin, fmod, dmod, dB, ri.Spirou, # time must be in msec
                 )  # vs expects spikes in msec
                 print(" Sound type: ", soundtype)
                 print(
                     "AN Vector Strength at %.1f: %7.3f, d=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d"
-                    % (F0, vs["r"], vs["d"] * 1e6, vs["R"], vs["p"], vs["n"])
+                    % (F0, vs_an["r"], vs_an["d"] * 1e6, vs_an["R"], vs_an["p"], vs_an["n"])
                 )
+                vs['an_vs'] = vs_an["r"] # copy over to array
+                self.print_VS(vs, fmod, dmod, dB, ri.Spirou)
                 # print(vs['ph'])
-                P.axdict["E"].hist(
-                    vs["ph"],
-                    bins=2 * np.pi * np.arange(30) / 30.0,
-                    facecolor="k",
-                    edgecolor="k",
-                )
-                P.axdict["E"].set_xlim((0.0, 2 * np.pi))
-                P.axdict["E"].set_title(
-                    "Phase (VS = {0:.3f})".format(vs["r"]),
-                    fontsize=9,
-                    horizontalalignment="center",
-                )
+                if plotflag:
+                    P.axdict["E"].hist(
+                        vs["ph"],
+                        bins=2 * np.pi * np.arange(30) / 30.0,
+                        facecolor="k",
+                        edgecolor="k",
+                    )
+                    P.axdict["E"].set_xlim((0.0, 2 * np.pi))
+                    P.axdict["E"].set_title(
+                        "Phase (VS = {0:.3f})".format(vs["r"]),
+                        fontsize=9,
+                        horizontalalignment="center",
+                    )
 
     def select_filenames(self, fng, args) -> Union[list, None]:
         # print(fng)
@@ -2505,9 +2655,9 @@ def cmdline_display(args, PD):
             elif args.protocol == "AN":
                 name_start = f"AN_Result_VCN_c{gbc:02d}_*.p"
 
-            print(f"Searching for:  {str(Path(basefn, name_start)):s}")
+            # print(f"Searching for:  {str(Path(basefn, name_start)):s}")
             fng = list(Path(basefn).glob(name_start))
-            print(f"Found: {len(fng):d} files.")
+             # print(f"Found: {len(fng):d} files.")
             """ cull list by experiment and db """
 
             if args.check:
