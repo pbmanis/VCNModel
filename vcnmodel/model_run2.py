@@ -1591,16 +1591,23 @@ class ModelRun:
             "inputSpikeTimes": inputSpikeTimes,
             "time": np.array(celltime),
             "somaVoltage": somaVoltage,
-            "dendriteVoltage": dendriteVoltage,
+            "dendriteVoltage": dendriteVoltage,  # just for one select location
             "allDendriteVoltages": allDendriteVoltages,
             "stimWaveform": stimWaveform,
             "stimTimebase": stimTimebase,
         }
         if self.Params.save_all_sections:  # just save soma sections
             # for section in list(g):
-            allDendriteVoltages = tresults["allsecVec"]
-
-        return celltime, result, allDendriteVoltages
+            # if self.Params.save_all_sections:
+ #                cprint('r', f"Saving all sections with n sections: reps: {len(allDendriteVoltages):d}")
+ #                for n in range(len(allDendriteVoltages)):
+ #                    for s in list(allDendriteVoltages[n].keys()):
+ #                        cprint('c', f"Saving section {s:s}: {len(allDendriteVoltages[n]):d}")
+ #                        allDendriteVoltages[n][s] = np.array(allDendriteVoltages[n][s])
+ #                    result[n]['allDendriteVoltages'] = allDendriteVoltages[n]
+            # print("tresults: ", len(tresults["allsecVec"]))
+            result["allDendriteVoltages"] = np.array(tresults["allsecVec"])  # convert out of neuron
+        return celltime, result 
 
     def an_run_init(self):
         self.an_run(make_an_intial_conditions=True)
@@ -1821,14 +1828,11 @@ class ModelRun:
                     j, synapseConfig, seeds, preCell, self.an_setup_time,
                 )
         for j, N in enumerate(range(nReps)):
-            celltime[N], result[N], allDendriteVoltages[N] = self.retrieve_data(tresults[j])
+            celltime[N], result[N] = self.retrieve_data(tresults[j])
 
         self.print_timing()
 
-        if self.Params.save_all_sections:
-            for n in range(len(allDendriteVoltages)):
-                for s in list(allDendriteVoltages[n].keys()):
-                    allDendriteVoltages[n][s] = np.array(allDendriteVoltages[n][s])
+
         self.analysis_filewriter(self.Params.cell, result, tag="delays")
         if self.Params.plotFlag:
             print("plotting")
@@ -1945,7 +1949,7 @@ class ModelRun:
                     )
             celltime = []
             for j, N in enumerate(range(nReps)):
-                celltime[N], result[N], allDendriteVoltages[N] = self.retrieve_data(tresults[j])
+                celltime[N], result[N] = self.retrieve_data(tresults[j])
 
             self.analysis_filewriter(self.Params.cell, result[k], tag=tagname)
             self.print_timing()
@@ -2054,7 +2058,7 @@ class ModelRun:
                 4.0 * float(j + 1) * gMax[0] / float(nReps + 1) for j in range(nReps)
             ]
             for j, N in enumerate(range(nReps)):
-                celltime[N], result[N], allDendriteVoltages[N] = self.retrieve_data(tresults[j])
+                celltime[N], result[N] = self.retrieve_data(tresults[j])
 
             self.analysis_filewriter(self.Params.cell, result, tag=tagname % k)
         if self.Params.testsetup:
@@ -2445,6 +2449,7 @@ class ModelRun:
             "time",
             "stimWaveform",
             "stimTimebase",
+            # "allDendriteVoltages", # may be an empty list, or various dendrite V's
         ]
 
         res_mode = "reps"
