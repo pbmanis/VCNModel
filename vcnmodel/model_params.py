@@ -314,11 +314,7 @@ def build_parser():
         argument_default=argparse.SUPPRESS,
         fromfile_prefix_chars="@",
     )
-    parser = argparse.ArgumentParser(
-        description="Simulate activity in a reconstructed model cell",
-        argument_default=argparse.SUPPRESS,
-        fromfile_prefix_chars="@",
-    )
+
     parser.add_argument(
         dest="cell", action="store", default=None, help="Select the cell (no default)"
     )

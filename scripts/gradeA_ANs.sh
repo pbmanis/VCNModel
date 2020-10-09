@@ -19,8 +19,16 @@ for f in $CELLNAMES
 do
     echo $f
     python vcnmodel/model_run2.py VCN_c$f  -F -P initAN --configfile $CONFIG  --datatable data_XM13A_nacncoop
-    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r $REPS --dB 20 --Spirou all --workers $WORKERS --configfile $CONFIG --datatable data_XM13A_nacncoop
+    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r $REPS --dB 10 --Spirou all --configfile $CONFIG --datatable data_XM13A_nacncoop
     if [ $? -ne 0 ]; then
+        exit 1
+    fi
+    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r $REPS --dB 10 --Spirou largestonly --configfile $CONFIG --datatable data_XM13A_nacncoop
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r $REPS --dB 10 --Spirou removelargest --configfile $CONFIG --datatable data_XM13A_nacncoop
+   if [ $? -ne 0 ]; then
         exit 1
     fi
     # python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r $REPS --dB 20 --Spirou largestonly --workers $WORKERS --configfile $CONFIG --datatable data_XM13A_nacncoop

@@ -5,7 +5,6 @@
 TIME=$1
 DRYRUN=$2
 SIM="AN"
-datapath="/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c$cn/Simulations/$SIM/"
 if [[ -z $TIME ]]; then
   echo "Error: no time argument."
   echo "Please enter the number of days to sync."
@@ -16,18 +15,23 @@ if [[ $DRYRUN = "dry" ]]; then
   DRYRUNCMD="--dry-run"
   echo "Dry run initiated..."
 fi
-CELLNO="30"
 
+CELLNO="06 09 10 11 13 17 30"
+# -exec ls $(basename {}) \;") \
+#-exec ls $(basename {}) \;
 # do a retrieval.
 for cn in $CELLNO
 do
     datapath="/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c$cn/Simulations/$SIM/"
     echo From Cell VCN_$cn
-    /usr/local/bin/rsync -avrz -v \
+    echo $FROMFI
+    /usr/local/bin/rsync -avrz -R \
+        --exclude 'archived simulations' \
+        --exclude 'archived simulations/**' \
         $DRYRUNCMD --files-from=<(ssh \
-        pbmanis@152.19.86.111 "find $datapath \
-        -mtime -$TIME -type d -exec ls $(basename {}) \;") \
-        pbmanis@152.19.86.111:$datapath/ $datapath
+        pbmanis@152.19.86.111 "find $datapath -type d -name '*2020-09-02*'\
+        ") \
+        pbmanis@152.19.86.111:/ /
         echo " "
 done
 echo Finished sync
