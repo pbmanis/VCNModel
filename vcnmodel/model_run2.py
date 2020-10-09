@@ -23,6 +23,7 @@ from neuronvis import hoc_graphics as hoc_graphics
 from pylibrary.tools import cprint as CP
 # from pylibrary.tools import utility as pu  # access to a spike finder routine
 from pyqtgraph import multiprocess as MP
+import multiprocessing as MPROC
 
 import vcnmodel.model_params
 from vcnmodel import cell_config as cell_config
@@ -1800,7 +1801,9 @@ class ModelRun:
         self.get_synapses(synapse, printvalues=True)
         if self.Params.testsetup:
             return
-
+        nWorkers = MPROC.cpu_count()
+        # workers
+        CP.cprint('m', f"anrun : Parallel with {nWorkers:d} processes")
         # run using pyqtgraph's parallel support
         if self.Params.Parallel:
             with MP.Parallelize(

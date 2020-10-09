@@ -31,7 +31,7 @@ from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import vcnmodel.model_params
 from vcnmodel import analysis as SPKANA
 from vcnmodel import cell_config as cell_config
-from vcnmodel import correlation_calcs as CXC
+# from vcnmodel import correlation_calcs as CXC
 from vcnmodel import spikestatistics as SPKS
 from vcnmodel import sttc as STTC
 
