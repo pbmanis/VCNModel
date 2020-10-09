@@ -2328,14 +2328,15 @@ class PlotSims:
         selected = self.parent.table_manager.get_table_data(
             index_row
         )
-        print(f"'{int(self.parent.cellID):d}','{selected.synapseExperiment:s}',", end="")
+        print(f"Cell: '{int(self.parent.cellID):d}','{selected.synapseExperiment:s}',", end="")
         print(f"{np.nanmean(fsl):.3f},{np.nanstd(fsl):.3f},", end="")
         print(f"{np.nanmean(ssl):.3f},{np.nanstd(ssl):.3f}")
         all_bu_st_flat = functools.reduce(operator.iconcat, all_bu_st, [])
         all_bu_st = np.array(all_bu_st_flat) / 1000.0
         all_an_st = np.sort(np.array(all_an_st)) / 1000.0
 
-        if soundtype == "tonepip":  # use panel F for FSL/SSL distributions
+        print('soundtype: ', soundtype)
+        if soundtype in ["tonepip", 'SAM']:  # use panel F for FSL/SSL distributions
             sl_hbins = np.arange(0.0, 25.0, 0.5)
             if (len(fsl)) > 0.0 and plotflag:
                 P.axdict["F"].hist(
@@ -2374,7 +2375,7 @@ class PlotSims:
                 0.0, np.max(AR.time / timescale), 1.0 / timescale
             )  # 1 ms msec bins
             st_hbins = np.arange(0.0, np.max(AR.time / 1000.0), 1e-3)  # 1 ms msec bins
-
+            print('l2377: len(all_bu_st): ', len(all_bu_st))
             if len(all_bu_st) > 0:
                 P.axdict["B"].hist(
                     all_bu_st, bins=bu_hbins, facecolor="k", edgecolor="k", alpha=1
