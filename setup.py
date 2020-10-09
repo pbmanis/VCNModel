@@ -11,8 +11,8 @@ setup(name='vcnmodel',
       license='MIT',
       packages=find_packages(include=['vcnmodel*']),
       python_requires='>=3.6',
-      install_requires=['matplotlib>=3.0', 'numpy>=1.1',
-          ],
+      # install_requires=['matplotlib>=3.0', 'numpy>=1.1',
+#           ],
       zip_safe=False,
       entry_points={
           'console_scripts': [

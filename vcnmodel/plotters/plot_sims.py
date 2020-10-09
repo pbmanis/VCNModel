@@ -546,15 +546,22 @@ class PlotSims:
         analysis tools to analyze the data
         """
         AR.read_pfile(ivdatafile, filemode=filemode)
+
+        # AR.traces = AR.traces*1000.
+        # print(AR.traces.shape)
+        # f, ax = mpl.subplots(1,1)
+        # for i in range(AR.traces.shape[0]):
+        #     mpl.plot(AR.traces[i])
+        # mpl.show()
         bridge_offset = 0.0
-        threshold = -32.0  # mV
+        threshold = -35.0  # mV
         tgap = 0.0  # gap before fittoign taum
         RM.setup(AR, SP, bridge_offset=bridge_offset)
         SP.setup(
             clamps=AR,
             threshold=threshold * 1e-3,
-            refractory=0.0001,
-            peakwidth=0.002,
+            refractory=0.001,
+            peakwidth=0.001,
             interpolate=True,
             verify=True,
             mode="peak",
@@ -563,7 +570,7 @@ class PlotSims:
         SP.set_detector("Kalluri")  # spike detector
         SP.analyzeSpikes()
         SP.analyzeSpikeShape()
-
+        # print('AnalyzeData: ', SP.spikes)
         RMA = None
         if protocol == "IV":
             SP.fitOne(function="fitOneOriginal")
@@ -584,10 +591,13 @@ class PlotSims:
         fn: Union[Path, str],
         PD: dataclass,
         protocol: str,
-        ymin=-100.0,
+        ymin=-80.0,
         ymax=20.0,
         iax=None,
+        nax=0,
+        figure=None,
     ) -> tuple:
+
         changetimestamp = get_changetimestamp()
         x = self.get_data_file(fn, changetimestamp, PD)
         mtime = Path(fn).stat().st_mtime
@@ -625,8 +635,12 @@ class PlotSims:
             if protocol in ["VC", "vc", "vclamp"]:
                 AR.traces[trial] = AR.traces[trial].asarray() * 1e6
             ax.plot(AR.time_base, AR.traces[trial] * 1e3, "k-", linewidth=0.5)
-            spikeindex = [int(t / si.dtIC) for t in d["Results"][trial]["spikeTimes"]]
-
+            print('trial: ', trial)
+            print(d["Results"].keys())
+            if "spikeTimes" in d["Results"][trial].keys():
+                spikeindex = [int(t / si.dtIC) for t in d["Results"][trial]["spikeTimes"]]
+            else:
+                spikeindex = SP.spikeIndices[trial]
             ax.plot(
                 AR.time_base[spikeindex],
                 AR.traces[trial][spikeindex] * 1e3,
@@ -636,6 +650,7 @@ class PlotSims:
 
             sinds = np.array(SP.spikeIndices[trial]) * AR.sample_rate[trial]
             noutspikes += len(np.argwhere(sinds > deadtime))
+            calx = 20.
             if protocol in ["AN", "runANSingles"]:
                 if trial in list(d["Results"].keys()) and "inputSpikeTimes" in list(
                     d["Results"][trial].keys()
@@ -653,10 +668,12 @@ class PlotSims:
                 else:
                     ian = synno
                     vy = v0 + tr_y * np.ones(len(spkt[ian])) + inpstep * ian
-                    ax.scatter(spkt[ian], vy, s=sz, marker="|", linewidths=0.35)
+                    # ax.scatter(spkt[ian], vy, s=sz, marker="|", linewidths=0.35)
                     ninspikes += len(spkt[ian] > deadtime)
 
-                ax.set_ylim(-140.0, 40.0)
+                ax.set_ylim(-80.0, 20.0)
+                ax.set_xlim(50., np.max(AR.time_base))
+                calx = 50.
             elif protocol in ["VC", "vc", "vclamp"]:
                 pass  #
                 # ax.set_ylim((-100.0, 100.0))
@@ -750,12 +767,15 @@ class PlotSims:
                 fontsize=9,
             )
         else:
-            PH.calbar(
-                ax,
-                calbar=[20.0, ymin, 10.0, 20.0],
-                unitNames={"x": "ms", "y": "mV"},
-                fontsize=9,
-            )
+            if nax == 0:
+                PH.calbar(
+                    ax,
+                    calbar=[calx, ymin, 10.0, 20.0],
+                    unitNames={"x": "ms", "y": "mV"},
+                    fontsize=9,
+                )
+            else:
+                PH.noaxes(ax)
         if RMA is not None:
             PH.referenceline(ax, RMA["RMP"])
             ax.text(
@@ -767,7 +787,11 @@ class PlotSims:
                 fontsize=9,
             )
         toptitle += f"\n{timestamp_str:s}"
-        ax.set_title(toptitle, y=1.0, fontsize=8, verticalalignment="top")
+        if nax == 0:
+            if figure is not None:
+                figure.suptitle(toptitle, y=0.95, fontsize=9, verticalalignment="top")
+            else:
+                ax.set_title(toptitle, y=1.0, fontsize=8, verticalalignment="top")
         return (synno, noutspikes, ninspikes)
 
     def setup_VC_plots(self):
@@ -2037,7 +2061,7 @@ class PlotSims:
 
             for k, fn in enumerate(fna):
                 if str(fn).find(args.dendritemode.lower()) > 0:
-                    self.plot_traces(P.axarr[0, ic], fn, PD, args.protocol)
+                    self.plot_traces(P.axarr[0, ic], fn, PD, args.protocol, nax=k)
 
                     P.axarr[0, ic].text(50, 1.0, chdist, horizontalalignment="center")
             basen = fn.parts[-5]
@@ -2691,9 +2715,9 @@ def cmdline_display(args, PD):
                     )
 
                 ax = P.axdict[pgbc]
-                for fn in fng:
+                for k, fn in enumerate(fng):
                     if args.analysis == "traces":
-                        PS.plot_traces(ax, fn, PD, args.protocol)
+                        PS.plot_traces(ax, fn, PD, args.protocol, nax=k)
                     elif args.analysis == "revcorr":
                         res = PS.compute_revcorr(ax, pgbc, fn, PD, args.protocol)
                         if res is None:

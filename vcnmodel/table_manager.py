@@ -198,6 +198,7 @@ class TableManager:
                 self.selvals["Run Type"][1],
             )
         )        
+        cprint('r', f"simulation path: {str(Index_data.simulation_path):s}")
         if Index_data.filetype == "F":
 
             mtime = Path(Index_data.simulation_path, fn).stat().st_mtime

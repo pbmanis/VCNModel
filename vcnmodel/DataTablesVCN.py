@@ -119,6 +119,34 @@ class DataTables:
         # self.app.setAttribute(Qt.AA_EnableHighDpiScaling)
         #         if hasattr(QStyleFactory, 'AA_UseHighDpiPixmaps'):
         #             self.app.setAttribute(Qt.AA_UseHighDpiPixmaps)
+#################
+        # qApp.setStyle("Fusion")
+        # from pyqtgraph.Qt import QtGui
+        from pyqtgraph.Qt import QtCore
+
+        dark_palette = QtGui.QPalette()
+        white = self.QColor(255, 255, 255)
+        black = self.QColor(0, 0, 0)
+        red = self.QColor(255, 0, 0)
+        dark_palette.setColor(QtGui.QPalette.Window, self.QColor(53, 53, 53))
+        dark_palette.setColor(QtGui.QPalette.WindowText, white)
+        dark_palette.setColor(QtGui.QPalette.Base, self.QColor(25, 25, 25))
+        dark_palette.setColor(QtGui.QPalette.AlternateBase, self.QColor(53, 53, 53))
+        dark_palette.setColor(QtGui.QPalette.ToolTipBase, white)
+        dark_palette.setColor(QtGui.QPalette.ToolTipText, white)
+        dark_palette.setColor(QtGui.QPalette.Text, white)
+        dark_palette.setColor(QtGui.QPalette.Button, self.QColor(53, 53, 53))
+        dark_palette.setColor(QtGui.QPalette.ButtonText, white)
+        dark_palette.setColor(QtGui.QPalette.BrightText, red)
+        dark_palette.setColor(QtGui.QPalette.Link, self.QColor(42, 130, 218))
+        dark_palette.setColor(QtGui.QPalette.Highlight, self.QColor(42, 130, 218))
+        dark_palette.setColor(QtGui.QPalette.HighlightedText, black)
+
+        self.app.setPalette(dark_palette)
+
+        self.app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }")
+
+#################
 
         self.win = pg.QtGui.QMainWindow()
         # use dock system instead of layout.
@@ -660,7 +688,7 @@ class DataTables:
             nfiles,
             1,
             order="rowsfirst",
-            figsize=(6.0, 10.0),
+            figsize=(6.0, 8.0),
             showgrid=False,
             verticalspacing=0.01,
             horizontalspacing=0.01,
@@ -668,7 +696,7 @@ class DataTables:
                 "bottommargin": 0.1,
                 "leftmargin": 0.07,
                 "rightmargin": 0.05,
-                "topmargin": 0.03,
+                "topmargin": 0.15,
             },
             labelposition=(0.0, 0.0),
             parent_figure=None,
@@ -684,8 +712,8 @@ class DataTables:
         )
         for i in range(nfiles):
             synno, nout, nin = self.PLT.plot_traces(
-                P.axarr[i, 0], sfi[i], PD, selected.runProtocol
-            )
+                P.axarr[i, 0], sfi[i], PD, selected.runProtocol,
+                nax = i, figure=P.figure_handle)
             eff = float(nout) / nin
             df.iloc[i] = [self.cellID, synno, nout, nin, eff]
         u = df.head(n=nfiles)
