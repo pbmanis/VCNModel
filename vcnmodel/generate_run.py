@@ -8,6 +8,7 @@ import signal
 import time
 from typing import Union
 from collections import OrderedDict
+import multiprocessing as MP
 from pathlib import Path
 
 import numpy as np
@@ -408,7 +409,7 @@ class GenerateRun:
             print("genrate_run::doRun: basename is = {:s}".format(self.basename))
         # self.hf.update() # make sure channels are all up to date
         self.results = {}
-        cprint('m', self.RunInfo.postMode)
+        CP.cprint('m', self.RunInfo.postMode)
         if self.RunInfo.postMode == "CC":
             ipulses = self.RunInfo.stimInj["pulse"]
             # ipulses = np.arange(s[0], s[1], s[2])
@@ -417,8 +418,10 @@ class GenerateRun:
         else:
             ipulses = [0]
         nLevels = len(ipulses)
-        nWorkers = workers
-        # print(f"doRun: initfile = {str(initfile):s}")
+
+        nWorkers = MP.cpu_count()
+        # workers
+        CP.cprint('m', 'Parallel with {nWorkers:d} processes')# print(f"doRun: initfile = {str(initfile):s}")
         TASKS = [s for s in range(nLevels)]
         tresults = [None] * len(TASKS)
         signal.signal(
