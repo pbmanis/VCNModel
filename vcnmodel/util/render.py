@@ -4,21 +4,28 @@ from __future__ import print_function
 __author__ = 'pbmanis'
 
 import sys
+import importlib
 import os
+from pathlib import Path
 import pyqtgraph as pg
 from cnmodel import cells
 from cnmodel.decorator import Decorator
 from neuronvis.hoc_viewer import HocViewer
+from pylibrary.tools import cprint as CP
 
 
 class Render():
     def __init__(self, hf):
         self.hf = hf
-        self.section_colors={'axon': 'r', 'hillock': 'r', 'initialsegment': 'orange',
-             'unmyelinatedaxon': 'yellow', 'myelinatedaxon': 'white', 'dendrite': 'green',
+        self.section_colors={'axon': 'red', 'hillock': 'r', 'initialsegment': 'orange',
+             'unmyelinatedaxon': 'cyan', 'myelinatedaxon': 'white', 'dendrite': 'green',
              'soma': 'blue',
+             'Axon_Hillock': 'red', 'Axon_Initial_Segment': 'lilac', 'Myelinated_Axon': 'darkgreen',
+             "Unmyelinated_Axon": 'brown',
+             'Proximal_Dendrite': 'purple', 'Dendritic_Hub': 'green', 'Dendritic_Swelling': 'magenta',
+             'Distal_Dendrite': 'powderblue',
             # terminals (calyx of Held):
-             'heminode': 'g', 'stalk':'y', 'branch': 'b', 'neck': 'brown',
+             'heminode': 'green', 'stalk':'yellow', 'branch': 'blue', 'neck': 'brown',
             'swelling': 'magenta', 'tip': 'powderblue', 'parentaxon': 'orange', 'synapse': 'k'}
 
     def get_hoc_file(self, infile):
@@ -79,31 +86,125 @@ class Render():
         return g, renderer 
 
 
-if __name__ == '__main__':
-    
+    # post_cell = set_table_and_celle(
+    #      morphology=str(filename),
+    #      decorator=Decorator,
+    #      species='mouse',
+    #      modelName='XM13',
+    #      modelType="II",
+    #      nach="nacncoop")
+         
+def set_table_and_cells(
+                       filename:str,
+                       dataTable:str,
+                       morphology:str,
+                       decorator:object,
+                       species:str,
+                       modelName:str,
+                       modelType:str,
+                       nach:str,
+                       dendriteMode:str) -> object:
+    from cnmodel import data
+    dmodes = {"normal": "", "passive": "_pasdend", "active": "_actdend", "allpassive": "_allpassive"}
+    changes = None
+    nach = None  # uses default
+    if dataTable is "":
+        table_name = f"vcnmodel.model_data.data_{modelName:s}{dmodes[dendriteMode]:s}"
+    else:
+        table_name = f"vcnmodel.model_data.{dataTable:s}"
+        CP.cprint('r', f"**** USING SPECIFIED DATA TABLE: {str(table_name):s}")
+        knownmodes = ["normal", "actdend", "pasdend"]
+        dendriteMode = "normal"
+        for mode in knownmodes:
+            if table_name.find(mode) > 0:
+                dendriteMode = mode
 
-#    pg.mkQApp()
-    rendertype = 'surface'
-    mechanisms = ['klt', 'gbar']
+        CP.cprint('c', f"Dendrite mode: {dendriteMode:s}")
+    name_parts = modelName.split('_')
+    if len(name_parts) > 1:
+        nach = name_parts[1]
+    else:
+        nach = 'nav11'
+    CHAN = importlib.import_module(table_name)
+    channels = f"{name_parts[0]:s}_{nach:s}_channels"
+    compartments = f"{name_parts[0]:s}_{nach:s}_channels_compartments"
+    print('Channels: ', channels)
+    print('Compartments: ', compartments)
+    changes = data.add_table_data(
+        channels,
+        row_key="field",
+        col_key="model_type",
+        species="mouse",
+        data=CHAN.ChannelData,
+    )
+    changes_c = data.add_table_data(
+        compartments,
+        row_key="parameter",
+        col_key="compartment",
+        species="mouse",
+        model_type="II",
+        data=CHAN.ChannelCompartments,
+    )
+    if changes is not None:
+        data.report_changes(changes)
+        data.report_changes(changes_c)
+    
+    post_cell = cells.Bushy.create(
+        morphology=str(filename),
+        decorator=Decorator,
+        species=species,
+        modelName=modelName,
+        modelType=modelType,
+        nach=nach,
+    )
+    return post_cell
+
+def main():
+    rendertype = 'cylinder' #'surface'
+    mechanisms = None # ['klt', 'gbar']
 
     #mechanisms = None
     fn = sys.argv[1]
-    filename = os.path.join('VCN_Cells', fn, 'Morphology', fn+'.hoc')
-    post_cell = cells.Bushy.create(morphology=filename, decorator=Decorator,
-            species='mouse',
-            modelType='mGBC')
-    #post_cell.distances()
+    mod = 'Full'
     if len(sys.argv) > 2:
-        rendertype = sys.argv[2]
+         mod = sys.argv[2]
+    if mod == 'Full':
+        cell_dir = f"VCN_c{int(fn):02d}"
+    else:
+        cell_dir = f"VCN_c{int(fn):02d}_{mod:s}"
+    filename = Path('../VCN-SBEM-Data', 'VCN_Cells', cell_dir,
+         'Morphology', f"{cell_dir:s}.hoc")
+    post_cell = set_table_and_cells(
+         filename=filename,
+         dataTable='data_XM13A_nacncoop_normal',
+         morphology=str(filename),
+         decorator=Decorator,
+         species='mouse',
+         modelName='XM13A_nacncoop',
+         modelType="II",
+         nach="nacncoop",
+         dendriteMode="normal")
+    #post_cell.distances()
+    if len(sys.argv) > 3:
+        rendertype = sys.argv[3]
     R = Render(post_cell)
-    backgroundcolor = (50, 50, 125, 255)  # 'blue'
+    backgroundcolor = (32, 32, 32, 128)  # 'blue'
     if rendertype in ['volume', 'line', 'graph']:
-         backgroundcolor = (125, 125, 125, 255)
+        backgroundcolor = (125, 125, 125, 255)
     print(backgroundcolor, rendertype)
     g, renderer = R.render(rendertype=rendertype, mech=mechanisms, backgroundcolor=backgroundcolor)
 
     if rendertype == 'mpl':
-        exit(0)
+        return None
+    else:
+        if not sys.flags.interactive:
+            pg.Qt.QtGui.QApplication.exec_()
+
+if __name__ == '__main__':
+    
+    g = main()
+#    pg.mkQApp()
+
     if not sys.flags.interactive:
         pg.Qt.QtGui.QApplication.exec_()
     
