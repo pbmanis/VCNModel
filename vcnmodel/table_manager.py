@@ -11,6 +11,7 @@ from typing import Dict, List, Union
 import cnmodel
 import numpy as np
 from pylibrary.tools import cprint as CP
+import pylibrary.tools
 
 
 """
@@ -57,6 +58,7 @@ class IndexData:
     cellType: str = ""
     modelType: str = ""
     modelName: str = ""
+    dendriteExpt: str=""
     dendriteMode: str=""
     command_line: str = ""
     changed_data: Union[None, str] = None  # changed_data
@@ -151,9 +153,14 @@ class TableManager:
         try:
             with open(datafile, "rb") as fh:
                 d = pickle.load(fh, encoding="latin1")
-        except IOError:
-            raise IOError('SKIPPING: File is too old; re-run for new structure')
+        except (ModuleNotFoundError, IOError, pickle.UnpicklingError):
+            cprint('r', 'SKIPPING: File is too old; re-run for new structure')
+            cprint('r', f"File: {str(fh):s}")
             return None
+        # except ModuleNotFoundError:
+        #     raise IOError('SKIPPING: File has old structure; re-run for new structure')
+        #     return None
+            
         if 'runInfo' not in list(d.keys()):
             cprint('r', 'SKIPPING: File is too old (missing "runinfo"); re-run for new structure')
             # print('  Avail keys: ', list(d.keys()))
@@ -284,6 +291,11 @@ class TableManager:
             except:
                 Index_data.dataTable = params.modelName
                 cprint('r', 'Inserted dataTable with dataclasses')
+            try:
+                Index_data.dendriteExpt = params.dendriteExpt
+            except:
+                Index_data.dendriteExpt = "Full"
+
             try:
                 Index_data.dendriteMode = params.dendriteMode
             except:
@@ -419,6 +431,7 @@ class TableManager:
                     indxs[i].modelType,
                     indxs[i].modelName,
                     indxs[i].runProtocol,
+                    indxs[i].dendriteExpt,
                     indxs[i].dendriteMode,
                     indxs[i].synapseExperiment,
                     indxs[i].dBspl,
@@ -440,6 +453,7 @@ class TableManager:
                 ("modelType", object),
                 ("modelName", object),
                 ("Protocol", object),
+                ("DendExpt", object),
                 ("DendMode", object),
                 ("Experiment", object),
                 # ("inputtype", object),
@@ -489,8 +503,8 @@ class TableManager:
         
     def filter_table(self, filters, QtCore):
             
-            coldict = {'modelName': 4, 'Protocol': 5, 'dendMode': 6, 'Experiment': 7, 'dBspl': 8, 'nReps': 9,
-                         "pipDur": 10, "soundType": 11, "fmod": 12, "DataTable": 14,}
+            coldict = {'modelName': 4, 'Protocol': 5, 'dendMode': 6, 'dendExpt':7, 'Experiment': 8, 'dBspl': 9, 'nReps': 10,
+                         "pipDur": 11, "soundType": 12, "fmod": 13, "DataTable": 15,}
             filtered_table = self.data.copy()
             matchsets = dict([(x, set()) for x in filters.keys() if x != 'Use Filter'])
             for k, d in enumerate(self.data):

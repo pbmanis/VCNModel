@@ -490,7 +490,7 @@ class PlotSims:
             return None
 
         if ivdatafile is None or not ivdatafile.is_file():
-            if self.flirstline:
+            if self.firstline:
                 self.textappend(f"no file matching conditions : {str(ivdatafile):s}")
             return None
 
@@ -554,23 +554,27 @@ class PlotSims:
         #     mpl.plot(AR.traces[i])
         # mpl.show()
         bridge_offset = 0.0
-        threshold = -35.0  # mV
+        threshold = -0.035  # V
         tgap = 0.0  # gap before fittoign taum
         RM.setup(AR, SP, bridge_offset=bridge_offset)
+        # print(AR.time_base[:100])
+        # print(AR.traces[0][:100])
         SP.setup(
             clamps=AR,
-            threshold=threshold * 1e-3,
-            refractory=0.001,
-            peakwidth=0.001,
+            threshold=threshold,  # in units of V
+            refractory=0.001,  # In units of sec
+            peakwidth=0.001, # in units of sec
             interpolate=True,
             verify=True,
             mode="peak",
+            data_time_units = 'ms',  # pass units for the DATA
+            data_volt_units = "V",
         )
 
-        SP.set_detector("Kalluri")  # spike detector
+        # print('running Kalluri spike detector', threshold)
+        SP.set_detector("Kalluri")  # spike detector: argrelmax, threshold, Kalluri
         SP.analyzeSpikes()
         SP.analyzeSpikeShape()
-        # print('AnalyzeData: ', SP.spikes)
         RMA = None
         if protocol == "IV":
             SP.fitOne(function="fitOneOriginal")
@@ -624,38 +628,45 @@ class PlotSims:
         AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
         ntr = len(AR.traces)  # number of trials
         v0 = -160.0
-        deadtime = 50.0
+        deadtime = ri.stimDelay
+        # print('Deadtime: ', deadtime)
         trstep = 25.0 / ntr
         inpstep = 2.0 / ntr
         sz = 50.0 / ntr
         noutspikes = 0
         ninspikes = 0
-        for trial in range(len(AR.traces)):
+        ispikethr = None
+        spike_rheobase = None
+        for trial, icurr in enumerate(d['Results']):
             AR.traces[trial][0] = AR.traces[trial][1]
             if protocol in ["VC", "vc", "vclamp"]:
                 AR.traces[trial] = AR.traces[trial].asarray() * 1e6
             ax.plot(AR.time_base, AR.traces[trial] * 1e3, "k-", linewidth=0.5)
-            print('trial: ', trial)
-            print(d["Results"].keys())
-            if "spikeTimes" in d["Results"][trial].keys():
-                spikeindex = [int(t / si.dtIC) for t in d["Results"][trial]["spikeTimes"]]
+            if "spikeTimes" in d["Results"][icurr].keys():
+                # cprint('r', 'spiketimes from results')
+                spikeindex = [int(t / si.dtIC) for t in d["Results"][icurr]["spikeTimes"]]
             else:
+                # cprint('r', 'spikes from SP.spikeIndices')
                 spikeindex = SP.spikeIndices[trial]
             ax.plot(
                 AR.time_base[spikeindex],
                 AR.traces[trial][spikeindex] * 1e3,
-                "ro",
+                "go",
                 markersize=2.5,
             )
-
             sinds = np.array(SP.spikeIndices[trial]) * AR.sample_rate[trial]
-            noutspikes += len(np.argwhere(sinds > deadtime))
+            nspk_in_trial = len(np.argwhere(sinds > deadtime))
+            if nspk_in_trial > 0 and ispikethr is None and sinds[0] < (ri.stimDelay+ri.stimDur):
+                # cprint('c', f"Found threshold spike:  {icurr:.2f}, {trial:d}")
+                spike_rheobase = icurr
+                ispikethr = trial
+            noutspikes += nspk_in_trial
             calx = 20.
             if protocol in ["AN", "runANSingles"]:
                 if trial in list(d["Results"].keys()) and "inputSpikeTimes" in list(
-                    d["Results"][trial].keys()
+                    d["Results"][icurr].keys()
                 ):
-                    spkt = d["Results"][trial]["inputSpikeTimes"]
+                    spkt = d["Results"][icurr]["inputSpikeTimes"]
                 elif "inputSpikeTimes" in list(d["Results"].keys()):
                     spkt = d["Results"]["inputSpikeTimes"][trial]
                 # print('input spike trains: ', len(spkt))
@@ -728,15 +739,16 @@ class PlotSims:
                 zorder=10,
                 clip_on=False,
             )
-            secax.plot(
-                RM.ivss_cmd[-1] * 1e12,
-                RM.ivss_v[-1] * 1e3,
-                "ro",
-                markersize=3,
-                markerfacecolor="r",
-                zorder=100,
-                clip_on=False,
-            )
+            if ispikethr is not None:  # decorate spike threshold point
+                secax.plot(
+                    RM.ivss_cmd_all[ispikethr] * 1e12,
+                    RM.ivss_v_all[ispikethr] * 1e3,
+                    "ro",
+                    markersize=3,
+                    markerfacecolor="r",
+                    zorder=100,
+                    clip_on=False,
+                )
             PH.crossAxes(
                 secax,
                 xyzero=[0.0, -60.0],
@@ -1514,7 +1526,7 @@ class PlotSims:
             PSum.axarr[0, 0].plot(
                 np.arange(ninputs) + 1,
                 ynspike,
-                label=f"{selected.dendriteMode:s} {selected.synapseExperiment}",
+                label=f"{selected.dendriteMode:s} {selected.dendriteExpt:s} {selected.synapseExperiment}",
             )
             PSum.axarr[0, 0].set_ylim(0, 1.0)
 
@@ -2013,7 +2025,7 @@ class PlotSims:
         )
         P.figure_handle.suptitle(
             f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}"
-            + f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s}",
+            + f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s} DendExpt: {si.dendriteExpt:s}",
             fontsize=11,
         )
         mpl.show()
@@ -2249,7 +2261,7 @@ class PlotSims:
         if plotflag:
             P.figure_handle.suptitle(
                 f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}"
-                + f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s}",
+                + f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s} DendExpt: {si.dendriteExpt:s}",
                 fontsize=11,
             )
 

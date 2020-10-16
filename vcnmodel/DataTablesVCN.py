@@ -18,6 +18,8 @@ from vcnmodel.plotters import plot_sims
 from pylibrary.tools import cprint as CP
 # import vcnmodel.correlation_calcs
 import vcnmodel.spikestatistics
+import ephys
+
 
 cprint = CP.cprint
 """
@@ -32,6 +34,8 @@ all_modules = [
     # vcnmodel.correlation_calcs,
     vcnmodel.spikestatistics,
     vcnmodel.analysis,
+    ephys.ephysanalysis.SpikeAnalysis,
+    ephys.ephysanalysis.Utility
 ]
 
 cellvalues = [
