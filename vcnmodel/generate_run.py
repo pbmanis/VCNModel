@@ -2,14 +2,14 @@ import copy
 import csv
 import dataclasses
 import errno
+import multiprocessing as MP
 import os
 import pickle
 import signal
 import time
-from typing import Union
 from collections import OrderedDict
-import multiprocessing as MP
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 import pyqtgraph as pg
@@ -21,7 +21,6 @@ from pyqtgraph.Qt import QtGui
 from vcnmodel import NoiseTrainingGen as NG
 from vcnmodel import cellInitialization as cellInit
 from vcnmodel.analyzers import analyze_run as ar
-
 # from NoiseTrainingGen.NoiseGen import generator
 from vcnmodel.plotters import IVPlots as IVP
 
@@ -43,15 +42,10 @@ February 2014, Paul B. Manis UNC Chapel Hill
 verbose = False  # use this for testing.
 cprint = CP.cprint
 
+
 class GenerateRun:
     def __init__(
-        self,
-        Params,
-        RunInfo,
-        cell,
-        idnum=0,
-        starttime=None,
-        useSavedState=True,
+        self, Params, RunInfo, cell, idnum=0, starttime=None, useSavedState=True,
     ):
         self.run_initialized = False
         self.Params = Params  # make available to the rest of the classself.RunInfo.
@@ -163,7 +157,7 @@ class GenerateRun:
 
     def _finalPrep(self, maxt):
         self.hf.h.tstop = maxt + self.RunInfo.stimDelay
-        print("PrepareRun, finalprep: \n")
+        print(f"PrepareRun, finalprep:\n ")
         print(f"   maxt:     {maxt:8.2f} ms")
         print(f"   delay:    {self.RunInfo.stimDelay:8.2f} ms")
         print(f"   duration: {self.RunInfo.stimDur:8.2f} ms")
@@ -183,7 +177,7 @@ class GenerateRun:
         Side Effects: A number of class variables are created and modified, mostly related to the
         generation of stimuli and monitoring of voltages and currents
         """
-        cprint('w', f"_prepareRun: {self.RunInfo.postMode:s}, inj={str(inj):s}")
+        cprint("w", f"_prepareRun: {self.RunInfo.postMode:s}, inj={str(inj):s}")
         if self.Params.verbose:
             print("_prepareRun")
         for group in self.hf.sec_groups.keys():  # get morphological components
@@ -222,11 +216,13 @@ class GenerateRun:
 
         # electrodeSection = list(self.hf.sec_groups[self.RunInfo.electrodeSection])[0]
         # self.electrode_site = self.hf.get_section(electrodeSection)
-        if self.RunInfo.postMode == 'VC':
+        if self.RunInfo.postMode == "VC":
             # Note to self (so to speak): the hoc object returned b
             # by this call must have a life after
             # the routine exits. Thus, it must be "self." Same for the IC stimulus...
-            cprint('c', f'Running VClamp experiment, holding={self.RunInfo.vstimHolding}')
+            cprint(
+                "c", f"Running VClamp experiment, holding={self.RunInfo.vstimHolding}"
+            )
             self.hf.h.dt = self.Params.dtVC
             self.vcPost = self.hf.h.SEClamp(
                 0.5, sec=self.electrode_site
@@ -272,10 +268,9 @@ class GenerateRun:
             )
             self.mons = ["postsynapticI", "v_stim0"]
             self._finalPrep(maxt)
-            
-            
+
         elif self.RunInfo.postMode == "CC":
-            cprint('c', 'Running IClamp experiment')
+            cprint("c", "Running IClamp experiment")
             self.hf.h.dt = self.Params.dtIC
             stim = {}
             stim["NP"] = self.RunInfo.nStim
@@ -316,7 +311,7 @@ class GenerateRun:
             self._finalPrep(maxt)
 
         elif self.RunInfo.postMode in ["gifnoise"]:
-            cprint('c', 'Running GIF Noise experiment')
+            cprint("c", "Running GIF Noise experiment")
             stim = {}
             self.hf.h.dt = self.Params.dtIC
             self.stim = NG.NoiseGen()
@@ -376,14 +371,15 @@ class GenerateRun:
 
     def doRun(
         self,
-        filename:Union[str, Path, None]=None,
+        filename: Union[str, Path, None] = None,
         parMap=None,
-        save:Union[str, bool]=False,
-        restore_from_file:bool=False,
-        initfile:Union[str, Path, None]=None,
-        workers:int=4,
+        save: Union[str, bool] = False,
+        restore_from_file: bool = False,
+        initfile: Union[str, Path, None] = None,
+        workers: int = 4,
     ):
         self.cleanNeuronObjs()
+        cprint("w", f"doRun: {self.RunInfo.postMode:s}")
 
         if self.Params.verbose:
             print("generate_run::doRun")
@@ -409,11 +405,11 @@ class GenerateRun:
             print("genrate_run::doRun: basename is = {:s}".format(self.basename))
         # self.hf.update() # make sure channels are all up to date
         self.results = {}
-        CP.cprint('m', self.RunInfo.postMode)
+        CP.cprint("m", self.RunInfo.postMode)
         if self.RunInfo.postMode == "CC":
             ipulses = self.RunInfo.stimInj["pulse"]
             # ipulses = np.arange(s[0], s[1], s[2])
-        elif self.RunInfo.postMode == 'VC':
+        elif self.RunInfo.postMode == "VC":
             ipulses = self.RunInfo.stimVC["pulse"]
         else:
             ipulses = [0]
@@ -421,7 +417,8 @@ class GenerateRun:
 
         nWorkers = MP.cpu_count()
         # workers
-        CP.cprint('m', 'Parallel with {nWorkers:d} processes')# print(f"doRun: initfile = {str(initfile):s}")
+        CP.cprint("m", f"Parallel with {nWorkers:d} processes")
+        # print(f"doRun: initfile = {str(initfile):s}")
         TASKS = [s for s in range(nLevels)]
         tresults = [None] * len(TASKS)
         signal.signal(
@@ -443,7 +440,7 @@ class GenerateRun:
                 )
                 tr = {"r": self._executeRun(), "i": inj}  # now you can do the run
                 tasker.results[i] = tr
-
+        cprint("c", "Parallel task finished")
         self.results = OrderedDict()
 
         for i in range(nLevels):
@@ -456,7 +453,7 @@ class GenerateRun:
                     self.plotRun(self.results[i], init=True)
                 else:
                     self.plotRun(self.results[i], init=False)
-        
+
         if self.RunInfo.postMode == "CC":
             if self.Params.verbose:
                 cprint("r", "doRun, calling IV")
@@ -507,10 +504,10 @@ class GenerateRun:
             raise ValueError("generate_run:testRun needs initfile name")
         self._prepareRun(inj=0.0)
         self.run_initialized = cellInit.init_model(
-            self.cell, 
+            self.cell,
             vinit=self.RunInfo.vstimHolding,
-            filename=initfile, 
-            restore_from_file=True
+            filename=initfile,
+            restore_from_file=True,
         )
         self.hf.h.t = 0.0
         self.hf.h.tstop = 10
@@ -548,7 +545,8 @@ class GenerateRun:
         print("Temperature in run at start: {:6.1f}".format(self.hf.h.celsius))
         self.hf.h.batch_run(self.hf.h.tstop, self.hf.h.dt, vfile)
         print("Finishing Vm: {:6.2f}".format(self.electrode_site.v))
-        Path(vfile).unlink()  # delete the v.dat file once we are done.
+        if Path(vfile).is_file():
+            Path(vfile).unlink()  # delete the v.dat file once we are done.
         self.monitor["time"] = np.array(self.monitor["time"])
         self.monitor["time"][0] = 0.0
         if self.Params.verbose:
@@ -587,14 +585,14 @@ class GenerateRun:
             print("    _executeRun completed")
         return results
 
-    def saveRuns(self, save:Union[str, None]=None):
+    def saveRuns(self, save: Union[str, None] = None):
         """
         Save the result of multiple runs to disk. Results is in a dictionary,
         each element of which is a Param structure, which we then turn into
         a dictionary...
         """
         fn = self.Params.simulationFilename
-        cprint('g', f"\nWRITING DATA TO: {str(fn):s}\n")
+        cprint("g", f"\nWRITING DATA TO: {str(fn):s}\n")
         pfout = open(fn, "wb")
         mp = copy.deepcopy(self.cell.status)
         del mp["decorator"]
