@@ -123,8 +123,9 @@ optional arguments:
     -H, --defaulthoc      Use default hoc file for this cell
     --hocfile HOCFILE     hoc file to use for simulation (default is the
                           selected "cell".hoc)
-    -F, --full            Use "full" hoc file as in "VCN_c02_Full.hoc instead of
-                          VCN_c02.hoc")
+    --dendriteexpt        Use one of the dendrite manipulations instead of 
+                          VCN_c02.hoc. For example, NoDend,
+                          {default, Full, NoDend, NoDistal, NoUninnervated}
     --inputpattern INPUTPATTERN, -i INPUTPATTERN
                           cell input pattern to use (substitute) from
                           cell_config.py
@@ -237,7 +238,6 @@ class ModelRun:
     def __init__(self, params: dataclass = None, runinfo: dataclass = None, args=None):
         self.Params = params
         self.RunInfo = runinfo
-        # print(args)
 
         if self.Params.checkcommand:
             self.Params.commandline = sys.argv[1:]
@@ -247,6 +247,7 @@ class ModelRun:
             print("RunInfo: ", dataclasses.asdict(self.RunInfo))
             print("Command line: ", self.Params.commandline)
             exit()
+            
         self.Params.commandline = args
         self.Params.commands = sys.argv[1:]
 
@@ -263,6 +264,7 @@ class ModelRun:
         self.morphDirectory = "Morphology"
         self.initDirectory = "Initialization"
         self.simDirectory = "Simulations"
+        
 
     def print_modelsetup(self):
         """
@@ -333,12 +335,14 @@ class ModelRun:
                  information about the type of run, stimuli, etc.
 
         """
-        self.cellID = Path(
+        if not self.Params.setup:
+            raise ValueError("Model setup call must be run before generating filenames")
+        
+        self.Params.cellID = Path(
             self.Params.cell
         ).stem  # os.path.splitext(self.Params.cell)[0]
         # pick up parameters that should be in both init and run filenames:
         # Run / init type independent parameters:
-
         if self.Params.verbose:
             print(
                 "inflations: ",
@@ -346,7 +350,9 @@ class ModelRun:
                 self.Params.dendrite_inflation,
             )
 
-        model_Pars = f"{str(self.Params.modelName):s}_{str(self.Params.modelType):s}"
+        model_Pars = f"{str(self.Params.modelName):s}"
+        model_Pars += f"_{str(self.Params.modelType):s}"
+        model_Pars += f"_HF={str(Path(self.Params.hocfile).stem):s}"
         if self.Params.soma_inflation != 1.0:
             model_Pars += f"_soma={self.Params.soma_inflation:.3f}"
         if self.Params.dendrite_inflation != 1.0:
@@ -385,20 +391,21 @@ class ModelRun:
             "%Y-%m-%d.%H-%M-%S"
         )  # get the actual start time for the top directory
         run_directory = f"{self.RunInfo.runProtocol:s}-{add_Pars:s}-{datestr:s}"
+        hocname = Path()
 
         print("\nRUNPROTOCOL: ", self.RunInfo.runProtocol)
         if self.RunInfo.runProtocol in ["initIV", "initandrunIV", "runIV"]:
             simMode = "IV"
             self.RunInfo.postMode = 'CC'
-            initPath = Path(self.baseDirectory, self.cellID, self.initDirectory)
+            initPath = Path(self.baseDirectory, self.Params.cellID, self.initDirectory)
             self.mkdir_p(initPath)  # confirm existence of the initialization directory
             if self.Params.initStateFile is None:
-                fn0 = f"{simMode:s}_Init_{self.cellID:s}_inp={inputs:s}_{model_Pars:s}"
+                fn0 = f"{simMode:s}_Init_{self.Params.cellID:s}_inp={inputs:s}_{model_Pars:s}"
                 fn0 += f"_pulse_{add_Pars:s}_{self.Params.ANSynapseType:s}"
                 fn0 += f"_{self.Params.SRType:2s}"
                 if self.Params.tagstring is not None:
                     fn0 += f"_{self.Params.tagstring:s}"
-                fn0 += ".dat"
+                fn0 += ".p"
                 self.Params.initStateFile = Path(initPath, fn0)
                 if (
                     self.RunInfo.runProtocol.startswith("init")
@@ -407,13 +414,13 @@ class ModelRun:
                     self.Params.initStateFile.unlink()  # delete old initializaiton file first
             simPath = Path(
                 self.baseDirectory,
-                self.cellID,
+                self.Params.cellID,
                 self.simDirectory,
                 simMode,
                 run_directory,
             )
             self.mkdir_p(simPath)  # confirm that output path exists
-            fn = f"{simMode:s}_Result_{self.cellID:s}_inp={inputs:s}_{model_Pars:s}"
+            fn = f"{simMode:s}_Result_{self.Params.cellID:s}_inp={inputs:s}_{model_Pars:s}"
             fn += f"_pulse_{add_Pars:s}_{self.Params.ANSynapseType:s}"
             fn += f"_{self.Params.SRType:2s}"
             if self.Params.tagstring is not None:
@@ -424,16 +431,16 @@ class ModelRun:
         elif self.RunInfo.runProtocol in ["initVC", "runVC"]:
             simMode = "VC"
             self.RunInfo.postMode = simMode
-            initPath = Path(self.baseDirectory, self.cellID, self.initDirectory)
+            initPath = Path(self.baseDirectory, self.Params.cellID, self.initDirectory)
             self.mkdir_p(initPath)  # confirm existence of the initialization directory
             print('initpath: ', initPath)
             if self.Params.initStateFile is None:
-                fn0 = f"{simMode:s}_Init_{self.cellID:s}_inp={inputs:s}_{model_Pars:s}"
+                fn0 = f"{simMode:s}_Init_{self.Params.cellID:s}_inp={inputs:s}_{model_Pars:s}"
                 fn0 += f"_pulse_{add_Pars:s}_{self.Params.ANSynapseType:s}"
                 fn0 += f"_{self.Params.SRType:2s}"
                 if self.Params.tagstring is not None:
                     fn0 += f"_{self.Params.tagstring:s}"
-                fn0 += ".dat"
+                fn0 += ".p"
                 self.Params.initStateFile = Path(initPath, fn0)
                 if (
                     self.RunInfo.runProtocol.startswith("init")
@@ -442,13 +449,13 @@ class ModelRun:
                     self.Params.initStateFile.unlink()  # delete old initializaiton file first
             simPath = Path(
                 self.baseDirectory,
-                self.cellID,
+                self.Params.cellID,
                 self.simDirectory,
                 simMode,
                 run_directory,
             )
             self.mkdir_p(simPath)  # confirm that output path exists
-            fn = f"{simMode:s}_Result_{self.cellID:s}_inp={inputs:s}_{model_Pars:s}"
+            fn = f"{simMode:s}_Result_{self.Params.cellID:s}_inp={inputs:s}_{model_Pars:s}"
             fn += f"_pulse_{add_Pars:s}_{self.Params.ANSynapseType:s}"
             fn += f"_{self.Params.SRType:2s}"
             if self.Params.tagstring is not None:
@@ -465,10 +472,10 @@ class ModelRun:
             simMode = "AN"
             self.RunInfo.postMode = 'CC'
 
-            initPath = Path(self.baseDirectory, self.cellID, self.initDirectory)
+            initPath = Path(self.baseDirectory, self.Params.cellID, self.initDirectory)
             self.mkdir_p(initPath)  # confirm existence of that file
             if self.Params.initStateFile is None:
-                fn0 = f"{simMode:s}_Init_{self.cellID:s}_inp={inputs:s}_{model_Pars:s}"
+                fn0 = f"{simMode:s}_Init_{self.Params.cellID:s}_inp={inputs:s}_{model_Pars:s}"
                 fn0 += f"_{add_Pars:s}_{self.Params.ANSynapseType:s}"
                 if self.RunInfo.soundtype in ["SAM", "sam"]:
                     fn0 += f"_{self.RunInfo.fmod:03.1f}_{int(self.RunInfo.dmod):03d}"
@@ -483,12 +490,12 @@ class ModelRun:
                     self.Params.initStateFile.unlink()  # delete old initializaiton file first
             simPath = Path(
                 self.baseDirectory,
-                self.cellID,
+                self.Params.cellID,
                 self.simDirectory,
                 simMode,
                 run_directory,
             )
-            fn = f"{simMode:s}_Result_{self.cellID:s}_inp={inputs:s}_{model_Pars:s}"
+            fn = f"{simMode:s}_Result_{self.Params.cellID:s}_inp={inputs:s}_{model_Pars:s}"
             fn += f"_{add_Pars:s}_{self.Params.ANSynapseType:s}"
             fn += f"_{self.RunInfo.nReps:03d}_{self.RunInfo.soundtype:s}"
             fn += f"_{int(self.RunInfo.dB):03d}dB_{self.RunInfo.F0:06.1f}"
@@ -603,13 +610,15 @@ class ModelRun:
             Nothing
 
         """
+        if self.Params.cell is None:
+            raise ValueError('Cell must be defined before setup is called')
         dendrite_names = [
             "Proximal_Dendrite",
             "Distal_Dendrite",
             "Dendritic_Hub",
             "Dendritic_Swelling" "dend",
             "proximaldendrite",
-            "distandendrite",
+            "distaldendrite",
         ]
 
         if self.Params.verbose:
@@ -619,29 +628,38 @@ class ModelRun:
         else:
             self.idnum = 9999
         print(f"Cell ID: {self.Params.cell:s}")
-        if self.Params.cell is None:
-            return
-        self.cellID = Path(
+
+        self.Params.cellID = Path(
             self.Params.cell
         ).stem  # os.path.splitext(self.Params.cell)[0]
-
+        print('self.Params.cellID: ', self.Params.cellID)
         if self.Params.verbose:
             print(f"Morphology directory: {self.morphDirectory:s}")
-        if self.Params.fullhocfile:
-            self.Params.hocfile = self.Params.cell + "_Full.hoc"
-            cprint("c", f"Using '_Full' hoc file: {self.Params.hocfile:s}")
-        elif self.Params.usedefaulthoc or self.Params.hocfile is None:
-            self.Params.hocfile = self.Params.cell + ".hoc"  # try to make a name
-            cprint("c", f"Using default hoc file: {self.Params.hocfile:s}")
-        else:  # a passed hoc file will be used
-            cprint("c", f"Using passed hoc file: {self.Params.hocfile:s}")
 
+        if self.Params.hocfile is not None:  # -H flag: a passed hoc file will be used - overrides everything.
+            # self.Params.hocfile = self.Params.cell + self.Params.hocfile + ".hoc"
+            label = f"specified hocfile"
+
+        # else
+         # self.Params.fullhocfile: # -F Flag
+         #    self.Params.hocfile = self.Params.cell + "_Full.hoc"
+         #    label = "Full"
+        
+        else:
+            if self.Params.dendriteExpt == 'default':  # -dendriteExpt flags
+                self.Params.hocfile = self.Params.cell + ".hoc"
+            else:
+                self.Params.hocfile = self.Params.cell + f"_{self.Params.dendriteExpt:s}.hoc"
+            label = self.Params.dendriteExpt
+            
+        cprint("c", f"Using {label:s} hoc file: {self.Params.hocfile:s}")
         filename = Path(
-            self.baseDirectory, self.cellID, self.morphDirectory, self.Params.hocfile
+            self.baseDirectory, self.Params.cellID, self.morphDirectory, self.Params.hocfile
         )
+
         # if filename.with_suffix(".hocx").is_file():  # change to preferred if available
         #     filename = filename.with_suffix(".hocx")
-        # cprint("yellow", f"Using hoc file: {str(filename):s}")
+        cprint("yellow", f"Using hoc file: {str(filename):s}")
 
         # instantiate cells
         if self.Params.cellType in ["Bushy", "bushy"]:
@@ -689,210 +707,6 @@ class ModelRun:
                 model_type="II",
                 data=CHAN.ChannelCompartments,
             )
-            # if (
-            #     self.Params.modelName == "XM13_nacncoop"
-            #     and self.Params.dendriteMode == "normal"
-            # ):
-            #     from vcnmodel.model_data import data_XM13_nacncoop as CHAN
-            #
-            #     nach = "nacncoop"
-            #     changes = data.add_table_data(
-            #         "XM13_nacncoop_channels",
-            #         row_key="field",
-            #         col_key="model_type",
-            #         species="mouse",
-            #         data=CHAN.ChannelData,
-            #     )
-            #     changes_c = data.add_table_data(
-            #         "XM13_nacncoop_channels_compartments",
-            #         row_key="parameter",
-            #         col_key="compartment",
-            #         species="mouse",
-            #         model_type="II",
-            #         data=CHAN.ChannelCompartments,
-            #     )
-            #
-            # if (
-            #     self.Params.modelName == "XM13A_nacncoop"
-            #     and self.Params.dendriteMode == "normal"
-            # ):
-            #     from vcnmodel.model_data import data_XM13A_nacncoop as CHAN
-            #
-            #     nach = "nacncoop"
-            #     changes = data.add_table_data(
-            #         "XM13A_nacncoop_channels",
-            #         row_key="field",
-            #         col_key="model_type",
-            #         species="mouse",
-            #         data=CHAN.ChannelData,
-            #     )
-            #     changes_c = data.add_table_data(
-            #         "XM13A_nacncoop_channels_compartments",
-            #         row_key="parameter",
-            #         col_key="compartment",
-            #         species="mouse",
-            #         model_type="II",
-            #         data=CHAN.ChannelCompartments,
-            #     )
-            #
-            # if (
-            #     self.Params.modelName == "XM13_nacncoop"
-            #     and self.Params.dendriteMode == "passive"
-            # ):
-            #     from vcnmodel.model_data import \
-            #         data_XM13_nacncoop_pasdend as CHAN
-            #
-            #     nach = "nacncoop"
-            #     changes = data.add_table_data(
-            #         "XM13_nacncoop_channels",
-            #         row_key="field",
-            #         col_key="model_type",
-            #         species="mouse",
-            #         data=CHAN.ChannelData,
-            #     )
-            #     changes_c = data.add_table_data(
-            #         "XM13_nacncoop_channels_compartments",
-            #         row_key="parameter",
-            #         col_key="compartment",
-            #         species="mouse",
-            #         model_type="II",
-            #         data=CHAN.ChannelCompartments,
-            #     )
-            #
-            # if (
-            #     self.Params.modelName == "XM13A_nacncoop"
-            #     and self.Params.dendriteMode == "passive"
-            # ):
-            #     from vcnmodel.model_data import \
-            #         data_XM13A_nacncoop_pasdend as CHAN
-            #
-            #     nach = "nacncoop"
-            #     changes = data.add_table_data(
-            #         "XM13A_nacncoop_channels",
-            #         row_key="field",
-            #         col_key="model_type",
-            #         species="mouse",
-            #         data=CHAN.ChannelData,
-            #     )
-            #     changes_c = data.add_table_data(
-            #         "XM13A_nacncoop_channels_compartments",
-            #         row_key="parameter",
-            #         col_key="compartment",
-            #         species="mouse",
-            #         model_type="II",
-            #         data=CHAN.ChannelCompartments,
-            #     )
-            # #
-            # # ACTIVE
-            # #
-            #
-            # if (
-            #     self.Params.modelName == "XM13_nacncoop"
-            #     and self.Params.dendriteMode == "active"
-            # ):
-            #     from vcnmodel.model_data import \
-            #         data_XM13_nacncoop_actdend as CHAN
-            #
-            #     nach = "nacncoop"
-            #     changes = data.add_table_data(
-            #         "XM13_nacncoop_channels",
-            #         row_key="field",
-            #         col_key="model_type",
-            #         species="mouse",
-            #         data=CHAN.ChannelData,
-            #     )
-            #     changes_c = data.add_table_data(
-            #         "XM13_nacncoop_channels_compartments",
-            #         row_key="parameter",
-            #         col_key="compartment",
-            #         species="mouse",
-            #         model_type="II",
-            #         data=CHAN.ChannelCompartments,
-            #     )
-            #
-            # if (
-            #     self.Params.modelName == "XM13A_nacncoop"
-            #     and self.Params.dendriteMode == "active"
-            # ):
-            #     from vcnmodel.model_data import \
-            #         data_XM13A_nacncoop_actdend as CHAN
-            #
-            #     nach = "nacncoop"
-            #     changes = data.add_table_data(
-            #         "XM13A_nacncoop_channels",
-            #         row_key="field",
-            #         col_key="model_type",
-            #         species="mouse",
-            #         data=CHAN.ChannelData,
-            #     )
-            #     changes_c = data.add_table_data(
-            #         "XM13A_nacncoop_channels_compartments",
-            #         row_key="parameter",
-            #         col_key="compartment",
-            #         species="mouse",
-            #         model_type="II",
-            #         data=CHAN.ChannelCompartments,
-            #     )
-
-            # elif self.Params.modelName == "XM13":
- #                from model_data import data_XM13 as CHAN
- #
- #                nach = "nav11"
- #                changes = data.add_table_data(
- #                    "XM13_channels",
- #                    row_key="field",
- #                    col_key="model_type",
- #                    species="mouse",
- #                    data=CHAN.ChannelData,
- #                )
- #                changes_c = data.add_table_data(
- #                    "XM13_channels_compartments",
- #                    row_key="parameter",
- #                    col_key="compartment",
- #                    species="mouse",
- #                    model_type="II",
- #                    data=CHAN.ChannelCompartments,
- #                )
- #
- #            elif self.Params.modelName == "XM13_nacn":
- #                from model_data import data_XM13_nacn as CHAN
- #
- #                nach = "nacn"
- #                changes = data.add_table_data(
- #                    "XM13_nacn_channels",
- #                    row_key="field",
- #                    col_key="model_type",
- #                    species="mouse",
- #                    data=CHAN.ChannelData,
- #                )
- #                changes_c = data.add_table_data(
- #                    "XM13_nacn_channels_compartments",
- #                    row_key="parameter",
- #                    col_key="compartment",
- #                    species="mouse",
- #                    model_type="II",
- #                    data=CHAN.ChannelCompartments,
- #                )
- #
- #            elif self.Params.modelName == "XM13_nabu":
- #                from model_data import data_XM13_nabu as CHAN
- #
- #                nach = "nabu"
- #                changes = data.add_table_data(
- #                    "XM13_nabu_channels",
- #                    row_key="field",
- #                    col_key="model_type",
- #                    species="mouse",
- #                    data=CHAN.ChannelData,
- #                )
- #                changes_c = data.add_table_data(
- #                    "XM13_nabu_channels_compartments",
- #                    row_key="parameter",
- #                    col_key="compartment",
- #                    species="mouse",
- #                    model_type="II",
- #                    data=CHAN.ChannelCompartments,
- #                )
 
             if changes is not None:
                 data.report_changes(changes)
@@ -952,16 +766,16 @@ class ModelRun:
         ):  # get values and inflate soma automatically to match mesh
             cprint("c", "Soma Autoinflation")
 
-            inflateratio = self.cconfig.get_soma_ratio(self.cellID)
+            inflateratio = self.cconfig.get_soma_ratio(self.Params.cellID)
             if np.isnan(inflateratio):
                 raise ValueError(
-                    f"Soma Inflation Ratio is not defined for cell {self.cellID:s}"
+                    f"Soma Inflation Ratio is not defined for cell {self.Params.cellID:s}"
                 )
             self.Params.soma_inflation = inflateratio
 
         if self.Params.soma_inflation != 1.0:
             cprint("c", "    Inflating soma")
-            print(self.RunInfo.postMode)
+            # print(self.RunInfo.postMode)
             if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
                 self.post_cell.hr.h.finitialize()
                 rtau = self.post_cell.compute_rmrintau(
@@ -969,7 +783,7 @@ class ModelRun:
                 )
 
                 print(
-                    f"    Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
+                    f"   Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
                 )
             # origdiam = {}
 
@@ -994,13 +808,13 @@ class ModelRun:
             self.Params.dendrite_autoinflate
         ):  # get values and inflate soma automatically to match mesh
             cprint("c", "Dendrite Autoinflation")
-            inflateratio = self.cconfig.get_dendrite_ratio(self.cellID)
+            inflateratio = self.cconfig.get_dendrite_ratio(self.Params.cellID)
             if np.isnan(inflateratio):
                 raise ValueError("Dendrite Inflation Ration is not defined!")
             self.Params.dendrite_inflation = inflateratio
 
         if self.Params.dendrite_inflation != 1.0:
-            cprint("c", "    Inflating dendrite")
+            cprint("c", "     Inflating dendrite")
             if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
                 rtau = self.post_cell.compute_rmrintau(
                     auto_initialize=True, vrange=[-80.0, -55.0]
@@ -1052,12 +866,10 @@ class ModelRun:
 
         self.post_cell.set_nseg(freq=self.Params.lambdaFreq)
 
-        # handle the following protocols:
-        # ['initIV', 'initAN', 'runIV', 'run', 'runANSingles', 'gifnoise']
-
-        self._make_filenames()  # make filenames AFTER all manipulations of the cell
 
         self.Params.setup = True
+        self._make_filenames()  # make filenames AFTER all manipulations to the cell
+
         # self.post_cell.print_soma_info()
 #         exit()
 
@@ -1066,8 +878,8 @@ class ModelRun:
             self.setup_model(par_map=par_map)
         import neuronvis as NV
 
-        if self.cellID in list(vcnmodel.model_params.display_orient_cells):
-            angles = vcnmodel.model_params.display_orient_cells[self.cellID]
+        if self.Params.cellID in list(vcnmodel.model_params.display_orient_cells):
+            angles = vcnmodel.model_params.display_orient_cells[self.Params.cellID]
         else:
             angles = [200.0, 0.0, 0.0]
         print("Rendering via model_run2")
@@ -1081,7 +893,7 @@ class ModelRun:
             alpha=1.0,  # args["alpha"],
             sim_data=None,  # sim_data,
             # output_file=str(Path('Renderings',
-            #     f'{self.cellID:s}_{self.Params.displayMechanism:s}_{self.Params.dendriteMode:s}.png')),
+            #     f'{self.Params.cellID:s}_{self.Params.displayMechanism:s}_{self.Params.dendriteMode:s}.png')),
         )
         exit()
 
@@ -1099,7 +911,7 @@ class ModelRun:
     #         display_mode=viewitem, # 'sec-type', # args["display"],
     #         alpha=1, # args["alpha"],
     #         sim_data=None, # sim_data,
-    #         output_file=str(Path('Renderings', f'{self.cellID:s}_parts.png')),
+    #         output_file=str(Path('Renderings', f'{self.Params.cellID:s}_parts.png')),
     #     )
     #     exit()
 
@@ -1185,7 +997,7 @@ class ModelRun:
             self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
         )
         self.R.RunInfo.folder = Path(
-            self.baseDirectory, self.cellID, self.simDirectory, "IV"
+            self.baseDirectory, self.Params.cellID, self.simDirectory, "IV"
         )
         if self.Params.verbose:
             print("iv_run: calling do_run")
@@ -1316,7 +1128,7 @@ class ModelRun:
             self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
         )
         self.R.RunInfo.folder = Path(
-            self.baseDirectory, self.cellID, self.simDirectory, "VC"
+            self.baseDirectory, self.Params.cellID, self.simDirectory, "VC"
         )
         if self.Params.verbose:
             print("VC_run: calling do_run")
@@ -1419,10 +1231,10 @@ class ModelRun:
         self.R = GenerateRun(
             self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
         )
-        # ivinitfile = Path(self.baseDirectory, self.cellID,
+        # ivinitfile = Path(self.baseDirectory, self.Params.cellID,
         #                         self.initDirectory, self.Params.initStateFile)
         self.R.runInfo.folder = Path(
-            self.baseDirectory, self.cellID, self.simDirectory, "Noise"
+            self.baseDirectory, self.Params.cellID, self.simDirectory, "Noise"
         )
         if self.Params.verbose:
             print("noise_run: calling do_run")
@@ -1643,10 +1455,10 @@ class ModelRun:
             cprint("g", "\n*** an_run\n")
         if self.Params.inputPattern is not None:
             fromdict = self.Params.inputPattern
-            print(f"Cell id: {self.cellID:s} using input pattern: {fromdict:s}")
+            print(f"Cell id: {self.Params.cellID:s} using input pattern: {fromdict:s}")
         else:
-            print(f"Cell id: {self.cellID:s} is using 'self' input pattern")
-            fromdict = self.cellID
+            print(f"Cell id: {self.Params.cellID:s} is using 'self' input pattern")
+            fromdict = self.Params.cellID
 
         synapseConfig, celltype = self.cconfig.makeDict(
             fromdict, self.Params.ASA_inflation
@@ -1668,7 +1480,7 @@ class ModelRun:
         # see if we need to save the cell state now.
         if make_an_intial_conditions:
             #            print('getting initial conditions for AN')
-            # aninitfile = Path(self.baseDirectory, self.cellID,
+            # aninitfile = Path(self.baseDirectory, self.Params.cellID,
             #                     self.initDirectory, self.Params.initStateFile)
             cellInit.get_initial_condition_state(
                 self.post_cell,
@@ -1873,9 +1685,9 @@ class ModelRun:
 
         if self.Params.inputPattern is not None:
             fromdict = self.Params.inputPattern
-            print("Cell id: %s  using input pattern: %s" % (self.cellID, fromdict))
+            print("Cell id: %s  using input pattern: %s" % (self.Params.cellID, fromdict))
         else:
-            fromdict = self.cellID
+            fromdict = self.Params.cellID
         synapseConfig, celltype = self.cconfig.makeDict(fromdict)
         nReps = self.RunInfo.nReps
         threshold = self.RunInfo.threshold  # spike threshold, mV
@@ -1991,7 +1803,7 @@ class ModelRun:
         """
         print("\n*** an_run_IO\n")
         self.start_time = time.time()
-        synapseConfig, celltype = self.cconfig.makeDict(self.cellID)
+        synapseConfig, celltype = self.cconfig.makeDict(self.Params.cellID)
         nReps = self.RunInfo.nReps
         threshold = self.RunInfo.threshold  # spike threshold, mV
 
@@ -2237,7 +2049,7 @@ class ModelRun:
         #             filename=self.Params.initStateFile,
         #         )
         #     except:
-        #         raise ValueError("Failed initialization for cell: ", self.cellID)
+        #         raise ValueError("Failed initialization for cell: ", self.Params.cellID)
 
         # make independent inputs for each synapse
         ANSpikeTimes = []
@@ -2499,7 +2311,7 @@ class ModelRun:
 
     def get_hoc_file(self, hf):
         if hf.file_loaded is False:
-            exit()
+            raise ValueError("No hoc file has been loaded")
         self.section_list = hf.get_section_prefixes()
         list(hf.sec_groups.keys())
         if len(hf.sec_groups) > 1:  # multiple names, so assign colors to structure type

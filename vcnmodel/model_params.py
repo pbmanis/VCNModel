@@ -65,6 +65,14 @@ class CmdChoices:
         "active",
         "allpassive"
     ]
+    dendriteExptChoices = [
+        "default",
+        "Full",
+        "NoDend",
+        "NoDistal",
+        "NoUninnervated",
+    ]
+
     protocolChoices = [
         "initIV",
         "testIV",
@@ -124,6 +132,7 @@ class Params:
     modelName: str = CmdChoices.modelNameChoices[0]
     dataTable: str = ""
     dendriteMode: str = CmdChoices.dendriteChoices[0]
+    dendriteExpt: str = CmdChoices.dendriteExptChoices[0]
     modelType: str = CmdChoices.modelTypeChoices[0]
     SGCmodelType: str = CmdChoices.SGCmodelChoices[0]
     species: str = CmdChoices.speciesChoices[0]
@@ -132,7 +141,7 @@ class Params:
     displayMode: str = CmdChoices.displayModeChoices[0]
 
     # cell specific parameters related to geometry
-    fullhocfile: bool = False  # use the "full" hoc file (cellname_Full.hoc)
+    # fullhocfile: bool = False  # use the "full" hoc file (cellname_Full.hoc) (obselete)
     dtIC: float = 0.025 # ok.
     dtVC: float = 0.005  # voltage clamp; need shorter steop size for transient measure
     celsius: float = 37  # set the temperature.
@@ -174,26 +183,6 @@ class Params:
     tagstring: Union[str, None] = None
     initialization_time: float = 50.0
 
-
-# claas ModelPar:
-#
-#     axon:bool = False
-#     cellClass:[str, None]: None
-#     dendrites:bool= False,
-#     hillock:bool= False,
-#     initialsegment:bool= False,
-#     modelName:[str, None]= None,
-#     modelType:str= 'II',
-#     morphology': None,
-#     myelinatedaxon': False,
-#     na': None,
-#     name': None,
-#     pumps': False,
-#     soma': True,
-#     species': 'mouse',
-#     temperature': 34.0,
-#     ttx': False,
-#     unmyelinatedaxon': False,
 
 # runinfo parameters are filled by generate_run at the initialization of a single trace run
 def definj():
@@ -351,6 +340,37 @@ def build_parser():
         choices=CmdChoices.dendriteChoices,
         help="Choose dendrite table (normal, active, passive)",
     )
+    # parser.add_argument(
+    #     "-H",
+    #     "--defaulthoc",
+    #     action="store_true",
+    #     dest="usedefaulthoc",
+    #     default=False,
+    #     help="Use default hoc file for this cell",
+    # )
+    parser.add_argument(
+        "--hocfile",
+        dest="hocfile",
+        action="store",
+        default=None,
+        help='hoc file to use for simulation (default is the selected "cell".hoc)',
+    )
+    # parser.add_argument(
+    #     "-F",
+    #     "--full",
+    #     dest="fullhocfile",
+    #     action="store_true",
+    #     default=False,
+    #     help='Use "full" hoc file as in "VCN_c02_Full.hoc instead of VCN_c02.hoc")',
+    # )
+    parser.add_argument(
+        "-D",
+        "--dendriteexpt",
+        dest="dendriteExpt",
+        default='default',
+        choices=CmdChoices.dendriteExptChoices,
+        help="Choose dendrite experiment (default, Full, NoDend, NoDistal, NoUninnervated)",
+    )
     parser.add_argument(
         "--datatable",
         type=str,
@@ -377,29 +397,7 @@ def build_parser():
         choices=CmdChoices.protocolChoices,
         help="Protocol to use for simulation (default: IV)",
     )
-    parser.add_argument(
-        "-H",
-        "--defaulthoc",
-        action="store_true",
-        dest="usedefaulthoc",
-        default=True,
-        help="Use default hoc file for this cell",
-    )
-    parser.add_argument(
-        "--hocfile",
-        dest="hocfile",
-        action="store",
-        default=None,
-        help='hoc file to use for simulation (default is the selected "cell".hoc)',
-    )
-    parser.add_argument(
-        "-F",
-        "--full",
-        dest="fullhocfile",
-        action="store_true",
-        default=False,
-        help='Use "full" hoc file as in "VCN_c02_Full.hoc instead of VCN_c02.hoc")',
-    )
+
     parser.add_argument(
         "--style",
         dest="displayStyle",
