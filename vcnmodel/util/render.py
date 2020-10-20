@@ -23,7 +23,7 @@ class Render():
              'Axon_Hillock': 'red', 'Axon_Initial_Segment': 'lilac', 'Myelinated_Axon': 'darkgreen',
              "Unmyelinated_Axon": 'brown',
              'Proximal_Dendrite': 'purple', 'Dendritic_Hub': 'green', 'Dendritic_Swelling': 'magenta',
-             'Distal_Dendrite': 'powderblue',
+             'Distal_Dendrite': 'powder blue',
             # terminals (calyx of Held):
              'heminode': 'green', 'stalk':'yellow', 'branch': 'blue', 'neck': 'brown',
             'swelling': 'magenta', 'tip': 'powderblue', 'parentaxon': 'orange', 'synapse': 'k'}
@@ -168,12 +168,13 @@ def main():
     mod = 'Full'
     if len(sys.argv) > 2:
          mod = sys.argv[2]
-    if mod == 'Full':
-        cell_dir = f"VCN_c{int(fn):02d}"
+         hocfile = f"VCN_c{int(fn):02d}_{mod:s}.hoc"
     else:
-        cell_dir = f"VCN_c{int(fn):02d}_{mod:s}"
+        hocfile = f"VCN_c{int(fn):02d}_Full.hoc"
+    # if mod == 'Full':
+    cell_dir = f"VCN_c{int(fn):02d}"
     filename = Path('../VCN-SBEM-Data', 'VCN_Cells', cell_dir,
-         'Morphology', f"{cell_dir:s}.hoc")
+         'Morphology', hocfile)
     post_cell = set_table_and_cells(
          filename=filename,
          dataTable='data_XM13A_nacncoop_normal',
