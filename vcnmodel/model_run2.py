@@ -394,7 +394,7 @@ class ModelRun:
         hocname = Path()
 
         print("\nRUNPROTOCOL: ", self.RunInfo.runProtocol)
-        if self.RunInfo.runProtocol in ["initIV", "initandrunIV", "runIV"]:
+        if self.RunInfo.runProtocol in ["initIV", "initandrunIV", "runIV", "testIV"]:
             simMode = "IV"
             self.RunInfo.postMode = 'CC'
             initPath = Path(self.baseDirectory, self.Params.cellID, self.initDirectory)
@@ -810,7 +810,7 @@ class ModelRun:
             cprint("c", "Dendrite Autoinflation")
             inflateratio = self.cconfig.get_dendrite_ratio(self.Params.cellID)
             if np.isnan(inflateratio):
-                raise ValueError("Dendrite Inflation Ration is not defined!")
+                raise ValueError("Dendrite Inflation Ratio is not defined!")
             self.Params.dendrite_inflation = inflateratio
 
         if self.Params.dendrite_inflation != 1.0:
@@ -961,15 +961,11 @@ class ModelRun:
         print(f"Ran to get initial state for {self.post_cell.hr.h.t:.1f} msec")
 
     def testIV(self):
-        self.R = GenerateRun(
-            self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
-        )
-        cellInit.test_initial_conditions(
-            self.post_cell,
-            filename=self.Params.initStateFile,
-            electrode_site=self.R.electrode_site,
-        )
-        self.R.testRun(initfile=self.Params.initStateFile)
+
+        self.Params.initialization_time = 500.
+        self.initIV()
+        self.RunInfo.stimDelay = 10.
+        self.R.testRun(initfile=self.Params.initStateFile, level=-0.01)
         return  # that is ALL, never make testIV/init and then keep running.
 
     def iv_run(self, par_map: dict = None):

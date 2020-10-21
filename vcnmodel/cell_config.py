@@ -108,6 +108,7 @@ cellsintable = [
     27,
     29,
     30,
+    0,  # test cell with soma only
 ]
 datafile = dendqual
 inputs = [f"Input {i+1:d}" for i in range(12)]  # input column labels
@@ -255,7 +256,10 @@ class CellConfig:
         dcell = self.SDSummary[self.SDSummary["Cell Number"] == cellnum]
         mesh_area = dcell[dend_area_data].values[0]
         hoc_dend_area = dcell[hocdendrecons].values[0]
-        inflateratio = mesh_area / hoc_dend_area
+        if hoc_dend_area > 0.:  # assuming there are any dendrites... 
+            inflateratio = mesh_area / hoc_dend_area
+        else:
+            inflateratio = 1.0
         print(
             f"    Cell: {cellnum:02d}: Dendrite mesh area: {mesh_area:.2f}  HOC Dendrite area: {hoc_dend_area:.2f}  ",
             end="",

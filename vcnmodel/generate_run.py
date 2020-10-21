@@ -499,10 +499,10 @@ class GenerateRun:
             if save == "monitor":
                 self.saveRuns("gifnoise")
 
-    def testRun(self, title="testing...", initfile=None):
+    def testRun(self, title="testing...", level:float=-0.001, dur:float=50., initfile=None):
         if initfile is None:
             raise ValueError("generate_run:testRun needs initfile name")
-        self._prepareRun(inj=0.0)
+        self._prepareRun(inj=level)
         self.run_initialized = cellInit.init_model(
             self.cell,
             vinit=self.RunInfo.vstimHolding,
@@ -510,15 +510,15 @@ class GenerateRun:
             restore_from_file=True,
         )
         self.hf.h.t = 0.0
-        self.hf.h.tstop = 10
+        self.hf.h.tstop = dur
         # self.hf.h.run()
         self._executeRun(testPlot=True)
-        pg.mkQApp()
-        pl = pg.plot(
-            np.array(self.monitor["time"]), np.array(self.monitor["postsynapticV"])
-        )
-        pl.setTitle(title)
-        QtGui.QApplication.instance().exec_()
+        # pg.mkQApp()
+        # pl = pg.plot(
+        #     np.array(self.monitor["time"]), np.array(self.monitor["postsynapticV"])
+        # )
+        # pl.setTitle(title)
+        # QtGui.QApplication.instance().exec_()
 
     def _executeRun(self, testPlot=False):
         """
