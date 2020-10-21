@@ -78,12 +78,13 @@ def init_model(
         except:
             cprint("r", "\nUnable to restore initial state")
             raise ValueError("\nUnable to restore initial state")
-        cprint("g", f"        Initiaization was restored OK")
+        cprint("g", f"        Initialization was restored OK")
         return True  # much easier here...
 
-    # print('custom init')
-    CU.custom_init(v_init=vinit)
+    cprint('r', 'custom init')
+    CU.custom_init(v_init=vinit)   # this actually will not be run (uses init from below)
 
+    
     if electrode_site is not None:
         vm = electrode_site.v
     else:
