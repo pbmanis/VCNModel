@@ -24,7 +24,7 @@ from pylibrary.tools import cprint as CP
 # from pylibrary.tools import utility as pu  # access to a spike finder routine
 from pyqtgraph import multiprocess as MP
 import multiprocessing as MPROC
-
+from vcnmodel import electrotonic as electrotonic
 import vcnmodel.model_params
 from vcnmodel import cell_config as cell_config
 from vcnmodel import cellInitialization as cellInit
@@ -964,8 +964,70 @@ class ModelRun:
 
         self.Params.initialization_time = 500.
         self.initIV()
+        # print(dir(self.post_cell.hr.h))
+        Z = self.post_cell.hr.h.Impedance(0.5, self.post_cell.soma)
+        freqs = np.logspace(0, 4, 50)
+        Zin = np.zeros_like(freqs)
+        Zphase = np.zeros_like(freqs)
+        for i, freq in enumerate(freqs):
+            Z.compute(freq, 1)
+            Zin[i] = Z.input(0.5, self.post_cell.soma)
+            Zphase[i] = Z.input_phase(0.5, self.post_cell.soma)
+            # print(f"Fr: {freq:.1f}  Zin: {Zin[i]:8.2f}, Phase: {Zphase[i]:6.2f}")
+        fo = Path(self.Params.hocfile).stem
+        fo += '_Z.pkl'
+        d = {'f': freqs, 'zin': Zin, 'phase': Zphase}
+        with open(fo, 'wb') as fh:
+            pickle.dump(d, fh)
+            
+        import pyqtgraph as pg
+        pg.mkQApp()
+        win = pg.GraphicsWindow()
+        p1 = win.addPlot()
+        p2 = win.addPlot()
+        p1.setLogMode(x=True, y=False)
+        p2.setLogMode(x=True, y=False)
+        pz = p1.plot(
+            freqs, Zin, pen='k', symbol='o', symbolsize=1,
+        )
+        pp = p2.plot(freqs, Zphase, pen='b', symbol='s', symbolsize=1)
+        pg.QtGui.QApplication.instance().exec_()
+ 
+        exit()
+        
         self.RunInfo.stimDelay = 10.
         self.R.testRun(initfile=self.Params.initStateFile, level=-0.01)
+        tstart = self.RunInfo.stimDelay
+        tx = np.array(self.R.monitor["time"])
+        vx = np.array(self.R.monitor["postsynapticV"])
+        ix = np.array(self.R.monitor["i_stim0"])
+        ET = electrotonic.Electrotonic(I=ix, T=tx, V=vx, tstart=tstart, tdur=3.0)
+         
+        ET.fitexps(ET.Tfit, ET.Vfit)
+        print ('Fitresult:\n', ET.fitresult.fit_report())
+        print ('Coeffs Ratio: ', ET.coeffs_ratio())
+        print(dir(ET.fitresult))
+        print(ET.fitresult.values)
+        
+        yfit = ET.doubleexp(ET.Tfit, 
+            amp=ET.fitresult.values['amp'], 
+            C0=ET.fitresult.values['C0'], 
+            C1=ET.fitresult.values['C1'],
+            tau0=ET.fitresult.values['tau0'],
+            tau1=ET.fitresult.values['tau1'],
+        )
+        
+
+        
+        import pyqtgraph as pg
+        pg.mkQApp()
+        pl = pg.plot(
+            tx, vx, pen='k', symbol='o', symbolsize=1,
+        )
+        pl.plot(ET.Tfit+tstart, yfit, pen='r')
+        # pl.setTitle(title)
+        pg.QtGui.QApplication.instance().exec_()
+
         return  # that is ALL, never make testIV/init and then keep running.
 
     def iv_run(self, par_map: dict = None):
