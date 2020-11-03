@@ -26,6 +26,12 @@ lmfit 0.96 or later: for curve fitting routines
 
 """
 
+import argparse
+import re
+import pandas as pd
+from dataclasses import dataclass, field
+from typing import Union
+import io
 import numpy as np
 import matplotlib.pyplot as mpl
 import matplotlib.cm as cm
@@ -43,12 +49,15 @@ def doubleexp(x, amp=1., C0=5, C1=1, tau0=20., tau1=0.2):
     C0, C1: relative amplitudes of exponential functions
     tau1, tau2 : time constants
     """
-    return (amp + C0*np.exp(-x/tau0) + C1*np.exp(-x/tau1))
+    return (amp - (C0*np.exp(-x/tau0) + C1*np.exp(-x/tau1)))
 
 
 class Electrotonic():
     
-    def __init__(self, I, V, T, tstart):
+    def __init__(self, I:Union[float, None]=None,
+                       V:Union[float, None]=None, 
+                       T:Union[float, None]=None, 
+                       tstart:float = 10., tdur:float=5.):
         """
         Parameters
         ----------
@@ -59,19 +68,26 @@ class Electrotonic():
         T : numpy array of floats
              Time points for the current and voltage arrays
         tstart: float
-            Time at which the voltage step starts
+            Time at which the voltage step starts (msec)
+        tdur: float
+            Duration of trace to fit (msec)
         
         """
         self.V = V
+        self.doubleexp = doubleexp
         self.I = I
         self.time = T
         self.stepstart = tstart
-        self.itstart = np.argmin(np.fabs(self.time-self.stepstart))
+        self.stepend = tdur + tstart
+        self.itstart = np.argmin(np.fabs(self.time-self.stepstart))-1
+        self.itend = np.argmin(np.fabs(self.time-self.stepend))
         self.Cm = 1.0
         self.Rn = 50.
         self.taum = 10.
         self.I0 = -0.1
         self.L = None
+        self.Vfit = self.V[self.itstart:self.itend]
+        self.Tfit = self.time[self.itstart:self.itend]-self.stepstart
     
     def nexp(self, I0, Rn, C=np.zeros(2),
              tau=np.array([10., 0.5]), N=2, noise=0.):
@@ -97,8 +113,15 @@ class Electrotonic():
     
     def fitexps(self, x, y, amp=5):
         dexpmodel = Model(doubleexp, independent_vars=['x'])
-        params = dexpmodel.make_params(amp=amp, C0=5, C1=1, tau0=5, tau1=0.5)
-        print ('Params: ', [p for p in params.values()])
+        params = dexpmodel.make_params(amp=amp, min=-100, max=0.)
+        params.add('C0', value=0.5, min =-100, max=0.)
+        params.add('cratio', value=3.0, min=0, max=100.)
+        params.add('C1', expr='C0/cratio')
+        params.add('tau0', value=2.0, min=0.2, max=10.0)
+        params.add('tratio', value=6.0, min=3.0, max=100.0, vary=True)
+        params.add('tau1', expr='tau0/tratio')
+        # , C0=5, C1=1, tau0=1, tau1=0.1)
+        print ('Initial Params: ', [p for p in params.values()])
         self.fitresult = dexpmodel.fit(y, params, x=x)
     
     def coeffs_ratio(self):
@@ -119,7 +142,7 @@ class Electrotonic():
         print('ASt: {0:.3f}'.format(self.ASt()))
         print('Ct: {0:.3f}, {1:.3f}'.format(self.Ct(0), self.Ct(1)))
     
-    def alphas(self):
+    def alphas_taud(self):
         """
         eqn 10, White et al. 1992
         """
@@ -129,6 +152,16 @@ class Electrotonic():
                         self.fitresult.params['tau%d'%i].value)-1.0)
         return a
     
+    def alphas_Ctau(self):
+        """
+        Eq 1/2 Rose and Dagum 1988
+        """
+        a = np.zeros(2)
+        for i in range(0, 2):
+            a[i] = (self.fitresult.params['C%d'%i].value/
+                        self.fitresult.params['tau%d'%i].value)
+        return a
+        
     def eta(self, alpha=None):
         if alpha is None:
             alpha = self.alphas()
@@ -169,6 +202,15 @@ class Electrotonic():
                      /(self.rho*self.L/np.tanh(self.L)))
         return x1/x1n
     
+    def spaceconstant(self):
+        """
+        Basic space constant from Rall, 1969, for cylinder...
+        """
+        tau0 = self.fitresult.params['tau%d'%0].value
+        tau1 = self.fitresult.params['tau%d'%1].value
+        return np.pi/np.sqrt((tau0/tau1)-1)
+
+
     def Err(self, wa=1.0):
         """
         Eqn. 11, White et al. 1994
@@ -185,9 +227,57 @@ class Electrotonic():
         err3 = (c0m + c1m)*(c0m + c1m)
         errw = wa*(ASm-ASt)*(ASm-ASt)/(ASm*ASm)
         return errw + (err1 + err2)/err3
+        
+# dataclass for data in table 1 - each entry
+@dataclass
+class CellPars:
+    Cell: str=''
+    Rn: float=0.  # input resistance
+    Vm: float=0.  # resting membrane potential
+    Ih: float=0.  # holding current
+    C0: float=0.  # amplitude of slow tau
+    tau0: float = 0.  # time constant of slow tau
+    C0: float=0.  # amplitude of slow tau
+    tau0: float = 0.  # time constant of slow tau
+    CR: float = 0.  # coefficients ration.
 
+data = """
+Cell Rn Vm Ih C0 tau0 C1 tau1 CR
+6 137.0 -58.0 0.20 10.2 3.9 2.1 1.2 0.33
+11  19.3 -60.0 0.40 1.5 3.9 0.4 1.1 0.47
+13  58.4 -56.0 0.3  4.8 9.2 0.7 1.4 0.48
+"""
+    
+    
+def WYM94data(data):
+    spc = re.compile("[ ;,\t\f\v]+") # format replacing all spaces with tabs
+    dataiter = re.finditer(spc, data)
+    data = re.sub(spc, ',', data)
 
-if __name__ == '__main__':
+    sio = io.StringIO(data)
+    df = pd.read_table(sio, sep=',')
+    df = df.set_index('Cell')
+    # print(df.head())
+    dc = {}
+    for cell in df.index:
+        # print('cell: ', cell)
+        # print(df.loc[cell])
+        da = CellPars()
+        da.Cell = str(cell)
+        # print(df.Cell)
+        da.Rn = df.loc[cell]['Rn']
+        da.Vm = df.loc[cell]['Vm']
+        da.Ih = df.loc[cell]['Ih']
+        da.C0 = df.loc[cell]['C0']
+        da.C1 = df.loc[cell]['C1']
+        da.tau0 = df.loc[cell]['tau0']
+        da.tau1 = df.loc[cell]['tau1']
+        da.CR = df.loc[cell]['CR']
+        dc[cell] = da
+    # print(dc)
+    return dc
+
+def generate_testdata(noise=0.):
     rate = 0.01
     dur = 50.
     npts = int(dur/rate)
@@ -197,14 +287,42 @@ if __name__ == '__main__':
     I = np.zeros(npts)
     T = np.arange(npts)*rate
     V = np.zeros(npts) - 60.
+
     C_Ratios = np.array([5., 1.])
     C = -(I0*Rn)*C_Ratios/np.sum(C_Ratios)  # scale ratios to voltage
     print('C: {0:.3f}, {1:.3f}'.format(C[0], C[1]))
     E = Electrotonic(I, V, T, tstart)
     
-    ve = E.nexp(I0, Rn, C=C, noise=0.1)
+    ve = E.nexp(I0, Rn, C=C, noise=noise)
     tf = T[E.itstart:]-tstart
     yf = ve[E.itstart:]
+    return tf, yf, E
+
+def test():
+    """
+    Generate a test case for measuring electrotonic parameters
+    from a current trace.
+    """
+    
+    tf, yf, E = generate_testdata(noise=5.)
+    # rate = 0.01
+    # dur = 50.
+    # npts = int(dur/rate)
+    # tstart = 5.
+    # I0 = -0.1  # nA
+    # Rn = 50.  # Mohm
+    # I = np.zeros(npts)
+    # T = np.arange(npts)*rate
+    # V = np.zeros(npts) - 60.
+    # noise = 1.0 # in mV
+    # C_Ratios = np.array([5., 1.])
+    # C = -(I0*Rn)*C_Ratios/np.sum(C_Ratios)  # scale ratios to voltage
+    # print('C: {0:.3f}, {1:.3f}'.format(C[0], C[1]))
+    # E = Electrotonic(I, V, T, tstart)
+    #
+    # ve = E.nexp(I0, Rn, C=C, noise=noise)
+    # tf = T[E.itstart:]-tstart
+    # yf = ve[E.itstart:]
     E.fitexps(tf, yf)
     print ('Fitresult:\n', E.fitresult.fit_report())
     print ('Coeffs Ratio: ', E.coeffs_ratio())
@@ -228,9 +346,32 @@ if __name__ == '__main__':
     x, y = np.meshgrid(lr, tr)
     E.print_pars()
     mpl.figure()
-    mpl.imshow(esurf, interpolation='bilinear', origin='lower',
+    iax = mpl.imshow(esurf, interpolation='bilinear', origin='lower',
                 cmap=cm.gray, extent=(np.min(lr), np.max(lr),
                  np.min(tr), np.max(tr)), aspect='auto')
+    ax = iax.axes
+    ax.set_title("Error Surface")
+    ax.set_xlabel('tau (ms)')
+    ax.set_ylabel('Lambda (microns)')
     cs = mpl.contour(x, y, esurf)
     mpl.clabel(cs, inline=1, fontsize=8)
     mpl.show()
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description="Measure electrotonic parameters",
+        argument_default=argparse.SUPPRESS,
+        fromfile_prefix_chars="@",
+    )
+
+    parser.add_argument(
+        dest="cell", action="store", default=None, help="Select the cell (no default)"
+    )
+    args = parser.parse_args()
+    
+    if args.cell == 'test':
+        test()
+    
+    else:
+        WYM94data(data)
+    
