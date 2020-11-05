@@ -14,6 +14,7 @@ import lmfit
 import matplotlib.colorbar  # type: ignore
 import matplotlib.colors  # type: ignore
 import numpy as np  # type: ignore
+import pandas as pd
 import pyperclip
 import pyqtgraph as pg  # type: ignore
 import scipy.stats  # type: ignore
@@ -497,15 +498,19 @@ class PlotSims:
         if self.firstline:
             self.textappend(f"\npgbcivr2: datafile to read: {str(ivdatafile):s}")
         if "time" in list(d["Results"].keys()):
-            d["Results"] = self._data_flip(d["Results"])
+            d["Results"] = self._data_flip(d["Results"], d)
         return par, stitle, ivdatafile, filemode, d
 
-    def _data_flip(self, data_res):
+    def _data_flip(self, data_res, d=None):
         """
         Convert from old data file format to new
         """
         # flip order to put trials first (this was an old format)
-        trials = range(len(data_res["somaVoltage"]))
+        if d is None:
+            trials = range(len(data_res["somaVoltage"]))
+        else:
+            trials = range(d['runInfo'].nReps)
+
         for tr in trials:
             sv = data_res["somaVoltage"][tr]
             dv = data_res["dendriteVoltage"][tr]
@@ -643,18 +648,22 @@ class PlotSims:
                 AR.traces[trial] = AR.traces[trial].asarray() * 1e6
             ax.plot(AR.time_base, AR.traces[trial] * 1e3, "k-", linewidth=0.5)
             if "spikeTimes" in d["Results"][icurr].keys():
-                # cprint('r', 'spiketimes from results')
-                spikeindex = [int(t / si.dtIC) for t in d["Results"][icurr]["spikeTimes"]]
+                cprint('r', 'spiketimes from results')
+                print(d["Results"][icurr]["spikeTimes"])
+                print(si.dtIC)
+                spikeindex = [int(t / (si.dtIC*1e-3)) for t in d["Results"][icurr]["spikeTimes"]]
             else:
-                # cprint('r', 'spikes from SP.spikeIndices')
+                cprint('r', 'spikes from SP.spikeIndices')
                 spikeindex = SP.spikeIndices[trial]
+            print(f"Trial: {trial:3d} Nspikes: {len(spikeindex):d}")
             ax.plot(
                 AR.time_base[spikeindex],
                 AR.traces[trial][spikeindex] * 1e3,
                 "go",
                 markersize=2.5,
             )
-            sinds = np.array(SP.spikeIndices[trial]) * AR.sample_rate[trial]
+            sinds = np.array(spikeindex) * AR.sample_rate[trial]
+            print('sinds: ', sinds, deadtime, ri.stimDelay, ri.stimDur)
             nspk_in_trial = len(np.argwhere(sinds > deadtime))
             if nspk_in_trial > 0 and ispikethr is None and sinds[0] < (ri.stimDelay+ri.stimDur):
                 # cprint('c', f"Found threshold spike:  {icurr:.2f}, {trial:d}")
@@ -691,7 +700,7 @@ class PlotSims:
             else:
                 ax.set_ylim(ymin, ymax)
                 ax.set_xlim(0.080, np.max(AR.time_base))
-
+        print("nout spikes: ", noutspikes)
         ftname = str(ivdatafile.name)
         ip = ftname.find("_II_") + 4
         ftname = ftname[:ip] + "...\n" + ftname[ip:]
@@ -1438,7 +1447,12 @@ class PlotSims:
 
     def get_synaptic_info(self, gbc: str) -> tuple:
         SC = cell_config.CellConfig()
-        syninfo = SC.VCN_Inputs[gbc]
+        # print(SC.VCN_Inputs)
+        if isinstance(gbc, int):
+            gbc_string = f"VCN_c{gbc:02d}"
+        elif isinstance(gbc, str):
+            gbc_string = f"VCN_c{int(gbc):02d}"
+        syninfo = SC.VCN_Inputs[gbc_string]
         return (SC, syninfo)
 
     def get_data(
@@ -2031,6 +2045,56 @@ class PlotSims:
         mpl.show()
 
         return (summarySiteTC, RCD.sites)
+
+
+    def analyze_singles(self, index_row, selected):
+        nfiles = len(selected.files)
+
+        P = PH.regular_grid(
+            nfiles,
+            1,
+            order="rowsfirst",
+            figsize=(6.0, 8.0),
+            showgrid=False,
+            verticalspacing=0.01,
+            horizontalspacing=0.01,
+            margins={
+                "bottommargin": 0.1,
+                "leftmargin": 0.07,
+                "rightmargin": 0.05,
+                "topmargin": 0.15,
+            },
+            labelposition=(0.0, 0.0),
+            parent_figure=None,
+            panel_labels=None,
+        )
+
+        PD =PData()
+        sfi = sorted(selected.files)
+
+        df = pd.DataFrame(
+            index=np.arange(0, nfiles),
+            columns=["cell", "syn#", "nout", "nin", "efficacy", "ASA", "SDRatio", "nsites"],
+        )
+        for i in range(nfiles):
+            synno, nout, nin = self.plot_traces(
+                P.axarr[i, 0], sfi[i], PD, selected.runProtocol,
+                nax = i, figure=P.figure_handle)
+            SC, syninfo = self.get_synaptic_info(self.parent.cellID)
+            area = syninfo[1][synno][0]
+            nsites = int(np.around(area * SC.synperum2))
+            eff = f"{(float(nout) / nin):.5f}"
+            area = f"{float(area):.2f}"
+            cell_number = int(self.parent.cellID)
+            soma_area = SC.SDSummary.loc[SC.SDSummary['Cell Number']==cell_number].iloc[0]['Somatic Surface Area']
+            dendrite_area = SC.SDSummary.loc[SC.SDSummary['Cell Number']==cell_number].iloc[0]['Dendritic Surface Area']
+            SDRatio = f"{dendrite_area/soma_area:.2f}"
+            df.iloc[i] = [self.parent.cellID, synno, nout, nin, eff, area, SDRatio, nsites]
+        u = df.head(n=nfiles)
+        self.textappend(df.to_csv(sep="\t"))
+        # print(u)
+
+        P.figure_handle.show()
 
     @time_func
     def plot_tuning(self, args, filename=None, filenames=None):

@@ -686,45 +686,7 @@ class DataTables:
         selected = self.table_manager.get_table_data(index_row)  # table_data[index_row]
         if selected is None:
             return
-        nfiles = len(selected.files)
-
-        P = PH.regular_grid(
-            nfiles,
-            1,
-            order="rowsfirst",
-            figsize=(6.0, 8.0),
-            showgrid=False,
-            verticalspacing=0.01,
-            horizontalspacing=0.01,
-            margins={
-                "bottommargin": 0.1,
-                "leftmargin": 0.07,
-                "rightmargin": 0.05,
-                "topmargin": 0.15,
-            },
-            labelposition=(0.0, 0.0),
-            parent_figure=None,
-            panel_labels=None,
-        )
-
-        PD = plot_sims.PData()
-        sfi = sorted(selected.files)
-
-        df = pd.DataFrame(
-            index=np.arange(0, nfiles),
-            columns=["cell", "syn#", "nout", "nin", "efficacy"],
-        )
-        for i in range(nfiles):
-            synno, nout, nin = self.PLT.plot_traces(
-                P.axarr[i, 0], sfi[i], PD, selected.runProtocol,
-                nax = i, figure=P.figure_handle)
-            eff = float(nout) / nin
-            df.iloc[i] = [self.cellID, synno, nout, nin, eff]
-        u = df.head(n=nfiles)
-        self.PLT.textappend(df.to_csv(sep="\t"))
-        # print(u)
-
-        P.figure_handle.show()
+        self.PLT.analyze_singles(index_row, selected)
 
     def trace_viewer(self, ana_name=None):
         if self.selected_index_rows is None:

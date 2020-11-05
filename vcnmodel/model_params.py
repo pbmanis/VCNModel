@@ -141,7 +141,7 @@ class Params:
     displayMode: str = CmdChoices.displayModeChoices[0]
 
     # cell specific parameters related to geometry
-    # fullhocfile: bool = False  # use the "full" hoc file (cellname_Full.hoc) (obselete)
+    fullhocfile: bool = False  # use the "full" hoc file (cellname_Full.hoc) (obselete)
     dtIC: float = 0.025 # ok.
     dtVC: float = 0.005  # voltage clamp; need shorter steop size for transient measure
     celsius: float = 37  # set the temperature.

@@ -1763,7 +1763,6 @@ class ModelRun:
         inputSpikeTimes = {}
         somaVoltage = {}
         dendriteVoltage = {}
-        celltime = []
         allDendriteVoltages = {}
         parallel = self.Params.Parallel
         self.setup_time = time.time() - self.start_time
@@ -1774,7 +1773,6 @@ class ModelRun:
         # gMaxNMDA = np.zeros(len(synapse))
 
         gMax, ngMax, nSyn = self.get_synapses(synapse)
-        result = {}
         for k in range(nSyns):
             # only enable or disable gsyn on the selected input
             if exclude:  # disable the one
@@ -1792,6 +1790,8 @@ class ModelRun:
                         self.set_synapse(synapse[i], 0., 0.)  # but turn all others off
 
             self.get_synapses(synapse, printvalues=True)
+            celltime = [None]*nReps
+            result = {}
 
             tresults = [None] * nReps
             if self.Params.testsetup:
@@ -1820,16 +1820,16 @@ class ModelRun:
                         preCell,
                         self.an_setup_time,
                     )
-            celltime = []
             for j, N in enumerate(range(nReps)):
                 celltime[N], result[N] = self.retrieve_data(tresults[j])
 
-            self.analysis_filewriter(self.Params.cell, result[k], tag=tagname)
+            self.analysis_filewriter(self.Params.cell, result, tag=tagname)
             self.print_timing()
+            if self.Params.plotFlag:
+                self.plot_an(celltime, result)
         if self.Params.testsetup:
             return
-        if self.Params.plotFlag:
-            self.plot_an(celltime, result)
+
 
     def an_run_omit_one(self):
         self.an_run_singles(exclude=True)
