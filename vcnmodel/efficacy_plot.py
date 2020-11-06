@@ -4,14 +4,15 @@ import re
 
 import matplotlib.pyplot as mpl
 import pylibrary.plotting.plothelpers as PH
+import pylibrary.plotting.styler as STY
 import seaborn as sns
 import pandas as pd
 import lmfit
 from lmfit import Model
 
-sns.set()
+# sns.set()
 
-data = """
+data_original = """
 ASA	Eff	Cell    SDRatio
 174.01	0.3984375	2 3.2324
 124.89	0	2        3.2324
@@ -232,132 +233,157 @@ def boltz(x, A, vhalf, k):
 def boltz_resid(p, x, data):
     return(p['A'] * (1.0 / (1.0 + np.exp(-(x - p['vhalf']) / p['k']))) - data)
 
-data = data_NoDend
-
-spc = re.compile("[ ;,\t\f\v]+") # format replacing all spaces with tabs
-dataiter = re.finditer(spc, data)
-data = re.sub(spc, ',', data)
-
-sio = io.StringIO(data)
-df = pd.read_table(sio, sep=',')
-print(df.head())
-f, ax = mpl.subplots(1,1)
-ax.margins(x=1, y=1)
-ax = sns.scatterplot(x="ASA", y="SDRatio", data=df, hue=[f"VCN\_c{c:02d}" for c in df.Cell], clip_on=False)
-ax.set_xlim(0, 300)
-ax.set_ylim(2, 3.05)
-
-ax.legend(
-        loc="lower right", bbox_to_anchor=(1.0, .0), ncol=2, 
-        fontsize=9, markerscale=0.5,
-        fancybox=False, shadow=False, facecolor='w',
-        labelspacing=0.2
-    )
-mpl.show()
-# exit()
-
-ax = sns.scatterplot(x='ASA', y="Eff", data=df, hue=[f"VCN\_c{c:02d}" for c in df.Cell])
-
-ax.legend(
-        loc="lower right", bbox_to_anchor=(1.0, 0.0), ncol=2, 
-        fontsize=9, markerscale=0.5,
-        fancybox=False, shadow=False, facecolor='w',
-        labelspacing=0.2
-    )
-
-
-gmodel = Model(boltz)
-
-gmodel.set_param_hint("A", value=1, min=0.0, max=1.0, vary=True)
-gmodel.set_param_hint("vhalf", value=100., min=10., max=300.)
-gmodel.set_param_hint(
-    "k", value=5, min=0.01, max=200.0, vary=True
-)
-gparams = gmodel.make_params()
-print('gparams: ', gparams.pretty_print())
-
-weights = np.ones(len(df.ASA))
-# weights[df.Eff<0.1] = 0.3
-
-result_brute = gmodel.fit(
-    df.Eff, method="brute", params=gparams, 
-    x=df.ASA,
-    weights=weights,
-)
-for p in result_brute.params:
-    result_brute.params[p].stderr = 0. # abs(res2.params[p].value * 0)
-
-print('\nBrute fit: ')
-print(result_brute.params.pretty_print())
-print('-'*80)
-xfit = np.linspace(0., 300., 300)
-bfit = gmodel.eval(params=result_brute.params, x=xfit)
-
-methods = ['leastsq', 'least_squares', 'differential_evolution', 'basin_hopping', 'ampgo', 'nelder', 'lbfgsb', 'powell', 'cg',
-     'cobyla', 'bfgs', #'trust-exact', 'trust-krylov', 'trust-constr', 
-     #'dogleg', 
-     'slsqp', 'shgo', 'dual_annealing']
-# need jacobian: 'newton','tnc''trust-ncg'
-resdict = {key: None for key in methods} 
-ix = np.argsort(df.Eff)
-y = df.ASA[ix]
-x = df.Eff[ix]
-weights = np.ones(len(df.Eff))# * np.random. *(df.Eff/np.max(df.Eff))**2
-for meth in resdict.keys():
-    result_LM = gmodel.fit(
-        x, method=meth, params=result_brute.params, # gparams, 
-        x=y,
-        weights=weights,
-        max_nfev = 20000, # fit_kws={'maxfev': 5000}
-        jac = '3-point',
+def plot_efficacy():
+    datasets = [data_original, data_Full, data_NoDend]
+    titles = ['Original', 'Full', 'NoDend']
+    style = STY.styler(journal="JNeurosci", figuresize="full")
+    P = PH.regular_grid(1, 3, figsize=style.Figure['figsize'], 
+        margins= {'bottommargin': 0.12, 'leftmargin': 0.07, 'rightmargin': 0.1, 'topmargin': 0.12},
+        panel_labels = ['A', 'B', 'C'], labelposition=(-0.05, 1.05))
+    for i, data in enumerate(datasets):
+        plot_dataset(data, plotno=i, ax=P.axarr[0, i], title=titles[i])
+    style.style_apply()
+    mpl.show()
+        
     
+def plot_ASA_SD():
+    spc = re.compile("[ ;,\t\f\v]+") # format replacing all spaces with tabs
+    dataiter = re.finditer(spc, data)
+    data = re.sub(spc, ',', data)
+
+    sio = io.StringIO(data)
+    df = pd.read_table(sio, sep=',')
+    print(df.head())
+    f, ax = mpl.subplots(1,1)
+    ax.margins(x=1, y=1)
+    ax = sns.scatterplot(x="ASA", y="SDRatio", data=df, hue=[f"VCN\_c{c:02d}" for c in df.Cell], clip_on=False)
+    ax.set_xlim(0, 300)
+    ax.set_ylim(2, 3.05)
+
+    ax.legend(
+            loc="lower right", bbox_to_anchor=(1.0, .0), ncol=2, 
+            fontsize=9, markerscale=0.5,
+            fancybox=False, shadow=False, facecolor='w',
+            labelspacing=0.2
+        )
+    mpl.show()
+    
+    
+def plot_dataset(data, plotno:int=0, ax:object=None, title:str=None):
+    spc = re.compile("[ ;,\t\f\v]+") # format replacing all spaces with tabs
+    dataiter = re.finditer(spc, data)
+    data = re.sub(spc, ',', data)
+
+    sio = io.StringIO(data)
+    df = pd.read_table(sio, sep=',')
+
+    sns.scatterplot(x='ASA', y="Eff", data=df, ax=ax, hue=[f"VCN\_c{c:02d}" for c in df.Cell], legend=False)
+
+    if plotno == 2:
+        ax.legend(
+            loc="lower right", bbox_to_anchor=(1.0, 0.0), ncol=2, 
+            fontsize=8, markerscale=0.5,
+            fancybox=False, shadow=False, facecolor='w',
+            labelspacing=0.2
+        )
+
+
+    gmodel = Model(boltz)
+
+    gmodel.set_param_hint("A", value=1, min=0.0, max=1.0, vary=True)
+    gmodel.set_param_hint("vhalf", value=100., min=10., max=300.)
+    gmodel.set_param_hint(
+        "k", value=5, min=0.01, max=200.0, vary=True
     )
-    print(f'\n{meth:s} fit: ')
-    print(result_LM.params.pretty_print())
+    gparams = gmodel.make_params()
+    print('gparams: ', gparams.pretty_print())
+
+    weights = np.ones(len(df.ASA))
+    # weights[df.Eff<0.1] = 0.3
+
+    result_brute = gmodel.fit(
+        df.Eff, method="brute", params=gparams, 
+        x=df.ASA,
+        weights=weights,
+    )
+    for p in result_brute.params:
+        result_brute.params[p].stderr = 0. # abs(res2.params[p].value * 0)
+
+    print('\nBrute fit: ')
+    print(result_brute.params.pretty_print())
     print('-'*80)
     xfit = np.linspace(0., 300., 300)
-    lev_fit = gmodel.eval(params=result_LM.params, x=xfit)
-    # lmfit.report_fit(result_brute.params, min_correl=0.5)
+    bfit = gmodel.eval(params=result_brute.params, x=xfit)
 
-    for p in result_LM.params:
-        if result_LM.params[p].stderr == None:
-            result_LM.params[p].stderr = 0. # abs(res2.params[p].value * 0)
-    resdict[meth] = result_LM
-# ci, trace = lmfit.conf_interval(mini, res2, sigmas=[2, 2, 2], trace=True)
-# lmfit.printfuncs.report_ci(ci)
+    methods = ['leastsq']
+    # methods = ['leastsq', 'least_squares', 'differential_evolution', 'basin_hopping', 'ampgo', 'nelder', 'lbfgsb', 'powell', 'cg',
+    #      'cobyla', 'bfgs', #'trust-exact', 'trust-krylov', 'trust-constr',
+    #      #'dogleg',
+    #      'slsqp', 'shgo', 'dual_annealing']
+    # need jacobian: 'newton','tnc''trust-ncg'
+    resdict = {key: None for key in methods} 
+    ix = np.argsort(df.Eff)
+    y = df.ASA[ix]
+    x = df.Eff[ix]
+    weights = np.ones(len(df.Eff))# * np.random. *(df.Eff/np.max(df.Eff))**2
+    for meth in resdict.keys():
+        result_LM = gmodel.fit(
+            x, method=meth, params=result_brute.params, # gparams, 
+            x=y,
+            weights=weights,
+            max_nfev = 20000, # fit_kws={'maxfev': 5000}
+            jac = '3-point',
+    
+        )
+        print(f'\n{meth:s} fit: ')
+        print(result_LM.params.pretty_print())
+        print('-'*80)
+        xfit = np.linspace(0., 300., 300)
+        lev_fit = gmodel.eval(params=result_LM.params, x=xfit)
+        # lmfit.report_fit(result_brute.params, min_correl=0.5)
 
-mpl.text(200., result_LM.params['A'].value-0.05, F"LM: Max Eff: {result_LM.params['A'].value:.2f} (1$\sigma$ = {result_LM.params['A'].stderr:.2f})", fontsize=8,
-    verticalalignment='top')
+        for p in result_LM.params:
+            if result_LM.params[p].stderr == None:
+                result_LM.params[p].stderr = 0. # abs(res2.params[p].value * 0)
+        resdict[meth] = result_LM
+    # ci, trace = lmfit.conf_interval(mini, res2, sigmas=[2, 2, 2], trace=True)
+    # lmfit.printfuncs.report_ci(ci)
 
-mpl.text(0., 0.8, F"Brute: Max Eff: {result_brute.params['A'].value:.2f} (1$\sigma$ = {result_brute.params['A'].stderr:.2f})", fontsize=8,
-    verticalalignment='top')
+    ax.text(200., result_LM.params['A'].value-0.05, F"LM: Max Eff: {result_LM.params['A'].value:.2f} (1$\sigma$ = {result_LM.params['A'].stderr:.2f})", fontsize=8,
+        verticalalignment='top')
 
-uni = r"$\mu m^2$"
-print('='*80)
-mpl.text(150., 0.5*result_LM.params['A'],
-        f"LM ASA at half max: {result_LM.params['vhalf'].value:.1f} {uni:s} (1$\sigma$ = {result_LM.params['vhalf'].stderr:.1f})\n" +
-        f"Slope: {result_LM.params['k'].value:.1f} (1$\sigma$ = {result_LM.params['k'].stderr:.1f})",
-    fontsize=8)
+    ax.text(0., 1.0, F"Brute: Max Eff: {result_brute.params['A'].value:.2f} (1$\sigma$ = {result_brute.params['A'].stderr:.2f})", fontsize=8,
+        verticalalignment='top')
 
+    uni = r"$\mu m^2$"
+    print('='*80)
+    ax.text(150., 0.5*result_LM.params['A'],
+            f"LM ASA at half max: {result_LM.params['vhalf'].value:.1f} {uni:s} (1$\sigma$ = {result_LM.params['vhalf'].stderr:.1f})\n" +
+            f"Slope: {result_LM.params['k'].value:.1f} (1$\sigma$ = {result_LM.params['k'].stderr:.1f})",
+        fontsize=8)
 
-mpl.text(0., 0.7,
-        f"Br ASA at half max: {result_brute.params['vhalf'].value:.1f} {uni:s} (1$\sigma$ = {result_brute.params['vhalf'].stderr:.1f})\n" +
-        f"Slope: {result_brute.params['k'].value:.1f} (1$\sigma$ = {result_brute.params['k'].stderr:.1f})",
-    fontsize=8)
+    ax.text(0., 0.9,
+            f"Br ASA at half max: {result_brute.params['vhalf'].value:.1f} {uni:s} (1$\sigma$ = {result_brute.params['vhalf'].stderr:.1f})\n" +
+            f"Slope: {result_brute.params['k'].value:.1f} (1$\sigma$ = {result_brute.params['k'].stderr:.1f})",
+        fontsize=8)
 
-# xd = df.ASA
-# breff = gmodel.eval(params=result_brute.params, x=xd)
-# brlms = np.sum((breff - df.Eff)**2)
-# lmeff = gmodel.eval(params=result_LM.params, x=xd)
-# lmlms = np.sum((lmeff - df.Eff)**2)
-mpl.text(0., 0.6, f"Br $\chi^2$: {result_brute.chisqr:.3f}\nLM $\chi^2$:{result_LM.chisqr:.3f}", fontsize=8)
+    # xd = df.ASA
+    # breff = gmodel.eval(params=result_brute.params, x=xd)
+    # brlms = np.sum((breff - df.Eff)**2)
+    # lmeff = gmodel.eval(params=result_LM.params, x=xd)
+    # lmlms = np.sum((lmeff - df.Eff)**2)
+    mpl.text(0., 0.8, f"Br $\chi^2$: {result_brute.chisqr:.3f}\nLM $\chi^2$:{result_LM.chisqr:.3f}", fontsize=8)
 
-ax.plot(xfit, bfit, 'b-', label="Brute")
-for m in resdict.keys():
-    fit = gmodel.eval(params=resdict[m].params, x=xfit)
-    ax.plot(xfit, fit, label=meth)
-ax.set_xlabel(f"ASA ({uni:s})")
-ax.set_ylabel('Efficacy (Bushy spikes/input spikes)')
+    ax.plot(xfit, bfit, 'b-', label="Brute")
+    for m in resdict.keys():
+        fit = gmodel.eval(params=resdict[m].params, x=xfit)
+        ax.plot(xfit, fit, 'r-', label=meth)
+    ax.set_xlabel(f"ASA ({uni:s})")
+    ax.set_ylabel('Efficacy (Bushy spikes/input spikes)')
+    ax.set_ylim(0, 1.0)
+    ax.set_title(title, fontsize=12, fontstyle='bold')
+    
 
-mpl.show()
+if __name__ == '__main__':
+    plot_efficacy()
 
