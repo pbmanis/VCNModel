@@ -1,6 +1,7 @@
 import dataclasses
 from dataclasses import dataclass, field
 import datetime
+import pandas as pd
 import pickle
 import pprint
 import subprocess
@@ -175,6 +176,20 @@ class TableManager:
         # exit()
         return (d["Params"], d["runInfo"], str(datafile.name))  # just the dicts
 
+    def get_sim_runtime(self, filename):
+        """
+        Switch the time stamp to different format
+        Here the initial value is a string, which we convert to a datetime
+      
+        """
+        d = pd.read_pickle(filename)
+        if isinstance(d['runInfo'], dict):
+            ts = d['runInfo']['runTime']
+        else:
+            ts = d['runInfo'].runTime
+        times = datetime.datetime.strptime(ts,"%a %b %d %H:%M:%S %Y") 
+        return times
+
     def make_indexdata(self, params, runinfo, fn=None, indexdir=None):
         """
         Load up the index data class with selected information
@@ -207,11 +222,15 @@ class TableManager:
         )        
         cprint('r', f"simulation path: {str(Index_data.simulation_path):s}")
         if Index_data.filetype == "F":
-
-            mtime = Path(Index_data.simulation_path, fn).stat().st_mtime
+            runtime = self.get_sim_runtime(Path(Index_data.simulation_path, fn))
         elif Index_data.filetype == "D":
-            mtime = Path(Index_data.simulation_path, indexdir).stat().st_mtime
-        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime("%F-%T:.%f") # "%Y-%m-%d-%H:%M:%S")
+            # get the first tile in the directory
+            ddir = list(Path(Index_data.simulation_path, indexdir).glob('*.p'))
+            if len(ddir) > 0:
+                runtime = self.get_sim_runtime(ddir[0])
+            else:
+                timestamp_str = "No Valid Data Files Found"
+        timestamp_str = datetime.datetime.strftime(runtime, "%F-%T") # "%Y-%m-%d-%H:%M:%S")
         Index_data.datestr = timestamp_str
 
 
@@ -335,8 +354,8 @@ class TableManager:
         Print the values in the index file
         """
         print('='*80)
-        print('\n Index file and data file params')
-        cprint('c', f"Index row: {str(indexrow):s}")
+        print('\nIndex file and data file params')
+        cprint('c', f"Index row: {str(indexrow.row):s}")
         data = self.get_table_data(indexrow)
         print('Data: ', data)
         for f in data.files:
@@ -344,11 +363,18 @@ class TableManager:
                 fdata = pickle.load(fh, encoding="latin1")
                 print('*'*80)
                 cprint('c', f)
+                cprint('y', 'File Data Keys')
                 print(fdata.keys())
                 # print(dir(fdata['Params']))
+                cprint('y', 'Parameters')
                 PP.pprint(fdata['Params'].__dict__) # , sort_dicts=True)
                 print('-'*80)
+                cprint('y', 'RunInfo')
                 PP.pprint(fdata['runInfo'].__dict__) # , sort_dicts=True
+                print('-'*80)
+                cprint('y', 'ModelPars')
+                PP.pprint(fdata['modelPars']) # , sort_dicts=True
+                
                 print('*'*80)
     
     def build_table(self, mode="scan"):

@@ -1,5 +1,10 @@
 """
 VS data
+Vector strength for models with SAM tones, different input configurations.
+9 Oct 2020 version. 
+Results are printout from DataTablesVCN after selecting the data runs.
+pbm
+
 """
 
 data="""Cell,Configuration,frequency,dmod,dB,VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,ANVS,maxArea,ninputs,

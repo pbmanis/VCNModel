@@ -75,7 +75,7 @@ class CmdChoices:
 
     protocolChoices = [
         "initIV",
-        "testIV",
+        "Zin",
         "runIV",
         "initandrunIV",
         "initVC",
@@ -122,6 +122,7 @@ class Params:
     AMPAScale: float = 1.0  # Use the default scale for AMPAR conductances
     ANSynapseType: str = "simple"  # or multisite
     ANSynapticDepression: int = 0  # depression calculation is off by default
+    SynapseConfiguration: Union[dict, None] = None
     initStateFile: Union[str, Path, None] = None  # 'IVneuronState_%s.dat'
     simulationFilename: Union[str, Path, None] = None
     shortSimulationFilename: Union[str, Path, None] = None
@@ -219,7 +220,7 @@ class RunInfo:
     fileName: str = "Normal"
     runProtocol: str = CmdChoices.protocolChoices[
         2
-    ]  # testIV is default because it is fast and should be run often
+    ]  # tZin is default because it is fast and should be run often
     runName: str = "Run"
     manipulation: str = "Canonical"
     preMode: str = "CC"
@@ -340,14 +341,7 @@ def build_parser():
         choices=CmdChoices.dendriteChoices,
         help="Choose dendrite table (normal, active, passive)",
     )
-    # parser.add_argument(
-    #     "-H",
-    #     "--defaulthoc",
-    #     action="store_true",
-    #     dest="usedefaulthoc",
-    #     default=False,
-    #     help="Use default hoc file for this cell",
-    # )
+
     parser.add_argument(
         "--hocfile",
         dest="hocfile",
@@ -355,14 +349,7 @@ def build_parser():
         default=None,
         help='hoc file to use for simulation (default is the selected "cell".hoc)',
     )
-    # parser.add_argument(
-    #     "-F",
-    #     "--full",
-    #     dest="fullhocfile",
-    #     action="store_true",
-    #     default=False,
-    #     help='Use "full" hoc file as in "VCN_c02_Full.hoc instead of VCN_c02.hoc")',
-    # )
+
     parser.add_argument(
         "-D",
         "--dendriteexpt",

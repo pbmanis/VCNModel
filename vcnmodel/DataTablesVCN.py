@@ -35,7 +35,8 @@ all_modules = [
     vcnmodel.spikestatistics,
     vcnmodel.analysis,
     ephys.ephysanalysis.SpikeAnalysis,
-    ephys.ephysanalysis.Utility
+    ephys.ephysanalysis.Utility,
+    ephys.ephysanalysis.MakeClamps,
 ]
 
 cellvalues = [
@@ -641,13 +642,11 @@ class DataTables:
                     self.Dock_Table.raiseDock()
 
                 elif path[1] == "View IndexFile":
-                    for index_row in self.selected_index_rows:
-                        selected = self.table_manager.get_table_data(
-                            index_row
-                        )  # table_data[index_row]
-                        if selected is None:
-                            return
-                        self.table_manager.print_indexfile(index_row)
+                    selected = self.table.selectionModel().selectedRows()
+                    if selected is None:
+                        return
+                    index_row = selected[0]
+                    self.table_manager.print_indexfile(index_row)
 
     def setColortoRow(self, rowIndex, color):
         for j in range(self.table.columnCount()):
@@ -680,6 +679,7 @@ class DataTables:
         return fn
 
     def analyze_singles(self, ana_name=None):
+        self.selected_index_rows = self.table.selectionModel().selectedRows()
         if self.selected_index_rows is None:
             return
         index_row = self.selected_index_rows[0]
@@ -689,6 +689,7 @@ class DataTables:
         self.PLT.analyze_singles(index_row, selected)
 
     def trace_viewer(self, ana_name=None):
+        self.selected_index_rows = self.table.selectionModel().selectedRows()
         if self.selected_index_rows is None:
             return
         index_row = self.selected_index_rows[0]
@@ -705,6 +706,7 @@ class DataTables:
         self.PLT.trace_viewer(selected.files[0], PD, selected.runProtocol)
 
     def analyze_traces(self, ana_name=None):
+        self.selected_index_rows = self.table.selectionModel().selectedRows()
         if self.selected_index_rows is None:
             return
         self.plot_traces(
@@ -720,6 +722,7 @@ class DataTables:
     def analyze_IV(self, ana_name=None):
         if self.selected_index_rows is None:
             return
+        self.selected_index_rows = self.table.selectionModel().selectedRows()
         self.plot_traces(
             rows=1,
             cols=len(self.selected_index_rows),
@@ -731,59 +734,20 @@ class DataTables:
         )
         return
 
+
     def plot_traces(
         self, rows=1, cols=1, width=5.0, height=4.0, stack=True, ymin=-120.0, ymax=0.0
     ):
-        P = PH.regular_grid(
-            rows,
-            cols,
-            order="rowsfirst",
-            figsize=(width, height),
-            showgrid=False,
-            verticalspacing=0.01,
-            horizontalspacing=0.01,
-            margins={
-                "bottommargin": 0.1,
-                "leftmargin": 0.07,
-                "rightmargin": 0.05,
-                "topmargin": 0.03,
-            },
-            labelposition=(0.0, 0.0),
-            parent_figure=None,
-            panel_labels=None,
-        )
-
-        PD = plot_sims.PData()
-        for iax, index_row in enumerate(self.selected_index_rows):
-            selected = self.table_manager.get_table_data(
-                index_row
-            )  # table_data[index_row]
-            if selected is None:
-                return
-            sfi = Path(selected.simulation_path, selected.files[0])
-            if stack:
-                self.PLT.plot_traces(
-                    P.axarr[iax, 0],
-                    sfi,
-                    PD,
-                    protocol=selected.runProtocol,
-                    ymin=ymin,
-                    ymax=ymax,
-                    iax=iax,
-                )
-            else:
-                self.PLT.plot_traces(
-                    P.axarr[0, iax],
-                    sfi,
-                    PD,
-                    protocol=selected.runProtocol,
-                    ymin=ymin,
-                    ymax=ymax,
-                    iax=iax,
-                )
-        P.figure_handle.show()
-
+        """
+        Just redirect to plotsims
+        """
+        self.PLT.simple_plot_traces(
+            rows=rows, cols=cols, width=width, height=height,
+                stack=stack, ymin=ymin, ymax=ymax
+            )
+    
     def analyze_VC(self, ana_name=None):
+        self.selected_index_rows = self.table.selectionModel().selectedRows()
         if self.selected_index_rows is None:
             return
         index_row = self.selected_index_rows[0]
@@ -817,6 +781,7 @@ class DataTables:
         P.figure_handle.show()
 
     def analyze_PSTH(self, ana_name=None):
+        self.selected_index_rows = self.table.selectionModel().selectedRows()
         if self.selected_index_rows is None:
             return
         P = self.PLT.setup_PSTH()
@@ -831,6 +796,7 @@ class DataTables:
 
     def analyze_revcorr(self, ana_name):
         revcorrtype = ana_name
+        self.selected_index_rows = self.table.selectionModel().selectedRows()
         if self.selected_index_rows is None:
             return
         index_row = self.selected_index_rows[0]
@@ -840,6 +806,7 @@ class DataTables:
         self.PLT.plot_revcorr_figure(selected, revcorrtype)
 
     def analyze_from_table(self, i):
+        self.selected_index_rows = self.table.selectionModel().selectedRows()
         if self.selected_index_rows is None:
             return
         index_row = self.selected_index_rows[0]

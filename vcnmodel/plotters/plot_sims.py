@@ -37,6 +37,8 @@ from vcnmodel import cell_config as cell_config
 from vcnmodel import spikestatistics as SPKS
 from vcnmodel import sttc as STTC
 
+seaborn.set_style(rc={"pdf.fonttype": 42})
+
 cprint = CP.cprint
 
 """
@@ -103,6 +105,7 @@ AR = MakeClamps.MakeClamps()
 SP = SpikeAnalysis.SpikeAnalysis()
 RM = RmTauAnalysis.RmTauAnalysis()
 rc("text", usetex=False)
+rc("mathtext", fontset="stixsans")
 
 modeltypes = ["mGBC", "XM13", "RM03", "XM13_nacncoop", "XM13A_nacncoop"]
 runtypes = ["AN", "an", "IO", "IV", "iv", "gifnoise"]
@@ -420,7 +423,7 @@ class PlotSims:
         ivdatafile = None
         if self.firstline:
             if not fnp.is_file():
-            # cprint('r', f"   File: {str(fnp):s} NOT FOUND")
+                cprint('r', f"   File: {str(fnp):s} NOT FOUND")
                 self.textappend(f"   File: {str(fnp):s} NOT FOUND", color="red")
                 return None
             else:
@@ -441,7 +444,7 @@ class PlotSims:
             self.textappend(f"pgbcivr2: file mode: {filemode:s}")
         with (open(fnp, "rb")) as fh:
             d = pickle.load(fh)
-
+        self.textappend(f'   ...File read, mode={filemode:s}')
         if filemode in ["vcnmodel.v0"]:
             # print(d['runInfo'].keys())
             par = d["runInfo"]
@@ -463,7 +466,8 @@ class PlotSims:
                     raise ValueError("File missing Params; need to re-run")
             if isinstance(par, vcnmodel.model_params.Params):
                 par = dataclasses.asdict(par)
-
+        ivdatafile = Path(fn)
+        stitle = "Bare Scaling"
         if PD.soma_inflate and PD.dend_inflate:
             if par["soma_inflation"] > 0.0 and par["dendrite_inflation"] > 0.0:
                 ivdatafile = Path(fn)
@@ -485,11 +489,12 @@ class PlotSims:
             stitle = "No scaling (S, D)"
             print(stitle)
         else:
+            ivdatafile = Path(fn)
             self.textappend(
-                f"Unable to match soma/dendrite inflation conditions", "red"
+                f"Bare file: no identified soma/dendrite inflation conditions", "red"
             )
-            return None
-
+            stitle = "Bare Scaling"
+        print('ivdatafile: ', ivdatafile)
         if ivdatafile is None or not ivdatafile.is_file():
             if self.firstline:
                 self.textappend(f"no file matching conditions : {str(ivdatafile):s}")
@@ -497,8 +502,11 @@ class PlotSims:
 
         if self.firstline:
             self.textappend(f"\npgbcivr2: datafile to read: {str(ivdatafile):s}")
-        if "time" in list(d["Results"].keys()):
-            d["Results"] = self._data_flip(d["Results"], d)
+        if isinstance(d["Results"], dict):
+            if "time" in list(d["Results"].keys()):
+                d["Results"] = self._data_flip(d["Results"], d)
+        # print(d['Params'])
+        cprint('m', 'getdatafile returns!')
         return par, stitle, ivdatafile, filemode, d
 
     def _data_flip(self, data_res, d=None):
@@ -593,6 +601,68 @@ class PlotSims:
             RMA = RM.analysis_summary
         return AR, SP, RMA
 
+
+    def simple_plot_traces(
+        self, rows=1, cols=1, width=5.0, height=4.0, stack=True, ymin=-120.0, ymax=0.0
+    ):
+        self.P = PH.regular_grid(
+            rows,
+            cols,
+            order="rowsfirst",
+            figsize=(width, height),
+            showgrid=False,
+            verticalspacing=0.01,
+            horizontalspacing=0.01,
+            margins={
+                "bottommargin": 0.1,
+                "leftmargin": 0.07,
+                "rightmargin": 0.05,
+                "topmargin": 0.03,
+            },
+            labelposition=(0.0, 0.0),
+            parent_figure=None,
+            panel_labels=None,
+        )
+
+        PD = PData()
+        print('self.selected_index_rows: ', self.parent.selected_index_rows)
+        for iax, index_row in enumerate(self.parent.selected_index_rows):
+            print('index_row: ', index_row)
+            selected = self.parent.table_manager.get_table_data(
+                index_row
+            )  # table_data[index_row]
+            if selected is None:
+                return
+            print('sim path, files: ')
+            print(selected.simulation_path)
+            print(selected.files)
+            sfi = Path(selected.simulation_path, selected.files[0])
+            if stack:
+                self.plot_traces(
+                    self.P.axarr[iax, 0],
+                    sfi,
+                    PD,
+                    protocol=selected.runProtocol,
+                    ymin=ymin,
+                    ymax=ymax,
+                    iax=iax,
+                    figure=self.P.figure_handle,
+                )
+            else:
+                self.plot_traces(
+                    self.P.axarr[0, iax],
+                    sfi,
+                    PD,
+                    protocol=selected.runProtocol,
+                    ymin=ymin,
+                    ymax=ymax,
+                    iax=iax,
+                    figure=self.P.figure_handle
+                )
+        print('done')
+        self.P.figure_handle.show()
+        cprint('y', 'really done')
+        
     @winprint
     def plot_traces(
         self,
@@ -605,10 +675,16 @@ class PlotSims:
         iax=None,
         nax=0,
         figure=None,
+        longtitle=True,
     ) -> tuple:
-
+        print('protocol: ', protocol)
+        print('sfi: ', fn)
+        print('figure: ', figure)
         changetimestamp = get_changetimestamp()
         x = self.get_data_file(fn, changetimestamp, PD)
+        if x is None:
+            raise ValueError("Data file not found")
+            return
         mtime = Path(fn).stat().st_mtime
         timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
             "%Y-%m-%d-%H:%M"
@@ -633,7 +709,10 @@ class PlotSims:
         AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
         ntr = len(AR.traces)  # number of trials
         v0 = -160.0
-        deadtime = ri.stimDelay
+        if isinstance(ri, dict):
+            deadtime = ri['stimDelay']
+        else:
+            deadtime = ri.stimDelay
         # print('Deadtime: ', deadtime)
         trstep = 25.0 / ntr
         inpstep = 2.0 / ntr
@@ -647,15 +726,15 @@ class PlotSims:
             if protocol in ["VC", "vc", "vclamp"]:
                 AR.traces[trial] = AR.traces[trial].asarray() * 1e6
             ax.plot(AR.time_base, AR.traces[trial] * 1e3, "k-", linewidth=0.5)
-            if "spikeTimes" in d["Results"][icurr].keys():
+            if "spikeTimes" in list(d["Results"][icurr].keys()):
                 cprint('r', 'spiketimes from results')
                 print(d["Results"][icurr]["spikeTimes"])
                 print(si.dtIC)
                 spikeindex = [int(t / (si.dtIC*1e-3)) for t in d["Results"][icurr]["spikeTimes"]]
             else:
-                cprint('r', 'spikes from SP.spikeIndices')
+                # cprint('r', 'spikes from SP.spikeIndices')
                 spikeindex = SP.spikeIndices[trial]
-            print(f"Trial: {trial:3d} Nspikes: {len(spikeindex):d}")
+            # print(f"Trial: {trial:3d} Nspikes: {len(spikeindex):d}")
             ax.plot(
                 AR.time_base[spikeindex],
                 AR.traces[trial][spikeindex] * 1e3,
@@ -663,7 +742,7 @@ class PlotSims:
                 markersize=2.5,
             )
             sinds = np.array(spikeindex) * AR.sample_rate[trial]
-            print('sinds: ', sinds, deadtime, ri.stimDelay, ri.stimDur)
+            # print('sinds: ', sinds, deadtime, ri.stimDelay, ri.stimDur)
             nspk_in_trial = len(np.argwhere(sinds > deadtime))
             if nspk_in_trial > 0 and ispikethr is None and sinds[0] < (ri.stimDelay+ri.stimDur):
                 # cprint('c', f"Found threshold spike:  {icurr:.2f}, {trial:d}")
@@ -700,12 +779,18 @@ class PlotSims:
             else:
                 ax.set_ylim(ymin, ymax)
                 ax.set_xlim(0.080, np.max(AR.time_base))
-        print("nout spikes: ", noutspikes)
+        # print("nout spikes: ", noutspikes)
         ftname = str(ivdatafile.name)
         ip = ftname.find("_II_") + 4
         ftname = ftname[:ip] + "...\n" + ftname[ip:]
-        toptitle = f"{ftname:s}"
+        cprint('r', RMA)
+        toptitle = ""
+        if longtitle:
+            toptitle = f"{ftname:s}"
+        else:
+            toptitle=si.dendriteExpt
         if protocol in ["IV"]:
+            cprint('r', f"RMA taum: {RMA['taum']:.2f}")
             toptitle += (
                 f"\nRin={RMA['Rin']:.1f} M$\Omega$  $\\tau_m$={RMA['taum']:.2f} ms"
             )
@@ -808,11 +893,14 @@ class PlotSims:
                 fontsize=9,
             )
         toptitle += f"\n{timestamp_str:s}"
-        if nax == 0:
-            if figure is not None:
-                figure.suptitle(toptitle, y=0.95, fontsize=9, verticalalignment="top")
-            else:
-                ax.set_title(toptitle, y=1.0, fontsize=8, verticalalignment="top")
+        cprint('y', toptitle)
+        cprint('m', figure)
+        cprint('m', ax)
+        # if nax == 0:
+        #     if figure is not None:
+        #         figure.suptitle(toptitle, y=0.95, fontsize=9, verticalalignment="top")
+        #     else:
+        #         ax.set_title(toptitle, y=1.0, fontsize=8, verticalalignment="top")
         return (synno, noutspikes, ninspikes)
 
     def setup_VC_plots(self):
@@ -1450,8 +1538,10 @@ class PlotSims:
         # print(SC.VCN_Inputs)
         if isinstance(gbc, int):
             gbc_string = f"VCN_c{gbc:02d}"
-        elif isinstance(gbc, str):
+        elif isinstance(gbc, str) and len(gbc) <= 2:
             gbc_string = f"VCN_c{int(gbc):02d}"
+        elif isinstance(gbc, str) and gbc.startswith("VCN_"):
+            gbc_string = gbc
         syninfo = SC.VCN_Inputs[gbc_string]
         return (SC, syninfo)
 
@@ -1524,7 +1614,7 @@ class PlotSims:
             label=["A"],
             labelposition=(-0.05, 1.05),
         )
-
+        self.parent.selected_index_rows = self.parent.table.selectionModel().selectedRows()
         for iax, index_row in enumerate(self.parent.selected_index_rows):
             selected = self.parent.table_manager.get_table_data(
                 index_row
