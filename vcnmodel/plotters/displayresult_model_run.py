@@ -11,6 +11,10 @@ AN_Result_VCN_c09_Syn006_N001_030dB_16000.0_MS.p
 
 # this version reads the .prm file matching that in model_run
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+NOTE: OBSELETE
+DataTables provides a better interface that is integrated with model_run2
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 """
 from __future__ import print_function
@@ -24,6 +28,8 @@ from collections import OrderedDict
 import matplotlib
 matplotlib.rcParams['text.usetex'] = False
 import matplotlib.pyplot as mpl
+import toml
+config = toml.load(open("wheres_my_data.toml", "r"))
 
 from cnmodel.util import sound
 import vcnmodel.sac_campagnola as SAC
@@ -86,7 +92,7 @@ class DisplayResult():
             simmode = 'AN'
         else:
             simmode = 'IV'
-        outPath = Path('/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells', f"{p:s}", 'Simulations/', simmode)
+        outPath = Path(config['cellDataDirectory'], f"{p:s}", 'Simulations/', simmode)
         self.bp[p] = 'VCN_Cells/{0:s}/Simulations/AN'.format(p)
         # print(('bp: ', self.Params['cell'], self.bp))
         # if self.Params['soundtype'] in ['SAM', 'sam']:

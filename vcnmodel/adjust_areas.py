@@ -9,6 +9,9 @@ from pylibrary.tools import cprint as CP
 from vcnmodel import cell_config as cell_config
 from vcnmodel import h_reader
 
+import toml
+config = toml.load(open("wheres_my_data.toml", "r"))
+
 """
 Adjust the areas of named processes to match
 a specific value.
@@ -722,7 +725,7 @@ class SetNSegs(object):
 
 def recon_hoc():
     cname = "VCN_c09"
-    basepath = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
+    basepath = config["cellDataDirectory"]
     cell = f"{cname:s}/Morphology/{cname:s}.hocx"
     cell = f"{cname:s}/Morphology/{cname:s}_Full.hoc"
     fn = Path(basepath, cell)

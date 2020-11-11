@@ -37,6 +37,9 @@ from vcnmodel import cell_config as cell_config
 from vcnmodel import spikestatistics as SPKS
 from vcnmodel import sttc as STTC
 
+import toml
+config = toml.load(open("wheres_my_data.toml", "r"))
+
 seaborn.set_style(rc={"pdf.fonttype": 42})
 
 cprint = CP.cprint
@@ -169,8 +172,8 @@ class PData:
     default_modelName: str = "XM13_nacncoop"
     soma_inflate: bool = True
     dend_inflate: bool = True
-    basepath: str = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
-    renderpath: str = "/Users/pbmanis/Desktop/Python/vcnmodel/Renderings"
+    basepath: str = config['baseDataDirectory']
+    renderpath: str = str(Path(config['codeDirectory'], "Renderings"))
     thiscell: str = ""
 
 
@@ -2825,7 +2828,7 @@ def cmdline_display(args, PD):
 
         fng = []
         for ig, gbc in enumerate(PD.gradeA):
-            basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
+            basefn = f"{config['cellDataDirectory']:s}/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
             pgbc = f"VCN_c{gbc:02d}"
             allf = list(Path(basefn).glob("*"))
             allfiles = sorted([f for f in allf if f.is_dir()])
@@ -2838,7 +2841,7 @@ def cmdline_display(args, PD):
 
     else:
         for ig, gbc in enumerate(PD.gradeA):
-            basefn = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
+            basefn = f"{config['cellDataDirectory']:s}/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
             pgbc = f"VCN_c{gbc:02d}"
             if args.protocol == "IV":
                 name_start = f"IV_Result_VCN_c{gbc:02d}_inp=self_{modelName:s}*.p"

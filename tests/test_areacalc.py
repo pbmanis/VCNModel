@@ -1,5 +1,10 @@
 """
 Tests of section/segment areas with 3d geometry
+Partially done to try to understand how Neuron calculates and uses area
+Also done to determine how to do the rescaling.
+This code is the basis for adjust_areas.py, which is used to adjust the
+areas in the models dynamicall (upon loading, with reference to the tables
+of mesh areas).
 
 """
 
@@ -10,6 +15,8 @@ import numpy as np
 from pprint import pprint
 from pathlib import Path
 import matplotlib.pyplot as mpl
+import toml
+config = toml.load(open("wheres_my_data.toml", "r"))
 
 import vcnmodel.cell_config as cell_config
 from vcnmodel import h_reader
@@ -572,8 +579,8 @@ def by_section_diam(fn, cname):
 
 def recon_hoc():
     cname = "VCN_c17"
-    basepath = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
-    cell = f"{cname:s}/Morphology/{cname:s}_Full.hocx"
+    basepath = config['cellDataDirectory']
+    cell = f"{cname:s}/Morphology/{cname:s}_Full.hoc"
     fn = Path(basepath, cell)
     print(fn.is_file())
 

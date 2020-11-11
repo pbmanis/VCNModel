@@ -6,11 +6,13 @@ import numpy as np
 from neuron import h
 from neuronvis import hoc_reader as HR
 from neuronvis import swc_to_hoc
+import toml
+config = toml.load(open("wheres_my_data.toml", "r"))
 
 known_names = ['Axon_Hillock', 'Axon_Initial_Segment',
                'Dendritic_Hub', 'Dendritic_Swelling', 'Distal_Dendrite',
            'Proximal_Dendrite', 'soma']
-basepath = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
+basepath = config['cellDataDirectory']
 
 cells = [9] #, 5, 6, 9, 10, 11, 13, 17, 30]
 

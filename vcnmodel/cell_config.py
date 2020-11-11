@@ -64,7 +64,7 @@ rcParams["ps.fonttype"] = 42
 # datafile_default = Path('MorphologyData', 'Dendrite Quality and Surface Areas_comparisons_pbm_15Mar2019_v2.xlsx')
 # soma_area_data = 'Mesh Surface Area'
 config = toml.load(open("wheres_my_data.toml", "r"))
-dendqual = Path(config["baseDataDirectory"], config["dendriteQualityFile"])
+dendqual = Path(config["baseMorphologyDirectory"], config["dendriteQualityFile"])
 
 # specify the name of the columns in the excel sheet
 # these keep getting edited and changing
