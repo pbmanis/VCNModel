@@ -332,8 +332,8 @@ class ParseHoc(object):
 
 
 def main():
-    basedir = '/Users/pbmanis/Desktop/Python/VCNModel'
-    fn = Path(basedir, 'VCN_Cells', 'VCN_c16', 'Morphology', 'VCN_c16.hoc')
+    basedir = '/Users/pbmanis/Desktop/Python/VCN-SBEM-Data'
+    fn = Path(basedir, 'VCN_Cells', 'VCN_c18', 'Morphology', 'VCN_c18_Full.hoc')
     # fn = '/Users/pbmanis/Desktop/Python/VCNModel/VCN_newcoord/VCN_c09.hoc'
     # fn = '/Users/pbmanis/Desktop/Python/VCNModel/ASA/CellBodySWCs/VCN_c09_CellBody01.hoc'
     hparse = ParseHoc(fn)
