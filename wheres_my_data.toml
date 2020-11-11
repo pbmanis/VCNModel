@@ -1,23 +1,17 @@
 # filenames and paths
-# This file will be used by cell_config.py to read the tables, and set up
-# some paths for use by model_run2.py
-# Adjust these first to point to the correct locations.
-# baseDirectory should point to where the individual cell data are stored
-# this includes the results, as well as the morphology files
+# Use this to set the directories and paths where you put the data files
+# that can drive the simulations. 
+# This file is mostly used by cell_config.py, but it is also imported
+# elsewhere rather than harcoding some of the paths.
+#
 baseDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
-#baseDataDirectory 
 baseDataDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/MorphologyData/VCN"
-# the dendriteQualityFile holds information about each reconstructed cell
-# in an excel table. The file has evolved over time to contain increasing
-# amounts of information. The most recent one is listed last and should
-# be used.
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_pbm_14Oct2019_v1.xlsx'
 #dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_6_March_2020.xlsx'
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_2_April_2020.xlsx'
 dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_29_June_2020.xlsx'
 
-# These are the names of specific tabs in the excel 
-# "dendrite quality file"
+# names of excel tabs in the dendrite quality file
 # asaData = "Input_ASA_FromASAProtocol(Holco"
 # asaHeaderSkip = 3
 asaData = "Input_ASA_FromautoASA.py"
