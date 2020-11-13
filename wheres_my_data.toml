@@ -12,8 +12,9 @@ baseDataDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
 cellDataDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
 baseMorphologyDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/MorphologyData/VCN"
 codeDirectory="/Users/pbmanis/Desktop/Python/vcnmodel"
+pngDirectory="VCN-CellImages-1-2020/Bushy_Cells"  # png files
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_pbm_14Oct2019_v1.xlsx'
-#dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_6_March_2020.xlsx'
+# dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_6_March_2020.xlsx'
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_2_April_2020.xlsx'
 dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_29_June_2020.xlsx'
 

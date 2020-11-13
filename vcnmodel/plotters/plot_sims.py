@@ -512,6 +512,20 @@ class PlotSims:
         cprint('m', 'getdatafile returns!')
         return par, stitle, ivdatafile, filemode, d
 
+    @winprint
+    def print_file_info(self, selected):
+        br = "{}"
+        self.textappend(f"{int(self.parent.cellID):d}: {br[0]:s}")
+        for sel in selected:
+            data = self.parent.table_manager.get_table_data(sel)
+            fn = Path(data.files[0])
+            fnr = str(fn.parts[-2])
+            self.textappend(f"    '{data.dendriteMode:s}': '{fnr:s}' {br[1]:s},")
+        self.textappend(f"{br[1]:s},")
+        
+            
+        
+        
     def _data_flip(self, data_res, d=None):
         """
         Convert from old data file format to new
@@ -675,27 +689,38 @@ class PlotSims:
         protocol: str,
         ymin=-80.0,
         ymax=20.0,
+        xmin = 0.,
+        xmax = None,
         iax=None,
         nax=0,
+        rep=None,   # which rep : none is for all.
         figure=None,
         longtitle=True,
+        ivaxis=None,
+        ivcolor='k',
+        iv_spike_color='r',
+        spike_marker_size=2.5,
+        spike_marker_color='g',
+        calx = 20.,
+        caly = 0.,
+        
     ) -> tuple:
-        print('protocol: ', protocol)
-        print('sfi: ', fn)
-        print('figure: ', figure)
+        # print('protocol: ', protocol)
+        # print('sfi: ', fn)
+        # print('figure: ', figure)
         changetimestamp = get_changetimestamp()
         x = self.get_data_file(fn, changetimestamp, PD)
         if x is None:
             raise ValueError("Data file not found")
-            return
+            return (None, None, None)
         mtime = Path(fn).stat().st_mtime
         timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
             "%Y-%m-%d-%H:%M"
         )
         if x is None:
-            print("No simulation found that matched conditions")
+            cprint('r', "No simulation found that matched conditions")
             print(fn)
-            return
+            return (None, None, None)
         # unpack x
         inx = str(fn).find("_Syn")
         synno = None
@@ -710,6 +735,10 @@ class PlotSims:
         si = d["Params"]
         ri = d["runInfo"]
         AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
+        if figure is None:  # no figure... just analysis... 
+            return AR, SP, RMA
+
+        cprint('c', 'preping for plot')
         ntr = len(AR.traces)  # number of trials
         v0 = -160.0
         if isinstance(ri, dict):
@@ -725,14 +754,17 @@ class PlotSims:
         ispikethr = None
         spike_rheobase = None
         for trial, icurr in enumerate(d['Results']):
+            if rep is not None and trial != rep:
+                continue
+            cprint('c', f"trial: {trial:d}")
             AR.traces[trial][0] = AR.traces[trial][1]
             if protocol in ["VC", "vc", "vclamp"]:
                 AR.traces[trial] = AR.traces[trial].asarray() * 1e6
             ax.plot(AR.time_base, AR.traces[trial] * 1e3, "k-", linewidth=0.5)
             if "spikeTimes" in list(d["Results"][icurr].keys()):
                 cprint('r', 'spiketimes from results')
-                print(d["Results"][icurr]["spikeTimes"])
-                print(si.dtIC)
+                # print(d["Results"][icurr]["spikeTimes"])
+               #  print(si.dtIC)
                 spikeindex = [int(t / (si.dtIC*1e-3)) for t in d["Results"][icurr]["spikeTimes"]]
             else:
                 # cprint('r', 'spikes from SP.spikeIndices')
@@ -741,8 +773,10 @@ class PlotSims:
             ax.plot(
                 AR.time_base[spikeindex],
                 AR.traces[trial][spikeindex] * 1e3,
-                "go",
-                markersize=2.5,
+                'o',
+                color=spike_marker_color,
+                markerfacecolor=spike_marker_color,
+                markersize=spike_marker_size,
             )
             sinds = np.array(spikeindex) * AR.sample_rate[trial]
             # print('sinds: ', sinds, deadtime, ri.stimDelay, ri.stimDur)
@@ -752,7 +786,6 @@ class PlotSims:
                 spike_rheobase = icurr
                 ispikethr = trial
             noutspikes += nspk_in_trial
-            calx = 20.
             if protocol in ["AN", "runANSingles"]:
                 if trial in list(d["Results"].keys()) and "inputSpikeTimes" in list(
                     d["Results"][icurr].keys()
@@ -774,14 +807,21 @@ class PlotSims:
                     ninspikes += len(spkt[ian] > deadtime)
 
                 ax.set_ylim(-80.0, 20.0)
-                ax.set_xlim(50., np.max(AR.time_base))
-                calx = 50.
+                if xmin is None:
+                    xmin = 0.050
+                if xmax is None:
+                    xmax = np.max(AR.time_base)
+                ax.set_xlim(xmin, xmax)
             elif protocol in ["VC", "vc", "vclamp"]:
                 pass  #
                 # ax.set_ylim((-100.0, 100.0))
             else:
                 ax.set_ylim(ymin, ymax)
-                ax.set_xlim(0.080, np.max(AR.time_base))
+                if xmin is None:
+                    xmin = 0.050
+                if xmax is None:
+                    xmax = np.max(AR.time_base)
+                ax.set_xlim(xmin, xmax)
         # print("nout spikes: ", noutspikes)
         ftname = str(ivdatafile.name)
         ip = ftname.find("_II_") + 4
@@ -798,10 +838,10 @@ class PlotSims:
                 f"\nRin={RMA['Rin']:.1f} M$\Omega$  $\\tau_m$={RMA['taum']:.2f} ms"
             )
 
-            if iax == 2:
+            if iax == 2 and calx is not None:
                 PH.calbar(
                     ax,
-                    calbar=[120.0, -30.0, 10.0, 20.0],
+                    calbar=[calx, caly, 10.0, 20.0],
                     scale=[1.0, 1.0],
                     axesoff=True,
                     orient="right",
@@ -814,11 +854,18 @@ class PlotSims:
             else:
                 PH.noaxes(ax)
             # insert IV curve
-            secax = PLS.create_inset_axes([0.45, -0.05, 0.3, 0.3], ax, label=str(ax))
+            if ivaxis is None:
+                secax = PLS.create_inset_axes([0.45, -0.05, 0.3, 0.3], ax, label=str(ax))
+                color = 'k'
+                ticklabelsize=6
+            else:
+                secax = ivaxis
+                color = ivcolor
+                ticklabelsize=8
             secax.plot(
-                RM.ivss_cmd_all * 1e12,
+                RM.ivss_cmd_all * 1e9,
                 RM.ivss_v_all * 1e3,
-                "ks-",
+                f"{color:s}s-",
                 markersize=3,
                 markerfacecolor="k",
                 zorder=10,
@@ -828,9 +875,9 @@ class PlotSims:
             ltz = np.where(RM.ivss_cmd_all <= 0.0)[0]
 
             secax.plot(
-                RM.ivpk_cmd_all[ltz] * 1e12,
+                RM.ivpk_cmd_all[ltz] * 1e9,
                 RM.ivpk_v_all[ltz] * 1e3,
-                "ko-",
+                f"{color:s}o-",
                 markersize=3,
                 markerfacecolor="w",
                 zorder=10,
@@ -838,11 +885,12 @@ class PlotSims:
             )
             if ispikethr is not None:  # decorate spike threshold point
                 secax.plot(
-                    RM.ivss_cmd_all[ispikethr] * 1e12,
+                    RM.ivss_cmd_all[ispikethr] * 1e9,
                     RM.ivss_v_all[ispikethr] * 1e3,
-                    "ro",
+                    "o",
                     markersize=3,
-                    markerfacecolor="r",
+                    color=iv_spike_color,
+                    markerfacecolor=iv_spike_color,
                     zorder=100,
                     clip_on=False,
                 )
@@ -850,9 +898,9 @@ class PlotSims:
                 secax,
                 xyzero=[0.0, -60.0],
                 limits=[
-                    np.min(RM.ivss_cmd_all) * 1e12,
+                    np.min(RM.ivss_cmd_all) * 1e9,
                     -120,
-                    np.max(RM.ivss_cmd_all) * 1e12,
+                    np.max(RM.ivss_cmd_all) * 1e9,
                     -25.0,
                 ],  #
             )
@@ -861,9 +909,9 @@ class PlotSims:
                 axes="xy",
                 density=(1.0, 1.0),
                 insideMargin=0.02,
-                pointSize=6,
-                tickPlacesAdd={"x": 0, "y": 0},
-                floatAdd={"x": 0, "y": 0},
+                pointSize=ticklabelsize,
+                tickPlacesAdd={"x": 1, "y": 0},
+                floatAdd={"x": 1, "y": 0},
             )
         elif protocol in ["VC", "vc", "vclamp"]:
             maxt = np.max(AR.time_base)
@@ -879,7 +927,7 @@ class PlotSims:
             if nax == 0:
                 PH.calbar(
                     ax,
-                    calbar=[calx, ymin, 10.0, 20.0],
+                    calbar=[calx, caly, 10.0, 20.0],
                     unitNames={"x": "ms", "y": "mV"},
                     fontsize=9,
                 )
@@ -2174,6 +2222,8 @@ class PlotSims:
                 P.axarr[i, 0], sfi[i], PD, selected.runProtocol,
                 nax = i, figure=P.figure_handle)
             SC, syninfo = self.get_synaptic_info(self.parent.cellID)
+            print(synno, nout, nin)
+            print(syninfo)
             area = syninfo[1][synno][0]
             nsites = int(np.around(area * SC.synperum2))
             eff = f"{(float(nout) / nin):.5f}"

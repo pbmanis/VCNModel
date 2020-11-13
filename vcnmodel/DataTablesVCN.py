@@ -15,6 +15,9 @@ import pyqtgraph.dockarea as PGD
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 from vcnmodel import table_manager as table_manager
 from vcnmodel.plotters import plot_sims
+from vcnmodel.plotters import figures
+from vcnmodel.plotters import plot_z
+from vcnmodel.plotters import efficacy_plot
 from pylibrary.tools import cprint as CP
 # import vcnmodel.correlation_calcs
 import vcnmodel.spikestatistics
@@ -31,6 +34,9 @@ files/runs and enabling analysis via a GUI
 all_modules = [
     table_manager,
     plot_sims,
+    figures,
+    plot_z,
+    efficacy_plot,
     # vcnmodel.correlation_calcs,
     vcnmodel.spikestatistics,
     vcnmodel.analysis,
@@ -48,6 +54,7 @@ cellvalues = [
     11,
     13,
     17,
+    18,
     # 24,
     # 29,
     30,
@@ -108,6 +115,7 @@ class TableModel(QtGui.QStandardItemModel):
 class DataTables:
     def __init__(self):
         self.PLT = plot_sims.PlotSims(parent=self)
+        self.FIGS = figures.Figures(parent=self)
         self.QColor = QtGui.QColor  # for access in plotsims (pass so we can reload)
         self.modeltypes = {
             "b": "Bushy",
@@ -219,7 +227,8 @@ class DataTables:
         self.movie_state = False
         self.frame_intervals = [0.033, 0.05, 0.1, 0.2, 0.3, 0.5, 1.0, 2.0]
         self.frame_interval = self.frame_intervals[3]
-
+        self.target_figure = "IV Figure"
+        
         self.params = [
             # {"name": "Pick Cell", "type": "list", "values": cellvalues, "value": cellvalues[0]},
             {"name": "Scan Runs", "type": "action"},
@@ -409,9 +418,14 @@ class DataTables:
                 "name": "Figures",
                 "type": "group",
                 "children": [
-                    {"name": "IV Figure", "type": "action"},
-                    {"name": "Reccorr Comparison", "type": "action"},
-                    {"name": "PSTH/VS", "type": "action"},
+                    {"name": "Figures", "type": "list", 
+                    "values": ["IV Figure", "IV Supplement", "Zin Supplement",
+                               "Efficacy", "Efficacy Supplement",
+                               "Revcorr Ex", "Revcorr Supplement", "Revcorr Compare", 
+                               "PSTH/VS", "FSL", "VS-SAM Tone"],
+                    "value": "IV Figure",
+                },
+                    {"name": "Create Figure", "type": "action"},
                 ],
             },
             {
@@ -420,6 +434,7 @@ class DataTables:
                 "children": [
                     {"name": "Reload", "type": "action"},
                     {"name": "View IndexFile", "type": "action"},
+                    {"name": "Print File Info", "type": "action"}
                 ],
             },
             {"name": "Quit", "type": "action"},
@@ -487,8 +502,8 @@ class DataTables:
         if where_is_data.is_file():
             self.datapaths = toml.load("wheres_my_data.toml")
         else:
-            self.datapaths = {"baseDirectory": Path("../VCN-SBEM-Data", "VCN_Cells",)}
-        self.basepath = self.datapaths["baseDirectory"]
+            self.datapaths = {"cellDataDirectory": Path("../VCN-SBEM-Data", "VCN_Cells",)}
+        self.basepath = self.datapaths["cellDataDirectory"]
 
     def on_double_Click(self, w):
         index = w.selectionModel().currentIndex()
@@ -607,12 +622,10 @@ class DataTables:
                     self.frame_interval = float(data)
 
             if path[0] == "Figures":
-                if path[1] == "IV Figure":
-                    pass
-                if path[1] == "Reccorr Comparison":
-                    self.PLT.compare_revcorrs()
-                if path[1] == "PSTH/VS":
-                    self.PLT.psth_vs()
+                if path[1] == "Figures":
+                    self.target_figure = data
+                elif path[1] == "Create Figure":
+                    self.FIGS.make_figure(self.target_figure)
 
             if path[0] == "Tools":
                 if path[1] == "Reload":
@@ -628,6 +641,7 @@ class DataTables:
                         selvals=self.selvals,
                         altcolormethod=self.altColors,
                     )
+                    
 
                     print("   reload ok")
                     print("-" * 80)
@@ -640,13 +654,19 @@ class DataTables:
                     self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)  # by date
                     self.altColors()  # reset the color list.
                     self.Dock_Table.raiseDock()
-
+                    self.FIGS = figures.Figures(parent=self)
+                    
                 elif path[1] == "View IndexFile":
                     selected = self.table.selectionModel().selectedRows()
                     if selected is None:
                         return
                     index_row = selected[0]
                     self.table_manager.print_indexfile(index_row)
+                elif path[1] == "Print File Info":
+                    selected = self.table.selectionModel().selectedRows()
+                    if selected is None:
+                        return
+                    self.PLT.print_file_info(selected)
 
     def setColortoRow(self, rowIndex, color):
         for j in range(self.table.columnCount()):
