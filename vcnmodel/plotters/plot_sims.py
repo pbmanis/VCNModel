@@ -756,7 +756,7 @@ class PlotSims:
         for trial, icurr in enumerate(d['Results']):
             if rep is not None and trial != rep:
                 continue
-            cprint('c', f"trial: {trial:d}")
+            # cprint('c', f"trial: {trial:d}")
             AR.traces[trial][0] = AR.traces[trial][1]
             if protocol in ["VC", "vc", "vclamp"]:
                 AR.traces[trial] = AR.traces[trial].asarray() * 1e6
@@ -826,7 +826,7 @@ class PlotSims:
         ftname = str(ivdatafile.name)
         ip = ftname.find("_II_") + 4
         ftname = ftname[:ip] + "...\n" + ftname[ip:]
-        cprint('r', RMA)
+        # cprint('r', RMA)
         toptitle = ""
         if longtitle:
             toptitle = f"{ftname:s}"

@@ -196,7 +196,8 @@ def test_original():
     aec_template = 'Cell3_Ger1Elec_ch{0:d}_{1:4d}.ibw'
     train_template = 'Cell3_Ger1Training_ch{0:d}_{1:4d}.ibw'
     test_template = 'Cell3_Ger1Test_ch{0:d}_{1:4d}.ibw'
-    basepath = '/Users/pbmanis/Desktop/Python/GIFFittingToolbox/data/fi/'
+    # just fyi, this does not actually exist anymore...
+    basepath = Path(config['codeDirectory'], 'GIFFittingToolbox/data/fi/'
 
     GF = GIFFitter(path=basepath)
     GF.GIF.gn = 0.0
@@ -213,7 +214,7 @@ def fit_cell(cellno=19, gn=0.):
     cell = cellno
     model = 'mGBC'
     cname = 'VCN_c%02d' % cell 
-    basepath = '/Users/pbmanis/Desktop/Python/VCNModel'
+    basepath = config['codeDirectory']
     cellpath = 'VCN_Cells/%s/Simulations/Noise/' % cname
     
     testset = os.path.join(basepath, cellpath, '%s_%s_gifnoise.p' % (cname, model))

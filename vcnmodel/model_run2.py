@@ -21,7 +21,7 @@ from cnmodel import cells
 from cnmodel.decorator import Decorator
 from cnmodel.util import sound
 from matplotlib import pyplot as mpl
-from neuronvis import hoc_graphics as hoc_graphics
+# from neuronvis import hoc_graphics as hoc_graphics
 from pylibrary.tools import cprint as CP
 # from pylibrary.tools import utility as pu  # access to a spike finder routine
 from pyqtgraph import multiprocess as MP
@@ -320,8 +320,8 @@ class ModelRun:
         if where_is_data.is_file():
             self.datapaths = toml.load("wheres_my_data.toml")
         else:
-            self.datapaths = {"baseDirectory": Path("../VCN-SBEM-Data", "VCN_Cells")}
-        self.baseDirectory = self.datapaths["baseDirectory"]
+            self.datapaths = {"cellDataDirectory": Path("../VCN-SBEM-Data", "VCN_Cells")}
+        self.baseDirectory = self.datapaths["cellDataDirectory"]
         self.morphDirectory = "Morphology"
         self.initDirectory = "Initialization"
         self.simDirectory = "Simulations"
@@ -742,7 +742,7 @@ class ModelRun:
             }
             changes = None
             nach = None  # uses default
-            if self.Params.dataTable is "":
+            if self.Params.dataTable == "":
                 table_name = f"vcnmodel.model_data.data_{self.Params.modelName:s}{dmodes[self.Params.dendriteMode]:s}"
             else:
                 table_name = f"vcnmodel.model_data.{self.Params.dataTable:s}"
@@ -919,7 +919,7 @@ class ModelRun:
         electrode_section = list(self.post_cell.hr.sec_groups["soma"])[0]
         self.RunInfo.electrodeSection = self.post_cell.hr.get_section(electrode_section)
         self.RunInfo.electrodeSectionName = "soma"
-        self.hg = hoc_graphics
+        # self.hg = hoc_graphics
         self.get_hoc_file(self.post_cell.hr)
 
         if self.Params.verbose:
@@ -1049,24 +1049,25 @@ class ModelRun:
         """
         if not self.Params.setup:
             self.setup_model(par_map=par_map)
-        import neuronvis as NV
-
-        if self.Params.cellID in list(vcnmodel.model_params.display_orient_cells):
-            angles = vcnmodel.model_params.display_orient_cells[self.Params.cellID]
-        else:
-            angles = [200.0, 0.0, 0.0]
-        print("Rendering via model_run2")
-        NV.hocRender.Render(
-            hoc_file=self.post_cell.hr.h,  # hoc_file,
-            display_style=self.Params.displayStyle,  # display_mode,
-            display_renderer="pyqtgraph",  # args["renderer"],
-            display_mode=self.Params.displayMode,  # 'sec-type', # args["display"],
-            mechanism=self.Params.displayMechanism,  # args["mechanism"],
-            initial_view=angles,
-            alpha=1.0,  # args["alpha"],
-            sim_data=None,  # sim_data,
-        )
-        exit()
+        return  # until we figure out opengl on mac osx Big Sur
+        # import neuronvis as NV
+        #
+        # if self.Params.cellID in list(vcnmodel.model_params.display_orient_cells):
+        #     angles = vcnmodel.model_params.display_orient_cells[self.Params.cellID]
+        # else:
+        #     angles = [200.0, 0.0, 0.0]
+        # print("Rendering via model_run2")
+        # NV.hocRender.Render(
+        #     hoc_file=self.post_cell.hr.h,  # hoc_file,
+        #     display_style=self.Params.displayStyle,  # display_mode,
+        #     display_renderer="pyqtgraph",  # args["renderer"],
+        #     display_mode=self.Params.displayMode,  # 'sec-type', # args["display"],
+        #     mechanism=self.Params.displayMechanism,  # args["mechanism"],
+        #     initial_view=angles,
+        #     alpha=1.0,  # args["alpha"],
+        #     sim_data=None,  # sim_data,
+        # )
+        # exit()
 
     def run_model(self, par_map: dict = None):
         """
@@ -2382,13 +2383,13 @@ class ModelRun:
         list(hf.sec_groups.keys())
         if len(hf.sec_groups) > 1:  # multiple names, so assign colors to structure type
             self.section_colors = {}
-            if self.Params.verbose:
-                print("gethocfile # colors: ", len(self.hg.colorMap))
-                print("gethocfile # sexcgroups: ", len(list(hf.sec_groups.keys())))
-            for i, s in enumerate(hf.sec_groups.keys()):
-                if self.Params.verbose:
-                    print("gethocfile group: ", s)
-                self.section_colors[s] = self.hg.colorMap[i]
+            # if self.Params.verbose:
+            #     print("gethocfile # colors: ", len(self.hg.colorMap))
+            #     print("gethocfile # sexcgroups: ", len(list(hf.sec_groups.keys())))
+            # for i, s in enumerate(hf.sec_groups.keys()):
+            #     if self.Params.verbose:
+            #         print("gethocfile group: ", s)
+            #     self.section_colors[s] = self.hg.colorMap[i]
         #        else: # single section name, assign colors to SectionList types:
         #        self.section_colors={'axon': 'r', 'heminode': 'g', 'stalk':'y', 'branch': 'b', 'neck': 'brown',
         #            'swelling': 'magenta', 'tip': 'powderblue', 'parentaxon': 'orange', 'synapse': 'k'}

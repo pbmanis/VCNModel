@@ -573,7 +573,7 @@ class DataTables:
                     self.filters["Use Filter"] = data
                 elif path[1] in ["dBspl", "nReps", "fmod"]:
                     # print('dbspl/nreps: ', data)
-                    if data is not "None":
+                    if data != "None":
                         self.filters[path[1]] = int(data)
                     else:
                         self.filters[path[1]] = None
@@ -584,12 +584,12 @@ class DataTables:
                     "dendMode",
                     "soundType",
                 ]:
-                    if data is not "None":
+                    if data != "None":
                         self.filters[path[1]] = str(data)
                     else:
                         self.filters[path[1]] = None
                 elif path[1] in ['pipDur']:
-                    if data is not "None":
+                    if data != "None":
                         self.filters[path[1]] = float(data)
                     else:
                         self.filters[path[1]] = None
@@ -601,7 +601,7 @@ class DataTables:
                         self.filters["Use Filter"] = False
                         self.table_manager.apply_filter(QtCore=QtCore)
                 else:
-                    if data is not "None":
+                    if data != "None":
                         self.filters[path[1]] = float(data)
                     else:
                         self.fliters[path[1]] = None

@@ -100,6 +100,11 @@ Figure_AllIVs = {
         "passive": "runIV-all-2020-07-30.18-43-29",
         "active": "runIV-all-2020-07-30.18-56-13",
     },
+    18: {
+        'normal': 'runIV-all-2020-11-16.10-54-53' ,
+        'active': 'runIV-all-2020-11-16.10-55-23' ,
+        'passive': 'runIV-all-2020-11-16.10-55-08' ,
+    },
     30: {
         "normal": "runIV-all-2020-07-30.18-31-35",
         "passive": "runIV-all-2020-07-30.18-45-12",

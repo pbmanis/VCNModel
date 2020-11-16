@@ -13,7 +13,7 @@ config = toml.load(open("wheres_my_data.toml", "r"))
 
 AdjA = adjust_areas.AdjustAreas()
 
-gradeA = [2, 5, 6, 9, 10, 11, 13, 17, 24, 29, 30]
+gradeA = [2, 5, 6, 9, 10, 11, 13, 17, 18, 24, 29, 30]
 
 all_cell_nos = range(1, 32)
 allcells = [f"{c:02d}" for c in all_cell_nos]

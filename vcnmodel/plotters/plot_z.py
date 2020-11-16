@@ -26,7 +26,7 @@ class PlotZ:
         self.pg = pg
 
         # f = ['VCN_c09_Full_Z.pkl', 'VCN_c09_NoUninnervated_Z.pkl', 'VCN_c09_NoDend_Z.pkl']
-        self.fi = [2, 5, 6, 9, 10, 11, 13, 17, 30]
+        self.fi = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
         # fi = [9, 11, 13, 30]
         # fi = [2, 5, 6, 10, 17]
         self.filenames = []
@@ -34,7 +34,7 @@ class PlotZ:
             self.filenames.append(f"VCN_c{fin:02d}_Full_Z.pkl")
 
         # cols = ['w', 'm', 'c', 'y', 'g', 'r', 'b', pg.mkPen()]
-        self.syms = ["s", "o", "x", "s", "o", "x", "s", "o", "x"]
+        self.syms = ["s", "o", "x", "s", "o", "x", "s", "o", "x", "s"]
 
         if self.pg:
             self.pg_plot()
