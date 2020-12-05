@@ -1,3 +1,5 @@
+from cycler import cycler
+import datetime
 import pickle
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -7,9 +9,13 @@ import matplotlib
 import matplotlib.pyplot as mpl
 import numpy as np
 import pandas as pd
+import rich as RI
+from rich.text import Text
+from rich.console import Console
 import seaborn as sns
 from matplotlib import image as mpimg
 from pylibrary.plotting import plothelpers as PH
+from pylibrary.tools import cprint as CP
 
 import toml
 
@@ -18,7 +24,7 @@ import vcnmodel.plotters.plot_z as PZ
 import vcnmodel.plotters.efficacy_plot as EF
 
 config = toml.load(open("wheres_my_data.toml", "r"))
-
+cprint = CP.cprint
 
 def grAList() -> list:
     """
@@ -33,6 +39,13 @@ colors = ["c", "k", "m"]
 title_text = {"passive": "Passive", "normal": "Half-active", "active": "Active"}
 font_colors = {"passive": "c", "normal": "k", "active": "m"}
 spike_colors = font_colors
+
+def get_changetimestamp():
+    # trip filemode based on date of simulatoin
+    changedate = "2020-04-29-12:00"
+    dts = datetime.datetime.strptime(changedate, "%Y-%m-%d-%H:%M")
+    changetimestamp = datetime.datetime.timestamp(dts)
+    return changetimestamp
 
 
 @dataclass
@@ -112,7 +125,129 @@ Figure_AllIVs = {
     },
 }
 
+"""
+The efficacy data is taken from runs using the latest measure
+of synapse density, 0.7686 syn/um2  11/15/2020
+"""
+Figure_efficacy_supplement = {
+    2: {
+        'NoDend': 'runANSingles-all-2020-11-16.17-04-23',
+        'Full': 'runANSingles-all-2020-11-16.17-08-55',
+    },
+    5: {
+        'NoDend': 'runANSingles-all-2020-11-16.17-19-30',
+        'Full': 'runANSingles-all-2020-11-16.17-25-11',
+    },
+    6: {
+        'NoDend': 'runANSingles-all-2020-11-16.17-40-50',
+        'Full': 'runANSingles-all-2020-11-16.17-46-05',
+    },
+    9: {
+        'NoDend': 'runANSingles-all-2020-11-16.17-56-43',
+        'Full': 'runANSingles-all-2020-11-16.18-04-06',
+    },
+    10: {
+        'NoDend': 'runANSingles-all-2020-11-16.18-20-31',
+        'Full': 'runANSingles-all-2020-11-16.18-28-43',
+    },
+    11: {
+        'NoDend': 'runANSingles-all-2020-11-16.18-51-40',
+        'Full': 'runANSingles-all-2020-11-16.18-57-43',
+    },
+    13: {
+        'NoDend': 'runANSingles-all-2020-11-16.19-09-30',
+        'Full': 'runANSingles-all-2020-11-16.19-14-35',
+    },
+    17: {
+        'NoDend': 'runANSingles-all-2020-11-16.19-27-02',
+        'Full': 'runANSingles-all-2020-11-16.19-33-47',
+    },
+    18: {
+        'NoDend': 'runANSingles-all-2020-11-16.19-50-22',
+        'Full': 'runANSingles-all-2020-11-16.19-57-52',
+    },
+    30: {
+        'NoDend': 'runANSingles-all-2020-11-16.20-09-36',
+        'Full': 'runANSingles-all-2020-11-16.20-16-56',
+    },
+}
 
+
+figure_revcorr_example = {
+    17: {
+        'Spont': 'runANPSTH-all-2020-11-24.09-12-49' ,
+        '50dB': 'runANPSTH-all-2020-08-20.14-54-39',
+    }
+}
+
+figure_revcorr = {
+    2: {
+        'Spont':  'runANPSTH-all-2020-11-24.06-59-18',
+        "40dB": 'runANPSTH-all-2020-11-24.11-13-17',
+    },
+    5: {'Spont': 'runANPSTH-all-2020-11-24.07-15-41',
+        "40dB": 'runANPSTH-all-2020-11-24.11-19-05',
+    },
+    6: {'Spont':  'runANPSTH-all-2020-11-24.07-38-28',
+        "40dB": 'runANPSTH-all-2020-11-24.11-27-20',
+    },
+    9: {'Spont': 'runANPSTH-all-2020-11-24.07-55-04',
+        "40dB": 'runANPSTH-all-2020-11-24.11-33-12',
+    },
+    10: {'Spont':  'runANPSTH-all-2020-11-24.08-15-28',
+        "40dB": 'runANPSTH-all-2020-11-24.11-40-19',
+    },
+    11: {'Spont':  'runANPSTH-all-2020-11-24.08-39-48',
+        "40dB": 'runANPSTH-all-2020-11-24.11-47-36' ,
+    },
+    13: {'Spont': 'runANPSTH-all-2020-11-24.08-55-43',
+        "40dB": 'runANPSTH-all-2020-11-24.11-52-44' ,
+    },
+    17: {
+        'Spont': 'runANPSTH-all-2020-11-24.09-12-49' ,
+        "40dB": 'runANPSTH-all-2020-11-24.11-58-11' ,
+        '50dB': 'runANPSTH-all-2020-08-20.14-54-39',
+    },
+    18: {'Spont':  'runANPSTH-all-2020-11-24.09-37-01',
+        "40dB": 'runANPSTH-all-2020-11-24.12-05-53' ,
+    },
+    30: {'Spont':  'runANPSTH-all-2020-11-24.09-51-06',
+        "40dB": 'runANPSTH-all-2020-11-24.12-10-28',
+    },
+}
+
+figure_psth = {
+    2: {
+        "40dB": 'runANPSTH-all-2020-11-24.15-39-05',
+    },
+    5: {
+        "40dB": 'runANPSTH-all-2020-11-24.15-46-45' ,
+    },
+    6: {
+        "40dB": 'runANPSTH-all-2020-11-24.15-57-32',
+    },
+    9: {
+        "40dB": 'runANPSTH-all-2020-11-24.16-05-10' ,
+    },
+    10: {
+        "40dB": 'runANPSTH-all-2020-11-24.16-14-34' ,
+    },
+    11: {
+        "40dB": 'runANPSTH-all-2020-11-24.16-25-29' ,
+    },
+    13: {
+        "40dB": 'runANPSTH-all-2020-11-24.16-32-59'  ,
+    },
+    17: {
+        "40dB": 'runANPSTH-all-2020-11-24.16-40-56' ,
+    },
+    18: {
+        "40dB": 'runANPSTH-all-2020-11-24.16-51-50' ,
+    },
+    30: {
+        "40dB": 'runANPSTH-all-2020-11-24.16-58-24' ,
+    },    
+}
 class Figures(object):
     """
     Entry point.
@@ -139,10 +274,13 @@ class Figures(object):
             "IV Supplement": self.plot_IVS,
             "Zin Supplement": self.plot_ZinS,
             "Efficacy": self.plot_efficacy,
-            "Efficacy Supplement": self.plot_efficacy_supplement
-            #
-            # "Revcorr Ex", "Revcorr Supplement", "Revcorr Compare",
-            # "PSTH/VS", "FSL", "VS-SAM Tone"}
+            "Efficacy Supplement": self.plot_efficacy_supplement,
+            "Revcorr Ex": self.plot_revcorr,
+            "Revcorr Supplement": self.plot_revcorr_supplement, 
+            "Revcorr Compare": self.plot_revcorr_compare,
+            "PSTH-FSL": self.plot_PSTH,
+            "PSTH-FSL Supplement": self.plot_PSTH_supplement,
+            "VS-SAM Tone": self.plot_VS_SAM,
         }
         print(figure_name, dispatch_table.keys())
         if figure_name in list(dispatch_table.keys()):
@@ -523,37 +661,38 @@ class Figures(object):
         PZ.PlotZ()
         
     def plot_efficacy(self):
-        example = {'Cell': 17,
-                   'normal': 'runANSingles-all-2020-11-04.14-18-08',
-                   'NoDend': 'runANSingles-all-2020-11-04.09-44-00',
-                    }
-        cellN = example['Cell']
+        cell_number = 17
+        example = Figure_efficacy_supplement[cell_number]
+        
         cellpath = Path(
-            self.config["cellDataDirectory"], f"VCN_c{cellN:02d}", "Simulations", "AN"
+            self.config["cellDataDirectory"], f"VCN_c{cell_number:02d}", "Simulations", "AN"
         )        
-        sfi = Path(cellpath, Path(example['normal']).name )
+        sfi = Path(cellpath, Path(example['Full']).name )
         if not sfi.is_dir():
             return
         fn = sorted(list(sfi.glob("*")))
         print("fn: ", fn)
         PD = PData()
-        calx = 20.
+        calx =800.
+        figsize = (8.0, 3.0)
         
         EFP = EF.EfficacyPlots(None, hold=True, cols=4)
+        EFP.P.figure_handle.set_size_inches(figsize[0], figsize[1])
 
+            
         self.P_Eff1 = PH.regular_grid(
             len(fn),
             1,
             order="rowsfirst",
             figsize=(8., 4.5),
-            showgrid=True,
+            showgrid=False,
             verticalspacing=0.01,
             horizontalspacing=0.1,
             margins={
              "bottommargin": 0.1,
              "leftmargin": 0.05,
-             "rightmargin": 0.75,
-             "topmargin": 0.08,
+             "width": 0.17,
+             "height": 0.8,
             },
             labelposition=(-0.05, 1.06),
             parent_figure=EFP.P,
@@ -564,22 +703,29 @@ class Figures(object):
             1,
             order="rowsfirst",
             figsize=(8., 4.5),
-            showgrid=True,
+            showgrid=False,
             verticalspacing=0.01,
             horizontalspacing=0.1,
             margins={
              "bottommargin": 0.1,
-             "leftmargin": 0.5,
-             "rightmargin": 0.3,
-             "topmargin": 0.08,
+             "leftmargin": 0.54,
+             "width": 0.17,
+             "height": 0.8,
             },
             labelposition=(-0.05, 1.06),
             parent_figure=EFP.P,
          # panel_labels=['A', 'B', 'C', 'D', 'E', 'F'],
         )
-        for n in range(len(fn)):
+        calx = 800.
+        nfiles = len(fn)
+        for n in range(nfiles):
             sfile = Path(sfi, fn[n])
             print(n, sfile)
+            if n == nfiles - 1:
+                calxv = calx
+            else:
+                calxv = None
+            print('Calxv: ', calxv)
             self.parent.PLT.plot_traces(
                 ax = self.P_Eff1.axarr[n,0],
                 fn = sfile,
@@ -597,13 +743,15 @@ class Figures(object):
                 ivaxis=None,
                 ivcolor='k',
                 iv_spike_color='r',
-                spike_marker_size=2.5,
-                spike_marker_color='g',
-                calx = calx,
-                caly = 0.,
+                spike_marker_size=1.5,
+                spike_marker_color='c',
+                calx = calxv,
+                caly = -20.,
+                calt = 50.,
+                calv = 20.,
             )
-            calx = None
-            self.P_Eff1.axarr[n, 0].text(-0.02, 0.5, f"Input {n:d}",
+
+            self.P_Eff1.axarr[n, 0].text(-0.02, 0.5, f"Syn {n:d}",
                 fontsize=8,
                 horizontalalignment='right',
                 verticalalignment="center",
@@ -615,11 +763,16 @@ class Figures(object):
         fn = sorted(list(sfi.glob("*")))
         print("fn: ", fn)
         PD = PData()
-        calx = 20.
-        
-        for n in range(len(fn)):
+        calx = 800.
+        nfiles = len(fn)
+        for n in range(nfiles):
             sfile = Path(sfi, fn[n])
-            print(n, sfile)
+            print('N, sfile: ', n, sfile)
+            if n == (nfiles - 1):
+                calxv = calx
+            else:
+                calxv = None
+            print('Calxv: ', calxv)
             self.parent.PLT.plot_traces(
                 ax = self.P_Eff2.axarr[n,0],
                 fn = sfile,
@@ -637,21 +790,44 @@ class Figures(object):
                 ivaxis=None,
                 ivcolor='k',
                 iv_spike_color='r',
-                spike_marker_size=2.5,
-                spike_marker_color='g',
-                calx = calx,
-                caly = 0.,
+                spike_marker_size=1.5,
+                spike_marker_color='c',
+                calx = calxv,
+                caly = -20.,
+                calt = 50.,
+                calv = 20.,
             )
             calx = None
-            self.P_Eff2.axarr[n, 0].text(-0.02, 0.5, f"Inputx {n:d}",
+            self.P_Eff2.axarr[n, 0].text(-0.02, 0.5, f"Syn {n:d}",
                 fontsize=8,
                 horizontalalignment='right',
                 verticalalignment="center",
                 transform = self.P_Eff2.axarr[n, 0].transAxes)
+
+        EFP.P.figure_handle.text(0.99, 0.01, f"Cell {cell_number:d}", fontsize=10, horizontalalignment='right',
+            verticalalignment='bottom')
         x = [1, 3]
         for i, data in enumerate(EFP.datasets):
-            EFP.plot_dataset(data, plotno=i, ax=EFP.P.axarr[0,x[i]], title=EFP.titles[x[i]])
-
+            EFP.plot_dataset(data, plotno=i, ax=EFP.P.axarr[0,x[i]]) # , title=EFP.titles[x[i]])
+            EFP.P.figure_handle.text(
+                0.25+0.5*i, 0.99,
+                EFP.titles[x[i]], # .replace('_', '\_'),
+                transform=EFP.P.figure_handle.transFigure,
+                fontsize=11,
+                horizontalalignment="center",
+                verticalalignment="top",
+            )
+        label = ["A", "B", "C", "D"]
+        for i, pl in enumerate(label):
+            EFP.P.figure_handle.text(
+                0.05+0.25*i, 0.9,
+                label[i], # .replace('_', '\_'),
+                transform=EFP.P.figure_handle.transFigure,
+                horizontalalignment="right",
+                verticalalignment="bottom",
+                fontsize=11,
+            )
+    
         save_file = "Fig_M2.pdf"
         EFP.P.figure_handle.text(
             0.99,
@@ -671,7 +847,899 @@ class Figures(object):
         )
         EFP.P.figure_handle.show()
 
-    
+
     def plot_efficacy_supplement(self):
-        pass
+        cells = grAList()
+        EFP = EF.EfficacyPlots(None, hold=True, cols=1, rows=1)
+        EFP.P.figure_handle.set_size_inches((8., 8.))
+        effp = []
+        simulation_experiment = "Full"
+        hspc = 0.04
+        vspc = 0.05
+        rowspc = 0.1
+        ncol = 5
+        nrow = int(len(cells)/5)        
+        lmar = 0.05
+        rmar = 0.05
+        tmar = 0.05
+        bmar = 0.05
+        width = 0.14
+        height = 0.38
+        xp = lmar + np.arange(ncol)*(width+hspc)
+        yp = bmar + np.arange(nrow)*(height+rowspc)
+        # print(xp)
+ #        print(yp)
         
+        for ic, cellN in enumerate(cells):
+            # if ic > 0:  # for quick tests
+  #               continue
+            cellpath = Path(
+                self.config["cellDataDirectory"], f"VCN_c{cellN:02d}", "Simulations", "AN"
+            )        
+            sfiles = Path(cellpath, Path(Figure_efficacy_supplement[cellN][simulation_experiment]).name)
+            if not sfiles.is_dir():
+                return
+            fn = sorted(list(sfiles.glob("*")))
+            print("fn: ", fn)
+            PD = PData()
+
+            row_n = 1-int(ic/5)
+            col_n = ic % 5
+            calxp = 800.0
+            P_Eff = PH.regular_grid(
+                len(fn),
+                1,
+                order="rowsfirst",
+                # figsize=(8., 4.5),
+                showgrid=False,
+                verticalspacing=0.01,
+                # horizontalspacing=0.1,
+                margins={
+                 "bottommargin":yp[row_n],
+                 "leftmargin": xp[col_n],
+                 "width": width,
+                 "height": height,
+                },
+                labelposition=(-0.05, 1.06),
+                parent_figure=EFP.P,
+             # panel_labels=['A', 'B', 'C', 'D', 'E', 'F'],
+            )
+            effp.append(P_Eff)
+            nfn = len(fn)
+            ymax = 20.
+            if simulation_experiment != 'Full':
+                ymax = 40.
+            for n in range(len(fn)):
+                if n == nfn-1:
+                    calxv = calxp
+                else:
+                    calxv = None
+                self.parent.PLT.plot_traces(
+                    ax = P_Eff.axarr[n,0],
+                    fn = fn[n],
+                    PD = PD,
+                    protocol= 'runANSingles',
+                    ymin=-90.0,
+                    ymax=ymax,
+                    xmin = 400., 
+                    xmax = 900.,
+                    iax=n,
+                    nax=len(fn),
+                    rep=0,
+                    figure=P_Eff.figure_handle,
+                    longtitle=True,
+                    ivaxis=None,
+                    ivcolor='k',
+                    iv_spike_color='r',
+                    spike_marker_size=1.5,
+                    spike_marker_color='c',
+                    calx = calxv,
+                    caly = -110.,
+                    calt = 50.,
+                    calv = 20.,
+                )
+                P_Eff.axarr[n, 0].text(-0.02, 0.5, f"{n+1:d}",
+                    fontsize=8,
+                    horizontalalignment='right',
+                    verticalalignment="center",
+                    transform = P_Eff.axarr[n, 0].transAxes)
+                
+                if n == 0:
+                    P_Eff.axarr[n,0].set_title(f"VCN_c{cellN:02d}", loc='center',
+                        fontdict={'verticalalignment': 'baseline',
+                        'fontsize': 9, 'fontweight': 'normal'})
+                
+        save_file = f"Fig_M2_Supplemental_{simulation_experiment:s}.pdf"
+        EFP.P.figure_handle.text(
+            0.99,
+            0.99,
+            save_file, # .replace('_', '\_'),
+            transform=EFP.P.figure_handle.transFigure,
+            horizontalalignment="right",
+            verticalalignment="top",
+        )
+        mpl.savefig(
+            Path(config["baseDataDirectory"], "Figures", save_file),
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": "SBEM Project Figure 2 Modeling : Efficacy, Supplemental",
+            },
+        )
+        EFP.P.figure_handle.show()
+        
+
+    def plot_revcorr(self):
+        cell_number = 17
+        dBSPL = "Spont"
+        example = figure_revcorr_example[cell_number]
+        
+        run_calcs = False
+        rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
+        if rc_datafile.is_file():
+            with open(rc_datafile, "rb") as fh:
+                all_RCD_RCP = pickle.load(fh)
+            RCD = all_RCD_RCP[cell_number][0]
+            RCP = all_RCD_RCP[cell_number][1]
+            PD = PData()
+        else:
+            print('Must run revcorr_supplement plot first, then the file we need will be present')
+            run_calcs = True
+            cellpath = Path(
+                self.config["cellDataDirectory"], f"VCN_c{cell_number:02d}", "Simulations", "AN"
+            )        
+            sfi = Path(cellpath, Path(example[dBSPL]).name )
+            if not sfi.is_dir():
+                return
+            fn = sorted(list(sfi.glob("*")))
+            (P, PD, RCP, RCD) = self.parent.PLT.compute_revcorr(
+                    P= None,
+                    gbc= '17',
+                    fn = fn[0],
+                    PD = PData(),
+                    protocol = 'runANPSTH',
+                    revcorrtype = "RevcorrSPKS",
+                    thr = -20.0,
+                    width = 4.0,
+                )
+        box_size = 0.32
+        sizer = {
+            "A": {
+                "pos": [0.1, box_size, 0.56, box_size],
+                "labelpos": (-0.15, 1.02),
+                "noaxes": True,
+            },
+            "B": {"pos": [0.1, box_size, 0.12, box_size], "labelpos": (-0.15, 1.02)},
+            # "C": {"pos": [0.52, 0.20, 0.52, 0.28], "labelpos": (-0.15, 1.00)},
+            # "D": {"pos": [0.52, 0.20, 0.08, 0.28], "labelpos": (-0.15, 1.00)},
+            "C": {"pos": [0.57, box_size, 0.56, box_size], "labelpos": (-0.15, 1.02)},
+            "D": {"pos": [0.57, box_size, 0.12, box_size], "labelpos": (-0.15, 1.02)},
+        }  # dict pos elements are [left, width, bottom, height] for the axes in the plot. gr = [(a, a+1, 0, 1) for a in range(0, 8)] # just generate subplots - shape do not matter axmap = OrderedDict(zip(sizer.keys(), gr))
+        P = PH.arbitrary_grid(
+            sizer,
+            order="columnsfirst",
+            figsize=(6, 6),
+            label=True,
+            # verticalspacing=0.12,
+            # horizontalspacing=0.12,
+            margins={
+                "bottommargin": 0.1,
+                "leftmargin": 0.1,
+                "rightmargin": 0.1,
+                "topmargin": 0.1,
+            },
+            # fontsize={"tick": 7, "label": 9, "panel": 12},
+            # fontweight={"tick": "normal", "label": "normal", "panel": "bold"},
+        )
+        
+        ax = P.axdict["A"]
+        summarySiteTC = self.parent.PLT.plot_revcorr2(P, PD, RCP, RCD)
+        
+        maxp = np.max(RCD.pairwise)
+        psh = RCD.pairwise.shape
+        pos = np.zeros((psh[0], psh[1], 2))
+        for i in range(RCP.ninputs):
+            for j in range(RCP.ninputs):
+                # print(f"{pairwise[i,j]:.3f}", end='  ')
+                pos[i, j, 0] = i + 1
+                pos[i, j, 1] = j + 1
+
+        sax = P.axdict
+
+        sax["C"].plot(RCD.sites, RCD.participation / RCD.nspikes, "kx", markersize=5)
+        sax["C"].set_ylim((0, 1.0))
+        sax["C"].set_xlim(left=0)
+        sax["C"].set_xlabel("# Release Sites")
+        sax["C"].set_ylabel("Participation")
+
+        sax["D"].plot(np.arange(len(RCD.ynspike)) + 1, RCD.ynspike, "k^-", markersize=5)
+        sax["D"].set_ylim(0, 1.05)
+        sax["D"].set_xlabel(
+            f"# Inputs in [{RCD.pre_w[0]:.1f} to {RCD.pre_w[1]:.1f}] before spike"
+        )
+        sax["D"].set_ylabel("Cumulative Bushy Spikes witn N AN inputs")
+
+        PH.cleanAxes(P.axarr.ravel())
+        PH.noaxes(P.axdict["A"])
+        
+        PH.talbotTicks(
+            sax["B"],
+            tickPlacesAdd={"x": 1, "y": 2},
+            floatAdd={"x": 1, "y": 2},
+            # pointSize=7,
+        )
+        PH.talbotTicks(
+            sax["C"],
+            tickPlacesAdd={"x": 0, "y": 1},
+            floatAdd={"x": 0, "y": 2},
+            # pointSize=7,
+        )
+        PH.talbotTicks(
+            sax["D"],
+            tickPlacesAdd={"x": 0, "y": 1},
+            floatAdd={"x": 0, "y": 2},
+            # pointSize=7,
+        )
+        if dBSPL == "Spont":
+            save_file = "Fig_M3.pdf"
+        else:
+            save_file = f"Fig_M3_{dBSPL:s}.pdf"
+        P.figure_handle.text(0.99, 0.01, f"Cell {cell_number:d}", fontsize=10, horizontalalignment='right',
+            verticalalignment='bottom')
+        P.figure_handle.text(
+            0.99,
+            0.99,
+            save_file, # .replace('_', '\_'),
+            transform=P.figure_handle.transFigure,
+            horizontalalignment="right",
+            verticalalignment="top",
+        )
+        mpl.savefig(
+            Path(config["baseDataDirectory"], "Figures", save_file),
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": "SBEM Project Figure 3 Modeling : Reverse Correlation Example",
+            },
+        )
+        mpl.show()
+
+        return (summarySiteTC, RCD.sites)
+    
+    def plot_revcorr_supplement(self):
+
+        dBSPL = "Spont"
+        P = PH.regular_grid(rows=len(grAList()), cols=4, 
+                order='rowsfirst', 
+                figsize=(8, 10),
+                # showgrid=True,
+                margins={
+                    "bottommargin": 0.1,
+                    "leftmargin": 0.125,
+                    "rightmargin": 0.1,
+                    "topmargin": 0.1,
+                },
+                verticalspacing=0.03,
+                horizontalspacing=0.08,
+                
+        )
+        PH.cleanAxes(P.axarr.ravel())
+        ncells = len(grAList())
+        P.figure_handle.text(0.175, 0.93, f"Coinc. Rate (Hz)", fontsize=10, horizontalalignment='center',
+            verticalalignment='bottom')
+        P.figure_handle.text(0.39, 0.93, f"Membrane Potential", fontsize=10, horizontalalignment='center',
+            verticalalignment='bottom')
+        P.figure_handle.text(0.61, 0.93, f"Participation", fontsize=10, horizontalalignment='center',
+            verticalalignment='bottom')
+        P.figure_handle.text(0.83, 0.93, f"Cumulative Inputs to Spike", fontsize=10, horizontalalignment='center',
+            verticalalignment='bottom')
+        
+        run_calcs = False
+        rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
+        if rc_datafile.is_file():
+            with open(rc_datafile, "rb") as fh:
+                all_RCD_RCP = pickle.load(fh)
+        else:
+            print('Must run revcorr_supplement plot first, then the file we need will be present')
+            run_calcs = True
+            all_RCD_RCP = {}  # all revcorr data
+        
+        for i, cell_number in enumerate(grAList()):
+            # if i > 1:
+#                 continue
+            dataset = figure_revcorr[cell_number]
+        
+            cellpath = Path(
+                self.config["cellDataDirectory"], f"VCN_c{cell_number:02d}", "Simulations", "AN"
+            )        
+            sfi = Path(cellpath, Path(dataset[dBSPL]).name )
+            if not sfi.is_dir():
+                return
+
+            fn = sorted(list(sfi.glob("*")))
+            if run_calcs:
+                (P0, PD, RCP, RCD) = self.parent.PLT.compute_revcorr(
+                        P= None,
+                        gbc= str(cell_number),
+                        fn = fn[0],
+                        PD = PData(),
+                        protocol = 'runANPSTH',
+                        revcorrtype = "RevcorrSPKS",
+                        thr = -20.0,
+                        width = 4.0,
+                    )
+            else:
+                PD = PData()
+                RCD = all_RCD_RCP[cell_number][0]
+                RCP = all_RCD_RCP[cell_number][1]
+
+            if i == 0:
+                tcal = True # point font for cal bar
+            else:
+                tcal = False  # no cal bar
+
+            all_RCD_RCP[cell_number] = [RCD, RCP]
+            summarySiteTC = self.parent.PLT.plot_revcorr2(P, PD, RCP, RCD, axarray=P.axarr[i,0:2], 
+                calbar_show=tcal, calbar_fontsize=7, yaxis_label=False)
+
+            P.axarr[i, 0].text(-0.25, 0.5, f"VCN_c{cell_number:02d}", 
+                fontsize=9,
+                color="k",
+                transform=P.axarr[i, 0].transAxes,
+                horizontalalignment="right",
+            )
+            
+
+            maxp = np.max(RCD.pairwise)
+            psh = RCD.pairwise.shape
+            pos = np.zeros((psh[0], psh[1], 2))
+            for j in range(RCP.ninputs):
+                for k in range(RCP.ninputs):
+                    # print(f"{pairwise[i,j]:.3f}", end='  ')
+                    pos[j, k, 0] = j + 1
+                    pos[j, k, 1] = k + 1
+
+
+            sax = P.axarr[i,:]
+            if dBSPL == 'Spont':
+                sax[0].set_ylim(0, 0.5)
+            else:
+                sax[0].set_ylim(0, 0.8)
+            PH.talbotTicks(  # revcorr
+                sax[0],
+                tickPlacesAdd={"x": 0, "y": 0},
+                floatAdd={"x": 1, "y": 1},
+                # pointSize=7,
+            )
+
+            PH.noaxes(P.axarr[i,1])
+
+            sax[2].plot(RCD.sites, RCD.participation / RCD.nspikes, "kx", markersize=5, clip_on=False,)
+            sax[2].set_ylim((0, 1.0))
+            sax[2].set_xlim(0, 225)
+            
+            if i == ncells - 1:
+                sax[2].set_xlabel("# Release Sites")
+            # sax[2].set_ylabel("Participation")
+            PH.talbotTicks(  # Participation
+                sax[2],
+                tickPlacesAdd={"x": 0, "y": 2},
+                floatAdd={"x": 0, "y": 2},
+                # pointSize=7,
+            )
+            sax[2].tick_params(direction="in", length=3.0, width=1.0)
+            
+            sax[3].plot(np.arange(len(RCD.ynspike)) + 1, RCD.ynspike, "k^-", markersize=5, clip_on=False,)
+            sax[3].set_ylim(0, 1.05)
+            if i == ncells - 1:
+                sax[3].set_xlabel(
+                    f"# Inputs in [{RCD.pre_w[0]:.1f} to {RCD.pre_w[1]:.1f}] before spike"
+                    )
+            PH.talbotTicks(  # cumulative inputs before spike
+                sax[3],
+                tickPlacesAdd={"x": 0, "y": 1},
+                floatAdd={"x": 0, "y": 2},
+                # pointSize=7,
+            )
+            sax[3].tick_params(direction="in", length=3.0, width=1.0)
+
+        # save the accumulated RCD data
+        with open(rc_datafile, "wb") as fh:
+            pickle.dump(all_RCD_RCP, fh)
+
+        save_file = f"Fig_M3_supplemental_Full_{dBSPL:s}.pdf"
+
+        P.figure_handle.text(
+            0.99,
+            0.99,
+            save_file, # .replace('_', '\_'),
+            transform=P.figure_handle.transFigure,
+            horizontalalignment="right",
+            verticalalignment="top",
+        )
+        mpl.savefig(
+            Path(config["baseDataDirectory"], "Figures", save_file),
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": "SBEM Project Figure 3 Modeling : Reverse Correlation Summary",
+            },
+        )
+        mpl.show()
+    
+    def plot_revcorr_compare(self):
+        dBSPLs = ["Spont", "40dB"]
+        P = PH.regular_grid(1, 2, figsize=(7, 4),
+            margins={
+                "bottommargin": 0.15,
+                "leftmargin": 0.15,
+                "rightmargin": 0.15,
+                "topmargin": 0.15,
+            },
+            verticalspacing=0.03,
+            horizontalspacing=0.1,
+        )
+        for i, dBSPL in enumerate(dBSPLs):
+            with open(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl", "rb") as fh:
+                try:
+                    R = pickle.load(fh)
+                except:
+                    print('Must run revcorr_supplement plot first, then the file we need will be present')
+                    return
+
+
+            for cell_number in R.keys():
+                RCD = R[cell_number][0]
+                RCP = R[cell_number][1]
+                P.axarr[0,i].plot(np.arange(len(RCD.ynspike)) + 1, 
+                                  RCD.ynspike, 
+                                  "^-", markersize=4, 
+                                  clip_on=False,label=f"VCN_c{cell_number:02d}")
+            P.axarr[0,i].set_xlim(0, 12)
+            P.axarr[0,i].set_ylim(0, 1.0)
+            P.axarr[0,i].set_xlabel("Number of inputs prior to spike")
+            P.axarr[0,i].set_ylabel("Cumulative Fraction of Spikes")
+            if i == 0:
+                P.axarr[0,i].legend()
+            P.axarr[0, i].set_title(dBSPL)
+
+        save_file = f"Fig_M4.pdf"
+
+        P.figure_handle.text(
+            0.99,
+            0.99,
+            save_file, # .replace('_', '\_'),
+            transform=P.figure_handle.transFigure,
+            horizontalalignment="right",
+            verticalalignment="top",
+        )
+        mpl.savefig(
+            Path(config["baseDataDirectory"], "Figures", save_file),
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": "SBEM Project Figure 4 Modeling : Reverse Correlation Comparison",
+            },
+        )
+
+        mpl.show()
+
+    def plot_psth_psth(self, ax:object, data:object, ri:dict, 
+            time_base:np.ndarray, psth_binw:float=0.5, 
+            wstart:float=0., wdur:float=1.0, 
+            ntr:int=1,
+            ninputs:int=1):
+        
+        self.parent.PLT.plot_psth(data,
+                      run_info = ri,
+                      max_time=np.max(time_base), 
+                      bin_width=psth_binw, 
+                      ax=ax,
+                      zero_time = wstart,
+                      scale = 1.0/ntr/psth_binw/ninputs,
+                      )
+        ax.set_xlim(0, wdur)
+        PH.talbotTicks(ax,
+            axes="xy",
+            density=(1.0, 1.0),
+            insideMargin=0.02,
+            # pointSize=ticklabelsize,
+            tickPlacesAdd={"x": 2, "y": 0},
+            floatAdd={"x": 2, "y": 0},
+        )
+        ax.set_ylabel('Sp/s')
+
+    def plot_psth_ANFSL(self, ax:object, wstart:float, cell_number:int, ri:dict, an_st_grand:object, label_x_axis=True):
+
+        grand_fsl, grand_ssl = self.parent.PLT.plot_fsl_ssl(an_st_grand,
+             run_info=ri,
+             max_time = 25.0,
+             min_fsl = 1.2e-3,
+             bin_width= 0.25,
+             ax = ax,
+             zero_time = wstart*1e-3,
+             offset = 0, # (ninputs)*dy,
+             cellID = cell_number,
+             show_values = False,
+             )
+        ax.set_ylabel('Spikes')
+        if xlabel_x_axis:
+            ax.set_xlabel('Latency (ms)')
+        fsl_text = f"FSL: {np.nanmean(grand_fsl):.3f} (SD {np.nanstd(grand_fsl):.3f})"
+        fsl_text += f"\nSSL: {np.nanmean(grand_ssl):.3f} (SD {np.nanstd(grand_ssl):.3f})"
+        ax.text(
+            0.45,
+            0.95,
+            fsl_text,
+             # N={np.count_nonzero(~np.isnan(fsl)):3d})",
+            fontsize=7,
+            color="k",
+            # fontfamily="monospace",
+            transform=ax.transAxes,
+            horizontalalignment="left",
+            verticalalignment="top",
+        )
+
+        PH.talbotTicks(ax,
+            axes="xy",
+            density=(1.0, 1.0),
+            insideMargin=0.02,
+            # pointSize=ticklabelsize,
+            tickPlacesAdd={"x": 0, "y": 0},
+            floatAdd={"x": 0, "y": 0},
+        )
+        ax.set_title("AN")
+
+    def plot_PSTH(self):
+        print('PSTH')
+        dBSPL = "40dB"
+        cell_number = 17
+        box_size = 0.32
+        box_size_x = 0.45
+        sizer = {
+            "A": {  # trace
+                "pos": [0.1, box_size_x, 0.7, box_size],
+                "labelpos": (-0.15, 0.7),
+                "noaxes": True,
+            },
+            "B": {"pos": [0.1, box_size_x, 0.65, 0.05], "labelpos": (-0.15, 1.02)},  # stimulus
+            "C": {"pos": [0.1, box_size_x, 0.36, 0.24], "labelpos": (-0.15, 1.02)},
+            "D": {"pos": [0.1, box_size_x, 0.1, 0.18], "labelpos": (-0.15, 1.02)},
+
+            "E": {"pos": [0.65, 0.25, 0.55, box_size], "labelpos": (-0.15, 1.02)},
+            "F": {"pos": [0.65, 0.25, 0.10, box_size], "labelpos": (-0.15, 1.02)},
+            
+        }  # dict pos elements are [left, width, bottom, height] for the axes in the plot. gr = [(a, a+1, 0, 1) for a in range(0, 8)] # just generate subplots - shape do not matter axmap = OrderedDict(zip(sizer.keys(), gr))
+
+        P = PH.arbitrary_grid(
+            sizer,
+            order="columnsfirst",
+            figsize=(6, 6),
+            label=True,
+            # showgrid=True,
+            # verticalspacing=0.12,
+            # horizontalspacing=0.12,
+            margins={
+                "bottommargin": 0.1,
+                "leftmargin": 0.1,
+                "rightmargin": 0.1,
+                "topmargin": 0.1,
+            },
+            # fontsize={"tick": 7, "label": 9, "panel": 12},
+            # fontweight={"tick": "normal", "label": "normal", "panel": "bold"},
+        )
+        tr_ax = P.axdict["A"]
+        st_ax = P.axdict["B"]
+        bupsth_ax = P.axdict["C"]
+        anpsth_ax = P.axdict["D"]
+        bufsl_ax = P.axdict["E"]
+        anfsl_ax = P.axdict["F"]
+
+        PH.cleanAxes(P.axarr.ravel())
+
+        self.plot_one_PSTH(cell_number=cell_number, dBSPL=dBSPL, 
+                tr_ax=tr_ax, st_ax=st_ax, bupsth_ax=bupsth_ax, 
+                anpsth_ax=anpsth_ax, bufsl_ax=bufsl_ax, anfsl_ax=anfsl_ax)
+
+        save_file = f"Fig_M5.pdf"
+        P.figure_handle.text(0.99, 0.01, f"Cell {cell_number:d}", fontsize=10, horizontalalignment='right',
+            verticalalignment='bottom')
+        P.figure_handle.text(
+            0.99,
+            0.99,
+            save_file, # .replace('_', '\_'),
+            transform=P.figure_handle.transFigure,
+            horizontalalignment="right",
+            verticalalignment="top",
+        )
+        mpl.savefig(
+            Path(config["baseDataDirectory"], "Figures", save_file),
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": "SBEM Project Figure 5Modeling : PSTH and FSL, Example",
+            },
+        )
+        mpl.show()
+
+    def plot_one_PSTH(self, cell_number:int, dBSPL:float, 
+            tr_ax:object, st_ax:object, bupsth_ax:object, anpsth_ax:object, bufsl_ax:object, anfsl_ax:object,
+            label_x_axis=True):
+        dataset = figure_psth[cell_number]
+        PD = PData()
+        cellpath = Path(
+            self.config["cellDataDirectory"], f"VCN_c{cell_number:02d}", "Simulations", "AN"
+        )        
+        sfi = Path(cellpath, Path(dataset[dBSPL]).name )
+        if not sfi.is_dir():
+            print('file not found: ', str(sfi))
+            return
+
+        fn = sorted(list(sfi.glob("*")))[0]
+        changetimestamp = get_changetimestamp()
+        x = self.parent.PLT.get_data_file(fn, changetimestamp, PD)
+        mtime = Path(fn).stat().st_mtime
+        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
+            "%Y-%m-%d-%H:%M"
+        )
+        if x is None:
+            print("No simulation found that matched conditions")
+            print(fn)
+            return
+        # unpack x
+        par, stitle, ivdatafile, filemode, d = x
+        protocol = 'runANPSTH'
+        AR, SP, RMA = self.parent.PLT.analyze_data(ivdatafile, filemode, protocol)
+        ntr = len(AR.traces)  # number of trials
+        v0 = -160.0
+        trstep = 25.0 / ntr
+        inpstep = 5.0 / ntr
+        sz = 50.0 / ntr
+        # print(dir(AR))
+        si = d["Params"]
+        ri = d["runInfo"]
+        totaldur, soundtype, pip_start, pip_duration, F0, dB, fmod, dmod = self.parent.PLT.get_stim_info(si, ri)
+        
+        ntr = len(AR.traces)
+        all_bu_st = []
+        wstart = 0.15
+        wdur = 0.3
+        for i in range(ntr):  # for all trials in the measure.
+            vtrial = AR.traces[i] * 1e3
+            time_base = AR.time_base/1000. # convert to seconds
+            dt = si.dtIC/1000. # convert from msec to seconds
+            trd = d["Results"][i]
+            ninputs = len(trd["inputSpikeTimes"])
+            if i == 0:
+                all_an_st = [[] for x in range(ninputs)]  # by input, then trial
+                an_st = [[] for x in range(ntr)] # by trial, collapsed across inputs
+                
+            waveform = trd["stimWaveform"].tolist()
+            stb = trd["stimTimebase"]
+            if not isinstance(trd["spikeTimes"], list):
+                cprint('r', "spiketimes is not a list")
+                return
+            all_bu_st.append(trd["spikeTimes"])
+            if i == 0 :
+                tr_ax.plot((time_base-wstart)*1e3, vtrial, "k-", linewidth=0.5)
+                spiketimes = np.array(trd["spikeTimes"])
+                # trim spike mark array so we don't get spots at the edge of the plot
+                spikeindex = [int(t / dt) for t in spiketimes if (t >= wstart and t < ((wstart+wdur)))] 
+                tr_ax.plot(
+                    (time_base[spikeindex]-wstart)*1e3,
+                    vtrial[spikeindex],
+                    "ro",
+                    markersize=1.5,
+                )
+                PH.referenceline(tr_ax, -60.)
+                if label_x_axis:
+                    tr_ax.text(0., -60., '-60 mV', fontsize=7,
+                        horizontalalignment='right', verticalalignment='center')
+                tr_ax.set_xlim(0., wdur*1e3)
+                PH.noaxes(tr_ax)
+                if label_x_axis:
+                    PH.calbar(
+                        tr_ax,
+                        calbar=[180., -20, 20., 10.],
+                        scale=[1, 1.0],
+                        axesoff=True,
+                        orient="right",
+                        unitNames={"x": "ms", "y": "mV"},
+                        fontsize=8,
+                        weight="normal",
+                        color="k",
+                        font="Arial",
+                    )
+                
+
+            if i == 0 and waveform is not None and st_ax is not None:
+                st_ax.plot(
+                    stb-wstart, np.array(waveform)*1e3, "k-", linewidth=0.5
+                )  # stimulus underneath
+                st_ax.set_xlim(0, wdur)
+                PH.talbotTicks(st_ax,
+                    axes="xy",
+                    density=(1.0, 0.5),
+                    insideMargin=0.02,
+                    # pointSize=ticklabelsize,
+                    tickPlacesAdd={"x": 2, "y": 1},
+                    floatAdd={"x": 2, "y": 1},
+                )
+                st_ax.set_ylabel('mPa')
+
+        psth_binw = 0.5e-3
+        ninputs = 1
+        
+        if bupsth_ax is not None:
+            self.plot_psth_psth(ax=bupsth_ax, data=all_bu_st, ri=ri, 
+                time_base=time_base, 
+                psth_binw=psth_binw, wstart=wstart, 
+                wdur=wdur, ntr=ntr, ninputs=1)
+        if label_x_axis:
+            bupsth_ax.set_xlabel("Time (s)")
+            
+        # Collapse the input data
+        an_st_by_input = [[] for x in range(ninputs)]
+        all_an_st = []  # collapsed in trial order only
+        an_st_grand = [[] for x in range(ntr)]  # accumulate across trials
+
+        for i in range(ntr):  # for all trials in the measure.
+            trd = d["Results"][i]  # trial i data
+            ninputs = len(trd["inputSpikeTimes"]) # get AN spike time array (by input)
+            if i == 0:
+                an_st_by_input = [[] for x in range(ninputs)]
+            for k in range(ninputs):  # raster of input spikes
+                tk = trd["inputSpikeTimes"][k] 
+                all_an_st.extend(np.array(tk)*1e-3)  # strictly for the psth
+                an_st_by_input[k].append(tk*1e-3)  # index by input, then trials for that input
+                an_st_grand[i].extend(tk*1e-3)
+
+        if anpsth_ax is not None:
+            self.plot_psth_psth(ax=anpsth_ax, data=all_an_st, ri=ri,
+                time_base=time_base, 
+                psth_binw=psth_binw, 
+                wstart=wstart, wdur=wdur,
+                ntr=ntr, ninputs=ninputs)
+            if label_x_axis:
+                anpsth_ax.set_xlabel("Time (sec)")
+            anpsth_ax.set_title("AN")
+
+        if bufsl_ax is not None:
+            self.parent.PLT.plot_fsl_ssl(all_bu_st,
+                 run_info=ri,
+                 max_time = 25.0, 
+                 bin_width= 0.25, 
+                 min_fsl=2e-3,
+                 ax = bufsl_ax,
+                 zero_time = wstart*1e-3,
+                 cellID = cell_number,
+                )
+            PH.talbotTicks(bufsl_ax,
+                axes="xy",
+                density=(1.0, 1.0),
+                insideMargin=0.02,
+                # pointSize=ticklabelsize,
+                tickPlacesAdd={"x": 0, "y": 0},
+                floatAdd={"x": 0, "y": 0},
+            )
+            bufsl_ax.set_ylabel('Spikes')
+            if label_x_axis:
+                bufsl_ax.set_xlabel('Latency (ms)')
+
+        # a raster plot
+        # y = 0.
+        # cyc = cycler(color='bgrcmyk')
+        # anfsl_ax.set_prop_cycle(cyc)
+        # for i in range(ntr):
+        #     trd = d["Results"][i]
+        #     ninputs = len(trd["inputSpikeTimes"])
+        #     for k in range(ninputs):  # raster of input spikes
+        #         tk = trd["inputSpikeTimes"][k]
+        #         y += 1.0
+        #         anfsl_ax.plot(
+        #                 tk*1e-3, y+np.zeros_like(tk), "|", markersize=2., linewidth=0.5
+        #             )
+        #     y += 10
+        # anfsl_ax.plot([0.200,0.200], [0, y], 'r-')
+        # anfsl_ax.set_xlim(0, 1)
+        
+        dy = 50
+        # for k in range(ninputs):
+        #     
+        #     fsl, ssl = self.parent.PLT.plot_fsl_ssl(an_st_by_input[k],
+        #          run_info=ri,
+        #          max_time = 25.0,
+        #          min_fsl = 1.0e-3,
+        #          bin_width= 0.25,
+        #          ax = ax,
+        #          zero_time =  wstart*1e-3,
+        #          offset = k*dy,
+        #          cellID = cell_number,
+        #          show_values = False,
+        #          )
+
+        if anfsl_ax is not None:
+            self.plot_psth_ANFSL(anfsl_ax, wstart, cell_number, ri, an_st_grand, label_x_axis)
+
+    def plot_PSTH_supplement(self):
+        print("PSTH supplement")
+        dBSPL = "40dB"
+        lmar = 0.125
+        rmar = 0.1
+        hspc = 0.08
+        P = PH.regular_grid(rows=len(grAList()), cols=3, 
+                order='rowsfirst', 
+                figsize=(8, 10),
+                # showgrid=True,
+                margins={
+                    "bottommargin": 0.1,
+                    "leftmargin": lmar,
+                    "rightmargin": rmar,
+                    "topmargin": 0.1,
+                },
+                verticalspacing=0.03,
+                horizontalspacing=hspc,
+        )
+        PH.cleanAxes(P.axarr.ravel())
+        ncells = len(grAList())
+        # center labels over columns
+        cdata = {0: f"Soma Voltage",
+                 1: f"PSTH",
+                 2: f"FSL/SSL",
+             }
+        for i in list(cdata.keys()):
+            P.axarr[0, i].set_title(cdata[i], 
+                y=1.1,  # raise up
+                transform = P.axarr[0,i].transAxes,
+                fontsize=10, horizontalalignment='center',
+                verticalalignment='bottom')
+
+        tr_ax = P.axdict["A"]
+        st_ax = P.axdict["B"]
+        bupsth_ax = P.axdict["C"]
+        anpsth_ax = P.axdict["D"]
+        bufsl_ax = P.axdict["E"]
+        anfsl_ax = P.axdict["F"]
+
+        PH.cleanAxes(P.axarr.ravel())
+        
+        for i, cell_number in enumerate(grAList()):
+            print('doing cell: ', cell_number)
+            show_label = False
+            if i == ncells-1:
+                show_label = True 
+            self.plot_one_PSTH(cell_number=cell_number, dBSPL=dBSPL, 
+                    tr_ax=P.axarr[i, 0], st_ax=None, bupsth_ax=P.axarr[i, 1], 
+                    anpsth_ax=None, bufsl_ax=P.axarr[i,2], anfsl_ax=None,
+                    label_x_axis=show_label)
+            
+            P.axarr[i, 0].text(-0.25, 0.5, f"VCN_c{cell_number:02d}", 
+                fontsize=9,
+                color="k",
+                transform=P.axarr[i, 0].transAxes,
+                horizontalalignment="right",
+            )
+        
+        save_file = f"Fig_M5_Supplmental.pdf"
+
+        P.figure_handle.text(
+            0.99,
+            0.99,
+            save_file, # .replace('_', '\_'),
+            transform=P.figure_handle.transFigure,
+            horizontalalignment="right",
+            verticalalignment="top",
+        )
+        mpl.savefig(
+            Path(config["baseDataDirectory"], "Figures", save_file),
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": "SBEM Project Figure 5 Modeling Supplemental : PSTH and FSL, All cells",
+            },
+        )
+        mpl.show()
+
+    
+    def plot_VS_SAM(self):
+        pass

@@ -16,6 +16,10 @@ pngDirectory="VCN-CellImages-1-2020/Bushy_Cells"  # png files
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_pbm_14Oct2019_v1.xlsx'
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_6_March_2020.xlsx'
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_2_April_2020.xlsx'
+
+# most recent table. Note that the table hass been annotated af few times since the stated date
+# of the file. THese include: updating estimage of c18's soma and dendrite area, and
+# updating synapse counts from Matthew Kersting.
 dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_29_June_2020.xlsx'
 
 # names of excel tabs in the dendrite quality file

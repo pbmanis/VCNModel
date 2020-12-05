@@ -14,6 +14,7 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 import pyqtgraph.dockarea as PGD
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 from vcnmodel import table_manager as table_manager
+from vcnmodel import cell_config
 from vcnmodel.plotters import plot_sims
 from vcnmodel.plotters import figures
 from vcnmodel.plotters import plot_z
@@ -37,12 +38,14 @@ all_modules = [
     figures,
     plot_z,
     efficacy_plot,
+    cell_config,
     # vcnmodel.correlation_calcs,
     vcnmodel.spikestatistics,
     vcnmodel.analysis,
     ephys.ephysanalysis.SpikeAnalysis,
     ephys.ephysanalysis.Utility,
     ephys.ephysanalysis.MakeClamps,
+    PH,
 ]
 
 cellvalues = [
@@ -422,7 +425,8 @@ class DataTables:
                     "values": ["IV Figure", "IV Supplement", "Zin Supplement",
                                "Efficacy", "Efficacy Supplement",
                                "Revcorr Ex", "Revcorr Supplement", "Revcorr Compare", 
-                               "PSTH/VS", "FSL", "VS-SAM Tone"],
+                               "PSTH-FSL", "PSTH-FSL Supplement",
+                               "VS-SAM Tone"],
                     "value": "IV Figure",
                 },
                     {"name": "Create Figure", "type": "action"},
@@ -434,7 +438,8 @@ class DataTables:
                 "children": [
                     {"name": "Reload", "type": "action"},
                     {"name": "View IndexFile", "type": "action"},
-                    {"name": "Print File Info", "type": "action"}
+                    {"name": "Print File Info", "type": "action"},
+                    {"name": "Delete Selected Sim", "type": "action"},
                 ],
             },
             {"name": "Quit", "type": "action"},
@@ -667,7 +672,20 @@ class DataTables:
                     if selected is None:
                         return
                     self.PLT.print_file_info(selected)
-
+                elif path[1] == "Delete Selected Sim":
+                    if self.selected_index_rows is None:
+                        return
+                    self.selected_index_rows = self.table.selectionModel().selectedRows()
+                    self.table_manager.remove_table_entry(self.selected_index_rows)
+                    
+                    
+    def error_message(self, text):
+        self.textbox.clear()
+        color = "red"
+        self.textbox.setTextColor(self.QColor(color))
+        self.textbox.append(text)
+        self.textbox.setTextColor(self.QColor("white"))
+        
     def setColortoRow(self, rowIndex, color):
         for j in range(self.table.columnCount()):
             self.table.item(rowIndex, j).setBackground(color)

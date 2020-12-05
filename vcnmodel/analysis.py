@@ -134,43 +134,39 @@ def ANfspike(spikes, stime, nReps):
         np.count_nonzero(~np.isnan(sl2)))
         )
 
-    
 
-def getFirstSpikes(spikes, stime, nReps, minfsl=2.5):
+def getFirstSpikes(spikes, stime, nReps, min_fsl=2.5*1e-3):
+    # times need to be in consistent units
+    # in this case, all in Seconds.
+    # expects spikes to be lists/arrays, sorted by repetition/trial
+    # 
     sl1 = np.full(nReps, np.nan)
     sl2 = np.full(nReps, np.nan)
-    # print(spikes)
+
     for r in range(nReps):
         if len(spikes[r]) == 0:
             continue
-        rs = np.argwhere(np.array(spikes[r]).T > stime+minfsl)  # get spike times post stimulus onset
+        rs = np.argwhere(np.array(spikes[r]).T > stime+min_fsl)  # get spike times post stimulus onset
         if len(rs) == 0:
             continue
         rs = [r[0] for r in rs] # flattend the array
-        # print('rs: ', rs)
-        # print('fsl: ', spikes[r][rs[0]]-stime, rs)
-        # print(f"r: {r:d}   rs: {str(rs):s}")
-        # print(f"     {str(np.array(spikes[rs])):s}")
+
         if len(rs) > 0:
             sl1[r] = spikes[r][rs[0]]-stime
         if len(rs) > 1:
             sl2[r] = spikes[r][rs[1]]-stime  # second spikes
-            # print('sl2: ', sl2)
     sl1 = sl1[~np.isnan(sl1)]  # in case of no spikes at all
     sl2 = sl2[~np.isnan(sl2)]  # in case of no second spikes
-    # print(len(sl1), len(sl2))
     return(sl1, sl2)
 
 
-def CNfspike(spikes, stime, nReps):
-    # print spikes
-    #print 'stime: ', stime
-    sl1, sl2 = getFirstSpikes(spikes, stime, nReps)
+def CNfspike(spikes, stime, nReps, min_fsl=2.5*1e-3):
+    sl1, sl2 = getFirstSpikes(spikes, stime, nReps, min_fsl=min_fsl)
 
     print( 'Cochlear Nucleus Bushy Cell: ')
-    print ('   mean First spike latency:  %8.3f ms stdev: %8.3f (N=%3d)' % (np.nanmean(sl1), np.nanstd(sl1),
+    print ('   mean First spike latency:  %8.3f ms stdev: %8.3f (N=%3d)' % (np.nanmean(sl1)*1e3, np.nanstd(sl1)*1e3,
         np.count_nonzero(~np.isnan(sl1))))
-    print ('   mean Second spike latency: %8.3f ms stdev: %8.3f (N=%3d)' % (np.nanmean(sl2), np.nanstd(sl2), 
+    print ('   mean Second spike latency: %8.3f ms stdev: %8.3f (N=%3d)' % (np.nanmean(sl2)*1e3, np.nanstd(sl2)*1e3, 
         np.count_nonzero(~np.isnan(sl2))))
     return(sl1, sl2)
 

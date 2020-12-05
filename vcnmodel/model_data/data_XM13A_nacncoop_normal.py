@@ -15,8 +15,8 @@ ChannelData = u"""
     The names of the mechanisms must match a channel mechanism (Neuron .mod files)
     and the following _(gbar, vshift, etc) must match an attribute of that channel
     that can be accessed.
-    20Jul 2020 : adjust all channels: nacoop... kht, klt, ihvcn, gleak to 1/2 of their original values. Exploratory.
-    -----------------------------------------------------------------------------------------------------------------------------------
+    
+    -----------------------------------------------------------------------------------------------------------------
                       II                   II-I                I-c                I-II                I-t       
                                                                                                     
     nacncoop_gbar     29.110       [1]     1000.       [1]     3000.       [1]    1000.        [2]    3000.    [1] 
@@ -25,22 +25,22 @@ ChannelData = u"""
     ka_gbar           0.0000       [1]     0.0         [1]     0.0         [1]    0.0          [2]    125.0    [1] 
     ihvcn_gbar        0.8733       [1]     30.0        [1]     18.0        [1]    2.0          [2]    18.0     [1] 
     leak_gbar         0.1385       [1]     2.0         [1]     8.0         [1]    2.0          [2]    8.0      [1] 
-    leak_erev         -65          [1]     -65         [1]     -65         [1]    -65          [2]    -65      [1] 
+    leak_erev         -65.0        [1]     -65         [1]     -65         [1]    -65          [2]    -65      [1] 
     na_type           nacncoop     [1]     nacncoop    [1]     nacncoop    [1]    nacncoop     [1]    nacncoop [1] 
     ih_type           ihvcn        [1]     ihvcn       [1]     ihvcn       [1]    ihvcn        [2]    ihvcn    [1] 
     soma_Cap          13.0         [1]     26.0        [1]     25.0        [1]    26.0         [2]    25.0     [1] 
-    e_k               -84          [1]     -84         [1]     -84         [1]    -84          [2]    -84      [1] 
-    e_na              50.          [1]     50.         [1]     50.         [1]    50.          [2]    50.      [1] 
-    ih_eh             -43          [1]     -43         [1]     -43         [1]    -43          [2]    -43      [1] 
+    e_k               -84.0        [1]     -84         [1]     -84         [1]    -84          [2]    -84      [1] 
+    e_na              50.0         [1]     50.         [1]     50.         [1]    50.          [2]    50.      [1] 
+    ih_eh             -43.0        [1]     -43         [1]     -43         [1]    -43          [2]    -43      [1] 
     nacncoop_vshift   0.           [1]     0.          [1]     0.          [1]    0.           [1]    0.       [1]
     units             mmho/cm2             nS                  nS                 nS                  nS
-    -----------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------------------------------------
 
     [1] Uses channels from Rothman and Manis, 2003
         Conductances are for Mouse bushy cells
         Xie and Manis, 2013
         Age "adult", Temperature=34C
-        Units are nS.
+        Units are nS unless otherwise stated.
         nacn_vshift: was 4.3 in Xie and Manis (2013) for T-stellate cells; 0 for bushy cells
         Here reset to 0 for bushy cells
 

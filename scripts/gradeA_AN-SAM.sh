@@ -8,9 +8,9 @@
 # Note we do not have a full reconstruction for cell 18
 # in that dataset.
 #######################################################
-CELLNAMES="05 06 10" # "02 05 06 09 10 11 13 17 30"
+CELLNAMES="02 05 06 09 10 11 13 17 18 30"
 #CONFIG="noscale.toml" #"autoscale.toml"
-CONFIG="autoscale_multisite_SAM.toml"
+CONFIG="toml/autoscale_multisite_SAM.toml"
 RUNTEXT="running the individual initialization and running AN SAM protocols"
 WORKERS="16"
 REPS="100"
@@ -20,16 +20,16 @@ for f in $CELLNAMES
 do
     echo $f
 #   echo $f
-    python vcnmodel/model_run2.py VCN_c$f  -F -P initAN --configfile $CONFIG  --datatable data_XM13A_nacncoop
-    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r $REPS --dB 20 --Spirou all --workers $WORKERS --configfile $CONFIG --datatable data_XM13A_nacncoop
+    python vcnmodel/model_run2.py VCN_c$f  -D Full -P initAN --configfile $CONFIG  --datatable data_XM13A_nacncoop
+    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r $REPS --dB 20 --Spirou all --workers $WORKERS --configfile $CONFIG --datatable data_XM13A_nacncoop
     if [ $? -ne 0 ]; then
         exit 1
     fi
-    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r $REPS --dB 20 --Spirou largestonly --workers $WORKERS --configfile $CONFIG --datatable data_XM13A_nacncoop
+    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r $REPS --dB 20 --Spirou largestonly --workers $WORKERS --configfile $CONFIG --datatable data_XM13A_nacncoop
 	if [ $? -ne 0 ]; then
 	    exit 1
 	fi
-	python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r $REPS --dB 20 --Spirou removelargest --workers $WORKERS --configfile $CONFIG --datatable data_XM13A_nacncoop
+	python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r $REPS --dB 20 --Spirou removelargest --workers $WORKERS --configfile $CONFIG --datatable data_XM13A_nacncoop
 	if [ $? -ne 0 ]; then
 	    exit 1
 	fi

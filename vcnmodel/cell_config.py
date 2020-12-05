@@ -1,4 +1,5 @@
 import json
+from typing import Union
 from collections import OrderedDict
 from pathlib import Path
 
@@ -118,9 +119,13 @@ inputs = [f"Input {i+1:d}" for i in range(12)]  # input column labels
 # value confirmed in 5 VCN gBCs (0.68, leaving largest out)
 # 0.729 with all 5.
 
-synperum2 = 0.799  # new numbers from synapse counting: value is average of 15
+# synperum2 = 0.799  # new numbers from synapse counting: value is average of 15
 # terminals from 9 cells in the VCN (Matthew Kersting)
-# std is 0.109
+# std is 0.109 4/2020
+
+synperum2 = 0.7686  # new numbers form synapse counting: 23 terminals from 10 cells.
+# cells: 2, 5, 6, 9, 10, 11, 13, 17, 18, 30
+# SD is 0.1052
 
 
 class CellConfig:
@@ -146,10 +151,8 @@ class CellConfig:
         self.VCN_Inputs = OrderedDict()
 
         for cellnum in cellsintable:
-            # print('cellnum: ', cellnum)
             self.build_cell(cellnum)
             r, ct = self.make_dict(f"VCN_c{cellnum:02d}", synperum2)
-        # print(self.VCN_Inputs)
         if self.verbose:
             self.print_cell_inputs(self.VCN_Inputs)
 
@@ -178,11 +181,13 @@ class CellConfig:
             )
         # print('dcell: ', dcell)
 
-    def make_dict(self, cell, synperum2=0.65, velocity=3.0, areainflate=1.0):
+    def make_dict(self, cell, synperum2:Union[float, None]= None, velocity:float=3.0, areainflate:float=1.0):
         assert cell in self.VCN_Inputs
         indata = self.VCN_Inputs[cell][1]
         celltype = self.VCN_Inputs[cell][0]
         r = [None] * len(indata)
+        if synperum2 is None:
+            synperum2 = self.synperum2  # use value at top of table.
         for j, i in enumerate(indata):
             asa = (
                 i[0] * areainflate

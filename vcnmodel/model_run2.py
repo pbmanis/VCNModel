@@ -1560,10 +1560,10 @@ class ModelRun:
                     ngMax[i] = ngMax[i] + p.gmax
         if self.Params.verbose or printvalues:
             print(f"  getsyn")
-            print(f"  Syn#    nsites    AMPA gmax    NMDA gmax")
+            print(f"  Syn#    nsites    AMPA gmax    NMDA gmax   synperum2")
             for i, s in enumerate(synapses):
                 print(
-                    f"  {i:>4d}   {int(nSyn[i]):>5d}    {eng(gMax[i]):>9s}    {eng(ngMax[i]):>9s}"
+                    f"  {i:>4d}   {int(nSyn[i]):>5d}    {eng(gMax[i]):>9s}    {eng(ngMax[i]):>9s}  {self.Params.SynapseConfig[i]['synperum2']}"
                 )
         return (gMax, ngMax, nSyn)
 
@@ -1643,7 +1643,7 @@ class ModelRun:
     ):
         """
         Establish AN inputs to soma, and run the model.
-        Requires a synapseConfig list of dicts from cell_config.makeDict()
+        Requires a synapseConfig list of dicts from cell_config.make_dict()
         each list element represents an AN fiber (SGC cell) with:
             (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high],
                     type (e or i), segment and segment location)
@@ -1673,10 +1673,12 @@ class ModelRun:
             print(f"Cell id: {self.Params.cellID:s} is using 'self' input pattern")
             fromdict = self.Params.cellID
 
-        synapseConfig, celltype = self.cconfig.makeDict(
-            fromdict, self.Params.ASA_inflation
+        synapseConfig, celltype = self.cconfig.make_dict(
+            fromdict, areainflate = self.Params.ASA_inflation
         )
-        self.Params.SynapseConfig = synpaseConfig
+        self.Params.SynapseConfig = synapseConfig
+        # print(synapseConfig)
+        # exit()
         self.start_time = time.time()
         # compute delays in a simple manner
         # assumption 3 meters/second conduction time
@@ -1900,7 +1902,7 @@ class ModelRun:
             )
         else:
             fromdict = self.Params.cellID
-        synapseConfig, celltype = self.cconfig.makeDict(fromdict)
+        synapseConfig, celltype = self.cconfig.make_dict(fromdict)
         self.Params.SynapseConfig = synapseConfig
         nReps = self.RunInfo.nReps
         threshold = self.RunInfo.threshold  # spike threshold, mV
@@ -2021,7 +2023,7 @@ class ModelRun:
         """
         print("\n*** an_run_IO\n")
         self.start_time = time.time()
-        synapseConfig, celltype = self.cconfig.makeDict(self.Params.cellID)
+        synapseConfig, celltype = self.cconfig.make_dict(self.Params.cellID)
         self.Params.SynapseConfig = synapseConfig
         nReps = self.RunInfo.nReps
         threshold = self.RunInfo.threshold  # spike threshold, mV
