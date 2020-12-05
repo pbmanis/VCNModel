@@ -1,9 +1,25 @@
 # filenames and paths
-baseDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
-baseDataDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/MorphologyData/VCN"
+# Use this to set the directories and paths where you put the data files
+# that can drive the simulations. 
+# This file is mostly used by cell_config.py, but it is also imported
+# elsewhere rather than harcoding some of the paths.
+#
+# Read this file as:
+# import toml
+# config = toml.load(open("wheres_my_data.toml", "r"))
+
+baseDataDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
+cellDataDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
+baseMorphologyDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/MorphologyData/VCN"
+codeDirectory="/Users/pbmanis/Desktop/Python/vcnmodel"
+pngDirectory="VCN-CellImages-1-2020/Bushy_Cells"  # png files
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_pbm_14Oct2019_v1.xlsx'
-#dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_6_March_2020.xlsx'
+# dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_6_March_2020.xlsx'
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_2_April_2020.xlsx'
+
+# most recent table. Note that the table hass been annotated af few times since the stated date
+# of the file. THese include: updating estimage of c18's soma and dendrite area, and
+# updating synapse counts from Matthew Kersting.
 dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_29_June_2020.xlsx'
 
 # names of excel tabs in the dendrite quality file

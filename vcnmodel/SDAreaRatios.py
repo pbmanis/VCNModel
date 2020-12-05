@@ -8,10 +8,12 @@ import pyqtgraph as pg
 from cnmodel import cells
 from cnmodel.decorator import Decorator
 import adjust_areas
+import toml
+config = toml.load(open("wheres_my_data.toml", "r"))
 
 AdjA = adjust_areas.AdjustAreas()
 
-gradeA = [2, 5, 6, 9, 10, 11, 13, 17, 24, 29, 30]
+gradeA = [2, 5, 6, 9, 10, 11, 13, 17, 18, 24, 29, 30]
 
 all_cell_nos = range(1, 32)
 allcells = [f"{c:02d}" for c in all_cell_nos]
@@ -37,7 +39,7 @@ def one_sectype_area(amap):
 
 def area(fn):
     filename = Path(
-        "/Users/pbmanis/desktop/Python/VCN-SBEM-Data/VCN_Cells",
+        config['cellDataDirectory'],
         fn,
         "Morphology",
         fn + "_full.hoc",

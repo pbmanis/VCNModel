@@ -9,9 +9,11 @@ from pathlib import Path
 import pylibrary.plotting.plothelpers as PH
 import matplotlib.image as mpimg
 import numpy as np
-
-fn = Path('/Users/pbmanis/Desktop/Python/VCNModel/VCN-CellImages-1-2020/Bushy_Cells')
-
+import toml
+config = toml.load(open("wheres_my_data.toml", "r"))
+    
+fn = Path(config['baseDataDirectory'], 'VCN-CellImages-1-2020/Bushy_Cells')
+print(fn)
 fns = fn.glob('*.png')
 pngs = list(fns)
 npngs = len(pngs)

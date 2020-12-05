@@ -5,21 +5,28 @@
 from __future__ import print_function
 import os
 import sys
+from pathlib import Path
 import pickle
 import matplotlib.pyplot as mpl
+import toml
+config = toml.load(open("wheres_my_data.toml", "r"))
+
 
 def main():
     # modify to point to the file:
-    basepath = '/Users/pbmanis/Desktop/Python/VCNModel/VCN_Cells/VCN_c09/Simulations/'
+    basepath = Path(config['cellDataDirectory'], 'VCN_c09/Simulations/')
 
     # fn = os.path.join(basepath, 'IV/VCN_c09_mGBC_monitor.p')  # IV
     # datatype = 'IV'
-    fn = os.path.join(basepath, 'AN/AN_Result_VCN_c09_mGBC_delays_N001_035dB_4000.0_HS.p')  # an AN response
+    fn = Path(basepath, 'AN/AN_Result_VCN_c09_mGBC_delays_N001_035dB_4000.0_HS.p')  # an AN response
     datatype = 'AN'
-
-    fh = open(fn)
-    print(' file opened')
-    d = pickle.load(fh)
+    if not fn.is_file():
+        print('File does not exist: ', fn)
+        exit()
+    print(fn.is_file())
+    with  open(fn, 'rb') as fh:
+        print(' file opened')
+        d = pickle.load(fh, encoding='latin1')
 
 
     # FOR IVS:

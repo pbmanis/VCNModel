@@ -9,6 +9,10 @@ import datetime
 import neuron
 from neuron import h
 
+import toml
+config = toml.load(open("wheres_my_data.toml", "r"))
+
+
 re_pts = re.compile('\s*(pt3dadd\()([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)')
 re_section = re.compile('\s*(sections\[)([0-9]*)\]\s*{')
 re_access = re.compile('\s*(access)\s*(sections\[)([0-9]*)\]\s*')
@@ -332,10 +336,9 @@ class ParseHoc(object):
 
 
 def main():
-    basedir = '/Users/pbmanis/Desktop/Python/VCNModel'
-    fn = Path(basedir, 'VCN_Cells', 'VCN_c16', 'Morphology', 'VCN_c16.hoc')
-    # fn = '/Users/pbmanis/Desktop/Python/VCNModel/VCN_newcoord/VCN_c09.hoc'
-    # fn = '/Users/pbmanis/Desktop/Python/VCNModel/ASA/CellBodySWCs/VCN_c09_CellBody01.hoc'
+    basedir = config['cellDataDirectory']
+    fn = Path(basedir, 'VCN_c18', 'Morphology', 'VCN_c18_Full.hoc')
+
     hparse = ParseHoc(fn)
     hparse.read_hoc()
     hparse.get_hoc_struct()# somas = h.get_soma()

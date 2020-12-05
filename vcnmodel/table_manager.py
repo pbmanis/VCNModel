@@ -1,6 +1,7 @@
 import dataclasses
 from dataclasses import dataclass, field
 import datetime
+import pandas as pd
 import pickle
 import pprint
 import subprocess
@@ -175,6 +176,23 @@ class TableManager:
         # exit()
         return (d["Params"], d["runInfo"], str(datafile.name))  # just the dicts
 
+    def get_sim_runtime(self, filename):
+        """
+        Switch the time stamp to different format
+        Here the initial value is a string, which we convert to a datetime
+      
+        """
+        d = pd.read_pickle(filename)
+        if d['runInfo'] is None:
+            cprint('r', f"runinfo is None? file = {str(filename):s}")
+            return None
+        if isinstance(d['runInfo'], dict):
+            ts = d['runInfo']['runTime']
+        else:
+            ts = d['runInfo'].runTime
+        times = datetime.datetime.strptime(ts,"%a %b %d %H:%M:%S %Y") 
+        return times
+
     def make_indexdata(self, params, runinfo, fn=None, indexdir=None):
         """
         Load up the index data class with selected information
@@ -207,11 +225,18 @@ class TableManager:
         )        
         cprint('r', f"simulation path: {str(Index_data.simulation_path):s}")
         if Index_data.filetype == "F":
-
-            mtime = Path(Index_data.simulation_path, fn).stat().st_mtime
+            runtime = self.get_sim_runtime(Path(Index_data.simulation_path, fn))
         elif Index_data.filetype == "D":
-            mtime = Path(Index_data.simulation_path, indexdir).stat().st_mtime
-        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime("%F-%T:.%f") # "%Y-%m-%d-%H:%M:%S")
+            # get the first tile in the directory
+            ddir = list(Path(Index_data.simulation_path, indexdir).glob('*.p'))
+            if len(ddir) > 0:
+                runtime = self.get_sim_runtime(ddir[0])
+            else:
+                timestamp_str = "No Valid Data Files Found"
+        if runtime is not None:
+            timestamp_str = datetime.datetime.strftime(runtime, "%F-%T") # "%Y-%m-%d-%H:%M:%S")
+        else:
+            timestamp_str = "No Valid Data Files Found"
         Index_data.datestr = timestamp_str
 
 
@@ -329,14 +354,45 @@ class TableManager:
             indexdata = pickle.load(fh, encoding="latin1")
         return indexdata
 
+    def remove_table_entry(self, indexrow):
+        if len(indexrow) != 1:
+            self.parent.error_message("Selection Error: Can only delete one row at a time")
+            return
+        indexrow = indexrow[0]
+        data = self.get_table_data(indexrow)
+        for f in data.files:
+            fn = Path(data.simulation_path, f)
+            print(f"Would delete: {str(fn):s}")
+            print(fn.is_file())
+            Path(fn).unlink()
+        indexfilename = self.force_suffix(data.datestr)
+        print(Path(indexfilename).is_file())
+        if Path(indexfilename).is_file():
+            print(f" and index file: {str(indexfilename):s}")
+        # now update the table
+        # print(indexrow)
+        ind = self.get_table_data_index(indexrow)
+        if ind is None:
+            return
+        # if ind is not None:
+            # print(ind)
+            # print(self.table_data[ind])
+            # print(type(self.table_data[ind]))
+        self.table.removeRow(ind)
+        # print(dir(self.table))
+        # print(self.table.viewport)
+        # print(dir(self.table.viewport()))
+        self.table.viewport().update()
+        
+        
 
     def print_indexfile(self, indexrow):
         """
         Print the values in the index file
         """
         print('='*80)
-        print('\n Index file and data file params')
-        cprint('c', f"Index row: {str(indexrow):s}")
+        print('\nIndex file and data file params')
+        cprint('c', f"Index row: {str(indexrow.row):s}")
         data = self.get_table_data(indexrow)
         print('Data: ', data)
         for f in data.files:
@@ -344,11 +400,18 @@ class TableManager:
                 fdata = pickle.load(fh, encoding="latin1")
                 print('*'*80)
                 cprint('c', f)
+                cprint('y', 'File Data Keys')
                 print(fdata.keys())
                 # print(dir(fdata['Params']))
+                cprint('y', 'Parameters')
                 PP.pprint(fdata['Params'].__dict__) # , sort_dicts=True)
                 print('-'*80)
+                cprint('y', 'RunInfo')
                 PP.pprint(fdata['runInfo'].__dict__) # , sort_dicts=True
+                print('-'*80)
+                cprint('y', 'ModelPars')
+                PP.pprint(fdata['modelPars']) # , sort_dicts=True
+                
                 print('*'*80)
     
     def build_table(self, mode="scan"):
@@ -407,21 +470,9 @@ class TableManager:
                 valid_dfiles.append(f)  # keep track of accepted files
         dfiles = valid_dfiles  # replace with shorter list with only the valid files
         indexfiles = indexfiles + dfiles
-        
-        # if True:
-#             print(indxs)
-#             for i in range(len(indexfiles)):
-#                 try:
-#                     print(   indxs[i].command_line["nReps"],)
-#                 except:
-#                     print("......", indxs[i].command_line)
-#             print('*'*80)
-#             for ix in indxs:
-#                        print(ix, end="\n\n")
-        
         self.table_data = indxs
-        # transfer to the data array for the table
 
+        # transfer to the data array for the table
         self.data = np.array(
             [
                 (
@@ -533,15 +584,27 @@ class TableManager:
         for j in range(self.table.columnCount()):
             self.table.item(rowIndex, j).setBackground(color)
 
+    def get_table_data_index(self, index_row):
+        value = index_row.sibling(index_row.row(), 1).data()
+        for i, d in enumerate(self.data):
+            if self.data[i][1] == value:
+                return i
+        return None
+        
     def get_table_data(self, index_row):
         """
         Regardless of the sort, read the current index row and
         map it back to the data in the table.
         """
-
-        # print('gettabledata: indexrow: ', index_row, index_row.row())
-        value = index_row.sibling(index_row.row(), 1).data()
-        for i, d in enumerate(self.data):
-            if self.data[i][1] == value:
-                return self.table_data[i]
-        return None
+        ind = self.get_table_data_index(index_row)
+        if ind is not None:
+            return self.table_data[ind]
+        else:
+            return None
+            
+        # # print('gettabledata: indexrow: ', index_row, index_row.row())
+        # value = index_row.sibling(index_row.row(), 1).data()
+        # for i, d in enumerate(self.data):
+        #     if self.data[i][1] == value:
+        #         return self.table_data[i]
+        # return None

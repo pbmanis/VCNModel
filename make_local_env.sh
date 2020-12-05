@@ -1,5 +1,5 @@
 ENVNAME="vcn_venv"
-python3.7 -m venv $ENVNAME
+python3.8 -m venv $ENVNAME
 
 source $ENVNAME/bin/activate
 

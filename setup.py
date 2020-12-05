@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-version = '0.4.1'
+version = '0.9.1'
 
 setup(name='vcnmodel',
       version=version,
@@ -16,7 +16,7 @@ setup(name='vcnmodel',
       zip_safe=False,
       entry_points={
           'console_scripts': [
-               'model_run=vcnmodel.model_run:main',
+               'model_run=vcnmodel.model_run2:main',
                'allgbcivs=vcnmodel.all_gbc_iv:main',
                'show_swc=vcnmodel.util.show_swc:main',
                'render=vcnmodel.util.render:main',

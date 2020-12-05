@@ -23,6 +23,7 @@ import pandas as pd
 import pynwb as NWB
 from matplotlib import pyplot as mpl
 
+config = toml.load(open("wheres_my_data.toml", "r"))
 
 re_secn = re.compile("create sections\[(?P<nsections>\d+)\]")
 re_swcs = re.compile("// SWC ID = (?P<swcid>\d+)")
@@ -360,7 +361,7 @@ def read_nwb(infilename):
     axl[0].set_xlim(xlims)
     axl[1].set_xlim(xlims)
     axl[0].set_ylabel("V(mv)", fontsize=9)
-    axl[1].set_ylabel("Input #", fontsize=9)
+    axl[1].set_ylabel("Input \#", fontsize=9)
     axl[1].set_xlabel("T (ms)")
     axl[0].set_title("All section voltages")
     axl[1].set_title(f"Input Spikes and Coincidences (dt={coincidence_window:.2f} ms)")
@@ -375,8 +376,8 @@ def read_nwb(infilename):
 def write_file():
 
     cell = 11
-    hocfile = f"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c{cell:02d}/Morphology/VCN_c{cell:02d}_Full.hoc"
-    basepath = Path("/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/")
+    hocfile = f"{config['cellDataDirectory']:s}/VCN_c{cell:02d}/Morphology/VCN_c{cell:02d}_Full.hoc"
+    basepath = Path(config['baseDataDirectory'])
     opath = Path(basepath, "ForGeorge")
     with open(hocfile, "r") as fh:
         hocdata = fh.read()
@@ -403,7 +404,7 @@ def write_file():
     fn = Path(
         f"runANPSTH-all-2020-09-09.11-24-50/AN_Result_VCN_c11_inp=self_XM13A_nacncoop_II_soma=1.203_dend=1.510_normal_delays_multisite_001_tonepip_020dB_16000.0_HS.p"
     )
-    basepath = Path('/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c11/Simulations/AN/')
+    basepath = Path(config['cellDataDirectory'],'VCN_c11/Simulations/AN/')
     fnb = Path(basepath, fn)
     d = pd.read_pickle(fnb)
 
@@ -452,7 +453,7 @@ def write_file():
 
 
 def read_file():
-    fin = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/ForGeorge/test.nwb"
+    fin = Path(config['baseDataDirectory'], "ForGeorge/test.nwb")
     read_nwb(fin)
     return
 

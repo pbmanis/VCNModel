@@ -13,7 +13,13 @@ from pylibrary.tools import utility as PU
 from vcnmodel import cell_config as cell_config
 
 import VS_data
+"""
+Plot the vector strength measures as a function of frequency for VCNModel
+Reads the data from VS_data.py
 
+9 Oct 2020 pbm
+
+"""
 
 # datas = {'100': data100Hz, '400': data400Hz}  # just keep adding...
 panels = {100: ["A", "B"], 200: ["C","D"], 400: ['E', 'F'], 750: ['G', 'H'], 1000: ["I", "J"]}

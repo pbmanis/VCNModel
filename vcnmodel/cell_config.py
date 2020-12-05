@@ -1,4 +1,5 @@
 import json
+from typing import Union
 from collections import OrderedDict
 from pathlib import Path
 
@@ -11,11 +12,11 @@ from matplotlib import pyplot as mpl
 from pylibrary.plotting import plothelpers as PH
 
 """
-Data sets are from George Spirou & Co. (Michael Morehead, Nathan Spencer, Matthew)
+Data sets are from George Spirou & Co. (Michael Morehead, 
+    Nathan Spencer, Matthew Kersting)
 
-This version **imports** data from an excel spreadsheet in VCN_Cells, such as:
-
-Dendrite Quality and Surface Areas_comparisons_pbm_15Mar2019_v2.xlsx
+This version **imports** data from an excel spreadsheet in VCN_Cells.
+The location of the spreadsheet is defined in wheres_my_data.toml
 
 When spreadsheets are updated with new data, we can just read them to build a new table.
 last modified: 11 Oct 2019  pbm
@@ -50,7 +51,7 @@ location descriptor is as follows:
 The synapse might be split across sections as follows:
 {'nameofsection': {nrnsection1#: [location, fractionofgmax], nrnsection2#: [location, fractionofgmax]}}
 if fraction of gmax is -1, then it is computed as the residual of the remaining gmax.
-(this allows things like a big ending that crosses anatomically defined boundaries)
+(this allows you to split up a big ending that crosses anatomically defined boundaries)
 """
 
 
@@ -64,7 +65,7 @@ rcParams["ps.fonttype"] = 42
 # datafile_default = Path('MorphologyData', 'Dendrite Quality and Surface Areas_comparisons_pbm_15Mar2019_v2.xlsx')
 # soma_area_data = 'Mesh Surface Area'
 config = toml.load(open("wheres_my_data.toml", "r"))
-dendqual = Path(config["baseDataDirectory"], config["dendriteQualityFile"])
+dendqual = Path(config["baseMorphologyDirectory"], config["dendriteQualityFile"])
 
 # specify the name of the columns in the excel sheet
 # these keep getting edited and changing
@@ -118,9 +119,13 @@ inputs = [f"Input {i+1:d}" for i in range(12)]  # input column labels
 # value confirmed in 5 VCN gBCs (0.68, leaving largest out)
 # 0.729 with all 5.
 
-synperum2 = 0.799  # new numbers from synapse counting: value is average of 15
+# synperum2 = 0.799  # new numbers from synapse counting: value is average of 15
 # terminals from 9 cells in the VCN (Matthew Kersting)
-# std is 0.109
+# std is 0.109 4/2020
+
+synperum2 = 0.7686  # new numbers form synapse counting: 23 terminals from 10 cells.
+# cells: 2, 5, 6, 9, 10, 11, 13, 17, 18, 30
+# SD is 0.1052
 
 
 class CellConfig:
@@ -146,12 +151,10 @@ class CellConfig:
         self.VCN_Inputs = OrderedDict()
 
         for cellnum in cellsintable:
-            # print('cellnum: ', cellnum)
             self.build_cell(cellnum)
-            r, ct = self.makeDict(f"VCN_c{cellnum:02d}")
-        # print(self.VCN_Inputs)
+            r, ct = self.make_dict(f"VCN_c{cellnum:02d}", synperum2)
         if self.verbose:
-            self.printCellInputs(self.VCN_Inputs)
+            self.print_cell_inputs(self.VCN_Inputs)
 
     def build_cell(self, cellnum):
         dcell = self.ASA[self.ASA["Cell-Inputs"] == cellnum]
@@ -178,11 +181,13 @@ class CellConfig:
             )
         # print('dcell: ', dcell)
 
-    def makeDict(self, cell, velocity=3.0, areainflate=1.0):
+    def make_dict(self, cell, synperum2:Union[float, None]= None, velocity:float=3.0, areainflate:float=1.0):
         assert cell in self.VCN_Inputs
         indata = self.VCN_Inputs[cell][1]
         celltype = self.VCN_Inputs[cell][0]
         r = [None] * len(indata)
+        if synperum2 is None:
+            synperum2 = self.synperum2  # use value at top of table.
         for j, i in enumerate(indata):
             asa = (
                 i[0] * areainflate
@@ -191,6 +196,7 @@ class CellConfig:
                 [
                     ("input", j + 1),
                     ("asa", asa),
+                    ("synperum2", synperum2),
                     ("nSyn", int(np.around(asa * synperum2))),
                     ("delay", i[1]),
                     ("SR", i[2]),
@@ -205,12 +211,12 @@ class CellConfig:
             )
         return r, celltype
 
-    def printCellInputs_json(self, r):
+    def print_cell_inputs_json(self, r):
         if self.verbose:
             print("\nCell Inputs:")
             print(json.dumps(r, indent=4))
 
-    def printCellInputs(self, r):
+    def print_cell_inputs(self, r):
         chs = "Cell ID, ASA, nsyn(calculated), delay, SRgroup, delay2, axonlength, branch length, syntype, postlocation"
         cht = chs.split(", ")
         slen = max([len(c) for c in cht]) + 2
@@ -256,7 +262,7 @@ class CellConfig:
         dcell = self.SDSummary[self.SDSummary["Cell Number"] == cellnum]
         mesh_area = dcell[dend_area_data].values[0]
         hoc_dend_area = dcell[hocdendrecons].values[0]
-        if hoc_dend_area > 0.:  # assuming there are any dendrites... 
+        if hoc_dend_area > 0.0:  # assuming there are any dendrites...
             inflateratio = mesh_area / hoc_dend_area
         else:
             inflateratio = 1.0
@@ -267,6 +273,39 @@ class CellConfig:
         print(f"          Dendrite Inflation ratio: {inflateratio:.3f}")
         return inflateratio
 
+    def _get_dict(self, cellnum, area=0.65):
+        synperum2 = area
+        r, celltype = self.make_dict(f"VCN_c{cellnum:02d}", synperum2=area)
+        return r
+        
+    def summarize_release_sites(self):
+        """
+        Compare # of release sites under 3 different synaptic density assumptions
+        0.65 syn/um2 (early simulations; value taken from MNTB calyx)
+        0.799 syn/um2 (April 2020-10 Nov 2020 simulations; based on subset of endings)
+        0.7686 syn/um2 (based on 23 endings, data from June 2020)
+        """
+        cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]  # just grade A cells
+        synsizes = [0.65, 0.799, 0.7686]
+        ns = []
+        for j, cell in enumerate(cells):
+            print(F"Cell: VCN_c{cell:02d}")
+            ns = []
+            for i, synsize in enumerate(synsizes):
+                nsA = self._get_dict(cell, area=synsize)
+                if i == 0:
+                    nsT = np.zeros((3, len(nsA)))
+                for k, nsyn in enumerate(nsA):
+                    nsT[i, k] = nsyn['nSyn']
+            for i in range(nsT.shape[0]):
+                print(f"{synsizes[i]:.4f}  ", end="")
+                for x in nsT[i]:
+                    print(f"{int(x):5d}", end="")
+                print()
+
+                    # for k, synn in enumerate(nsyn):
+#                         print(k, synn['nSyn'])
+        
     def summarize_inputs(self):
         P = PH.regular_grid(
             2,
@@ -400,5 +439,5 @@ class CellConfig:
 if __name__ == "__main__":
     # Check the formatting and display the results
     cc = CellConfig(datafile)
-
-    cc.summarize_inputs()
+   # cc.summarize_inputs()
+    cc.summarize_release_sites()
