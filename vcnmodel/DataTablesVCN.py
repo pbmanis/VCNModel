@@ -25,13 +25,64 @@ import vcnmodel.spikestatistics
 import ephys
 
 
-cprint = CP.cprint
 """
-Use pyqtgraph tablewidget to build a table showing simulation
+This program provides a graphical interface for model results for the SBEM reconstruction project.
+The display appears as 3 panels: One on the left with controls, one on the top right that is tabbed,
+    showing either the current table, or the traces, and one on the bottom for text output.
+The left panel provides a set of organized controls:
+    Selections:
+        Run Type (AN, IV) corresponding to auditory nerve input or current injection protocols
+        Cells (from list of cells that are available to model)
+            Selecting one of these will population the simulation table on the right with valid simulations.
+        ModelType Mode, Experiment, Analysis, Dendrites: inactive.
+    Analysis:
+        This provides different fixed kinds of analysis for the model data.
+        Traces: just plot the traces, stacked, for reference.
+        IV : plot current-voltage relationships and calculate Rin, Taum, find spikes.
+        VC : plot current voltage relationships in voltage clamp.
+        Singles: For the "single" AN protocol, where only one input at a time is active, creates stacked plot
+        Trace Viewer : dynamic plot of APs and preceding times for AN inputs in the "Traces" tab
+         RevcorrSPKS : reverse correlation against postsynaptic spikes for each input. 
+        RevcorrSimple : same as revcorrSPKS, but simpler algorithm. 
+        RevcorrSTTC : not implemented.
+        PSTH : Plot PSTH, raster, for bu cell and AN input; also compute phase locking to AM if needed.
+    Filters:
+        This provides data selection in the table. Most entries provide a drop-down list. The values that are not 
+            None are applied with "and" logic. The filters are not applied until the Apply button is pressed;
+            The filters are cleared by the Clear button.
+    Options:
+        These are options for the TraceViewer mode.
+        Nubmer of traces
+        Plot Vm or dVm/dt
+        Movie button generates a movie through time.
+        Frame interval sets the time between frames in the movie, in msec.
+    Figures:
+        Interface to figure generation. Figures are generated from the model data directly as much as possible.
+        Some figures are generated from analysis data that is either compiled manually, or using a script.
+    Tools:
+        Reload: for all modules under DataTables, reload the code. Mostly used during development.
+        View IndexFile: Print the index file in the text window.
+        Print File Info: Prints the file info for the selected entries into the text window.
+        Delete Selected Sim : for deleting simulations that are broken (or stopped early). 
+    Quit:
+        Exit the program.
+
+
+
+
+Uses pyqtgraph tablewidget to build a table showing simulation
 files/runs and enabling analysis via a GUI
 
+    Supported primarily by R01DC015901 (Spirou, Manis, Ellisman),
+    Early development: R01 DC004551 (Manis, until 2019)
+    Later development: R01 DC019053 (Manis, 2020-2025)
+
 """
 
+
+cprint = CP.cprint
+
+# List reloadable modules
 all_modules = [
     table_manager,
     plot_sims,
@@ -48,6 +99,8 @@ all_modules = [
     PH,
 ]
 
+# Define the cell values in the Cells dropdown
+
 cellvalues = [
     2,
     5,
@@ -62,6 +115,9 @@ cellvalues = [
     # 29,
     30,
 ]
+
+# model types known to use - These define the decoration patterns.
+# The data in the paper uses XM13A_nacncoop
 modeltypes = [
     "None",
     "XM13_nacncoop",
@@ -70,7 +126,10 @@ modeltypes = [
     "XM13",
     "RM03",
 ]
+# Types of runs - not all of these are used
 runtypes = ["AN", "IV", "VC", "IO", "gifnoise"]
+
+# types of experiments known to model_run2
 experimenttypes = [
     "None",
     "all",
@@ -84,17 +143,21 @@ experimenttypes = [
     "threelargest",
     "fourlargest",
 ]
+# Modes for synapse model runs - not all are used.
 modetypes = ["find", "singles", "IO", "multi"]
+# For analysis - but not used.
 analysistypes = ["traces", "PSTH", "revcorr", "SAC", "tuning", "traceviewer"]
+# Known revers correlation types
 revcorrtypes = [
     "RevcorrSPKS",
     "RevcorrSimple",
     "RevcorrSTTC",
 ]
+# For Filter dropdown: 10 dB steps
 dbValues = list(range(0, 91, 10))
 dbValues.insert(0, "None")
 
-
+# dendrite experiments.
 dendriteChoices = [
     "None",
     "normal",
@@ -116,6 +179,9 @@ class TableModel(QtGui.QStandardItemModel):
 
 
 class DataTables:
+    """
+    Main entry point for building the table and operating on the data
+    """
     def __init__(self):
         self.PLT = plot_sims.PlotSims(parent=self)
         self.FIGS = figures.Figures(parent=self)
@@ -131,13 +197,9 @@ class DataTables:
         self.setPaths()
         self.app = pg.mkQApp()
         self.app.setStyle("fusion")
-        # Enable High DPI display with PyQt5
-        # self.app.setAttribute(Qt.AA_EnableHighDpiScaling)
-        #         if hasattr(QStyleFactory, 'AA_UseHighDpiPixmaps'):
-        #             self.app.setAttribute(Qt.AA_UseHighDpiPixmaps)
-#################
-        # qApp.setStyle("Fusion")
-        # from pyqtgraph.Qt import QtGui
+
+        # Define the table style for various parts
+        # dark scheme
         from pyqtgraph.Qt import QtCore
 
         dark_palette = QtGui.QPalette()
@@ -159,10 +221,7 @@ class DataTables:
         dark_palette.setColor(QtGui.QPalette.HighlightedText, black)
 
         self.app.setPalette(dark_palette)
-
         self.app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }")
-
-#################
 
         self.win = pg.QtGui.QMainWindow()
         # use dock system instead of layout.
@@ -232,6 +291,8 @@ class DataTables:
         self.frame_interval = self.frame_intervals[3]
         self.target_figure = "IV Figure"
         
+        # We use pyqtgraph's ParameterTree to set up the menus/buttons.
+        # This defines the layout.
         self.params = [
             # {"name": "Pick Cell", "type": "list", "values": cellvalues, "value": cellvalues[0]},
             {"name": "Scan Runs", "type": "action"},
@@ -426,7 +487,7 @@ class DataTables:
                                "Efficacy", "Efficacy Supplement",
                                "Revcorr Ex", "Revcorr Supplement", "Revcorr Compare", 
                                "PSTH-FSL", "PSTH-FSL Supplement",
-                               "VS-SAM Tone"],
+                               "VS-SAM Tone", "VC-KLTCalibration"],
                     "value": "IV Figure",
                 },
                     {"name": "Create Figure", "type": "action"},
@@ -501,6 +562,9 @@ class DataTables:
         )
         self.table.clicked.connect(functools.partial(self.on_Single_Click, self.table))
         self.ptreedata.sigTreeStateChanged.connect(self.command_dispatcher)
+        # Ok, we are in the loop - anything after this is menu-driven and handled
+        # either as part of the TableWidget, the Traces widget, or through the
+        # CommandDispatcher.
 
     def setPaths(self, stimtype="AN", cell=11):
         where_is_data = Path("wheres_my_data.toml")
@@ -716,6 +780,10 @@ class DataTables:
             fn = Path(fn)
         return fn
 
+    # Here we provide a few management routines for
+    # specific actions. These mostly call routins in 
+    # plot_sims.py
+    
     def analyze_singles(self, ana_name=None):
         self.selected_index_rows = self.table.selectionModel().selectedRows()
         if self.selected_index_rows is None:
@@ -788,35 +856,9 @@ class DataTables:
         self.selected_index_rows = self.table.selectionModel().selectedRows()
         if self.selected_index_rows is None:
             return
-        index_row = self.selected_index_rows[0]
-        selected = self.table_manager.get_table_data(index_row)  # table_data[index_row]
-        if selected is None:
-            return
-        P = self.PLT.setup_VC_plots()
-        # P = PH.regular_grid(
-        #     3,
-        #     1,
-        #     order="rowsfirst",
-        #     figsize=(4.0, 6.0),
-        #     showgrid=False,
-        #     verticalspacing=0.05,
-        #     horizontalspacing=0.05,
-        #     margins={
-        #         "bottommargin": 0.1,
-        #         "leftmargin": 0.1,
-        #         "rightmargin": 0.1,
-        #         "topmargin": 0.03,
-        #     },
-        #     labelposition=(0.0, 0.0),
-        #     parent_figure=None,
-        #     panel_labels=None,
-        # )
+            
+        self.PLT.plot_VC(self.selected_index_rows)
 
-        PD = plot_sims.PData()
-        sfi = Path(selected.simulation_path, selected.files[0])
-        self.PLT.plot_traces(P.axarr[0, 0], sfi, PD, protocol=selected.runProtocol)
-        self.PLT.analyzeVC(P.axarr, sfi, PD, protocol=selected.runProtocol)
-        P.figure_handle.show()
 
     def analyze_PSTH(self, ana_name=None):
         self.selected_index_rows = self.table.selectionModel().selectedRows()
@@ -851,14 +893,12 @@ class DataTables:
         selected = self.table_manager.get_table_data(index_row)  # table_data[index_row]
         if selected is None:
             return
-        # map it:
-        # if selected.runProtocol == "runANSingles":  # subdirectory
-
-
-#            self.analyze_singles()
 
 
 def main():
+    # Entry point.
+    # Why do I do this ? 
+    # It keeps sphinxdoc from running the code... in case we do that in the future.
     D = DataTables()  # must retain a pointer to the class, else we die!
     if (sys.flags.interactive != 1) or not hasattr(QtCore, "PYQT_VERSION"):
         QtGui.QApplication.instance().exec_()

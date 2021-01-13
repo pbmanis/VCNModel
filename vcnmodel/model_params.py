@@ -7,6 +7,20 @@ import numpy as np
 import json
 import toml
 
+"""
+Part of vcnmodel
+
+Define data structures used for:
+    Command line parsing
+    Specifying model parameters (general)
+    Specifying runInfo (run instance) parameters
+
+    Supported primarily by R01DC015901 (Spirou, Manis, Ellisman),
+    Early development: R01 DC004551 (Manis, until 2019)
+    Later development: R01 DC019053 (Manis, 2020-2025)
+
+"""
+
 
 display_orient_cells = {
     "VCN_c02": [140.0, 0.0, -144.0],
@@ -19,13 +33,6 @@ display_orient_cells = {
     "VCN_c17": [140.0, -158.0, 39.0],
     "VCN_c30": [140.0, -134.0, -181.0],
 }
-"""
-Define data structures used for:
-    Command line parsing
-    Specifying model parameters (general)
-    Specifying runInfo (run instance) parameters
-
-"""
 
 
 @dataclass(frozen=True)

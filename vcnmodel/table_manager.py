@@ -1,6 +1,7 @@
 import dataclasses
 from dataclasses import dataclass, field
 import datetime
+import functools
 import pandas as pd
 import pickle
 import pprint
@@ -83,6 +84,43 @@ class IndexData:
     dataTable: str = ""
 
 
+def winprint(func):
+    """
+    Wrapper decorator for functions that print to the text area
+    Clears the print area first,
+    and puts a line of '*' when the function returns
+    """
+
+    @functools.wraps(func)
+    def wrapper_print(self, *args, **kwargs):
+        self.textclear()
+        value = func(self, *args, **kwargs)
+        # end_time = time.perf_counter()      # 2
+        # run_time = end_time - start_time    # 3
+        self.textappend("*" * 80)
+        # print(f"Finished {func.__name__!r} in {run_time:.4f} secs")
+        return value
+
+    return wrapper_print
+
+
+def winprint_continuous(func):
+    """
+    Wrapper decorator for functions that print to the text area
+    DOES NOT clear the print area first,
+    """
+
+    @functools.wraps(func)
+    def wrapper_print(self, *args, **kwargs):
+        value = func(self, *args, **kwargs)
+        # end_time = time.perf_counter()      # 2
+        # run_time = end_time - start_time    # 3
+        # print(f"Finished {func.__name__!r} in {run_time:.4f} secs")
+        return value
+
+    return wrapper_print
+
+
 class TableManager:
     def __init__(self, parent=None, table:object=None, basepath:Union[str, Path]="", selvals:dict={}, altcolormethod:object=None):
         assert parent is not None
@@ -91,6 +129,21 @@ class TableManager:
         self.basepath = basepath
         self.selvals = selvals
         self.altColors = altcolormethod
+
+    def textclear(self):
+        if self.parent is None:
+            print("parent is None")
+            raise ValueError()
+        else:
+            self.parent.textbox.clear()
+
+    def textappend(self, text, color="white"):
+        if self.parent is None:
+            cprint(color, text)  # just go straight to the terminal
+        else:
+            self.parent.textbox.setTextColor(self.parent.QColor(color))
+            self.parent.textbox.append(text)
+            self.parent.textbox.setTextColor(self.parent.QColor("white"))
 
     def force_suffix(self, filename, suffix='.pkl'):
         fn = Path(filename)
@@ -146,28 +199,29 @@ class TableManager:
             indexdata = self.write_indexfile(pars, runinfo, indexdir)
             return indexdata
 
+    @winprint_continuous
     def read_pfile_params(self, datafile) -> Union[tuple, None]:
         """
         Reads the Params and runinfo entry from the simulation data file
         """
-        print("Reading pfile: ", str(datafile.name))
+        self.textappend(f"Reading pfile: {str(datafile.name):s}", color='white')
         try:
             with open(datafile, "rb") as fh:
                 d = pickle.load(fh, encoding="latin1")
         except (ModuleNotFoundError, IOError, pickle.UnpicklingError):
-            cprint('r', 'SKIPPING: File is too old; re-run for new structure')
-            cprint('r', f"File: {str(fh):s}")
+            self.textappend('SKIPPING: File is too old; re-run for new structure', color="red")
+            self.textappend(f"File: {str(fh):s}", color="red")
             return None
         # except ModuleNotFoundError:
         #     raise IOError('SKIPPING: File has old structure; re-run for new structure')
         #     return None
             
         if 'runInfo' not in list(d.keys()):
-            cprint('r', 'SKIPPING: File is too old (missing "runinfo"); re-run for new structure')
+            self.textappend('SKIPPING: File is too old (missing "runinfo"); re-run for new structure', color="red")
             # print('  Avail keys: ', list(d.keys()))
             return None
         if "Params" not in list(d.keys()):
-            cprint('r', 'SKIPPING: File is too old (missing "Params"); re-run for new structure')
+            self.textappend('SKIPPING: File is too old (missing "Params"); re-run for new structure', color="red")
             # print('  Avail keys: ', list(d.keys()))
             # print(d['Results'][0])
             return None
@@ -414,6 +468,7 @@ class TableManager:
                 
                 print('*'*80)
     
+    @winprint_continuous
     def build_table(self, mode="scan"):
         if mode == 'scan':
             force = False
@@ -463,7 +518,7 @@ class TableManager:
             p = self.read_pfile_params(f)
             if p is None:
                 # indxs.append(None)
-                cprint('y', f"None in #{i:d} :{str(f):s}")
+                self.textappend(f"None in #{i:d} :{str(f):s}", "yellow")
             else:
                 params, runinfo, fn = p  # ok to unpack
                 indxs.append(self.make_indexdata(params, runinfo, fn))

@@ -7,9 +7,11 @@ Pint==0.14
 isort==5.0.2
 mypy==0.782
 jupyterlab
+plotnine=0.7.1
 pypdf2
 pyperclip
 pytest==4.5.0
+rich=0.9.3
 
 # cnmodel (and vcnmodel) requirements
 Cython==0.29.17

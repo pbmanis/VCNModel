@@ -241,6 +241,10 @@ Where should we look for data?
 
 wheres_the_data.toml
 
+    Supported primarily by R01DC015901 (Spirou, Manis, Ellisman),
+    Early development: R01 DC004551 (Manis, until 2019)
+    Later development: R01 DC019053 (Manis, 2020-2025)
+
 """
 
 from math import floor, log10

@@ -10,6 +10,8 @@ from pylibrary.plotting import plothelpers as PH
 from pylibrary.plotting import styler as ST
 # all runs 20 dB SPL 8/28, 8/29 2020 pbm 100ms pip
 
+# Plot the FSL and SSl for each of tehse conditions, with different sets of input configuration.
+
 data = """
 Cell,Configuration,FSL,FSLSD,SSL,SSLSD,maxArea
 2,all,4.103,1.265,10.451,3.488,174.0100
