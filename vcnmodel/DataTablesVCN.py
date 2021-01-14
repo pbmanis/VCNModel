@@ -483,10 +483,10 @@ class DataTables:
                 "type": "group",
                 "children": [
                     {"name": "Figures", "type": "list", 
-                    "values": ["IV Figure", "IV Supplement", "Zin Supplement",
+                    "values": ["IV Figure", "All IVs", "IV Supplement", "Zin Supplement",
                                "Efficacy", "Efficacy Supplement",
-                               "Revcorr Ex", "Revcorr Supplement", "Revcorr Compare", 
-                               "PSTH-FSL", "PSTH-FSL Supplement",
+                               "Revcorr Ex", "All Revcorr", "Revcorr Supplement", "Revcorr Compare", 
+                               "PSTH-FSL", "All PSTHs", "PSTH-FSL Supplement",
                                "VS-SAM Tone", "VC-KLTCalibration"],
                     "value": "IV Figure",
                 },

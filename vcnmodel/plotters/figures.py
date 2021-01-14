@@ -64,7 +64,7 @@ class PData:
     thiscell: str = ""
 
 
-Figure_IV = {
+figure_IV = {
     "Cell": 17,
     "normal": "runIV-all-2020-07-30.18-29-53",
     "passive": "runIV-all-2020-07-30.18-43-29",
@@ -73,7 +73,7 @@ Figure_IV = {
     "Z_passive": "VCN_c17_Full_pasdend_Z.pkl",
     "Z_active": "VCN_c17_Full_actdend_Z.pkl",
 }
-Figure_AllIVs = {
+figure_AllIVs = {
     2: {
         "normal": "runIV-all-2020-07-30.18-20-16",
         "passive": "runIV-all-2020-07-30.18-33-07",
@@ -130,7 +130,7 @@ Figure_AllIVs = {
 The efficacy data is taken from runs using the latest measure
 of synapse density, 0.7686 syn/um2  11/15/2020
 """
-Figure_efficacy_supplement = {
+figure_efficacy_supplement = {
     2: {
         "NoDend": "runANSingles-all-2020-11-16.17-04-23",
         "Full": "runANSingles-all-2020-11-16.17-08-55",
@@ -226,12 +226,12 @@ figure_revcorr = {
 }
 
 
-figure_VClamp ={17: 
-        [
-        'runVC-all-2020-07-29.10-36-59',
-        'runVC-all-2020-07-29.10-30-30',
-        'runVC-all-2020-07-29.12-17-13',
-        ],
+figure_VClamp = {
+    17: [
+        "runVC-all-2020-07-29.10-36-59",
+        "runVC-all-2020-07-29.10-30-30",
+        "runVC-all-2020-07-29.12-17-13",
+    ],
 }
 
 figure_psth = {
@@ -246,6 +246,16 @@ figure_psth = {
     18: {"40dB": "runANPSTH-all-2020-11-24.16-51-50",},
     30: {"40dB": "runANPSTH-all-2020-11-24.16-58-24",},
 }
+
+all_figures = [
+    figure_psth,
+    figure_VClamp,
+    figure_revcorr,
+    figure_revcorr_example,
+    figure_efficacy_supplement,
+    figure_IV,
+    figure_AllIVs,
+]
 
 
 class Figures(object):
@@ -285,14 +295,17 @@ class Figures(object):
         # dispatch
         dispatch_table = {
             "IV Figure": self.plotIV,
+            "All IVs": self.allIVs,
             "IV Supplement": self.plot_IVS,
             "Zin Supplement": self.plot_ZinS,
             "Efficacy": self.plot_efficacy,
             "Efficacy Supplement": self.plot_efficacy_supplement,
             "Revcorr Ex": self.plot_revcorr,
+            "All Revcorr": self.plot_all_revcorr,
             "Revcorr Supplement": self.plot_revcorr_supplement,
             "Revcorr Compare": self.plot_revcorr_compare,
             "PSTH-FSL": self.plot_PSTH,
+            "All PSTHs": self.plot_All_PSTH,
             "PSTH-FSL Supplement": self.plot_PSTH_supplement,
             "VS-SAM Tone": self.plot_VS_SAM,
             "VC-KLTCalibration": self.plot_VC_gKLT,
@@ -312,13 +325,21 @@ class Figures(object):
         ax.xaxis.set_minor_locator(locmin)
         ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
 
-    def plotIV(self):
+    def allIVs(self):
+        for cell in grAList():
+            self.plotIV(cell)
+
+    def plotIV(self, cell=None):
         # style = STY.styler(journal="JNeurosci", figuresize='full', font='stixsans')  # two colukn...
-        cellN = Figure_IV["Cell"]
+        if cell is None:
+            cellN = figure_IV["Cell"]
+            d1 = figure_IV["passive"]
+        else:
+            cellN = cell
+            d1 = figure_AllIVs[cellN]["passive"]
         cellpath = Path(
             self.config["cellDataDirectory"], f"VCN_c{cellN:02d}", "Simulations", "IV"
         )
-        d1 = Figure_IV["passive"]
         rows = 2
         cols = 3
         height = 4.0
@@ -362,29 +383,6 @@ class Figures(object):
             parent_figure=self.P,
             panel_labels=["D", "E", "F", "G"],
         )
-        # x=-0.05
-        # y =1.05
-        # self.P3 = PH.Plotter(
-        #     (2, 1),
-        #     arrangement={
-        #         "E1": {"pos": [0.27, 0.3, 0.25, 0.18], "labelpos": (x,y), "noaxes": False},
-        #         "E2": {"pos": [0.27, 0.1, 0.25, 0.18], "labelpos": (x,y), "noaxes": False},
-        #     },
-        #     parent_figure=self.P2,
-        # order="rowsfirst",
-        # showgrid=True,
-        # verticalspacing=0.02,
-        # horizontalspacing=0.075,
-        # margins={
-        #     "bottommargin": 0.1,
-        #     "leftmargin": 0.3,
-        #     "rightmargin": 0.58,
-        #     "topmargin": 0.52,
-        # },
-        # labelposition=(-0.1, 1.06),
-        # parent_figure=self.P,
-        # panel_labels=["E1", "E2"],
-        # )
 
         self.P3 = PH.regular_grid(
             2,
@@ -405,7 +403,11 @@ class Figures(object):
         )
 
         for iax, iv in enumerate(["passive", "normal", "active"]):
-            sfi = Path(cellpath, Path(Figure_IV[iv]).name)
+            if cell is None:
+                dfile = figure_IV[iv]
+            else:
+                dfile = figure_AllIVs[cellN][iv]
+            sfi = Path(cellpath, Path(dfile).name)
             print("sfi: ", sfi)
             print("is it a dir? ", sfi.is_dir())
             if not sfi.is_dir():
@@ -434,9 +436,9 @@ class Figures(object):
         tau_label = r"$\mathregular{\tau_{m} (ms)}$"
         phase_label = r"$\mathregular{\phi (radians)}$"
         for iax, iv in enumerate(["Z_passive", "Z_normal", "Z_active"]):
-            if iv not in Figure_IV.keys():
+            if iv not in figure_IV.keys():
                 continue
-            sfi = Path(config["codeDirectory"], Figure_IV[iv])
+            sfi = Path(config["codeDirectory"], dfile)
             if not sfi.is_file():
                 continue
             print("sif: ", sfi)
@@ -487,7 +489,7 @@ class Figures(object):
         taus = {}
 
         k = 0
-        for rax, iv in enumerate(Figure_AllIVs.keys()):
+        for rax, iv in enumerate(figure_AllIVs.keys()):
             # cellpath = Path(self.config['cellDataDirectory'], f"VCN_c{iv:02d}", 'Simulations', 'IV')
             for iax, dendmode in enumerate(["passive", "normal", "active"]):
                 sfi = Path(
@@ -495,7 +497,7 @@ class Figures(object):
                     f"VCN_c{iv:02d}",
                     "Simulations",
                     "IV",
-                    Figure_AllIVs[iv][dendmode],
+                    figure_AllIVs[iv][dendmode],
                 )
                 print(sfi)
                 if not sfi.is_dir():
@@ -548,24 +550,38 @@ class Figures(object):
         self.P2.axdict["G"].set_ylim(0, 2.0)
         self.P2.axdict["G"].set_ylabel(tau_label)
 
-        save_file = "Fig_M1.pdf"
-        self.P.figure_handle.text(
+        if cellN == None:
+            save_file = "Fig_M1.pdf"
+        else:
+            save_file = f"Fig_IV/IV_cell_VCN_c{cellN:02d}.png"
+        title = "SBEM Project Figure 1 Modeling (Main)"
+        self.save_figure(self.P, save_file, title)
+
+    def save_figure(self, P, save_file, title, title2={"title": None, 'x': 0.0, 'y': 0.0}):
+        P.figure_handle.text(
             0.98,
             0.98,
             save_file,  # .replace('_', '\_'),
-            transform=self.P.figure_handle.transFigure,
+            transform=P.figure_handle.transFigure,
             horizontalalignment="right",
             verticalalignment="top",
         )
+        if title2["title"] is not None:
+            P.figure_handle.text(
+                title2["x"],
+                title2["y"],
+                title2["title"],  # .replace('_', '\_'),
+                transform=P.figure_handle.transFigure,
+                horizontalalignment="right",
+                verticalalignment="top",
+            )
+        ofile = Path(config["baseDataDirectory"], "Figures", save_file)
+        ofile.parent.mkdir(exist_ok=True)
         mpl.savefig(
             Path(config["baseDataDirectory"], "Figures", save_file),
-            metadata={
-                "Creator": "Paul Manis",
-                "Author": "Paul Manis",
-                "Title": "SBEM Project Figure 1 Modeling (Main)",
-            },
+            metadata={"Creator": "Paul Manis", "Author": "Paul Manis", "Title": title,},
         )
-        self.P.figure_handle.show()
+        P.figure_handle.show()
 
     def plot_IVS(self):
         """
@@ -573,7 +589,7 @@ class Figures(object):
         Passive, normal, active, plus the crossed IV
         Also put the PNG for the cell on the left.
         """
-        nivs = len(Figure_AllIVs)
+        nivs = len(figure_AllIVs)
         rows = nivs
         cols = 5
         height = 1.5 * nivs
@@ -603,7 +619,7 @@ class Figures(object):
         )
         cellpath = config["cellDataDirectory"]
         png_path = Path(config["baseDataDirectory"], config["pngDirectory"])
-        for rax, iv in enumerate(Figure_AllIVs.keys()):
+        for rax, iv in enumerate(figure_AllIVs.keys()):
             celln = Path(png_path, f"VCN_c{iv:02d}.png")
             if celln.is_file():  # add images from png files
                 img = mpimg.imread(str(celln))
@@ -618,7 +634,7 @@ class Figures(object):
                     f"VCN_c{iv:02d}",
                     "Simulations",
                     "IV",
-                    Figure_AllIVs[iv][dendmode],
+                    figure_AllIVs[iv][dendmode],
                 )
                 if not sfi.is_dir():
                     continue
@@ -648,23 +664,8 @@ class Figures(object):
                 if iax == 0:
                     self.P.axarr[rax, 0].text(-0.1, 0.5, str(iv))
         save_file = "Fig_M1A_Supplemental.pdf"
-        self.P.figure_handle.text(
-            0.98,
-            0.98,
-            save_file,  # .replace('_', '\_'),
-            transform=self.P.figure_handle.transFigure,
-            horizontalalignment="right",
-            verticalalignment="top",
-        )
-        mpl.savefig(
-            Path(config["baseDataDirectory"], "Figures", save_file),
-            metadata={
-                "Creator": "Paul Manis",
-                "Author": "Paul Manis",
-                "Title": "SBEM Project Figure 1 Modeling (Supplemental A)",
-            },
-        )
-        self.P.figure_handle.show()
+        title = "SBEM Project Figure 1 Modeling (Supplemental A)"
+        self.save_figure(self.P, save_file, title)
 
     def plot_ZinS(self):
         """
@@ -674,7 +675,7 @@ class Figures(object):
 
     def plot_efficacy(self):
         cell_number = 17
-        example = Figure_efficacy_supplement[cell_number]
+        example = figure_efficacy_supplement[cell_number]
 
         cellpath = Path(
             self.config["cellDataDirectory"],
@@ -861,23 +862,8 @@ class Figures(object):
             )
 
         save_file = "Fig_M2.pdf"
-        EFP.P.figure_handle.text(
-            0.99,
-            0.99,
-            save_file,  # .replace('_', '\_'),
-            transform=EFP.P.figure_handle.transFigure,
-            horizontalalignment="right",
-            verticalalignment="top",
-        )
-        mpl.savefig(
-            Path(config["baseDataDirectory"], "Figures", save_file),
-            metadata={
-                "Creator": "Paul Manis",
-                "Author": "Paul Manis",
-                "Title": "SBEM Project Figure 2 Modeling : Efficacy",
-            },
-        )
-        EFP.P.figure_handle.show()
+        title = "SBEM Project Figure 2 Modeling : Efficacy"
+        self.save_figure(EFP.P, save_file, title)
 
     def plot_efficacy_supplement(self):
         cells = grAList()
@@ -997,28 +983,21 @@ class Figures(object):
                     )
 
         save_file = f"Fig_M2_Supplemental_{simulation_experiment:s}.pdf"
-        EFP.P.figure_handle.text(
-            0.99,
-            0.99,
-            save_file,  # .replace('_', '\_'),
-            transform=EFP.P.figure_handle.transFigure,
-            horizontalalignment="right",
-            verticalalignment="top",
-        )
-        mpl.savefig(
-            Path(config["baseDataDirectory"], "Figures", save_file),
-            metadata={
-                "Creator": "Paul Manis",
-                "Author": "Paul Manis",
-                "Title": "SBEM Project Figure 2 Modeling : Efficacy, Supplemental",
-            },
-        )
-        EFP.P.figure_handle.show()
+        title = "SBEM Project Figure 2 Modeling : Efficacy, Supplemental"
+        self.save_figure(EFP, save_file, title)
 
-    def plot_revcorr(self):
-        cell_number = 17
+    def plot_all_revcorr(self):
+        for cell in grAList():
+            self.plot_revcorr(cell)
+    
+    def plot_revcorr(self, cellN=None):
+        if cellN == None:
+            cell_number = 17
+            example = figure_revcorr_example[cell_number]
+        else:
+            cell_number = cellN
+            example = figure_revcorr[cell_number]
         dBSPL = "Spont"
-        example = figure_revcorr_example[cell_number]
 
         run_calcs = False
         rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
@@ -1131,36 +1110,17 @@ class Figures(object):
             floatAdd={"x": 0, "y": 2},
             # pointSize=7,
         )
+
         if dBSPL == "Spont":
-            save_file = "Fig_M3.pdf"
+            if cellN is None:
+                save_file = "Fig_M3.pdf"
+            else:
+                save_file = f"Fig_Revcorr/Revcorr_VCN_c{cell_number:02d}.png"
         else:
             save_file = f"Fig_M3_{dBSPL:s}.pdf"
-        P.figure_handle.text(
-            0.99,
-            0.01,
-            f"Cell {cell_number:d}",
-            fontsize=10,
-            horizontalalignment="right",
-            verticalalignment="bottom",
-        )
-        P.figure_handle.text(
-            0.99,
-            0.99,
-            save_file,  # .replace('_', '\_'),
-            transform=P.figure_handle.transFigure,
-            horizontalalignment="right",
-            verticalalignment="top",
-        )
-        mpl.savefig(
-            Path(config["baseDataDirectory"], "Figures", save_file),
-            metadata={
-                "Creator": "Paul Manis",
-                "Author": "Paul Manis",
-                "Title": "SBEM Project Figure 3 Modeling : Reverse Correlation Example",
-            },
-        )
-        mpl.show()
-
+        title = 'Reverse Correlation'
+        title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
+        self.save_figure(P, save_file, title=title, title2=title2)
         return (summarySiteTC, RCD.sites)
 
     def plot_revcorr_supplement(self):
@@ -1354,26 +1314,9 @@ class Figures(object):
         # save the accumulated RCD data
         with open(rc_datafile, "wb") as fh:
             pickle.dump(all_RCD_RCP, fh)
-
+        title = ("SBEM Project Figure 3 Modeling : Reverse Correlation Summary",)
         save_file = f"Fig_M3_supplemental_Full_{dBSPL:s}.pdf"
-
-        P.figure_handle.text(
-            0.99,
-            0.99,
-            save_file,  # .replace('_', '\_'),
-            transform=P.figure_handle.transFigure,
-            horizontalalignment="right",
-            verticalalignment="top",
-        )
-        mpl.savefig(
-            Path(config["baseDataDirectory"], "Figures", save_file),
-            metadata={
-                "Creator": "Paul Manis",
-                "Author": "Paul Manis",
-                "Title": "SBEM Project Figure 3 Modeling : Reverse Correlation Summary",
-            },
-        )
-        mpl.show()
+        self.save_figure(P, save_file, title=title)
 
     def plot_revcorr_compare(self):
         dBSPLs = ["Spont", "40dB"]
@@ -1420,25 +1363,8 @@ class Figures(object):
             P.axarr[0, i].set_title(dBSPL)
 
         save_file = f"Fig_M4.pdf"
-
-        P.figure_handle.text(
-            0.99,
-            0.99,
-            save_file,  # .replace('_', '\_'),
-            transform=P.figure_handle.transFigure,
-            horizontalalignment="right",
-            verticalalignment="top",
-        )
-        mpl.savefig(
-            Path(config["baseDataDirectory"], "Figures", save_file),
-            metadata={
-                "Creator": "Paul Manis",
-                "Author": "Paul Manis",
-                "Title": "SBEM Project Figure 4 Modeling : Reverse Correlation Comparison",
-            },
-        )
-
-        mpl.show()
+        title = "SBEM Project Figure 4 Modeling : Reverse Correlation Comparison"
+        self.save_figure(P, save_file, title=title)
 
     def plot_psth_psth(
         self,
@@ -1527,10 +1453,17 @@ class Figures(object):
         )
         ax.set_title("AN")
 
-    def plot_PSTH(self):
+    def plot_All_PSTH(self):
+        for cell in grAList():
+            self.plot_PSTH(cellN=cell)
+
+    def plot_PSTH(self, cellN=None):
         print("PSTH")
         dBSPL = "40dB"
-        cell_number = 17
+        if cellN is None:
+            cell_number = 17
+        else:
+            cell_number = cellN
         box_size = 0.32
         box_size_x = 0.45
         sizer = {
@@ -1586,32 +1519,13 @@ class Figures(object):
             anfsl_ax=anfsl_ax,
         )
 
-        save_file = f"Fig_M5.pdf"
-        P.figure_handle.text(
-            0.99,
-            0.01,
-            f"Cell {cell_number:d}",
-            fontsize=10,
-            horizontalalignment="right",
-            verticalalignment="bottom",
-        )
-        P.figure_handle.text(
-            0.99,
-            0.99,
-            save_file,  # .replace('_', '\_'),
-            transform=P.figure_handle.transFigure,
-            horizontalalignment="right",
-            verticalalignment="top",
-        )
-        mpl.savefig(
-            Path(config["baseDataDirectory"], "Figures", save_file),
-            metadata={
-                "Creator": "Paul Manis",
-                "Author": "Paul Manis",
-                "Title": "SBEM Project Figure 5Modeling : PSTH and FSL, Example",
-            },
-        )
-        mpl.show()
+        if cellN is None:
+            save_file = f"Fig_M5.pdf"
+        else:
+            save_file = f"All_PSTH/PSTH_VCN_c{cell_number:02d}.png"
+        title = "SBEM Project Figure 5Modeling : PSTH and FSL, Example"
+        title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
+        self.save_figure(P, save_file, title=title, title2=title2)
 
     def plot_one_PSTH(
         self,
@@ -1938,24 +1852,8 @@ class Figures(object):
             )
 
         save_file = f"Fig_M5_Supplmental.pdf"
-
-        P.figure_handle.text(
-            0.99,
-            0.99,
-            save_file,  # .replace('_', '\_'),
-            transform=P.figure_handle.transFigure,
-            horizontalalignment="right",
-            verticalalignment="top",
-        )
-        mpl.savefig(
-            Path(config["baseDataDirectory"], "Figures", save_file),
-            metadata={
-                "Creator": "Paul Manis",
-                "Author": "Paul Manis",
-                "Title": "SBEM Project Figure 5 Modeling Supplemental : PSTH and FSL, All cells",
-            },
-        )
-        mpl.show()
+        title = "SBEM Project Figure 5 Modeling Supplemental : PSTH and FSL, All cells"
+        self.save_file(P, save_file, title)
 
     def plot_VS_SAM(self):
         self.generate_VS_data()
@@ -2024,7 +1922,6 @@ class Figures(object):
         with open(fout, "a") as fh:
             fh.write(f'"""\n')
 
-
     def plot_VC_gKLT(self):
         cell_number = 17
         dataset = figure_VClamp[cell_number]
@@ -2047,30 +1944,5 @@ class Figures(object):
             sfi.append(fn)
         P = self.parent.PLT.plot_VC(sfi=sfi, show=False)
         save_file = f"Fig_M0_VC_Adjustment.pdf"
-        P.figure_handle.text(
-            0.99,
-            0.01,
-            f"Cell {cell_number:d}",
-            fontsize=10,
-            horizontalalignment="right",
-            verticalalignment="bottom",
-        )
-        P.figure_handle.text(
-            0.99,
-            0.99,
-            save_file,  # .replace('_', '\_'),
-            transform=P.figure_handle.transFigure,
-            horizontalalignment="right",
-            verticalalignment="top",
-        )
-        mpl.savefig(
-            Path(config["baseDataDirectory"], "Figures", save_file),
-            metadata={
-                "Creator": "Paul Manis",
-                "Author": "Paul Manis",
-                "Title": "SBEM Project Figure 5 Modeling Supplemental : PSTH and FSL, All cells",
-            },
-        )
-        mpl.show()
-        
-        
+        title = "SBEM Project Figure 5 Modeling Supplemental : PSTH and FSL, All cells"
+        title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
