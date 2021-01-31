@@ -64,6 +64,21 @@ class PData:
     thiscell: str = ""
 
 
+def title_data():
+    return {'text': "", "x":None, "y":None}
+
+
+@dataclass
+class FigInfo:
+    """
+    data class to hold figure information for savefig
+    """
+    P: object=None
+    filename: Union[str, Path]=""
+    title: dict = field(default_factory = title_data)
+    title2: dict = field(default_factory = title_data)
+
+
 figure_IV = {
     "Cell": 17,
     "normal": "runIV-all-2020-07-30.18-29-53",
@@ -177,7 +192,7 @@ figure_efficacy_supplement = {
 figure_revcorr_example = {
     17: {
         "Spont": "runANPSTH-all-2020-11-24.09-12-49",
-        "50dB": "runANPSTH-all-2020-08-20.14-54-39",
+        "40dB": "runANPSTH-all-2020-08-20.14-54-39",
     }
 }
 
@@ -309,11 +324,45 @@ class Figures(object):
             "PSTH-FSL Supplement": self.plot_PSTH_supplement,
             "VS-SAM Tone": self.plot_VS_SAM,
             "VC-KLTCalibration": self.plot_VC_gKLT,
+            "CombinedVCIV": self.plot_combined_VC_IV,
         }
         print(figure_name, dispatch_table.keys())
         if figure_name in list(dispatch_table.keys()):
             print("disp")
-            dispatch_table[figure_name]()
+            fig = dispatch_table[figure_name]()
+            if fig is not None:
+                self.save_figure(fig)
+
+        
+    def save_figure(self, fig):
+        #P, save_file, title, title2={"title": None, 'x': 0.0, 'y': 0.0}):
+
+        fig.P.figure_handle.text(
+            0.98,
+            0.98,
+            fig.filename,  # .replace('_', '\_'),
+            transform=fig.P.figure_handle.transFigure,
+            horizontalalignment="right",
+            verticalalignment="top",
+        )
+
+        if fig.title2["title"] is not None or len(fig.title2["title"]) > 0:
+            fig.P.figure_handle.text(
+                fig.title2["x"],
+                fig.title2["y"],
+                fig.title2["title"],  # .replace('_', '\_'),
+                transform=fig.P.figure_handle.transFigure,
+                horizontalalignment="right",
+                verticalalignment="top",
+            )
+        ofile = Path(config["baseDataDirectory"], "Figures", fig.filename)
+        ofile.parent.mkdir(exist_ok=True)
+        print('saving to: ', str(Path(config["baseDataDirectory"], "Figures", fig.filename)))
+        mpl.savefig(
+            Path(config["baseDataDirectory"], "Figures", fig.filename),
+            metadata={"Creator": "Paul Manis", "Author": "Paul Manis", "Title": fig.title},
+        )
+        fig.P.figure_handle.show()
 
     def force_log_ticks(self, ax):
         locmaj = matplotlib.ticker.LogLocator(base=10.0, subs=(1.0,), numticks=100)
@@ -329,7 +378,7 @@ class Figures(object):
         for cell in grAList():
             self.plotIV(cell)
 
-    def plotIV(self, cell=None):
+    def plotIV(self, cell=None, parent_figure=None):
         # style = STY.styler(journal="JNeurosci", figuresize='full', font='stixsans')  # two colukn...
         if cell is None:
             cellN = figure_IV["Cell"]
@@ -340,7 +389,7 @@ class Figures(object):
         cellpath = Path(
             self.config["cellDataDirectory"], f"VCN_c{cellN:02d}", "Simulations", "IV"
         )
-        rows = 2
+        rows = 1  # basic layout for figure, but applies only to the top
         cols = 3
         height = 4.0
         width = 8.0
@@ -356,17 +405,17 @@ class Figures(object):
             verticalspacing=0.06,
             horizontalspacing=0.06,
             margins={
-                "bottommargin": 0.1,
+                "bottommargin": 0.55,
                 "leftmargin": 0.07,
-                "rightmargin": 0.05,
-                "topmargin": 0.08,
+                "rightmargin": 0.07,
+                "topmargin": 0.1,
             },
             labelposition=(-0.05, 1.06),
-            parent_figure=None,
-            panel_labels=["A", "B", "C", "D", "E", "F"],
+            parent_figure=parent_figure,
+            panel_labels=["A", "B", "C"],
         )
 
-        self.P2 = PH.regular_grid(
+        self.P2 = PH.regular_grid( # lower row of 4
             1,
             4,
             order="rowsfirst",
@@ -376,26 +425,27 @@ class Figures(object):
             margins={
                 "bottommargin": 0.1,
                 "leftmargin": 0.07,
-                "rightmargin": 0.05,
+                "rightmargin": 0.07,
                 "topmargin": 0.52,
             },
+            
             labelposition=(-0.05, 1.06),
             parent_figure=self.P,
             panel_labels=["D", "E", "F", "G"],
         )
 
-        self.P3 = PH.regular_grid(
+        self.P3 = PH.regular_grid(  # replace with stacked plots in E
             2,
             1,
             order="rowsfirst",
             showgrid=False,
-            verticalspacing=0.02,
+            verticalspacing=0.05,
             horizontalspacing=0.075,
             margins={
                 "bottommargin": 0.1,
-                "leftmargin": 0.3,
-                "rightmargin": 0.50,
-                "topmargin": 0.52,
+                "leftmargin": 0.31,
+                "rightmargin": 0.53,
+                "topmargin": 0.50,
             },
             labelposition=(-0.25, 0.95),
             parent_figure=self.P,
@@ -408,14 +458,12 @@ class Figures(object):
             else:
                 dfile = figure_AllIVs[cellN][iv]
             sfi = Path(cellpath, Path(dfile).name)
-            print("sfi: ", sfi)
-            print("is it a dir? ", sfi.is_dir())
             if not sfi.is_dir():
-                continue
+                 print("Missing file: sfi 1: ", sfi)
+                 return None
             fn = list(sfi.glob("*"))
             print("fn: ", fn)
             sfi = Path(sfi, fn[0])
-            print("sfi: ", sfi)
             self.parent.PLT.plot_traces(
                 self.P.axarr[0, iax],
                 sfi,
@@ -435,19 +483,24 @@ class Figures(object):
         res_label = r"$\mathregular{R_{in} (M\Omega)}$"
         tau_label = r"$\mathregular{\tau_{m} (ms)}$"
         phase_label = r"$\mathregular{\phi (radians)}$"
-        for iax, iv in enumerate(["Z_passive", "Z_normal", "Z_active"]):
-            if iv not in figure_IV.keys():
+        
+        # plot overlays of all cell z/phase
+        for iax, mode in enumerate(["Z_passive", "Z_normal", "Z_active"]):
+            if mode not in figure_IV.keys():
                 continue
-            sfi = Path(config["codeDirectory"], dfile)
+            cprint('r', f"doing iv: {str(mode):s}")
+            sfi = Path(config["codeDirectory"], figure_IV[mode])
             if not sfi.is_file():
+                cprint('r', f"File not found!!!!!!\n->>> {str(sfi):s}")
+                return None
                 continue
-            print("sif: ", sfi)
+            cprint('c', f"sfi Z: {str(sfi):s}")
             # ax = self.P2.axarr[0, 1]
             ax = self.P3.axdict["E1"]
             label = sfi.name  # .replace("_", "\_")
             with open(sfi, "rb") as fh:
                 d = pickle.load(fh)
-
+            print("E1: ", d)
             pz = ax.plot(
                 d["f"],
                 d["zin"],
@@ -469,6 +522,7 @@ class Figures(object):
             secax.set_xscale("log")
             secax.set_xlim(1.0, 10000.0)
             self.force_log_ticks(secax)
+            print("E2: ", d)
             pp = secax.plot(
                 d["f"],
                 d["phase"],
@@ -549,41 +603,34 @@ class Figures(object):
         )
         self.P2.axdict["G"].set_ylim(0, 2.0)
         self.P2.axdict["G"].set_ylabel(tau_label)
-
+        fig = FigInfo()
+        fig.P = self.P
         if cellN == None:
-            save_file = "Fig_M1.pdf"
+            fig.filename = "Fig_M1.pdf"
         else:
-            save_file = f"Fig_IV/IV_cell_VCN_c{cellN:02d}.png"
-        title = "SBEM Project Figure 1 Modeling (Main)"
-        self.save_figure(self.P, save_file, title)
+             fig.filename  = f"Fig_IV/IV_cell_VCN_c{cellN:02d}.png"
+        fig.title["text"] = "SBEM Project Figure 1 Modeling (Main)"
+        # self.save_figure(self.P, save_file, title)
+        return fig
 
-    def save_figure(self, P, save_file, title, title2={"title": None, 'x': 0.0, 'y': 0.0}):
-        P.figure_handle.text(
-            0.98,
-            0.98,
-            save_file,  # .replace('_', '\_'),
-            transform=P.figure_handle.transFigure,
-            horizontalalignment="right",
-            verticalalignment="top",
+    def plot_combined_VC_IV(self):
+        P0 = PH.regular_grid(  # dummy figure space
+            1,
+            1,
+            figsize=(8., 10.),
+            order="rowsfirst",
+            units="page",
+            showgrid=True,
+            parent_figure=None,
         )
-        if title2["title"] is not None:
-            P.figure_handle.text(
-                title2["x"],
-                title2["y"],
-                title2["title"],  # .replace('_', '\_'),
-                transform=P.figure_handle.transFigure,
-                horizontalalignment="right",
-                verticalalignment="top",
-            )
-        ofile = Path(config["baseDataDirectory"], "Figures", save_file)
-        ofile.parent.mkdir(exist_ok=True)
-        mpl.savefig(
-            Path(config["baseDataDirectory"], "Figures", save_file),
-            metadata={"Creator": "Paul Manis", "Author": "Paul Manis", "Title": title,},
-        )
-        P.figure_handle.show()
+        
+        figp1 = self.plot_VC_gKLT(parent_figure=P0)
+        P2 = self.plotIV(parent_figure=figp1.P)
+        mpl.show()
+        
 
-    def plot_IVS(self):
+
+    def plot_IVS(self, parent_figure=None):
         """
         All of the IVS, for a supplemental figure
         Passive, normal, active, plus the crossed IV
@@ -614,7 +661,7 @@ class Figures(object):
                 "topmargin": 0.08,
             },
             labelposition=(-0.05, 1.06),
-            parent_figure=None,
+            parent_figure=parent_figure,
             # panel_labels=['A', 'B', 'C', 'D', 'E', 'F'],
         )
         cellpath = config["cellDataDirectory"]
@@ -665,7 +712,8 @@ class Figures(object):
                     self.P.axarr[rax, 0].text(-0.1, 0.5, str(iv))
         save_file = "Fig_M1A_Supplemental.pdf"
         title = "SBEM Project Figure 1 Modeling (Supplemental A)"
-        self.save_figure(self.P, save_file, title)
+        if parent_figure is None:
+            self.save_figure(self.P)
 
     def plot_ZinS(self):
         """
@@ -1922,7 +1970,7 @@ class Figures(object):
         with open(fout, "a") as fh:
             fh.write(f'"""\n')
 
-    def plot_VC_gKLT(self):
+    def plot_VC_gKLT(self, parent_figure=None):
         cell_number = 17
         dataset = figure_VClamp[cell_number]
 
@@ -1942,7 +1990,14 @@ class Figures(object):
                 return
             fn = sorted(list(sfd.glob("*")))[0]
             sfi.append(fn)
-        P = self.parent.PLT.plot_VC(sfi=sfi, show=False)
+        P = self.parent.PLT.plot_VC(sfi=sfi, show=False, parent_figure=parent_figure)
         save_file = f"Fig_M0_VC_Adjustment.pdf"
-        title = "SBEM Project Figure 5 Modeling Supplemental : PSTH and FSL, All cells"
-        title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
+        fig = FigInfo()
+        fig.P = P
+        if cell_number == None:
+            fig.filename = "Fig_M1.pdf"
+        else:
+             fig.filename  = save_file
+        fig.title = "SBEM Project Figure Modeling Supplemental : VC"
+        fig.title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
+        return fig
