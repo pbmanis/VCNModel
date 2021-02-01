@@ -34,7 +34,7 @@ def grAList() -> list:
 
 
 syms = ["s", "o", "x", "s", "o", "x", "s", "o", "x"]
-colors = ["c", "k", "m"]
+colors = ["c", "k", "m", "r"]
 
 title_text = {"passive": "Passive", "normal": "Half-active", "active": "Active"}
 font_colors = {"passive": "c", "normal": "k", "active": "m"}
@@ -65,7 +65,7 @@ class PData:
 
 
 def title_data():
-    return {'text': "", "x":None, "y":None}
+    return {'title': "", "x":None, "y":None}
 
 
 @dataclass
@@ -378,7 +378,7 @@ class Figures(object):
         for cell in grAList():
             self.plotIV(cell)
 
-    def plotIV(self, cell=None, parent_figure=None):
+    def plotIV(self, cell=None, parent_figure=None, loc:Union[None, tuple]=None):
         # style = STY.styler(journal="JNeurosci", figuresize='full', font='stixsans')  # two colukn...
         if cell is None:
             cellN = figure_IV["Cell"]
@@ -393,63 +393,93 @@ class Figures(object):
         cols = 3
         height = 4.0
         width = 8.0
+        if parent_figure is not None:
+            fsize = parent_figure.figsize
+            p0panels = ["D", "E", "F"]
+            p2panels = ["G", "H", "I", "J"]
+            p3panels = ["H1", "H2"]
+            phaseplot1 = "H1"
+            phaseplot2 = "H2"
+            rinplot = "I"
+            tauplot = "J"
+        else:
+            fsize = (width, height)
+            p0panels = ["A", "B", "C"]
+            p2panels = ["D", "E", "F", "G"]
+            p3panels = ["E1", "E2"]
+            phaseplot1 = "E1"
+            phaseplot2 = "E2"
+            rinplot = "F"
+            tauplot = "G"
+        if loc is not None:
+            bmar = loc[2]
+            tmar = fsize[1]-loc[3]
+        else:
+            bmar = 0.
+            tmar = 0.
+
         PD = PData()
         ymin = -125.0
-        ymax = 40.0
+        ymax = 20.0
         self.P = PH.regular_grid(
             rows,
             cols,
             order="rowsfirst",
-            figsize=(width, height),
+            units="in",
+            figsize=fsize,
             showgrid=False,
-            verticalspacing=0.06,
-            horizontalspacing=0.06,
+            verticalspacing=0.25,
+            horizontalspacing=0.35,
             margins={
-                "bottommargin": 0.55,
-                "leftmargin": 0.07,
-                "rightmargin": 0.07,
-                "topmargin": 0.1,
+                "bottommargin": 2.25+bmar,
+                "leftmargin": 0.5,
+                "rightmargin": 0.5,
+                "topmargin": 0.5+tmar,
             },
-            labelposition=(-0.05, 1.06),
+            labelposition=(-0.05, 1.05),
             parent_figure=parent_figure,
-            panel_labels=["A", "B", "C"],
+            panel_labels=p0panels,
         )
 
         self.P2 = PH.regular_grid( # lower row of 4
             1,
             4,
             order="rowsfirst",
+            units="in",
             showgrid=False,
-            verticalspacing=0.06,
-            horizontalspacing=0.075,
+            figsize=fsize,
+            verticalspacing=0.25,
+            horizontalspacing=0.65,
             margins={
-                "bottommargin": 0.1,
-                "leftmargin": 0.07,
-                "rightmargin": 0.07,
-                "topmargin": 0.52,
+                "bottommargin": 0.5+bmar,
+                "leftmargin": 0.5,
+                "rightmargin": 0.5,
+                "topmargin": 2.0+tmar,
             },
             
-            labelposition=(-0.05, 1.06),
+            labelposition=(-0.05, 1.05),
             parent_figure=self.P,
-            panel_labels=["D", "E", "F", "G"],
+            panel_labels=p2panels,
         )
 
         self.P3 = PH.regular_grid(  # replace with stacked plots in E
             2,
             1,
             order="rowsfirst",
+            units="in",
             showgrid=False,
-            verticalspacing=0.05,
-            horizontalspacing=0.075,
+            figsize=fsize,
+            verticalspacing=0.1,
+            horizontalspacing=0.35,
             margins={
-                "bottommargin": 0.1,
-                "leftmargin": 0.31,
-                "rightmargin": 0.53,
-                "topmargin": 0.50,
+                "bottommargin": 0.5+bmar,
+                "leftmargin": 2.35,
+                "rightmargin": 4.15,
+                "topmargin": 2.0+tmar,
             },
-            labelposition=(-0.25, 0.95),
+            labelposition=(-0.25, 1.05),
             parent_figure=self.P,
-            panel_labels=["E1", "E2"],
+            panel_labels=p3panels,
         )
 
         for iax, iv in enumerate(["passive", "normal", "active"]):
@@ -462,7 +492,7 @@ class Figures(object):
                  print("Missing file: sfi 1: ", sfi)
                  return None
             fn = list(sfi.glob("*"))
-            print("fn: ", fn)
+
             sfi = Path(sfi, fn[0])
             self.parent.PLT.plot_traces(
                 self.P.axarr[0, iax],
@@ -478,8 +508,17 @@ class Figures(object):
                 calx=120.0,
                 caly=-10.0,
             )
-            self.P.axarr[0, iax].set_title(title_text[iv], color=font_colors[iv])
+            self.P.axarr[0, iax].set_title(title_text[iv], color="k", fontweight="normal")
 
+        from matplotlib.lines import Line2D
+        ls = ['-', '-', '-', '']
+        mc = ['w', 'w', 'w', 'r']
+        lines = [Line2D([0], [0], color=c, linewidth=0.75, linestyle=ls[ic], marker='o', mfc=mc[ic], mew=0.5) for ic, c in enumerate(colors)]
+        labels = ["Passive", "Half-active", "Active", "Spk Thresh" ]
+        self.P2.axarr[0,0].legend(lines, labels, bbox_to_anchor=(0.32, 0.35), fontsize=7)
+            # self.P2.axarr[0, 0].line.set_label(iv)
+        # self.P2.axarr[0,0].legend(["passive", "normal", "active", "spike thresholds"])
+        
         res_label = r"$\mathregular{R_{in} (M\Omega)}$"
         tau_label = r"$\mathregular{\tau_{m} (ms)}$"
         phase_label = r"$\mathregular{\phi (radians)}$"
@@ -488,19 +527,18 @@ class Figures(object):
         for iax, mode in enumerate(["Z_passive", "Z_normal", "Z_active"]):
             if mode not in figure_IV.keys():
                 continue
-            cprint('r', f"doing iv: {str(mode):s}")
+            # cprint('r', f"doing iv: {str(mode):s}")
             sfi = Path(config["codeDirectory"], figure_IV[mode])
             if not sfi.is_file():
                 cprint('r', f"File not found!!!!!!\n->>> {str(sfi):s}")
                 return None
                 continue
-            cprint('c', f"sfi Z: {str(sfi):s}")
+            # cprint('c', f"sfi Z: {str(sfi):s}")
             # ax = self.P2.axarr[0, 1]
-            ax = self.P3.axdict["E1"]
+            ax = self.P3.axdict[phaseplot1]
             label = sfi.name  # .replace("_", "\_")
             with open(sfi, "rb") as fh:
                 d = pickle.load(fh)
-            print("E1: ", d)
             pz = ax.plot(
                 d["f"],
                 d["zin"],
@@ -518,11 +556,10 @@ class Figures(object):
             self.force_log_ticks(ax)
 
             # secax = PLS.create_inset_axes([0.0, 0.0, 1, 0.5], ax, label=str(ax))
-            secax = self.P3.axdict["E2"]
+            secax = self.P3.axdict[phaseplot2]
             secax.set_xscale("log")
             secax.set_xlim(1.0, 10000.0)
             self.force_log_ticks(secax)
-            print("E2: ", d)
             pp = secax.plot(
                 d["f"],
                 d["phase"],
@@ -553,7 +590,6 @@ class Figures(object):
                     "IV",
                     figure_AllIVs[iv][dendmode],
                 )
-                print(sfi)
                 if not sfi.is_dir():
                     print("sfi is not a dir")
                     continue
@@ -580,36 +616,40 @@ class Figures(object):
             data=df_rin,
             x="dendrites",
             y="Rin",
-            ax=self.P2.axdict["F"],
+            ax=self.P2.axdict[rinplot],
             saturation=0.3,
             palette=colors,
         )
         sns.stripplot(
-            data=df_rin, x="dendrites", y="Rin", ax=self.P2.axdict["F"], color="0.6"
+            data=df_rin, x="dendrites", y="Rin", ax=self.P2.axdict[rinplot], color="0.6",
+            size=4.0, edgecolor='k',
         )
-        self.P2.axdict["F"].set_ylim(0, 30.0)
-        self.P2.axdict["F"].set_ylabel(res_label)
-
+        self.P2.axdict[rinplot].set_ylim(0, 30.0)
+        self.P2.axdict[rinplot].set_ylabel(res_label)
+        self.P2.axdict[rinplot].set_xlabel("Dendrite Decoration")
         sns.boxplot(
             data=df_tau,
             x="dendrites",
             y="taum",
-            ax=self.P2.axdict["G"],
+            ax=self.P2.axdict[tauplot],
             saturation=0.3,
             palette=colors,
         )
         sns.stripplot(
-            data=df_tau, x="dendrites", y="taum", ax=self.P2.axdict["G"], color="0.6"
+            data=df_tau, x="dendrites", y="taum", ax=self.P2.axdict[tauplot], color="0.6",
+            size=4.0, edgecolor='k',
         )
-        self.P2.axdict["G"].set_ylim(0, 2.0)
-        self.P2.axdict["G"].set_ylabel(tau_label)
+        self.P2.axdict[tauplot].set_ylim(0, 2.0)
+        self.P2.axdict[tauplot].set_ylabel(tau_label)
+        self.P2.axdict[tauplot].set_xlabel("Dendrite Decoration")
+
         fig = FigInfo()
         fig.P = self.P
         if cellN == None:
             fig.filename = "Fig_M1.pdf"
         else:
              fig.filename  = f"Fig_IV/IV_cell_VCN_c{cellN:02d}.png"
-        fig.title["text"] = "SBEM Project Figure 1 Modeling (Main)"
+        fig.title["title"] = "SBEM Project Figure 1 Modeling (Main)"
         # self.save_figure(self.P, save_file, title)
         return fig
 
@@ -617,15 +657,15 @@ class Figures(object):
         P0 = PH.regular_grid(  # dummy figure space
             1,
             1,
-            figsize=(8., 10.),
+            figsize=(8., 9.),
             order="rowsfirst",
-            units="page",
+            units="in",
             showgrid=True,
             parent_figure=None,
         )
         
-        figp1 = self.plot_VC_gKLT(parent_figure=P0)
-        P2 = self.plotIV(parent_figure=figp1.P)
+        figp1 = self.plot_VC_gKLT(parent_figure=P0, loc=(0, 8, 4., 9.))
+        P2 = self.plotIV(parent_figure=figp1.P, loc=(0, 8, 0., 4.))
         mpl.show()
         
 
@@ -1970,7 +2010,7 @@ class Figures(object):
         with open(fout, "a") as fh:
             fh.write(f'"""\n')
 
-    def plot_VC_gKLT(self, parent_figure=None):
+    def plot_VC_gKLT(self, parent_figure=None, loc:Union[None, tuple]=None):
         cell_number = 17
         dataset = figure_VClamp[cell_number]
 
@@ -1990,7 +2030,8 @@ class Figures(object):
                 return
             fn = sorted(list(sfd.glob("*")))[0]
             sfi.append(fn)
-        P = self.parent.PLT.plot_VC(sfi=sfi, show=False, parent_figure=parent_figure)
+        P = self.parent.PLT.plot_VC(sfi=sfi, show=False, parent_figure=parent_figure,
+            loc=loc)
         save_file = f"Fig_M0_VC_Adjustment.pdf"
         fig = FigInfo()
         fig.P = P
@@ -1999,5 +2040,5 @@ class Figures(object):
         else:
              fig.filename  = save_file
         fig.title = "SBEM Project Figure Modeling Supplemental : VC"
-        fig.title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
+        fig.title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.05}
         return fig

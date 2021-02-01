@@ -824,7 +824,10 @@ class PlotSims:
         ninspikes = 0
         ispikethr = None
         spike_rheobase = None
-        if hasattr('ax', 'len') and len(ax) == 2:
+        if isinstance(ax, list):
+            ax1 = ax[0]
+            ax2 = ax[1]
+        elif hasattr('ax', 'len') and len(ax) == 2:
             ax1 = ax[0]
             ax2 = ax[1]
         elif hasattr('ax', 'len') and len(ax) == 1:
@@ -845,6 +848,7 @@ class PlotSims:
             else:
                 AR.traces[trial] = AR.traces[trial].asarray() * 1e3 # mV
                 cmd = AR.cmd_wave[trial]*1e9  # from A to nA
+            print(ax1)
             ax1.plot(AR.time_base, AR.traces[trial],  linewidth=0.5)
             if ax2 is not None:
                 ax2.plot(AR.time_base, cmd, linewidth=0.5)
@@ -1058,7 +1062,8 @@ class PlotSims:
         return (synno, noutspikes, ninspikes)
 
     @TraceCalls()
-    def plot_VC(self, selected_index_rows=None, sfi = None, show=True):
+    def plot_VC(self, selected_index_rows=None, sfi = None,
+            parent_figure=None, loc=None, show=True):
         if selected_index_rows is not None:
             n_columns = len(selected_index_rows)
             if n_columns == 0:
@@ -1083,7 +1088,7 @@ class PlotSims:
                     # print(sfidata['Params'])
                     dendriteMode[i] = sfidata['Params'].dendriteMode
                     protocol[i] = sfidata['runInfo'].runProtocol
-        P = self.setup_VC_plots(n_columns)
+        P = self.setup_VC_plots(n_columns, parent_figure=parent_figure, loc=loc)
         titlemap = {'normal': 'Half-active', 'passive': 'Passive', 'active': "Active" }
 
         for i in range(n_columns):
@@ -1119,22 +1124,34 @@ class PlotSims:
 
 
     @TraceCalls()
-    def setup_VC_plots(self, n_columns):
+    def setup_VC_plots(self, n_columns, parent_figure=None, loc:Union[None, tuple]= None):
         sizer = OrderedDict()
-        left = 0.1
-        right = 0.1
-        hspc = 0.08
-        cwid = (1.0 - (left+right) - hspc*(n_columns-1))/n_columns
+        tmar = 0.
+        bmar = 0.
+        if loc is not None:
+            tmar = loc[3]
+            bmar = loc[2]
+        left = 0.5
+        right = 0.5
+        hspc = 0.5
+        if parent_figure is not None:
+            figsize = parent_figure.figsize
+        else:
+            figsize=[8., 5.0]
+        # bmar = 4
+        cwid = (figsize[0] - (left+right) - hspc*(n_columns-1))/n_columns
         for i, col in enumerate(range(n_columns)):
             panel_letter = string.ascii_uppercase[i]
             xl = left + i*(cwid+hspc)
-            sizer[panel_letter+"1"] = {"pos": [xl, cwid, 0.56, 0.34], "labelpos": (-0.15, 1.0)}
-            sizer[panel_letter+"2"] = {"pos": [xl, cwid, 0.42, 0.12], "labelpos": (-0.15, 1.0)}
-            sizer[panel_letter+"3"] = {"pos": [xl, cwid, 0.08, 0.2], "labelpos": (-0.15, 1.05)}
+            sizer[panel_letter+"1"] = {"pos": [xl, cwid, 2.65+bmar, 1.8], "labelpos": (-0.15, 1.0)}
+            sizer[panel_letter+"2"] = {"pos": [xl, cwid, 2.05+bmar, 0.4], "labelpos": (-0.15, 1.0)}
+            sizer[panel_letter+"3"] = {"pos": [xl, cwid, 0.4+bmar, 1.35], "labelpos": (-0.15, 1.05)}
 
         P = PH.arbitrary_grid(
-            sizer, order="columnsfirst", label=True, figsize=(2.5*n_columns, 6.0),
+            sizer, units="in", order="columnsfirst", label=True, showgrid=True, figsize=figsize,
+            parent_figure=parent_figure,
         )
+        P.figure_handle.show()
         return P
 
     @winprint
@@ -1290,7 +1307,7 @@ class PlotSims:
         ax.plot(vss_sel*1e3, gss_sel * 1e9, "ko", markersize=2)
         ax.plot(vss_sel*1e3, result.best_fit * 1e9, "r-")
         ax.set_ylim(0, 100.)
-        ax.set_xlim(-120., 40.)
+        ax.set_xlim(-100., 40.)
         PH.talbotTicks(ax,
             axes="xy",
             density=(1.0, 1.0),
