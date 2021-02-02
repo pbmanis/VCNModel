@@ -3,6 +3,7 @@ import importlib
 import pickle
 from dataclasses import dataclass, field
 from pathlib import Path
+import string
 from typing import Union
 
 import matplotlib
@@ -325,11 +326,12 @@ class Figures(object):
             "VS-SAM Tone": self.plot_VS_SAM,
             "VC-KLTCalibration": self.plot_VC_gKLT,
             "CombinedVCIV": self.plot_combined_VC_IV,
+            "CombinedEffRevCorr": self.plot_combined_Eff_Rev,
         }
-        print(figure_name, dispatch_table.keys())
         if figure_name in list(dispatch_table.keys()):
             print("disp")
             fig = dispatch_table[figure_name]()
+            print('Fig: ', fig)
             if fig is not None:
                 self.save_figure(fig)
 
@@ -358,9 +360,10 @@ class Figures(object):
         ofile = Path(config["baseDataDirectory"], "Figures", fig.filename)
         ofile.parent.mkdir(exist_ok=True)
         print('saving to: ', str(Path(config["baseDataDirectory"], "Figures", fig.filename)))
+        print('fig: ', fig)
         mpl.savefig(
             Path(config["baseDataDirectory"], "Figures", fig.filename),
-            metadata={"Creator": "Paul Manis", "Author": "Paul Manis", "Title": fig.title},
+            metadata={"Creator": "Paul Manis", "Author": "Paul Manis", "Title": fig.title['title']},
         )
         fig.P.figure_handle.show()
 
@@ -666,8 +669,11 @@ class Figures(object):
         
         figp1 = self.plot_VC_gKLT(parent_figure=P0, loc=(0, 8, 4., 9.))
         P2 = self.plotIV(parent_figure=figp1.P, loc=(0, 8, 0., 4.))
-        mpl.show()
-        
+        fig = FigInfo()
+        fig.P = self.P
+        fig.filename  = f"Figure_M0-Combined_Supplemental.pdf"
+        fig.title["title"] = "SBEM Project Figure Suupplemental Figure 1 Modeling (Main)"
+        return fig
 
 
     def plot_IVS(self, parent_figure=None):
@@ -750,10 +756,15 @@ class Figures(object):
                     self.P.axarr[rax, iax + 1].set_title(dendmode)
                 if iax == 0:
                     self.P.axarr[rax, 0].text(-0.1, 0.5, str(iv))
-        save_file = "Fig_M1A_Supplemental.pdf"
-        title = "SBEM Project Figure 1 Modeling (Supplemental A)"
         if parent_figure is None:
-            self.save_figure(self.P)
+            fig = FigInfo()
+            fig.P = self.P
+            fig.filename  = f"Fig_M1A_Supplemental.pdf"
+            fig.title["title"] = "SBEM Project Figure 1 Modeling (Supplemental A)"
+            return fig
+        else:
+            return self.P
+            
 
     def plot_ZinS(self):
         """
@@ -761,7 +772,74 @@ class Figures(object):
         """
         PZ.PlotZ()
 
-    def plot_efficacy(self):
+
+    def make_eff_fig(self):
+        row1y = 5.5
+        row1h = 3.0
+        row2y = 3.0
+        row2h = 2.0
+        row3h = 2.0
+        row3y = 0.5
+        col1 = 1.0
+        col2 = 4.5
+        sizer = {
+            "A": {
+                "pos": [col1, 2.75, row1y, row1h],
+                "labelpos": (-0.15, 1.02),
+                "noaxes": True,
+            },
+            "B": {"pos": [col2, 2.5, row1y, row1h], "labelpos": (-0.15, 1.02)},
+        }  # dict pos elements are [left, width, bottom, height] for the axes in the plot. gr = [(a, a+1, 0, 1) f
+        sizer["C"] = {"pos": [col1, 2.5, row2y, row2h],
+                "labelpos": (-0.15, 1.02),
+
+            }
+        sizer["D"] = {"pos": [col1, 2.5, row3y, row2h],
+                "labelpos": (-0.15, 1.02),
+
+            }
+        sizer["E"] =    {"pos": [col2, 2.5, row2y, row2h],
+                "labelpos": (-0.15, 1.02),
+
+            }
+        sizer["F"] = {"pos": [col2, 2.5, row3y, row3h],
+                "labelpos": (-0.15, 1.02),
+
+            }
+        # sizer["G"] = {"pos": [3.5, 2.75, row3y, row3h],
+        #         "labelpos": (-0.15, 1.02),
+        #         "noaxes": True,
+        #     }
+        # sizer["H"] =    {"pos": [7., 2.75, row3y, row3h],
+        #         "labelpos": (-0.15, 1.02),
+        #         "noaxes": True,
+        #     }
+    
+    
+    
+    
+        P = PH.arbitrary_grid(
+            sizer,
+            order="columnsfirst",
+            units='in',
+            figsize=(8., 9.),
+            label=True,
+            # showgrid=True,
+        )
+
+        return P
+        
+    def plot_combined_Eff_Rev(self):
+        P = self.make_eff_fig()
+
+        figP2 = self.plot_revcorr(parent_figure=P, loc=(0, 8, 0., 5.5), start_letter="C")
+        figP1 = self.plot_efficacy(parent_figure=P, loc=(0, 8, 6., 10.))
+        # PH.show_figure_grid(P, 8, 8)
+        mpl.show()
+        return
+        return(P)
+
+    def plot_efficacy(self, dendrite_mode="Full", parent_figure:Union[None, object]=None, loc:tuple=(0,0,0,0)):
         cell_number = 17
         example = figure_efficacy_supplement[cell_number]
 
@@ -771,54 +849,41 @@ class Figures(object):
             "Simulations",
             "AN",
         )
-        sfi = Path(cellpath, Path(example["Full"]).name)
+        sfi = Path(cellpath, Path(example[dendrite_mode]).name)
         if not sfi.is_dir():
             return
         fn = sorted(list(sfi.glob("*")))
         print("fn: ", fn)
         PD = PData()
         calx = 800.0
-        figsize = (8.0, 3.0)
-
-        EFP = EF.EfficacyPlots(None, hold=True, cols=4)
-        EFP.P.figure_handle.set_size_inches(figsize[0], figsize[1])
-
-        self.P_Eff1 = PH.regular_grid(
+        if parent_figure is None:
+            parent_figure = self.make_eff_fig()
+        EFP = EF.EfficacyPlots(parent_figure=parent_figure)
+        EFP.plot_efficacy(datasetname="Full", ax=EFP.parent_figure.axdict["B"], loc=loc)
+        # EFP.P.figure_handle.set_size_inches(figsize[0], figsize[1])
+ #        return
+        # stacked IV in first column:
+        self.P_Eff_SingleInputs = PH.regular_grid(
             len(fn),
             1,
             order="rowsfirst",
-            figsize=(8.0, 4.5),
+            figsize=(8, 10),
+            units="in",
             showgrid=False,
-            verticalspacing=0.01,
-            horizontalspacing=0.1,
+            verticalspacing=0.,
+            horizontalspacing=0.5,
             margins={
-                "bottommargin": 0.1,
-                "leftmargin": 0.05,
-                "width": 0.17,
-                "height": 0.8,
+                "bottommargin": 6.5,
+                "leftmargin": 1,
+                "rightmargin": 4.5,
+                "topmargin": 0.5,
+                # "width": 0.17,
+                # "height": 0.8,
             },
             labelposition=(-0.05, 1.06),
             parent_figure=EFP.P,
-            # panel_labels=['A', 'B', 'C', 'D', 'E', 'F'],
-        )
-        self.P_Eff2 = PH.regular_grid(
-            len(fn),
-            1,
-            order="rowsfirst",
-            figsize=(8.0, 4.5),
-            showgrid=False,
-            verticalspacing=0.01,
-            horizontalspacing=0.1,
-            margins={
-                "bottommargin": 0.1,
-                "leftmargin": 0.54,
-                "width": 0.17,
-                "height": 0.8,
-            },
-            labelposition=(-0.05, 1.06),
-            parent_figure=EFP.P,
-            # panel_labels=['A', 'B', 'C', 'D', 'E', 'F'],
-        )
+            )
+
         calx = 800.0
         nfiles = len(fn)
         for n in range(nfiles):
@@ -828,20 +893,20 @@ class Figures(object):
                 calxv = calx
             else:
                 calxv = None
-            print("Calxv: ", calxv)
+
             self.parent.PLT.plot_traces(
-                ax=self.P_Eff1.axarr[n, 0],
+                ax=self.P_Eff_SingleInputs.axarr[n, 0],
                 fn=sfile,
                 PD=PD,
                 protocol="runANSingles",
-                ymin=-90.0,
+                ymin=-80.0,
                 ymax=20.0,
                 xmin=400.0,
                 xmax=900.0,
                 iax=n,
                 nax=len(fn),
                 rep=0,
-                figure=self.P_Eff1.figure_handle,
+                figure=self.P_Eff_SingleInputs.figure_handle,
                 longtitle=True,
                 ivaxis=None,
                 ivcolor="k",
@@ -854,65 +919,14 @@ class Figures(object):
                 calv=20.0,
             )
 
-            self.P_Eff1.axarr[n, 0].text(
+            self.P_Eff_SingleInputs.axarr[n, 0].text(
                 -0.02,
                 0.5,
-                f"Syn {n:d}",
+                f"Syn {n+1:d}",
                 fontsize=8,
                 horizontalalignment="right",
                 verticalalignment="center",
-                transform=self.P_Eff1.axarr[n, 0].transAxes,
-            )
-
-        sfi = Path(cellpath, Path(example["NoDend"]).name)
-        if not sfi.is_dir():
-            return
-        fn = sorted(list(sfi.glob("*")))
-        print("fn: ", fn)
-        PD = PData()
-        calx = 800.0
-        nfiles = len(fn)
-        for n in range(nfiles):
-            sfile = Path(sfi, fn[n])
-            print("N, sfile: ", n, sfile)
-            if n == (nfiles - 1):
-                calxv = calx
-            else:
-                calxv = None
-            print("Calxv: ", calxv)
-            self.parent.PLT.plot_traces(
-                ax=self.P_Eff2.axarr[n, 0],
-                fn=sfile,
-                PD=PD,
-                protocol="runANSingles",
-                ymin=-90.0,
-                ymax=20.0,
-                xmin=400.0,
-                xmax=900.0,
-                iax=n,
-                nax=len(fn),
-                rep=0,
-                figure=self.P_Eff2.figure_handle,
-                longtitle=True,
-                ivaxis=None,
-                ivcolor="k",
-                iv_spike_color="r",
-                spike_marker_size=1.5,
-                spike_marker_color="c",
-                calx=calxv,
-                caly=-20.0,
-                calt=50.0,
-                calv=20.0,
-            )
-            calx = None
-            self.P_Eff2.axarr[n, 0].text(
-                -0.02,
-                0.5,
-                f"Syn {n:d}",
-                fontsize=8,
-                horizontalalignment="right",
-                verticalalignment="center",
-                transform=self.P_Eff2.axarr[n, 0].transAxes,
+                transform=self.P_Eff_SingleInputs.axarr[n, 0].transAxes,
             )
 
         EFP.P.figure_handle.text(
@@ -923,35 +937,13 @@ class Figures(object):
             horizontalalignment="right",
             verticalalignment="bottom",
         )
-        x = [1, 3]
-        for i, data in enumerate(EFP.datasets):
-            EFP.plot_dataset(
-                data, plotno=i, ax=EFP.P.axarr[0, x[i]]
-            )  # , title=EFP.titles[x[i]])
-            EFP.P.figure_handle.text(
-                0.25 + 0.5 * i,
-                0.99,
-                EFP.titles[x[i]],  # .replace('_', '\_'),
-                transform=EFP.P.figure_handle.transFigure,
-                fontsize=11,
-                horizontalalignment="center",
-                verticalalignment="top",
-            )
-        label = ["A", "B", "C", "D"]
-        for i, pl in enumerate(label):
-            EFP.P.figure_handle.text(
-                0.05 + 0.25 * i,
-                0.9,
-                label[i],  # .replace('_', '\_'),
-                transform=EFP.P.figure_handle.transFigure,
-                horizontalalignment="right",
-                verticalalignment="bottom",
-                fontsize=11,
-            )
+        save_file = "Fig_M2_Efficacy_Revcorr.pdf"
+        fig = FigInfo()
+        fig.P = EFP.P
+        fig.filename  = save_file
+        fig.title["title"] = "SBEM Project Figure 2 Modeling: Efficacy and Revcorr"
+        return None
 
-        save_file = "Fig_M2.pdf"
-        title = "SBEM Project Figure 2 Modeling : Efficacy"
-        self.save_figure(EFP.P, save_file, title)
 
     def plot_efficacy_supplement(self):
         cells = grAList()
@@ -1072,13 +1064,20 @@ class Figures(object):
 
         save_file = f"Fig_M2_Supplemental_{simulation_experiment:s}.pdf"
         title = "SBEM Project Figure 2 Modeling : Efficacy, Supplemental"
-        self.save_figure(EFP, save_file, title)
+        save_file = "Fig_M2_Efficacy_Supplement.pdf"
+        fig = FigInfo()
+        fig.P = self.P
+        fig.filename  = save_file
+        fig.title["title"] = title
+        return fig
 
     def plot_all_revcorr(self):
         for cell in grAList():
             self.plot_revcorr(cell)
     
-    def plot_revcorr(self, cellN=None):
+    def plot_revcorr(self, cellN=None, parent_figure:Union[object, None]=None,
+            loc:tuple=(0., 0., 0., 0.), 
+            start_letter = "A"):
         if cellN == None:
             cell_number = 17
             example = figure_revcorr_example[cell_number]
@@ -1111,7 +1110,7 @@ class Figures(object):
                 return
             fn = sorted(list(sfi.glob("*")))
             (P, PD, RCP, RCD) = self.parent.PLT.compute_revcorr(
-                P=None,
+                P=None,  # no plotting (and return P is None)
                 gbc="17",
                 fn=fn[0],
                 PD=PData(),
@@ -1120,38 +1119,54 @@ class Figures(object):
                 thr=-20.0,
                 width=4.0,
             )
-        box_size = 0.32
-        sizer = {
-            "A": {
-                "pos": [0.1, box_size, 0.56, box_size],
-                "labelpos": (-0.15, 1.02),
-                "noaxes": True,
-            },
-            "B": {"pos": [0.1, box_size, 0.12, box_size], "labelpos": (-0.15, 1.02)},
-            # "C": {"pos": [0.52, 0.20, 0.52, 0.28], "labelpos": (-0.15, 1.00)},
-            # "D": {"pos": [0.52, 0.20, 0.08, 0.28], "labelpos": (-0.15, 1.00)},
-            "C": {"pos": [0.57, box_size, 0.56, box_size], "labelpos": (-0.15, 1.02)},
-            "D": {"pos": [0.57, box_size, 0.12, box_size], "labelpos": (-0.15, 1.02)},
-        }  # dict pos elements are [left, width, bottom, height] for the axes in the plot. gr = [(a, a+1, 0, 1) for a in range(0, 8)] # just generate subplots - shape do not matter axmap = OrderedDict(zip(sizer.keys(), gr))
-        P = PH.arbitrary_grid(
-            sizer,
-            order="columnsfirst",
-            figsize=(6, 6),
-            label=True,
-            # verticalspacing=0.12,
-            # horizontalspacing=0.12,
-            margins={
-                "bottommargin": 0.1,
-                "leftmargin": 0.1,
-                "rightmargin": 0.1,
-                "topmargin": 0.1,
-            },
-            # fontsize={"tick": 7, "label": 9, "panel": 12},
-            # fontweight={"tick": "normal", "label": "normal", "panel": "bold"},
-        )
+        str_a = string.ascii_uppercase
+        p_labels = str_a[str_a.find(start_letter):str_a.find(start_letter)+4]  # will fail if you have > 26
+        if parent_figure is None:
+            box_sizex = 2.25 # inches
+            box_sizey = 2.2 # inches
+            row3y = 0.5
+            row2y = 3.0
 
-        ax = P.axdict["A"]
-        summarySiteTC = self.parent.PLT.plot_revcorr2(P, PD, RCP, RCD)
+            sizer = {
+                p_labels[0]: {
+                    "pos": [1, box_sizex, row2y, box_sizey],
+                    "labelpos": (-0.15, 1.02),
+                    "noaxes": True,
+                },
+                p_labels[1]: {"pos": [1, box_sizex, row3y, box_sizey], "labelpos": (-0.15, 1.02)},
+                # "C": {"pos": [0.52, 0.20, 0.52, 0.28], "labelpos": (-0.15, 1.00)},
+                # "D": {"pos": [0.52, 0.20, 0.08, 0.28], "labelpos": (-0.15, 1.00)},
+                p_labels[2]: {"pos": [4.25, box_sizex, row2y, box_sizey], "labelpos": (-0.15, 1.02)},
+                p_labels[3]: {"pos": [4.25, box_sizex, row3y, box_sizey], "labelpos": (-0.15, 1.02)},
+            }  # dict pos elements are [left, width, bottom, height] for the axes in the plot. gr = [(a, a+1, 0, 1) for a in range(0, 8)] # just generate subplots - shape do not matter axmap = OrderedDict(zip(sizer.keys(), gr))
+            P = PH.arbitrary_grid(
+                sizer,
+                order="columnsfirst",
+                units="in",
+                figsize=parent_figure.figsize,
+                label=True,
+
+                # margins={
+                #     "bottommargin": 0.1,
+                #     "leftmargin": 0.1,
+                #     "rightmargin": 0.1,
+                #     "topmargin": 0.1+loc[2],
+                # },
+                parent_figure=parent_figure,
+            )
+        else:
+            P = parent_figure# PH.show_figure_grid(P, 6, 7)
+        # mpl.show()
+        # return
+        sax = P.axdict
+        sax0 = sax[p_labels[0]]
+        sax1 = sax[p_labels[1]]
+        sax2 = sax[p_labels[2]]
+        sax3 = sax[p_labels[3]]
+        cprint('r', f"Start Letter: {p_labels[0]:s}")
+        print(P.axdict)
+        print('figure plot revcorr sax: ', sax)
+        summarySiteTC = self.parent.PLT.plot_revcorr2(P, PD, RCP, RCD, start_letter=p_labels[0])
 
         maxp = np.max(RCD.pairwise)
         psh = RCD.pairwise.shape
@@ -1162,38 +1177,38 @@ class Figures(object):
                 pos[i, j, 0] = i + 1
                 pos[i, j, 1] = j + 1
 
-        sax = P.axdict
 
-        sax["C"].plot(RCD.sites, RCD.participation / RCD.nspikes, "kx", markersize=5)
-        sax["C"].set_ylim((0, 1.0))
-        sax["C"].set_xlim(left=0)
-        sax["C"].set_xlabel("# Release Sites")
-        sax["C"].set_ylabel("Participation")
 
-        sax["D"].plot(np.arange(len(RCD.ynspike)) + 1, RCD.ynspike, "k^-", markersize=5)
-        sax["D"].set_ylim(0, 1.05)
-        sax["D"].set_xlabel(
+        sax2.plot(RCD.sites, RCD.participation / RCD.nspikes, "kx", markersize=5)
+        sax2.set_ylim((0, 1.0))
+        sax2.set_xlim(left=0)
+        sax2.set_xlabel("# Release Sites")
+        sax2.set_ylabel("Participation")
+
+        sax3.plot(np.arange(len(RCD.ynspike)) + 1, RCD.ynspike, "k^-", markersize=5)
+        sax3.set_ylim(0, 1.05)
+        sax3.set_xlabel(
             f"# Inputs in [{RCD.pre_w[0]:.1f} to {RCD.pre_w[1]:.1f}] before spike"
         )
-        sax["D"].set_ylabel("Cumulative Bushy Spikes witn N AN inputs")
+        sax3.set_ylabel("Cumulative Bushy Spikes witn N AN inputs")
 
-        PH.cleanAxes(P.axarr.ravel())
-        PH.noaxes(P.axdict["A"])
+        # PH.cleanAxes(P.axarr.ravel())
+        # PH.noaxes(sax0)
 
         PH.talbotTicks(
-            sax["B"],
+            sax1,
             tickPlacesAdd={"x": 1, "y": 2},
             floatAdd={"x": 1, "y": 2},
             # pointSize=7,
         )
         PH.talbotTicks(
-            sax["C"],
+            sax2,
             tickPlacesAdd={"x": 0, "y": 1},
             floatAdd={"x": 0, "y": 2},
             # pointSize=7,
         )
         PH.talbotTicks(
-            sax["D"],
+            sax3,
             tickPlacesAdd={"x": 0, "y": 1},
             floatAdd={"x": 0, "y": 2},
             # pointSize=7,
@@ -1206,10 +1221,18 @@ class Figures(object):
                 save_file = f"Fig_Revcorr/Revcorr_VCN_c{cell_number:02d}.png"
         else:
             save_file = f"Fig_M3_{dBSPL:s}.pdf"
-        title = 'Reverse Correlation'
         title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
-        self.save_figure(P, save_file, title=title, title2=title2)
-        return (summarySiteTC, RCD.sites)
+        save_file = "Fig_M2_Efficacy_Revcorr.pdf"
+        fig = FigInfo()
+        if parent_figure is not None:
+            fig.P = parent_figure
+        else:
+            fig.P = P
+        fig.filename  = save_file
+        fig.title["title"] = "SBEM Project Figure 2 Modeling: Efficacy and Revcorr"
+        fig.title2=title2
+        return fig
+
 
     def plot_revcorr_supplement(self):
 
@@ -1402,9 +1425,14 @@ class Figures(object):
         # save the accumulated RCD data
         with open(rc_datafile, "wb") as fh:
             pickle.dump(all_RCD_RCP, fh)
-        title = ("SBEM Project Figure 3 Modeling : Reverse Correlation Summary",)
+
+        title = ("SBEM Project Supplemental Figure 2 Modeling : Reverse Correlation Summary",)
         save_file = f"Fig_M3_supplemental_Full_{dBSPL:s}.pdf"
-        self.save_figure(P, save_file, title=title)
+        fig = FigInfo()
+        fig.P = self.P
+        fig.filename  = save_file
+        fig.title["title"] = title
+        return fig
 
     def plot_revcorr_compare(self):
         dBSPLs = ["Spont", "40dB"]
@@ -1611,9 +1639,10 @@ class Figures(object):
             save_file = f"Fig_M5.pdf"
         else:
             save_file = f"All_PSTH/PSTH_VCN_c{cell_number:02d}.png"
-        title = "SBEM Project Figure 5Modeling : PSTH and FSL, Example"
         title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
-        self.save_figure(P, save_file, title=title, title2=title2)
+        title = ("SBEM Project Figure 3 Modeling : Reverse Correlation Summary",)
+        save_file = f"Fig_M3_supplemental_Full_{dBSPL:s}.pdf"
+        return fig
 
     def plot_one_PSTH(
         self,
@@ -1939,9 +1968,13 @@ class Figures(object):
                 horizontalalignment="right",
             )
 
-        save_file = f"Fig_M5_Supplmental.pdf"
+        save_file = f"Fig_M1_Supplmental_PSTHs.pdf"
         title = "SBEM Project Figure 5 Modeling Supplemental : PSTH and FSL, All cells"
-        self.save_file(P, save_file, title)
+        fig = FigInfo()
+        fig.P = self.P
+        fig.filename  = save_file
+        fig.title["title"] = title
+        return fig
 
     def plot_VS_SAM(self):
         self.generate_VS_data()

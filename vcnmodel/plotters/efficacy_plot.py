@@ -1,5 +1,6 @@
 import io
 import re
+from typing import Union
 
 import lmfit
 import matplotlib
@@ -15,9 +16,9 @@ matplotlib.rcParams["mathtext.fontset"] = "stixsans"
 # matplotlib.rcParams['font.family'] = 'sans-serif'
 # matplotlib.rcParams['font.sans-serif'] = ['stixsans'] #, 'Tahoma', 'DejaVu Sans',
 #                                #'Lucida Grande', 'Verdana']
-matplotlib.rcParams["pdf.fonttype"] = 42
-matplotlib.rcParams["text.usetex"] = False
-sns.set_style(rc={"pdf.fonttype": 42})
+# matplotlib.rcParams["pdf.fonttype"] = 42
+# matplotlib.rcParams["text.usetex"] = False
+# sns.set_style(rc={"pdf.fonttype": 42})
 
 
 """
@@ -267,51 +268,59 @@ def boltz_resid(p, x, data):
 
 
 class EfficacyPlots(object):
-    def __init__(self, parent_plot:object=None, hold=False, cols=3, rows=1, draft=False):
-        self.parent_plot = parent_plot
-        self.hold = hold
-        self.plot_efficacy(cols, rows)
+    def __init__(self, parent_figure:object=None, draft=False):
+        self.parent_figure = parent_figure
         self.draft = draft
 
-    def plot_efficacy(self, cols, rows):
-        datasets = [ data_Full, data_NoDend]
-        self.datasets = datasets
+    def plot_efficacy(self, datasetname:str, ax:object, loc:tuple=(0., 0., 0., 0.)):
         self.titles = ["Intact", "Intact", "No Dendrites", "No Dendrites"]
-        labs = ["A", "B", "C"]
-        if cols == 4:
-            labs.append("D")
-        labs = None
-        if self.parent_plot is None:
-            self.P = PH.regular_grid(
-                rows,
-                cols,
-                figsize=(8., 4.5),
-                margins={
-                    "bottommargin": 0.25,
-                    "leftmargin": 0.05,
-                    "rightmargin": 0.05,
-                    "topmargin": 0.25,
-                },
-                panel_labels=labs,
-                labelposition=(-0.05, 1.05),
-                # parent_figure=self.parent_plot,
+        dmap = {'Full': data_Full, "NoDend": data_NoDend}
+        dataset = dmap[datasetname]
+        if loc is None:
+            x0 = 0
+            y0 = 0
+        else:
+            x0 = loc[0]
+            y0 = loc[2]
+        if self.parent_figure is None:
+            sizer = {
+                "A": {
+                    "pos": [1+x0, 3, 1+y0, 3],
+                    "labelpos": (-0.15, 1.02),
+                    "noaxes": False,
+                    },
+                }
+            self.P = PH.arbitrary_grid(
+                sizer,
+                order="columnsfirst",
+                units="in",
+                figsize=(5, 5),
+                label=True,
+                # verticalspacing=0.12,
+                # horizontalspacing=0.12,
+                # margins={
+                #     "bottommargin": 0.1,
+                #     "leftmargin": 0.1,
+                #     "rightmargin": 0.1,
+                #     "topmargin": 0.1,
+                # },
+                # parent=self.parent_plot,
             )
-            offset = 0
-        # else:
-        #     offset = 1
-        #     P = self.parent_plot
-        self.axes_labels = list(self.P.axdict.keys())
-        if self.hold:
-            return self.P
-        axn = [1, 3]
-        for i, data in enumerate(datasets):
-            if i == 1:
-                legend_on = True
-            else:
-                legend_on = False
-            self.plot_dataset(data, plotno=i,
-            ax=self.P.axdict[self.axes_labels[axn[i]]], title=self.titles[axn[i]], legend=legend_on)
-        return self.P
+        else:
+            self.P = self.parent_figure
+        self.plot_dataset(dataset,
+                ax=ax) # , title=self.titles[0]) # , legend=legend_on)
+        return
+        # axn = [1, 3]
+        # for i, data in enumerate(datasets):
+        #     if i == 1:
+        #         legend_on = True
+        #     else:
+        #         legend_on = False
+        #         print(i, axn)
+        #     self.plot_dataset(data, plotno=i,
+        #     ax=self.P.axdict[self.axes_labels[axn[i]]], title=self.titles[axn[i]], legend=legend_on)
+        # return self.P
 
     def plot_ASA_SD(self):
         spc = re.compile("[ ;,\t\f\v]+")  # format replacing all spaces with tabs
@@ -327,7 +336,8 @@ class EfficacyPlots(object):
             x="ASA",
             y="SDRatio",
             data=df,
-            hue=[f"VCN\_c{c:02d}" for c in df.Cell],
+            hue=[f"VCN_c{c:02d}" for c in df.Cell],
+            sizes=(200, 200),
             clip_on=False,
         )
         ax.set_xlim(0, 300)
@@ -346,28 +356,31 @@ class EfficacyPlots(object):
         )
         mpl.show()
 
-    def plot_dataset(self, data, plotno: int = 0, ax: object = None, title: str = None, legend:bool=True):
+    def plot_dataset(self, data, ax: object = None, title: str = None, legend:bool=True):
         spc = re.compile("[ ;,\t\f\v]+")  # format replacing all spaces with tabs
         dataiter = re.finditer(spc, data)
         data = re.sub(spc, ",", data)
 
         sio = io.StringIO(data)
         df = pd.read_table(sio, sep=",")
-
+        cell_names=[f"VCN_c{c:02d}" for c in df.Cell]
         sns.scatterplot(
             x="ASA",
             y="Eff",
             data=df,
             ax=ax,
-            hue=[f"VCN\_c{c:02d}" for c in df.Cell],
-            legend=False,
+            hue=cell_names,
+            size=cell_names,
+            sizes=(40,40),
+            legend="full",
         )
+        label = [f"VCN\_c{c:02d}" for c in df.Cell]
 
         if legend:
             ax.legend(
-                loc="lower right",
-                bbox_to_anchor=(1.0, 0.0),
-                ncol=2,
+                loc="upper left",
+                bbox_to_anchor=(0.0, 1.0),
+                ncol=1,
                 fontsize=8,
                 markerscale=0.5,
                 fancybox=False,
@@ -375,7 +388,7 @@ class EfficacyPlots(object):
                 facecolor="w",
                 labelspacing=0.2,
             )
-
+        ax.set_xlim(0, 350.)
         gmodel = Model(boltz)
         gmodel.set_param_hint("A", value=1, min=0.0, max=1.0, vary=True)
         gmodel.set_param_hint("vhalf", value=140.0, min=10.0, max=300.0)
@@ -433,56 +446,54 @@ class EfficacyPlots(object):
             resdict[meth] = result_LM
         # ci, trace = lmfit.conf_interval(mini, res2, sigmas=[2, 2, 2], trace=True)
         # lmfit.printfuncs.report_ci(ci)
-
         ax.text(
-            0., 0.95,
+            1.1, 0.8,
             f"Max Efficacy: {result_LM.params['A'].value:.2f} (1$\sigma$ = {result_LM.params['A'].stderr:.2f})",
-            fontsize=6,
-            verticalalignment="top", horizontalalignment="left"
+            fontsize=7,
+            verticalalignment="top", horizontalalignment="right",
+            transform=ax.transAxes,
         )
         uni = r"$\mu m^2$"
-        print("=" * 80)
+        asalab = r"$ASA_{0.5}$"
         ax.text(
-            0.,
-            0.9,
-            f"ASA at half max: {result_LM.params['vhalf'].value:.1f} {uni:s} (1$\sigma$ = {result_LM.params['vhalf'].stderr:.1f})\n"
-            + f"Slope: {result_LM.params['k'].value:.1f} (1$\sigma$ = {result_LM.params['k'].stderr:.1f})",
-            fontsize=6,
-            verticalalignment="top", horizontalalignment="left"
+            1.1,
+            0.4,
+            f"{asalab:s}: {result_LM.params['vhalf'].value:.1f} {uni:s} (1$\sigma$ = {result_LM.params['vhalf'].stderr:.1f})\n",
+            fontsize=7,
+            verticalalignment="center", horizontalalignment="right",
+            transform=ax.transAxes,
         )
-
-        if self.draft:
-            ax.text(
-                0.0,
-                1.0,
-                f"Brute: Max Eff: {result_brute.params['A'].value:.2f} (1$\sigma$ = {result_brute.params['A'].stderr:.2f})",
-                fontsize=6,
-                verticalalignment="top",
-            )
-            ax.text(
-                0.0,
-                0.9,
-                f"Br ASA at half max: {result_brute.params['vhalf'].value:.1f} {uni:s} (1$\sigma$ = {result_brute.params['vhalf'].stderr:.1f})\n"
-                + f"Slope: {result_brute.params['k'].value:.1f} (1$\sigma$ = {result_brute.params['k'].stderr:.1f})",
-                fontsize=6,
-            )
-            mpl.text(
-                0.0,
-                0.8,
-                f"Br $\chi^2$: {result_brute.chisqr:.3f}\nLM $\chi^2$:{result_LM.chisqr:.3f}",
-                fontsize=6,
-            )
-
-
-
-
-        # xd = df.ASA
-        # breff = gmodel.eval(params=result_brute.params, x=xd)
-        # brlms = np.sum((breff - df.Eff)**2)
-        # lmeff = gmodel.eval(params=result_LM.params, x=xd)
-        # lmlms = np.sum((lmeff - df.Eff)**2)
-
-
+        ax.text(
+            1.1,
+            0.35,
+            f"k: {result_LM.params['k'].value:.1f} (1$\sigma$ = {result_LM.params['k'].stderr:.1f})",
+            fontsize=7,
+            verticalalignment="center", horizontalalignment="right",
+            transform=ax.transAxes,
+        )
+        # return
+        #
+        # if self.draft:
+        #     ax.text(
+        #         0.0,
+        #         1.0,
+        #         f"Brute: Max Eff: {result_brute.params['A'].value:.2f} (1$\sigma$ = {result_brute.params['A'].stderr:.2f})",
+        #         fontsize=6,
+        #         verticalalignment="top",
+        #     )
+        #     ax.text(
+        #         0.0,
+        #         0.9,
+        #         f"Br ASA at half max: {result_brute.params['vhalf'].value:.1f} {uni:s} (1$\sigma$ = {result_brute.params['vhalf'].stderr:.1f})\n"
+        #         + f"Slope: {result_brute.params['k'].value:.1f} (1$\sigma$ = {result_brute.params['k'].stderr:.1f})",
+        #         fontsize=6,
+        #     )
+        #     mpl.text(
+        #         0.0,
+        #         0.8,
+        #         f"Br $\chi^2$: {result_brute.chisqr:.3f}\nLM $\chi^2$:{result_LM.chisqr:.3f}",
+        #         fontsize=6,
+            # )
 
         for m in resdict.keys():
             fit = gmodel.eval(params=resdict[m].params, x=xfit)
@@ -497,4 +508,22 @@ class EfficacyPlots(object):
         
 
 if __name__ == "__main__":
-    EfficacyPlots()
+    sizer = {
+        "A": {
+            "pos": [0.5, 3, 0.5, 3],
+            "labelpos": (-0.15, 1.02),
+            "noaxes": True,
+        },
+        "B": {"pos": [4.0, 3.0, 0.5, 3.0], "labelpos": (-0.15, 1.02)},
+    }  # dict pos elements are [left, width, bottom, height] for the axes in the plot. gr = [(a, a+1, 0, 1) f
+    P = PH.arbitrary_grid(
+        sizer,
+        order="columnsfirst",
+        units='in',
+        figsize=(8, 4.5),
+        label=True,
+    )
+    EFP = EfficacyPlots(parent_plot=P)
+    # EFP.plot_data("B")
+    EFP.plot_efficacy(dataset="Full", ax=P.axdict["B"])
+    mpl.show()

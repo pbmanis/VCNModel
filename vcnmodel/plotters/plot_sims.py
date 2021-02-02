@@ -1643,12 +1643,20 @@ class PlotSims:
             sp.set_visible(False)
 
     def plot_revcorr2(self, P: object, PD: dataclass, RCP: dataclass, RCD: dataclass, axarray=None, 
-            calbar_show=True, calbar_fontsize=11, yaxis_label=True):
+            calbar_show=True, calbar_fontsize=11, yaxis_label=True, start_letter="A"):
         sns.set_style("ticks")
         # secax = twinax(P.figure_handle, ax, pos=maxwin)
+        str_a = string.ascii_uppercase
+        p_labels = str_a[str_a.find(start_letter):str_a.find(start_letter)+4]
+        sax = P.axdict
+        sax0 = sax[p_labels[0]]
+        sax1 = sax[p_labels[1]]
+        sax2 = sax[p_labels[2]]
+        sax3 = sax[p_labels[3]]
+        print('revcorr2: sax: ', sax)
         if axarray is None:
-            ax = P.axdict["B"]
-            secax = P.axdict["A"]
+            ax = sax1
+            secax = sax0
         else:
             ax = axarray[0]
             secax = axarray[1]
@@ -2206,7 +2214,12 @@ class PlotSims:
         RCD.participation = np.zeros(RCP.ninputs)
         pre_spike_counts = np.zeros(RCP.ninputs+1)  # there could be 0, or up to RCP.ninputs pre spikes
         pre_solo_spikes = np.zeros(RCP.ninputs+1)
+        
         nperspike = []
+        nfilt_spikes = 0
+        nfilt2_spikes = 0
+        filttable = []
+        filttable2 = []
         RCD.nspikes = 0
         sellist = [True] * RCP.ninputs
         # if ri.Spirou == "largestonly":
@@ -2239,7 +2252,11 @@ class PlotSims:
                 spikedata.prespikes = [[np.nan] for x in range(RCP.ninputs)]
                 RCD.nspikes += 1  # number of post spikes evaluated
                 n_active_inputs = 0  # number of active inputs associated with this post spike
+                spike_pattern = np.zeros(RCP.ninputs)
                 solo = np.zeros(RCP.ninputs)
+                lack_largest = np.zeros(RCP.ninputs)
+                lack_two_largest = np.zeros(RCP.ninputs)
+                
                 for isite in range(RCP.ninputs):  # examine each input
                     if not sellist[isite]:
                         continue
@@ -2255,7 +2272,7 @@ class PlotSims:
                         RCD.participation[
                             isite
                         ] += 1  # any spikes in the window = participation (but only count as 1)
-                        solo[isite] += 1
+                        spike_pattern[isite] += 1
                         # print(' spk: ', s, 'isite: ', isite)
                         for jsite in range(
                             isite + 1, RCP.ninputs
@@ -2268,16 +2285,62 @@ class PlotSims:
                                 RCD.pairwise[isite, jsite] += 1
                 # increment the number of times there were npre_spikes input to this post spike
                 pre_spike_counts[n_active_inputs] += 1
-                if np.sum(solo) == 1: # only one input was active
-                    which_input = np.where(solo == 1)[0]
-                    print(solo, which_input)
+                if np.sum(spike_pattern) == 1: # only one input was active
+                    which_input = np.where(spike_pattern == 1)[0]
                     pre_solo_spikes[which_input] += 1 
+                if sum(spike_pattern[0:5]) == 0:
+                    cprint('magenta', f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}") 
+                    nfilt_spikes += 1
+                    filttable.append(spike_pattern)
+                elif sum(spike_pattern[0:4]) == 0:
+                    cprint('cyan', f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}") 
+                    nfilt_spikes += 1
+                    filttable.append(spike_pattern)
+                elif sum(spike_pattern[0:3]) == 0:
+                    cprint('blue', f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}") 
+                    nfilt_spikes += 1
+                    filttable.append(spike_pattern)
+                elif sum(spike_pattern[0:2]) == 0:
+                    cprint('green', f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}")
+                    nfilt_spikes += 1
+                    filttable.append(spike_pattern)
+                    if spike_pattern[2] == 1:
+                        filttable2.append(spike_pattern)
+                        nfilt2_spikes += 1
+                # elif spike_pattern[0]== 0:
+                #     cprint('yellow', f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}")
+                    # nfilt_spikes += 1
+                    # filttable.append(spike_pattern)
+                else:
+                    pass
+                    # cprint("w", f"{str(spike_pattern):s}, {which_input[0]:d}")
+                    
                 self.allspikes.append(spikedata)
         
         print('\nPairwise matrix: \n', RCD.pairwise)
         print('nprespikes: \n', [int(p) for p in pre_spike_counts])
         print('\nTotal post spikes: ', RCD.nspikes)
         print('\nPre solo drive: ', pre_solo_spikes)
+        print('\nFiltered Spikes: ', nfilt_spikes)
+        
+        # print(filttable)
+        filttable = np.array(filttable)
+        print('Counts: ', filttable.sum(axis=0))
+        print('\nFilt Spike Proportions: ', filttable.sum(axis=0)/nfilt_spikes)
+        fs1 = np.array(filttable)[:,2:].sum(axis=0)/nfilt_spikes
+        
+        print('\n ', fs1)
+        fsa = np.array(RCD.sites[2:])/np.sum(RCD.sites[2:])
+        print("Input Proportions: ", fsa)
+        filttable2 = np.array(filttable2)
+        print('\nFilt Spike Proportions on input #3: ', filttable2.sum(axis=0)/nfilt2_spikes)
+        fs2 = np.array(filttable2)[:,2:].sum(axis=0)/nfilt2_spikes
+        print('\n, fs1')
+        
+        
+        f=mpl.figure()
+        mpl.plot(fs1, fsa)
+        mpl.show()
         # print('pre spike_count associated with a post spike: ', pre_spike_counts)
         # plot the position of the prespikes for every trial as determined by the
         # second trial loop above.

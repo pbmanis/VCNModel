@@ -488,7 +488,7 @@ class DataTables:
                                "Revcorr Ex", "All Revcorr", "Revcorr Supplement", "Revcorr Compare", 
                                "PSTH-FSL", "All PSTHs", "PSTH-FSL Supplement",
                                "VS-SAM Tone", "VC-KLTCalibration",
-                               "CombinedVCIV"],
+                               "CombinedVCIV", "CombinedEffRevCorr"],
                     "value": "IV Figure",
                 },
                     {"name": "Create Figure", "type": "action"},
