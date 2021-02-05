@@ -241,32 +241,32 @@ def summary_plots():
     scp2.legend().remove()
     return P2
 
-P = summary_plots()
-save_file = f"Fig_M6_VS_SAM_Supplmental.pdf"
-P.figure_handle.text(
-    0.99,
-    0.01,
-    f"All Cells",
-    fontsize=10,
-    horizontalalignment="right",
-    verticalalignment="bottom",
-)
-ftxt = r"${savefile:s}$"
-P.figure_handle.text(
-    0.99,
-    0.99,
-    ftxt,  # .replace('_', '\_'),
-    transform=P.figure_handle.transFigure,
-    horizontalalignment="right",
-    verticalalignment="top",
-)
-mpl.savefig(
-    Path(config["baseDataDirectory"], "Figures", save_file),
-    metadata={
-        "Creator": "Paul Manis",
-        "Author": "Paul Manis",
-        "Title": "SBEM Project Figure 6 Modeling Supplemental : VS to SAM, All cells",
-    },
-)
+P = individual_plots()
+# save_file = f"Fig_M6_VS_SAM_Supplmental.pdf"
+# P.figure_handle.text(
+#     0.99,
+#     0.01,
+#     f"All Cells",
+#     fontsize=10,
+#     horizontalalignment="right",
+#     verticalalignment="bottom",
+# )
+# ftxt = r"${savefile:s}$"
+# P.figure_handle.text(
+#     0.99,
+#     0.99,
+#     ftxt,  # .replace('_', '\_'),
+#     transform=P.figure_handle.transFigure,
+#     horizontalalignment="right",
+#     verticalalignment="top",
+# )
+# mpl.savefig(
+#     Path(config["baseDataDirectory"], "Figures", save_file),
+#     metadata={
+#         "Creator": "Paul Manis",
+#         "Author": "Paul Manis",
+#         "Title": "SBEM Project Figure 6 Modeling Supplemental : VS to SAM, All cells",
+#     },
+# )
 
 mpl.show()

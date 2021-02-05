@@ -14,6 +14,7 @@ import time
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 import pylibrary.plotting.pyqtgraph_plothelpers as pgh
+from typing import Union
 import vcnmodel.analyzers.analyze_run as ar
 #import calyxPlots as cp
 import numpy as np
@@ -135,33 +136,36 @@ def ANfspike(spikes, stime, nReps):
         )
 
 
-def getFirstSpikes(spikes, stime, nReps, min_fsl=2.5*1e-3):
+def getFirstSpikes(spikes, stime, nReps,
+             fsl_win:Union[None, tuple] = None):
     # times need to be in consistent units
     # in this case, all in Seconds.
     # expects spikes to be lists/arrays, sorted by repetition/trial
     # 
+    assert fsl_win is not None
     sl1 = np.full(nReps, np.nan)
     sl2 = np.full(nReps, np.nan)
 
     for r in range(nReps):
         if len(spikes[r]) == 0:
             continue
-        rs = np.argwhere(np.array(spikes[r]).T > stime+min_fsl)  # get spike times post stimulus onset
+        rs = np.argwhere(np.array(spikes[r]).T >= stime+fsl_win[0])  # get spike times post stimulus onset
         if len(rs) == 0:
             continue
-        rs = [r[0] for r in rs] # flattend the array
-
-        if len(rs) > 0:
-            sl1[r] = spikes[r][rs[0]]-stime
-        if len(rs) > 1:
-            sl2[r] = spikes[r][rs[1]]-stime  # second spikes
+        rs = [r[0] for r in rs] # flatten the array
+        if spikes[r][rs[0]]-stime > fsl_win[1]:  # count spikes only if first is in the window
+            sl1[r] = np.nan
+            sl2[r] = np.nan
+        elif len(rs) > 0:  # in window so save
+            sl1[r] = spikes[r][rs[0]]-stime 
+            if len(rs) > 1:  # check for second spike
+                sl2[r] = spikes[r][rs[1]]-stime  # second spikes
     sl1 = sl1[~np.isnan(sl1)]  # in case of no spikes at all
     sl2 = sl2[~np.isnan(sl2)]  # in case of no second spikes
     return(sl1, sl2)
 
-
-def CNfspike(spikes, stime, nReps, min_fsl=2.5*1e-3):
-    sl1, sl2 = getFirstSpikes(spikes, stime, nReps, min_fsl=min_fsl)
+def CNfspike(spikes, stime, nReps, fsl_win:Union[None, tuple] = None):
+    sl1, sl2 = getFirstSpikes(spikes, stime, nReps, fsl_win)
 
     print( 'Cochlear Nucleus Bushy Cell: ')
     print ('   mean First spike latency:  %8.3f ms stdev: %8.3f (N=%3d)' % (np.nanmean(sl1)*1e3, np.nanstd(sl1)*1e3,

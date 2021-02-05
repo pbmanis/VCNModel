@@ -3,6 +3,9 @@ ForGeorge/ # files that are for George Spirou
 MorphologyData/  # misc morphology data not necessarily related to the project
 src/  # old source list
 vcn_venv/ # virtual environment
+vcn_venv
+vcnmodel/archived
+vcnmodel/util/testmpl.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

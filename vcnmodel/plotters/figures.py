@@ -806,18 +806,6 @@ class Figures(object):
                 "labelpos": (-0.15, 1.02),
 
             }
-        # sizer["G"] = {"pos": [3.5, 2.75, row3y, row3h],
-        #         "labelpos": (-0.15, 1.02),
-        #         "noaxes": True,
-        #     }
-        # sizer["H"] =    {"pos": [7., 2.75, row3y, row3h],
-        #         "labelpos": (-0.15, 1.02),
-        #         "noaxes": True,
-        #     }
-    
-    
-    
-    
         P = PH.arbitrary_grid(
             sizer,
             order="columnsfirst",
@@ -826,20 +814,24 @@ class Figures(object):
             label=True,
             # showgrid=True,
         )
-
         return P
-        
+
     def plot_combined_Eff_Rev(self):
         P = self.make_eff_fig()
+        cell_number = 17
+        cmap = 'Dark2'
+        figP2 = self.plot_revcorr(parent_figure=P, loc=(0, 8, 0., 5.5), start_letter="C", colormap=cmap)
+        figP1 = self.plot_efficacy(parent_figure=P, loc=(0, 8, 6., 10.), colormap=cmap)
+        save_file = f"Fig_M2.pdf"
+        fig = FigInfo()
+        fig.P = P
+        fig.filename  = save_file
+        fig.title = {"title": "SBEM Project Figure Modeling Singles and Revcorr", "x": 0.99, "y": 0.95}
+        fig.title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.05}
+        return fig
 
-        figP2 = self.plot_revcorr(parent_figure=P, loc=(0, 8, 0., 5.5), start_letter="C")
-        figP1 = self.plot_efficacy(parent_figure=P, loc=(0, 8, 6., 10.))
-        # PH.show_figure_grid(P, 8, 8)
-        mpl.show()
-        return
-        return(P)
-
-    def plot_efficacy(self, dendrite_mode="Full", parent_figure:Union[None, object]=None, loc:tuple=(0,0,0,0)):
+    def plot_efficacy(self, dendrite_mode="Full", parent_figure:Union[None, object]=None, loc:tuple=(0,0,0,0),
+        colormap='tab10'):
         cell_number = 17
         example = figure_efficacy_supplement[cell_number]
 
@@ -849,6 +841,7 @@ class Figures(object):
             "Simulations",
             "AN",
         )
+        print('??')
         sfi = Path(cellpath, Path(example[dendrite_mode]).name)
         if not sfi.is_dir():
             return
@@ -873,7 +866,7 @@ class Figures(object):
             verticalspacing=0.,
             horizontalspacing=0.5,
             margins={
-                "bottommargin": 6.5,
+                "bottommargin": 6.,
                 "leftmargin": 1,
                 "rightmargin": 4.5,
                 "topmargin": 0.5,
@@ -883,9 +876,11 @@ class Figures(object):
             labelposition=(-0.05, 1.06),
             parent_figure=EFP.P,
             )
-
-        calx = 800.0
         nfiles = len(fn)
+        cmx = mpl.cm.get_cmap(colormap)
+        colors = [cmx(float(i)/nfiles) for i in range(nfiles)]
+        
+        calx = 800.0
         for n in range(nfiles):
             sfile = Path(sfi, fn[n])
             print(n, sfile)
@@ -899,8 +894,8 @@ class Figures(object):
                 fn=sfile,
                 PD=PD,
                 protocol="runANSingles",
-                ymin=-80.0,
-                ymax=20.0,
+                ymin=-70.0,
+                ymax=0.0,
                 xmin=400.0,
                 xmax=900.0,
                 iax=n,
@@ -908,11 +903,12 @@ class Figures(object):
                 rep=0,
                 figure=self.P_Eff_SingleInputs.figure_handle,
                 longtitle=True,
+                trace_color=colors[n],
                 ivaxis=None,
                 ivcolor="k",
-                iv_spike_color="r",
+                iv_spike_color="k",
                 spike_marker_size=1.5,
-                spike_marker_color="c",
+                spike_marker_color="r",
                 calx=calxv,
                 caly=-20.0,
                 calt=50.0,
@@ -1077,7 +1073,7 @@ class Figures(object):
     
     def plot_revcorr(self, cellN=None, parent_figure:Union[object, None]=None,
             loc:tuple=(0., 0., 0., 0.), 
-            start_letter = "A"):
+            start_letter = "A", colormap='tab10'):
         if cellN == None:
             cell_number = 17
             example = figure_revcorr_example[cell_number]
@@ -1143,7 +1139,7 @@ class Figures(object):
                 sizer,
                 order="columnsfirst",
                 units="in",
-                figsize=parent_figure.figsize,
+                figsize=(8, 10),
                 label=True,
 
                 # margins={
@@ -1163,10 +1159,10 @@ class Figures(object):
         sax1 = sax[p_labels[1]]
         sax2 = sax[p_labels[2]]
         sax3 = sax[p_labels[3]]
-        cprint('r', f"Start Letter: {p_labels[0]:s}")
-        print(P.axdict)
-        print('figure plot revcorr sax: ', sax)
-        summarySiteTC = self.parent.PLT.plot_revcorr2(P, PD, RCP, RCD, start_letter=p_labels[0])
+
+        summarySiteTC = self.parent.PLT.plot_revcorr2(P, PD, RCP, RCD, start_letter=p_labels[0],
+                colormap=colormap)
+        # sax1.set_xlim(-5, 0)
 
         maxp = np.max(RCD.pairwise)
         psh = RCD.pairwise.shape
@@ -1178,29 +1174,31 @@ class Figures(object):
                 pos[i, j, 1] = j + 1
 
 
-
-        sax2.plot(RCD.sites, RCD.participation / RCD.nspikes, "kx", markersize=5)
+        cmx = mpl.cm.get_cmap(colormap)
+        clist = [cmx(float(isite)/RCP.ninputs) for isite in range(RCP.ninputs)]
+        sax2.scatter(RCD.sites, RCD.participation / RCD.nspikes, marker='o', color=clist, sizes=[42])
         sax2.set_ylim((0, 1.0))
         sax2.set_xlim(left=0)
         sax2.set_xlabel("# Release Sites")
         sax2.set_ylabel("Participation")
 
-        sax3.plot(np.arange(len(RCD.ynspike)) + 1, RCD.ynspike, "k^-", markersize=5)
+        sax3.plot(np.arange(len(RCD.ynspike)) + 1, RCD.ynspike, "k^-", markersize=5, clip_on=False, )
         sax3.set_ylim(0, 1.05)
         sax3.set_xlabel(
             f"# Inputs in [{RCD.pre_w[0]:.1f} to {RCD.pre_w[1]:.1f}] before spike"
         )
-        sax3.set_ylabel("Cumulative Bushy Spikes witn N AN inputs")
-
+        sax3.set_ylabel(f"Cumulative Bushy Spikes\nwitn N AN inputs")
+        sax3.set_xlim(1, RCP.ninputs)
+        PH.nice_plot(sax3, position=-0.05)
         # PH.cleanAxes(P.axarr.ravel())
         # PH.noaxes(sax0)
 
-        PH.talbotTicks(
-            sax1,
-            tickPlacesAdd={"x": 1, "y": 2},
-            floatAdd={"x": 1, "y": 2},
-            # pointSize=7,
-        )
+        # PH.talbotTicks(
+        #     sax1,
+        #     tickPlacesAdd={"x": 1, "y": 2},
+        #     floatAdd={"x": 1, "y": 2},
+        #     # pointSize=7,
+        # )
         PH.talbotTicks(
             sax2,
             tickPlacesAdd={"x": 0, "y": 1},
@@ -1523,6 +1521,7 @@ class Figures(object):
         cell_number: int,
         ri: dict,
         an_st_grand: object,
+        fsl_win:Union[None, tuple] = None,
         label_x_axis=True,
     ):
 
@@ -1530,7 +1529,7 @@ class Figures(object):
             an_st_grand,
             run_info=ri,
             max_time=25.0,
-            min_fsl=1.2e-3,
+            fsl_win=fsl_win,
             bin_width=0.25,
             ax=ax,
             zero_time=wstart * 1e-3,
@@ -1624,6 +1623,9 @@ class Figures(object):
 
         PH.cleanAxes(P.axarr.ravel())
 
+        bu_fsl_win = (2.7e-3, 4.5e-3)
+        an_fsl_win = (1.5e-3, 3.5e-3)
+
         self.plot_one_PSTH(
             cell_number=cell_number,
             dBSPL=dBSPL,
@@ -1631,8 +1633,11 @@ class Figures(object):
             st_ax=st_ax,
             bupsth_ax=bupsth_ax,
             anpsth_ax=anpsth_ax,
+            psth_win=(0.15, 0.3),  # default is 0.15, 0.3 (start, duration)
             bufsl_ax=bufsl_ax,
             anfsl_ax=anfsl_ax,
+            bu_fsl_win=bu_fsl_win,
+            an_fsl_win=an_fsl_win,
         )
 
         if cellN is None:
@@ -1642,6 +1647,11 @@ class Figures(object):
         title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
         title = ("SBEM Project Figure 3 Modeling : Reverse Correlation Summary",)
         save_file = f"Fig_M3_supplemental_Full_{dBSPL:s}.pdf"
+        fig = FigInfo()
+        fig.P = P
+        fig.filename  = save_file
+        fig.title["title"] = title
+        fig.title2 = title2
         return fig
 
     def plot_one_PSTH(
@@ -1654,6 +1664,9 @@ class Figures(object):
         anpsth_ax: object,
         bufsl_ax: object,
         anfsl_ax: object,
+        psth_win: tuple = (0, 0.25), # (0.15, 0.3),
+        bu_fsl_win:Union[None, tuple] = None,
+        an_fsl_win:Union[None, tuple] = None,
         label_x_axis=True,
     ):
         dataset = figure_psth[cell_number]
@@ -1705,8 +1718,7 @@ class Figures(object):
 
         ntr = len(AR.traces)
         all_bu_st = []
-        wstart = 0.15
-        wdur = 0.3
+
         for i in range(ntr):  # for all trials in the measure.
             vtrial = AR.traces[i] * 1e3
             time_base = AR.time_base / 1000.0  # convert to seconds
@@ -1724,16 +1736,16 @@ class Figures(object):
                 return
             all_bu_st.append(trd["spikeTimes"])
             if i == 0:
-                tr_ax.plot((time_base - wstart) * 1e3, vtrial, "k-", linewidth=0.5)
+                tr_ax.plot((time_base - psth_win[0]) * 1e3, vtrial, "k-", linewidth=0.5)
                 spiketimes = np.array(trd["spikeTimes"])
                 # trim spike mark array so we don't get spots at the edge of the plot
                 spikeindex = [
                     int(t / dt)
                     for t in spiketimes
-                    if (t >= wstart and t < ((wstart + wdur)))
+                    if (t >= psth_win[0] and t < ((psth_win[0] + psth_win[1])))
                 ]
                 tr_ax.plot(
-                    (time_base[spikeindex] - wstart) * 1e3,
+                    (time_base[spikeindex] - psth_win[0]) * 1e3,
                     vtrial[spikeindex],
                     "ro",
                     markersize=1.5,
@@ -1748,7 +1760,7 @@ class Figures(object):
                         horizontalalignment="right",
                         verticalalignment="center",
                     )
-                tr_ax.set_xlim(0.0, wdur * 1e3)
+                tr_ax.set_xlim(0.0, psth_win[1] * 1e3)
                 PH.noaxes(tr_ax)
                 if label_x_axis:
                     PH.calbar(
@@ -1766,9 +1778,9 @@ class Figures(object):
 
             if i == 0 and waveform is not None and st_ax is not None:
                 st_ax.plot(
-                    stb - wstart, np.array(waveform) * 1e3, "k-", linewidth=0.5
+                    stb - psth_win[0], np.array(waveform) * 1e3, "k-", linewidth=0.5
                 )  # stimulus underneath
-                st_ax.set_xlim(0, wdur)
+                st_ax.set_xlim(0, psth_win[1])
                 PH.talbotTicks(
                     st_ax,
                     axes="xy",
@@ -1790,8 +1802,8 @@ class Figures(object):
                 ri=ri,
                 time_base=time_base,
                 psth_binw=psth_binw,
-                wstart=wstart,
-                wdur=wdur,
+                wstart=psth_win[0],
+                wdur=psth_win[1],
                 ntr=ntr,
                 ninputs=1,
             )
@@ -1823,8 +1835,8 @@ class Figures(object):
                 ri=ri,
                 time_base=time_base,
                 psth_binw=psth_binw,
-                wstart=wstart,
-                wdur=wdur,
+                wstart=psth_win[0],
+                wdur=psth_win[1],
                 ntr=ntr,
                 ninputs=ninputs,
             )
@@ -1838,9 +1850,9 @@ class Figures(object):
                 run_info=ri,
                 max_time=25.0,
                 bin_width=0.25,
-                min_fsl=2e-3,
+                fsl_win=bu_fsl_win,
                 ax=bufsl_ax,
-                zero_time=wstart * 1e-3,
+                zero_time=psth_win[0]*1e-3,
                 cellID=cell_number,
             )
             PH.talbotTicks(
@@ -1889,8 +1901,15 @@ class Figures(object):
         #          )
 
         if anfsl_ax is not None:
+            print(an_fsl_win)
             self.plot_psth_ANFSL(
-                anfsl_ax, wstart, cell_number, ri, an_st_grand, label_x_axis
+                ax=anfsl_ax,
+                wstart=psth_win[0], 
+                cell_number=cell_number, 
+                ri=ri, 
+                an_st_grand=an_st_grand,
+                label_x_axis=label_x_axis,
+                fsl_win=an_fsl_win,
             )
 
     def plot_PSTH_supplement(self):
@@ -1949,6 +1968,7 @@ class Figures(object):
             self.plot_one_PSTH(
                 cell_number=cell_number,
                 dBSPL=dBSPL,
+                psth_win = (0.15, 0.3),
                 tr_ax=P.axarr[i, 0],
                 st_ax=None,
                 bupsth_ax=P.axarr[i, 1],
@@ -1956,6 +1976,7 @@ class Figures(object):
                 bufsl_ax=P.axarr[i, 2],
                 anfsl_ax=None,
                 label_x_axis=show_label,
+                bu_fsl_win = (2.2e-3, 4e-3), # FSL window after onset, in msec
             )
 
             P.axarr[i, 0].text(
@@ -1968,10 +1989,10 @@ class Figures(object):
                 horizontalalignment="right",
             )
 
-        save_file = f"Fig_M1_Supplmental_PSTHs.pdf"
+        save_file = f"Fig_M5_Supplmental_PSTHs.pdf"
         title = "SBEM Project Figure 5 Modeling Supplemental : PSTH and FSL, All cells"
         fig = FigInfo()
-        fig.P = self.P
+        fig.P = P
         fig.filename  = save_file
         fig.title["title"] = title
         return fig

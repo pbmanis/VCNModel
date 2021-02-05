@@ -761,11 +761,12 @@ class PlotSims:
         rep=None,   # which rep : none is for all.
         figure=None,
         longtitle=True,
+        trace_color='k',
         ivaxis=None,
         ivcolor='k',
         iv_spike_color='r',
         spike_marker_size=2.5,
-        spike_marker_color='g',
+        spike_marker_color='r',
         calx = 0.,
         caly = 0.,
         calt = 10., 
@@ -849,7 +850,7 @@ class PlotSims:
                 AR.traces[trial] = AR.traces[trial].asarray() * 1e3 # mV
                 cmd = AR.cmd_wave[trial]*1e9  # from A to nA
             print(ax1)
-            ax1.plot(AR.time_base, AR.traces[trial],  linewidth=0.5)
+            ax1.plot(AR.time_base, AR.traces[trial], linestyle='-', color=trace_color, linewidth=0.5)
             if ax2 is not None:
                 ax2.plot(AR.time_base, cmd, linewidth=0.5)
             if "spikeTimes" in list(d["Results"][icurr].keys()):
@@ -863,7 +864,7 @@ class PlotSims:
             # print(f"Trial: {trial:3d} Nspikes: {len(spikeindex):d}")
             ax1.plot(
                 AR.time_base[spikeindex],
-                AR.traces[trial][spikeindex] * 1e3,
+                AR.traces[trial][spikeindex],
                 'o',
                 color=spike_marker_color,
                 markerfacecolor=spike_marker_color,
@@ -1643,7 +1644,7 @@ class PlotSims:
             sp.set_visible(False)
 
     def plot_revcorr2(self, P: object, PD: dataclass, RCP: dataclass, RCD: dataclass, axarray=None, 
-            calbar_show=True, calbar_fontsize=11, yaxis_label=True, start_letter="A"):
+            calbar_show=True, calbar_fontsize=11, yaxis_label=True, start_letter="A", colormap='tab10'):
         sns.set_style("ticks")
         # secax = twinax(P.figure_handle, ax, pos=maxwin)
         str_a = string.ascii_uppercase
@@ -1654,6 +1655,7 @@ class PlotSims:
         sax2 = sax[p_labels[2]]
         sax3 = sax[p_labels[3]]
         print('revcorr2: sax: ', sax)
+        print('plabels', p_labels)
         if axarray is None:
             ax = sax1
             secax = sax0
@@ -1666,6 +1668,8 @@ class PlotSims:
         summarySiteTC = {}
         RCD.max_coin_rate = 0.0
         maxrevcorr = 0
+        colors = [None]*RCP.ninputs
+        linehandles = [None]*RCP.ninputs
         for isite in range(
             RCP.ninputs
         ):  # range(ninputs):  # for each ANF input (get from those on first trial)
@@ -1682,13 +1686,17 @@ class PlotSims:
                 nc = int(len(RCD.C[isite]) / 2)
                 RCD.TC = RCD.TC / len(RCD.st)
                 summarySiteTC[isite] = RCD.TC
-                color = mpl.cm.viridis(norm(RCD.sites, isite))
+                # color = mpl.cm.viridis(norm(RCD.sites, isite))
+                cmx = mpl.cm.get_cmap(colormap)
+                # color = mpl.cm.brg(norm(RCD.sites, isite))
+                color = cmx(float(isite)/RCP.ninputs)
+                colors[isite] = color
                 maxrevcorr = np.max((maxrevcorr, np.max(RCD.CB[isite])))
                 totalrevcorr = np.sum(RCD.CB[isite])
-
+                print('Using algorithm:', RCP.algorithm)
                 if isite in range(RCP.ninputs):
                     if RCP.algorithm == "RevcorrSPKS":
-                        ax.plot(
+                        linehandles[isite] = ax.plot(
                             RCD.tx,
                             RCD.C[isite][:nc],
                             color=color,
@@ -1703,9 +1711,11 @@ class PlotSims:
                         RCD.max_coin_rate = np.max(
                             (RCD.max_coin_rate, np.max(RCD.C[:nc]))
                         )
+                        # mpl.figure()
+                        # mpl.plot(RCD.tx, RCD.C[isite][:nc])
 
                     elif RCP.algorithm == "RevcorrSimple":
-                        ax.plot(
+                        linehandles[isite] = ax.plot(
                             RCD.CBT - RCP.maxwin,
                             RCD.CB[isite] / float(RCD.npost_spikes),
                             color=color,
@@ -1726,7 +1736,7 @@ class PlotSims:
                         )
 
                     elif RCP.algorithm == "RevcorrSTTC":  # use spike time tiling method
-                        ax.plot(
+                        linehandles[isite] =ax.plot(
                             RCD.tx,
                             RCD.STTC[isite][:nc],
                             color=color,
@@ -1773,35 +1783,39 @@ class PlotSims:
                 PH.referenceline(secax, -60.0)
 
                 PH.noaxes(secax)
-        print(f"Total spikes plotted: {RCD.nsp_avg:d}")
+        print(f"Total spikes: {RCD.nsp_avg:d}")
 
-        sns.despine(ax=ax)
+        # finally, put up a legend that shows which inputs map to what colors
+        # # the colors are in the legend
+        PH.nice_plot(ax, position=-0.05)
+        # ax.tick_params(direction="in", length=3.0, width=1.0)
+
+        ax.legend([line[0] for line in linehandles],
+            [f"Syn{n+1:d}" for n in range(RCP.ninputs)],
+            loc="upper left")
+        # sns.despine(ax=ax)
         if yaxis_label:
             ax.set_ylabel("Coinc. Rate (Hz)")
         ax.set_xlabel("T (ms)")
-        ax.set_xlim((RCP.minwin, RCP.maxwin))
-
-        # print(RCD.max_coin_rate)
+        # cprint('g', f"{RCP.minwin:.2f}, {RCP.maxwin:.2f}")
         if RCD.max_coin_rate > 0.0:
             ns = PH.NiceScale(0.0, RCD.max_coin_rate)
-            ax.set_ylim(0, ns.niceMax)
+            ax.set_ylim((0, ns.niceMax))
         else:
-            ax.set_ylim(0, 0.25)
-        yls = ax.get_ylim()
+            ax.set_ylim((0, 0.25))
+        ax.set_xlim((RCP.minwin, RCP.maxwin))
+        # PH.talbotTicks(
+        #     ax,
+        #     axes="xy",
+        #     # density=(5.0, 2.0),
+        #     insideMargin=0.05,
+        #     # pointSize=10,
+        #     tickPlacesAdd={"x": 1, "y": 1},
+        #     floatAdd={"x": 1, "y": 1},
+        # )
         secax.set_ylim([-70.0, 10.0])
         secax.set_xlim((RCP.minwin, RCP.maxwin))
         secax.tick_params(direction="in", length=3.0, width=1.0)
-        ax.tick_params(direction="in", length=3.0, width=1.0)
-        PH.talbotTicks(
-            ax,
-            axes="xy",
-            density=(1.0, 1.0),
-            insideMargin=0.05,
-            # pointSize=10,
-            tickPlacesAdd={"x": 1, "y": 1},
-            floatAdd={"x": 1, "y": 1},
-        )
-
         return summarySiteTC
 
     def get_synaptic_info(self, gbc: str) -> tuple:
@@ -2768,13 +2782,15 @@ class PlotSims:
     @TraceCalls()
     def plot_psth(self, spike_times:Union[list, np.ndarray],
                  run_info:object,
-                 max_time:float, bin_width:float, 
-                 ax:Union[object, None] = None,
+                 stim_onset:float=0.0,
                  zero_time:float = 0.0,
+                 max_time:float = 1.,
+                 bin_width:float=1e-3, 
+                 ax:Union[object, None] = None,
                  scale:float=1.0):
         """
         Correctly plot PSTH with spike rate in spikes/second
-        """
+        values are in seconds (times, binwidths)"""
         num_trials = run_info.nReps 
         bins = np.arange(
             0.0, max_time, bin_width)
@@ -2784,9 +2800,9 @@ class PlotSims:
                 spf.extend(x)
             else:
                 spf.extend([x])
-        spike_times_flat = np.array(spf, dtype=object).ravel() - zero_time
+        spike_times_flat = np.array(spf, dtype=object).ravel()-stim_onset
         # h, b = np.histogram(spike_times_flat, bins=bins)
-        bins = np.arange(0, max_time, bin_width)
+        bins = np.arange(zero_time, max_time, bin_width)
         if len(spike_times_flat) > 0 and ax is not None:
             ax.hist(x=spike_times_flat, bins=bins, density=False, 
                 weights = scale*np.ones_like(spike_times_flat),
@@ -2810,7 +2826,7 @@ class PlotSims:
                      run_info:object, 
                      max_time:float, 
                      min_time:float = 0.,
-                     min_fsl:float = 2.5e-3,
+                     fsl_win:Union[None, tuple] = None,
                      bin_width: float = 1e-3, 
                      ax:Union[object, None] = None,
                      zero_time: float = 0.0,
@@ -2822,7 +2838,9 @@ class PlotSims:
         # spike_times = np.array(spike_times, dtype=object)
 
         num_trials = run_info.nReps # self._ntrials(spike_times)
-        fsl, ssl = SPKANA.CNfspike(spike_times, run_info.pip_start-zero_time, nReps=run_info.nReps, min_fsl = min_fsl)
+        fsl, ssl = SPKANA.CNfspike(spike_times, run_info.pip_start-zero_time, nReps=run_info.nReps,
+             fsl_win = fsl_win,
+            )
 
         fsl *= 1e3  # better to show FSL/SSL in milliseconds
         ssl *= 1e3
@@ -2900,10 +2918,12 @@ class PlotSims:
         
     @winprint_continuous
     @TraceCalls()
-    def plot_AN_response(self, P:Union[object, None]=None, 
+    def plot_AN_response(self,
+            P:Union[object, None]=None, 
             fn:Union[str, Path, None]=None, 
             PD: object=None,
-            protocol:str=''):
+            protocol:str=''
+        ):
         if P is None:
             plotflag = False
         else:
@@ -2938,13 +2958,20 @@ class PlotSims:
         all_an_st = []
         all_bu_st = []
         all_bu_st_trials = []
+        
+        plot_win = (0.15, 0.4)  # manually change to shorten... 
+        
         for i in range(ntr):  # for all trials in the measure.
             vtrial = AR.traces[i] * 1e3
             time_base = AR.time_base/1000. # convert to seconds
             dt = si.dtIC/1000. # convert from msec to seconds
+            print(time_base.shape, vtrial.shape, 'dt: ', dt)
             trd = d["Results"][i]
+            idx = (int(plot_win[0]/dt), int(plot_win[1]/dt))
             waveform = trd["stimWaveform"].tolist()
             stb = trd["stimTimebase"]
+            stim_dt = stb[1]-stb[0]
+            idxs = (int(plot_win[0]/stim_dt), int(plot_win[1]/stim_dt))
             if not isinstance(trd["spikeTimes"], list):
                 cprint('r', "spiketimes is not list")
                 return
@@ -2953,34 +2980,44 @@ class PlotSims:
             if i == 0:
                 n_inputs = len(trd["inputSpikeTimes"])
             if i < 1 and plotflag:
-                P.axdict["A"].plot(time_base, vtrial, "k-", linewidth=0.5)
+                P.axdict["A"].plot(time_base[idx[0]:idx[1]], vtrial[idx[0]:idx[1]], "k-", linewidth=0.5)
                 spikeindex = [int(t / dt) for t in trd["spikeTimes"]]  # dt is in msec, so need to convert
+                ispt = [i for i in range(len(trd["spikeTimes"]))
+                         if trd["spikeTimes"][i] >= plot_win[0] and 
+                         trd["spikeTimes"][i] < plot_win[1]]
                 P.axdict["A"].plot(
-                    np.array(trd["spikeTimes"]),
-                    vtrial[spikeindex],
+                    np.array(trd["spikeTimes"])[ispt],
+                    vtrial[spikeindex][ispt],
                     "ro",
                     markersize=1.5,
                 )
 
             if i == 0 and waveform is not None and plotflag:
                 P.axdict["D"].plot(
-                    stb, waveform, "k-", linewidth=0.5
+                    stb[idxs[0]:idxs[1]], waveform[idxs[0]:idxs[1]], "k-", linewidth=0.5
                 )  # stimulus underneath
 
             if plotflag:  # plot the raster of spikes
+                ispt = [i for i in range(len(trd["spikeTimes"]))
+                         if trd["spikeTimes"][i] >= plot_win[0] and 
+                         trd["spikeTimes"][i] < plot_win[1]]
                 P.axdict["B"].plot(
-                    np.array(trd["spikeTimes"]),
-                    i * np.ones(len(trd["spikeTimes"])),
+                    np.array(np.array(trd["spikeTimes"])[ispt]),
+                    i * np.ones(len(ispt)),
                     "|",
                     markersize=1.5,
                     color="b",
                 )
                 for k in range(n_inputs):  # raster of input spikes
-                    tk = trd["inputSpikeTimes"][k]
+                    tk = np.array(trd["inputSpikeTimes"][k])
                     y = (i + 0.1 + k * 0.05) * np.ones(len(tk))
+                    in_spt = [i for i in range(len(trd["inputSpikeTimes"]))
+                             if trd["inputSpikeTimes"][i][k] >= plot_win[0] and 
+                             trd["inputSpikeTimes"][i][k] < plot_win[1]]
+                    y = (i + 0.1 + k * 0.05) * np.ones(len(in_spt))
                     if i % 10 == 0 and plotflag:
                         P.axdict["G"].plot(
-                            tk / 1000.0, y, "|", markersize=2.5, color="k", linewidth=0.5
+                            tk[in_spt] / 1000.0, y, "|", markersize=2.5, color="k", linewidth=0.5
                         )
         an_st_by_input = [[] for x in range(n_inputs)]   # accumlate by input across trials
         all_an_st = []  # collapsed completel = all spikes in one array
@@ -3002,19 +3039,22 @@ class PlotSims:
             psth_binw = 0.2e-3
             self.plot_psth(all_bu_st,
                           run_info = ri,
-                          max_time=np.max(time_base), 
+                          zero_time=plot_win[0],
+                          max_time=plot_win[1], 
                           bin_width=psth_binw, 
                           ax=P.axdict["C"],
                           )
             self.plot_fsl_ssl(all_bu_st_trials,
                      run_info=ri,
+                     fsl_win=(2.5e-3, 5e-3),
                      max_time = 25.0, 
                      bin_width= 0.25, 
                      ax = P.axdict["F"]
             )
             self.plot_psth(all_an_st,
                 run_info = ri,
-                max_time = np.max(time_base),
+                zero_time=plot_win[0],
+                max_time = plot_win[1],
                 bin_width = psth_binw,
                 ax = P.axdict["H"]
             )
@@ -3022,7 +3062,8 @@ class PlotSims:
             #     P.axdict[a].set_xlim((0.0, totaldur))
             # if a in ["F"] and soundtype == "SAM":
             #     P.axdict[a].set_xlim((0.0, totaldur))
-
+        P.figure_handle.text(x=0.95, y=0.02, s=f"Cell: {int(self.parent.cellID):02d}",
+            horizontalalignment="right")
         if soundtype == "SAM":  # also calculate vs and plot histogram
             if len(all_bu_st) == 0 and plotflag:
                 P.axdict["H"].text(
