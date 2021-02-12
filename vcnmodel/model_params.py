@@ -65,6 +65,7 @@ class CmdChoices:
         "MS",
         "HS",
         "fromcell",
+        "mixed1",
     ]  # AN SR groups (assigned across all inputs)
     dendriteChoices = [
         "normal",
@@ -130,6 +131,7 @@ class Params:
     ANSynapseType: str = "simple"  # or multisite
     ANSynapticDepression: int = 0  # depression calculation is off by default
     SynapseConfiguration: Union[dict, None] = None
+    synapseConfig: Union[dict, None] = None
     initStateFile: Union[str, Path, None] = None  # 'IVneuronState_%s.dat'
     simulationFilename: Union[str, Path, None] = None
     shortSimulationFilename: Union[str, Path, None] = None
@@ -163,7 +165,7 @@ class Params:
     ASA_fromsoma: bool = False
     lambdaFreq: float = 2000.0  # Hz for segment number
     # spontaneous rate (group, in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
-    srnames = ["LS", "MS", "HS"]  # runs 0-2, not starting at 0    # same as CmcChoices
+    srnames = ["LS", "MS", "HS", "mixed1"]  # runs 0-2, not starting at 0    # same as CmcChoices
     SRType: str = CmdChoices.SRChoices[2]
     inputPattern: Union[
         str, None,
@@ -761,23 +763,24 @@ def build_parser():
     return parser
 
 
-def getCommands():
+def getCommands(toml_dir='.'):
     parser = build_parser()
     args = parser.parse_args()
 
     if args.configfile is not None:
         config = None
         if args.configfile is not None:
-            if ".json" in args.configfile:
+            cfile = Path(toml_dir, args.configfile)
+            if ".json" in str(args.configfile):
                 # The escaping of "\t" in the config file is necesarry as
                 # otherwise Python will try to treat is as the string escape
                 # sequence for ASCII Horizontal Tab when it encounters it
                 # during json.load
-                config = json.load(open(args.configfile))
-                print(f"Reading JSON configuration file: {args.configfile:s}")
-            elif ".toml" in args.configfile:
-                print(f"Reading TOML configuration file: {args.configfile:s}")
-                config = toml.load(open(args.configfile))
+                config = json.load(open(cfile))
+                print(f"Reading JSON configuration file: {str(cfile):s}")
+            elif ".toml" in str(args.configfile):
+                print(f"Reading TOML configuration file: {str(cfile):s}")
+                config = toml.load(open(cfile))
 
         vargs = vars(args)  # reach into the dict to change values in namespace
 

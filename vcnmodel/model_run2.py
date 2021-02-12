@@ -38,11 +38,12 @@ matplotlib.use("Qt5Agg")
 """
 model_run2.py
 
-Run a model based on a hoc structure, decorating the structure with ion channels and synapses.
+Run a model based on a hoc cell structure, decorating the structure with ion channels and synapses.
 
 Requires:
 Python 3.7 (anaconda distribution or a local environment - preferred)
-Neuron7.7 or 7.8 (neuron.yale.edu)
+    also runs with python3.8 or python3.9
+Neuron7.7 or 7.8 (neuron.yale.edu) Neuron7.8.2
 pyqtgraph (Campagnola, from github)
 neuronvis (Campagnola/Manis, from github)
 cnmodel (Campagnola/Manis, from github)
@@ -63,23 +64,26 @@ See the requirements.txt file, or build an environment using make_local_env.sh.
 This program expects the following directory structure to hold simulation results
 and the morphology files:
 (example)
-VCN_Cells/   # top level for data
-    cell_ID/    # VCN_c18, for example (first argument in call should be this directory name)
-        MorphologyFiles/  # location for swc and hoc files
-            VCN_c18_755V2.hoc (cell body scaled version)
-            VCN_c18_755.hoc  (unscaled version)
-            misc.swc  (various swc files that were translated to hoc files)
-        InitializationFiles/  # location for Init files
-            IV/  # initialization for just the IV with no synaptic input
-                VCN_c18_755v2.ninit  # different base structures
-                VCN_c18755.ninit
-            AN/  # initialization for synaptic inputs
-                (ditto)  # different base structures of input arrangements
-        Simulations/
-            IV/  # results from IV simulations
-            AN/  # results from AN simulations
+VCN_SBEM_Data/ # top level for 
+    VCN_Cells/   # top level for data
+        For each cell there is a separate directory:
+        cell_ID/    # VCN_c18, for example (first argument in call should be this directory name)
+            MorphologyFiles/  # location for swc and hoc files
+                VCN_c18_755V2.hoc (cell body scaled version)
+                VCN_c18_755.hoc  (unscaled version)
+                misc.swc  (various swc files that were translated to hoc files)
+            InitializationFiles/  # location for Init files
+                IV/  # initialization for just the IV with no synaptic input
+                    VCN_c18_755v2.ninit  # different base structures
+                    VCN_c18755.ninit
+                AN/  # initialization for synaptic inputs
+                    (ditto)  # different base structures of input arrangements
+            Simulations/
+                IV/  # results from IV simulations
+                AN/  # results from AN simulations
+    Figures/  # directory for figure outputs
 
-The VCN_Cells directory may be placed under another directory. The additional directory structure
+The VCN_Cells directory should be placed under another directory. The additional directory structure
 is defined in 'wheres_my_data.toml', which is used by cell_config.py to 
 set directory locations and read the excel file with ASA information.
 
@@ -317,7 +321,10 @@ class ModelRun:
 
         if self.Params.verbose:
             self.print_modelsetup()
-        self.cconfig = cell_config.CellConfig(verbose=self.Params.verbose)
+        self.cconfig = cell_config.CellConfig(
+                verbose=self.Params.verbose,
+                spont_mapping=self.Params.SRType,
+                )
 
         # find out where our files live
         where_is_data = Path("wheres_my_data.toml")
@@ -974,24 +981,33 @@ class ModelRun:
             print(thisCell.print_all_mechs())
         preCell = []
         synapse = []
-        # reconfigure syanpses to set the spont rate group
+        # reconfigure syanpses to set the spont rate group(s) on a per-synapses basis
         for i, syn in enumerate(synapseConfig):
             if self.Params.SRType == "fromcell":  # use the one in the table
                 preCell.append(cells.DummySGC(cf=self.RunInfo.F0, sr=syn["SR"]))
                 preCell[-1]._synapsetype = self.Params.ANSynapseType
-                self.Params.SRType = self.Params.srnames[
-                    syn[2]
-                ]  # use and report value from table
+                print(
+                    f"(configure_cell: fromcell): Retrieved SR index {syn['SR']:d} with SR type {self.Params.SRType:s}",
+                    end=" ",
+                )
+            elif self.Params.SRType == "mixed1":  # use the one in the table
+                # print('syn: ', i, syn["SR"])
+                preCell.append(cells.DummySGC(cf=self.RunInfo.F0, sr=syn["SR"]))
+                preCell[-1]._synapsetype = self.Params.ANSynapseType
+                print(
+                    f"(configure_cell: Mixed): Retrieved SR index {syn['SR']:d} with SR type {self.Params.SRType:s}",
+                    end=" ",
+                )
             else:
                 try:
                     srindex = self.Params.srnames.index(self.Params.SRType)
                     print(
-                        f"(configure_cell): Retrieved SR index {srindex:d} with SR type {self.Params.SRType:s}",
+                        f"(configure_cell: NOT mixed): Retrieved SR index {srindex:s} with SR type {self.Params.SRType:s}",
                         end=" ",
                     )
                 except ValueError:
                     raise ValueError(
-                        "SR type '%s' not found in Sr type list" % self.Params.SRType
+                        "SR type '%s' not found in SR type list" % self.Params.SRType
                     )
 
                 preCell.append(
@@ -1024,7 +1040,7 @@ class ModelRun:
                         )
                     )
                 else:
-                    print(f" Synapsetype: multisite, with {int(syn['nSyn']):d} zones")
+                    print(f" Synapsetype: multisite, with {int(syn['nSyn']):4d} zones")
                     synapse.append(
                         preCell[-1].connect(
                             thisCell,
@@ -1036,6 +1052,7 @@ class ModelRun:
                             post_opts={"postsec": pl, "postsite": postsite[0:2]},
                         )
                     )
+
         if self.Params.ANSynapseType == "multisite":
             for i, s in enumerate(synapse):
                 s.terminal.relsite.Dep_Flag = (
@@ -1564,10 +1581,12 @@ class ModelRun:
                     ngMax[i] = ngMax[i] + p.gmax
         if self.Params.verbose or printvalues:
             print(f"  getsyn")
-            print(f"  Syn#    nsites    AMPA gmax    NMDA gmax   synperum2")
+            print(f"  Syn#    nsites    AMPA gmax    NMDA gmax   synperum2    SRType")
             for i, s in enumerate(synapses):
+                print(self.Params.SynapseConfig[i])
                 print(
-                    f"  {i:>4d}   {int(nSyn[i]):>5d}    {eng(gMax[i]):>9s}    {eng(ngMax[i]):>9s}  {self.Params.SynapseConfig[i]['synperum2']}"
+                    f"  {i:>4d}   {int(nSyn[i]):>5d}    {eng(gMax[i]):>9s}    {eng(ngMax[i]):>9s}", end='')
+                print(f"  {self.Params.SynapseConfig[i]['synperum2']}, {self.Params.SynapseConfig[i]['SR']:d}"
                 )
         return (gMax, ngMax, nSyn)
 
@@ -1678,11 +1697,13 @@ class ModelRun:
             fromdict = self.Params.cellID
 
         synapseConfig, celltype = self.cconfig.make_dict(
-            fromdict, areainflate = self.Params.ASA_inflation
+            fromdict, areainflate = self.Params.ASA_inflation,
         )
+        print(self.cconfig.VCN_Inputs['VCN_c17'])
+
         self.Params.SynapseConfig = synapseConfig
-        # print(synapseConfig)
-        # exit()
+        print('SynapseConfig: ', self.Params.SynapseConfig)
+
         self.start_time = time.time()
         # compute delays in a simple manner
         # assumption 3 meters/second conduction time
@@ -1694,7 +1715,7 @@ class ModelRun:
         nReps = self.RunInfo.nReps
 
         preCell, synapse, self.electrode_site = self.configure_cell(
-            self.post_cell, synapseConfig=synapseConfig, celltype=celltype
+            self.post_cell, synapseConfig=self.Params.SynapseConfig, celltype=celltype
         )
 
         # see if we need to save the cell state now.
@@ -2421,7 +2442,7 @@ def main():
         parsedargs,
         params,
         runinfo,
-    ) = vcnmodel.model_params.getCommands()  # get from command line
+    ) = vcnmodel.model_params.getCommands(toml_dir='toml')  # get from command line
     model = ModelRun(
         params=params, runinfo=runinfo, args=parsedargs
     )  # create instance of the model

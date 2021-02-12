@@ -540,6 +540,7 @@ class TableManager:
                     indxs[i].dendriteExpt,
                     indxs[i].dendriteMode,
                     indxs[i].synapseExperiment,
+                    indxs[i].SRType,
                     indxs[i].dBspl,
                     indxs[i].nReps, # command_line["nReps"],
                     indxs[i].pipDur,
@@ -566,6 +567,7 @@ class TableManager:
                 # ("modetype", object),
                 # ("scaling", object),
                 # ("Freq", object),
+                ('SRType', object),
                 ("dBspl", object),
                 ("nReps", object),
                 ("pipDur", object),
@@ -575,7 +577,6 @@ class TableManager:
                 ("DataTable", object),
                 ('simulation_path', object),
                 ("Filename", object),
-                # ("SRType", object),
                 # ("# files", object),
                 # ("synapsetype", object),
             ],
@@ -609,8 +610,9 @@ class TableManager:
         
     def filter_table(self, filters, QtCore):
             
-            coldict = {'modelName': 4, 'Protocol': 5, 'dendMode': 6, 'dendExpt':7, 'Experiment': 8, 'dBspl': 9, 'nReps': 10,
-                         "pipDur": 11, "soundType": 12, "fmod": 13, "DataTable": 15,}
+            coldict = {'modelName': 4, 'Protocol': 5, 'dendMode': 6, 'dendExpt':7, 'Experiment': 8, 'SRType': 9,
+                        'dBspl': 10, 'nReps': 11,
+                         "pipDur": 12, "soundType": 13, "fmod": 14, "DataTable": 16,}
             filtered_table = self.data.copy()
             matchsets = dict([(x, set()) for x in filters.keys() if x != 'Use Filter'])
             for k, d in enumerate(self.data):

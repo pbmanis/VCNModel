@@ -2965,7 +2965,6 @@ class PlotSims:
             vtrial = AR.traces[i] * 1e3
             time_base = AR.time_base/1000. # convert to seconds
             dt = si.dtIC/1000. # convert from msec to seconds
-            print(time_base.shape, vtrial.shape, 'dt: ', dt)
             trd = d["Results"][i]
             idx = (int(plot_win[0]/dt), int(plot_win[1]/dt))
             waveform = trd["stimWaveform"].tolist()
@@ -3009,15 +3008,15 @@ class PlotSims:
                     color="b",
                 )
                 for k in range(n_inputs):  # raster of input spikes
-                    tk = np.array(trd["inputSpikeTimes"][k])
+                    tk = np.array(trd["inputSpikeTimes"][k])*1e-3
                     y = (i + 0.1 + k * 0.05) * np.ones(len(tk))
-                    in_spt = [i for i in range(len(trd["inputSpikeTimes"]))
-                             if trd["inputSpikeTimes"][i][k] >= plot_win[0] and 
-                             trd["inputSpikeTimes"][i][k] < plot_win[1]]
+                    in_spt = [i for i in range(tk.shape[0])
+                             if  (tk[i] >= plot_win[0]) and 
+                                 (tk[i] < plot_win[1])]
                     y = (i + 0.1 + k * 0.05) * np.ones(len(in_spt))
                     if i % 10 == 0 and plotflag:
                         P.axdict["G"].plot(
-                            tk[in_spt] / 1000.0, y, "|", markersize=2.5, color="k", linewidth=0.5
+                            tk[in_spt], y, "|", markersize=2.5, color="k", linewidth=0.5
                         )
         an_st_by_input = [[] for x in range(n_inputs)]   # accumlate by input across trials
         all_an_st = []  # collapsed completel = all spikes in one array
