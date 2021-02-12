@@ -157,6 +157,9 @@ revcorrtypes = [
 dbValues = list(range(0, 91, 10))
 dbValues.insert(0, "None")
 
+# SR possibilities
+SRValues = ["None", "HS", "MS", "LS", "mixed1", "fromcell"]
+
 # dendrite experiments.
 dendriteChoices = [
     "None",
@@ -381,6 +384,12 @@ class DataTables:
                 "type": "group",
                 "children": [
                     # {"name": "Use Filter", "type": "bool", "value": False},
+                    {
+                        "name": "SRType",
+                        "type": "list",
+                        "values": SRValues,
+                        "value": "None",
+                    },
                     {
                         "name": "dBspl",
                         "type": "list",
@@ -653,6 +662,7 @@ class DataTables:
                     "modelName",
                     "dendMode",
                     "soundType",
+                    "SRType",
                 ]:
                     if data != "None":
                         self.filters[path[1]] = str(data)
@@ -700,6 +710,11 @@ class DataTables:
             if path[0] == "Tools":
                 if path[1] == "Reload":
                     print("reloading...")
+                    # get the current list selection - first put tabke in 
+                    # the same order we will see later
+                    self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)  # by date
+                    selected_rows = self.table.selectionModel().selectedRows()
+                    selection_model = self.table.selectionModel()
                     for module in all_modules:
                         print("reloading: ", module)
                         importlib.reload(module)
@@ -711,7 +726,6 @@ class DataTables:
                         selvals=self.selvals,
                         altcolormethod=self.altColors,
                     )
-                    
 
                     print("   reload ok")
                     print("-" * 80)
@@ -723,6 +737,11 @@ class DataTables:
                     self.table_manager.apply_filter()
                     self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)  # by date
                     self.altColors()  # reset the color list.
+                    # now reapply the original selection
+                    mode = QtCore.QItemSelectionModel.Select | QtCore.QItemSelectionModel.Rows
+                    for row in selected_rows:
+                        selection_model.select(row, mode)# for row in selected_rows:
+
                     self.Dock_Table.raiseDock()
                     self.FIGS = figures.Figures(parent=self)
                     
