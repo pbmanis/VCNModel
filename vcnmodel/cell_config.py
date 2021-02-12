@@ -1,18 +1,20 @@
 import json
-from typing import Union
 from collections import OrderedDict
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Union
 
 import matplotlib
 import numpy as np
 import pandas as pd
 import scipy.stats
-import toml
 from matplotlib import pyplot as mpl
 from pylibrary.plotting import plothelpers as PH
 
+import toml
+
 """
-Data sets are from George Spirou & Co. (Michael Morehead, 
+Data sets are from George Spirou & Co. (Michael Morehead,
     Nathan Spencer, Matthew Kersting)
 
 This version **imports** data from an excel spreadsheet in VCN_Cells.
@@ -109,7 +111,7 @@ cellsintable = [
     27,
     29,
     30,
-    0,  # test cell with soma only
+    # 0,  # test cell with soma only
 ]
 datafile = dendqual
 inputs = [f"Input {i+1:d}" for i in range(12)]  # input column labels
@@ -127,15 +129,50 @@ synperum2 = 0.7686  # new numbers form synapse counting: 23 terminals from 10 ce
 # cells: 2, 5, 6, 9, 10, 11, 13, 17, 18, 30
 # SD is 0.1052
 
+sr_index_map = {"HS": 2, "MS": 1, "LS": 0}  # map spont group names to sr index in model
+
+"""
+Data class to hold information about the SR groups
+"""
+
+
+@dataclass
+class SRMap:
+    name: str = "HS"  # name just for reference
+    index: int = 2  # SR index as used by the cochlea/Zilany model
+    lowarea: float = 0.0  # smallest ASA to associate with this spont class
+    higharea: float = 500.0  # largest ASA to associate with this spont class
+    percent: float = 0.0  # percent of the area distribution associated with this spont class
+
 
 class CellConfig:
-    def __init__(self, datafile=None, verbose=False):
+    def __init__(self, datafile: Union[str, Path, None] = None, 
+            spont_mapping: Union[str, None]=None, verbose: bool = False):
+        """
+        Class to handle the configuration from tables of individual cell data.
+        
+        Parameters
+        ----------
+        datafile: str, Path, or None
+        Name of the source data file. This is an excel file, in a specific
+            format and with specific worksheet names. 
+        
+        verbose: bool (default False)
+            whether to print out info as we proceed for debugging purposes.
+        
+        Returns
+        -------
+        Initialization does not return anything, but it restructures the data
+        for later use
+        """
 
+        assert spont_mapping in ['HS', 'LS', 'MS', 'mixed1', None]
         self.synperum2 = synperum2
         if datafile is None:
             datafile = dendqual
         self.verbose = verbose
         self.datafile = datafile
+        self.spont_mapping = spont_mapping # only set if the spont map is determined
         if self.verbose:
             print("CellConfig: configuration dict: ")
         with open(datafile, "rb") as fh:
@@ -152,19 +189,34 @@ class CellConfig:
 
         for cellnum in cellsintable:
             self.build_cell(cellnum)
-            r, ct = self.make_dict(f"VCN_c{cellnum:02d}", synperum2)
+            r, ct = self.make_dict(
+                f"VCN_c{cellnum:02d}", synperum2=synperum2, synapsemap=self.spont_mapping,
+            )
+
+        if self.spont_mapping in ["mixed1"]:
+            self.divide_SR_by_size()
+            for cellnum in cellsintable:
+                self.assign_SR_by_size(f"VCN_c{cellnum:02d}")
+        
+        
         if self.verbose:
             self.print_cell_inputs(self.VCN_Inputs)
 
-    def build_cell(self, cellnum):
+    def build_cell(self, cellnum: str):
+        """
+        Put the data from the table from the given cell into a class dictionary
+        
+        Parameters
+        ----------
+        cellnum : str (required)
+        
+        """
         dcell = self.ASA[self.ASA["Cell-Inputs"] == cellnum]
         celln = f"VCN_c{cellnum:02d}"
         self.VCN_Inputs[celln] = ["bushy", []]
         for i in inputs:
             inasa = dcell[i].values
-            if pd.isnull(inasa):  # skip empty entries
-                continue
-            if len(inasa) == 0:
+            if len(inasa) == 0 or np.isnan(inasa):  # skip empty entries
                 continue
             self.VCN_Inputs[celln][1].append(
                 [
@@ -181,8 +233,40 @@ class CellConfig:
             )
         # print('dcell: ', dcell)
 
-    def make_dict(self, cell, synperum2:Union[float, None]= None, velocity:float=3.0, areainflate:float=1.0):
+    def make_dict(
+        self,
+        cell: str,
+        synperum2: Union[float, None] = None,
+        velocity: float = 3.0,
+        areainflate: float = 1.0,
+        synapsemap: Union[str, None] = None,
+    ):
+        """
+        create a dictionary to hold all the data about synaptic inptus that we will
+        use later to set up the model.
+        synapse_map: str
+            one of allHS, allLS, all MS, or mixed
+            This assigns the SR group
+    
+        Parameters
+        ----------
+        cell : str (required)
+        synpernum2 : float or None
+            Used to translate apposed surface areas to number of release sites
+            If None, the default value listed above is used (be careful!)
+        velocity : float (default 3)
+            AP velocity in afferent axon - not used in current model
+        areainflate: float (default 1.0)
+            Area correction to use, when mapping between swc areas and mesh areas
+            for more accurate areal representations.
+    
+        Returns
+        -------
+        r : list containing dict of each input
+        celltype : cell type take from the table.
+        """
         assert cell in self.VCN_Inputs
+        assert synapsemap in ["LS", "MS", "HS", "mixed1", None]
         indata = self.VCN_Inputs[cell][1]
         celltype = self.VCN_Inputs[cell][0]
         r = [None] * len(indata)
@@ -192,14 +276,21 @@ class CellConfig:
             asa = (
                 i[0] * areainflate
             )  # here is where we can control area by inflations from reference value
-            r[j] = OrderedDict(
+            if synapsemap is None:
+                sr = i[2]  # Use the default table value (HS)
+            elif synapsemap in ["LS", "MS", "HS"]:  # homogeneous SR for all endings
+                sr = sr_index_map[self.spont_map]
+            elif synapsemap in ["mixed1"]:
+                sr = -1  # assignment will be done later
+            r[j] = OrderedDict(  # this is nice, but we use a list directly (should have been a dataclass, but
+                                # that did not exist when this was started. Not really used anyway.
                 [
                     ("input", j + 1),
                     ("asa", asa),
                     ("synperum2", synperum2),
                     ("nSyn", int(np.around(asa * synperum2))),
                     ("delay", i[1]),
-                    ("SR", i[2]),
+                    ("SR", sr),
                     ("delay2", np.nansum([i[3], i[5]]) * 0.001 / velocity),
                     ("axonLen", i[3]),
                     ("axonR", i[4]),
@@ -211,26 +302,48 @@ class CellConfig:
             )
         return r, celltype
 
-    def print_cell_inputs_json(self, r):
+
+    def assign_SR_by_size(
+        self,
+        cell,
+    ):
+        """
+        Adjust the synapse map if using mixed1 or other mapping based on size
+    
+        Parameters
+        ----------
+        cell : str (required)
+
+        Returns
+        -------
+        Nothing
+        """
+        assert cell in self.VCN_Inputs
+        assert self.spont_mapping in ["mixed1"]
+        celltype = self.VCN_Inputs[cell][0]
+        input_data = self.VCN_Inputs[cell][1]
+        for i, ind in enumerate(input_data):
+            srg = self.get_SR_from_ASA(ind[0])
+            self.VCN_Inputs[cell][1][i][2] = srg
+
+    def print_cell_inputs_json(self, r: str):
         if self.verbose:
             print("\nCell Inputs:")
             print(json.dumps(r, indent=4))
 
-    def print_cell_inputs(self, r):
-        chs = "Cell ID, ASA, nsyn(calculated), delay, SRgroup, delay2, axonlength, branch length, syntype, postlocation"
+    def print_cell_inputs(self, r: dict):
+        chs = "Cell ID, ASA (sr)"
         cht = chs.split(", ")
         slen = max([len(c) for c in cht]) + 2
         ch = ""
         for i in range(len(cht)):
             sfmt = "{0:>{1}s}".format(cht[i], slen)
             ch += sfmt
-
         print(f"{ch:s}")  # header
         for v in list(r.keys()):
             t = f"{v:<{slen}s}"
-            # print(r[v])
-            for inp in r[v][1]:
-                # print('inp: ', inp)
+            for i, inp in enumerate(r[v][1]):
+                # print('inp: ', i, inp)
                 if isinstance(inp, tuple) or isinstance(inp, list):
                     # print('tu, li')
                     t += f"{inp[0]:{slen}.1f}"
@@ -238,11 +351,37 @@ class CellConfig:
                     t += f"{inp:{slen}.1f}"
                 else:
                     t += f"{str(inp):^{slen}s}"
+                t += f" ({inp[2]:1d})"
             print(t)
 
-    def get_soma_ratio(self, cellID):
+    def _get_cell_num(self, cellID: Union[str, int]):
+        """
+        Utility routine to return the cell number as an int,
+        regardless of what was passed in
+        """
         if isinstance(cellID, str):
             cellnum = int(cellID[-2:])
+        elif isinstance(cellID, int):
+            cellnum = cellID
+        else:
+            raise ValueError("_get_cell_num: cellID must be str or int")
+        return cellnum
+
+    def get_soma_ratio(self, cellID: Union[str, int]):
+        """
+        Compute the inflation from the SWC/HOC to the mesh area
+        for the soma
+        
+        Parameters
+        ----------
+        cellID: str or int (required)
+        
+        Returns
+        -------
+        inflation ratio : float
+        
+        """
+        cellnum = self._get_cell_num(cellID)
         dcell = self.SDSummary[self.SDSummary["Cell Number"] == cellnum]
         # print(dcell.columns)
         # print(hocsomarecons)
@@ -256,9 +395,21 @@ class CellConfig:
         print(f"          Soma Inflation ratio: {inflateratio:.3f}")
         return inflateratio
 
-    def get_dendrite_ratio(self, cellID):
-        if isinstance(cellID, str):
-            cellnum = int(cellID[-2:])
+    def get_dendrite_ratio(self, cellID: Union[str, int]):
+        """
+        Compute the inflation from the SWC/HOC to the mesh area
+        for the dendrites
+        
+        Parameters
+        ----------
+        cellID: str or int (required)
+        
+        Returns
+        -------
+        inflation ratio : float
+        
+        """
+        cellnum = self._get_cell_num(cellID)
         dcell = self.SDSummary[self.SDSummary["Cell Number"] == cellnum]
         mesh_area = dcell[dend_area_data].values[0]
         hoc_dend_area = dcell[hocdendrecons].values[0]
@@ -273,45 +424,136 @@ class CellConfig:
         print(f"          Dendrite Inflation ratio: {inflateratio:.3f}")
         return inflateratio
 
-    def _get_dict(self, cellnum, area=0.65):
-        synperum2 = area
+    def _get_dict(self, cellnum: int, area: Union[float, None]):
+        if area is None:
+            area = synperum2  # be sure to use the default set above
         r, celltype = self.make_dict(f"VCN_c{cellnum:02d}", synperum2=area)
         return r
-        
+
     def summarize_release_sites(self):
         """
         Compare # of release sites under 3 different synaptic density assumptions
         0.65 syn/um2 (early simulations; value taken from MNTB calyx)
         0.799 syn/um2 (April 2020-10 Nov 2020 simulations; based on subset of endings)
         0.7686 syn/um2 (based on 23 endings, data from June 2020)
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        Nothing
         """
         cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]  # just grade A cells
         synsizes = [0.65, 0.799, 0.7686]
-        ns = []
         for j, cell in enumerate(cells):
-            print(F"Cell: VCN_c{cell:02d}")
-            ns = []
+            print(f"Cell: VCN_c{cell:02d}")
             for i, synsize in enumerate(synsizes):
                 nsA = self._get_dict(cell, area=synsize)
                 if i == 0:
                     nsT = np.zeros((3, len(nsA)))
                 for k, nsyn in enumerate(nsA):
-                    nsT[i, k] = nsyn['nSyn']
+                    nsT[i, k] = nsyn["nSyn"]
             for i in range(nsT.shape[0]):
                 print(f"{synsizes[i]:.4f}  ", end="")
                 for x in nsT[i]:
                     print(f"{int(x):5d}", end="")
                 print()
 
-                    # for k, synn in enumerate(nsyn):
-#                         print(k, synn['nSyn'])
+    def divide_SR_by_size(self, pct: list = [29, 39, 32]):
+        """
+        This routine takes all of the individual measured 
+        surface measurments of endinbs, and determines which
+        should be allocated to a particular spontaneous rate group,
+        based solely on the percentiles in the distribution.
+        The default percentiles are estimates and averaged from the
+        3 papers: Sun et al., 2018; Sresthsa et al. 2018 and Petitpre et al.
+        2018. 
         
+        Parameters
+        ----------
+        pct : a list of percentages default: [29, 39, 32]
+            3 values required; runs from highspont to low-spont groups
+            should sum to 100.
+        
+        Returns
+        -------
+        dict SRMap data class for each sr group (numbered)
+        
+        """
+        gname = {2: "HS", 1: "MS", 0: "LS"}
+        allendings = []
+        cellendings = {}
+        for cell, v in self.VCN_Inputs.items():
+            cellendings[cell] = []
+            for s in v[1]:
+                if isinstance(s, list) or isinstance(s, tuple):
+                    allendings.append(s[0])
+                    cellendings[cell].append(s[0])
+                else:
+                    continue
+        allendings = np.sort(allendings)
+        allendings = np.flipud(allendings)
+        self.allendings = allendings
+        nendings = allendings.shape[0]
+        sp = 0
+        ntot = 0
+        spont_map = {}
+        # print('endings range from: ', np.min(allendings), np.max(allendings))
+        # exit()
+        for i, p in enumerate(pct):
+            ne = int(0.5 + nendings * (float(p) / 100.0))
+            end_group = allendings[sp : sp + ne]
+            # print(sp, sp+ne, ne, len(end_group))
+            # print(f"Group {i:d} ({gname[2-i]:s}) Range = {np.min(end_group):.2f} - {np.max(end_group):.2f}, N={len(end_group):d}", end='')
+            # print(f"; pct of total: {float(len(end_group))/nendings:.3f}  Target pct={p:.1f}")
+            SG = SRMap()
+            SG.name = gname[2 - i]
+            SG.index = 2 - i
+            SG.lowarea = np.min(end_group)
+            SG.higharea = np.max(end_group)
+            SG.percent = float(p)
+            spont_map[2 - i] = SG
+            ntot += len(end_group)
+            sp += ne
+        self.spont_map = spont_map
+        return spont_map
+
+    def get_SR_from_ASA(self, asa: float):
+        """
+        If the spont map is defined, return the SR group index
+        that this input area falls into. It is an error to run 
+        this without running divide_SR_by_size first.
+        
+        Parameters
+        ----------
+        asa : float
+            apposed surface area measurement (microns**2)
+        
+        Returns
+        -------
+        SR as an index (2=high, 1=medium, 0=low)
+        """
+        assert self.spont_map is not None
+        for sg in self.spont_map:
+            if asa >= self.spont_map[sg].lowarea and asa <= self.spont_map[sg].higharea:
+                return self.spont_map[sg].index
+        # area did not assign to a group. Oops...
+        raise ValueError(
+            f"ASA {asa:.2f} was not assigned to a spont group with this map:\n {str(self.spont_map):s}"
+        )
+
     def summarize_inputs(self):
+        """
+        Generate a variety of plots summarizing the patterns of the inputs
+        from the excel table data
+        """
         P = PH.regular_grid(
             2,
             3,
             order="columnsfirst",
-            figsize=(6, 4),
+            figsize=(8, 6),
             showgrid=False,
             verticalspacing=0.18,
             horizontalspacing=0.08,
@@ -342,11 +584,13 @@ class CellConfig:
                     # cellendings[cell].append(s)
         tsize = 9
         ax[0].set_title("All ending areas", fontsize=tsize)
-        ax[0].hist(allendings, bins=20)
-        ax[0].set_ylim((0, 25))
+
+        ax[0].hist(allendings, bins=int(300 / 5.0), range=(0, 300))
+        ax[0].set_ylim((0, 140))
         ax[0].set_ylabel("N")
-        ax[0].set_xlim((0, 350))
+        ax[0].set_xlim((0, 300))
         ax[0].set_xlabel("Area ($um^2$)")
+        PH.nice_plot(ax[0], position=-0.01, direction="outward")
 
         normd = []
         ratio1 = []
@@ -438,6 +682,18 @@ class CellConfig:
 
 if __name__ == "__main__":
     # Check the formatting and display the results
-    cc = CellConfig(datafile)
-   # cc.summarize_inputs()
+    cc = CellConfig(datafile, spont_mapping='mixed1')
+    # make sure all is working
     cc.summarize_release_sites()
+    cc.print_cell_inputs(cc.VCN_Inputs)
+    cc.print_cell_inputs_json(cc.VCN_Inputs)
+    for cellnum in cellsintable:
+        cc.get_soma_ratio(cellnum)
+        cc.get_dendrite_ratio(cellnum)
+
+    sm = cc.divide_SR_by_size()
+    # print(sm)
+    for asa in [40.0, 80.0, 200.0, np.min(cc.allendings), np.max(cc.allendings)]:
+        indx = cc.get_SR_from_ASA(asa)
+        print(f"ASA {asa:.2f} is in group: {indx:d}")
+    # cc.summarize_inputs()
