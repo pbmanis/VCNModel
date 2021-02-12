@@ -167,6 +167,7 @@ class CellConfig:
         """
 
         assert spont_mapping in ['HS', 'LS', 'MS', 'mixed1', None]
+
         self.synperum2 = synperum2
         if datafile is None:
             datafile = dendqual
@@ -189,6 +190,7 @@ class CellConfig:
 
         for cellnum in cellsintable:
             self.build_cell(cellnum)
+
             r, ct = self.make_dict(
                 f"VCN_c{cellnum:02d}", synperum2=synperum2, synapsemap=self.spont_mapping,
             )
@@ -222,7 +224,7 @@ class CellConfig:
                 [
                     (float(inasa)),
                     0.0,
-                    2.0,
+                    2,
                     np.nan,
                     np.nan,
                     np.nan,
@@ -279,9 +281,10 @@ class CellConfig:
             if synapsemap is None:
                 sr = i[2]  # Use the default table value (HS)
             elif synapsemap in ["LS", "MS", "HS"]:  # homogeneous SR for all endings
-                sr = sr_index_map[self.spont_map]
+                sr = sr_index_map[synapsemap]
             elif synapsemap in ["mixed1"]:
                 sr = -1  # assignment will be done later
+            self.VCN_Inputs[cell][1][j][2] = sr
             r[j] = OrderedDict(  # this is nice, but we use a list directly (should have been a dataclass, but
                                 # that did not exist when this was started. Not really used anyway.
                 [
