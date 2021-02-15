@@ -1002,8 +1002,9 @@ class ModelRun:
                 try:
                     srindex = self.Params.srnames.index(self.Params.SRType)
                     print(
-                        f"(configure_cell: NOT mixed): Retrieved SR index {srindex:s} with SR type {self.Params.SRType:s}",
-                        end=" ",
+                        f"(configure_cell: NOT mixed): Retrieved SR index {srindex:d}")
+                    print(
+                        f" with SR type {self.Params.SRType:s}",
                     )
                 except ValueError:
                     raise ValueError(

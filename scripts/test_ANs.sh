@@ -20,11 +20,11 @@ do
     # if [ $? -ne 0 ]; then
     #     exit 1
     # fi
-    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r 1 --dB 10 --Spirou twolargest --configfile $CONFIG --datatable data_XM13A_nacncoop
+    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r 1 --dB 10 --Spirou twolargest --configfile $CONFIG --datatable data_XM13A_nacncoop
     if [ $? -ne 0 ]; then
         exit 1
     fi
-    python vcnmodel/model_run2.py VCN_c$f  -F -P runANPSTH -r 1 --dB 10 --Spirou all --configfile $CONFIG --datatable data_XM13A_nacncoop
+    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r 1 --dB 10 --Spirou all --configfile $CONFIG --datatable data_XM13A_nacncoop
     if [ $? -ne 0 ]; then
         exit 1
     fi
