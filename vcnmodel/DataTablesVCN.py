@@ -159,6 +159,7 @@ dbValues.insert(0, "None")
 
 # SR possibilities
 SRValues = ["None", "HS", "MS", "LS", "mixed1", "fromcell"]
+DeprValues = ["None", 0, 1]
 
 # dendrite experiments.
 dendriteChoices = [
@@ -275,6 +276,7 @@ class DataTables:
         self.filters = {
             "Use Filter": False,
             "dBspl": None,
+            "Depr": None,
             "nReps": None,
             "pipDur": None,
             "fmod": None,
@@ -389,6 +391,12 @@ class DataTables:
                         "type": "list",
                         "values": SRValues,
                         "value": "None",
+                    },
+                    {
+                        "name": "Depr",
+                        "type": "list",
+                        "values": DeprValues,
+                        "value": 0,
                     },
                     {
                         "name": "dBspl",
@@ -650,7 +658,7 @@ class DataTables:
                 if path[1] == "Use Filter":  # currently not an option
                     # print(data)
                     self.filters["Use Filter"] = data
-                elif path[1] in ["dBspl", "nReps", "fmod"]:
+                elif path[1] in ["dBspl", "nReps", "fmod", "Depr"]:
                     # print('dbspl/nreps: ', data)
                     if data != "None":
                         self.filters[path[1]] = int(data)

@@ -77,6 +77,7 @@ class IndexData:
     soundType: str = ""
     fmod: Union[float, None]= None
     SRType: str = ""
+    ANSynapticDepression: Union[int] = 0
     elapsed: float = 0.0
     runProtocol: str = ""
     synapsetype: str = ""
@@ -317,6 +318,11 @@ class TableManager:
             Index_data.fmod = params["fmod"]
 
             try:
+                Index_data.ANSynapticDepression = params["ANSynapticDepression"]
+            except:
+                Index_data.ANSynapticDepression = 0
+                
+            try:
                 Index_data.dt = params["dt"]
             except:
                 Index_data.dt = 20e-6
@@ -344,6 +350,7 @@ class TableManager:
             Index_data.modelName = params.modelName
             Index_data.runProtocol = runinfo.runProtocol
             Index_data.synapsetype = params.ANSynapseType
+            Index_data.ANSynapticDepression = params.ANSynapticDepression
             Index_data.synapseExperiment = runinfo.Spirou
             Index_data.dBspl = runinfo.dB
             Index_data.nReps = runinfo.nReps
@@ -541,6 +548,7 @@ class TableManager:
                     indxs[i].dendriteMode,
                     indxs[i].synapseExperiment,
                     indxs[i].SRType,
+                    indxs[i].ANSynapticDepression,
                     indxs[i].dBspl,
                     indxs[i].nReps, # command_line["nReps"],
                     indxs[i].pipDur,
@@ -568,6 +576,7 @@ class TableManager:
                 # ("scaling", object),
                 # ("Freq", object),
                 ('SRType', object),
+                ("Depr", object),
                 ("dBspl", object),
                 ("nReps", object),
                 ("pipDur", object),
@@ -611,8 +620,8 @@ class TableManager:
     def filter_table(self, filters, QtCore):
             
             coldict = {'modelName': 4, 'Protocol': 5, 'dendMode': 6, 'dendExpt':7, 'Experiment': 8, 'SRType': 9,
-                        'dBspl': 10, 'nReps': 11,
-                         "pipDur": 12, "soundType": 13, "fmod": 14, "DataTable": 16,}
+                        'Depr':10,'dBspl': 11, 'nReps': 12,
+                         "pipDur": 13, "soundType": 14, "fmod": 15, "DataTable": 17,}
             filtered_table = self.data.copy()
             matchsets = dict([(x, set()) for x in filters.keys() if x != 'Use Filter'])
             for k, d in enumerate(self.data):

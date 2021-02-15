@@ -2512,9 +2512,11 @@ class PlotSims:
             floatAdd={"x": 0, "y": 2},
             pointSize=7,
         )
+        print('RCP.si: ', RCP.si)
         P.figure_handle.suptitle(
             f"Cell {PD.thiscell:s} {str(RCP.si.shortSimulationFilename):s}\n[{RCP.ri.runTime:s}] dB:{RCP.ri.dB:.1f} Prot: {RCP.ri.runProtocol:s}"
-            + f"\nExpt: {RCP.ri.Spirou:s}  DendMode: {RCP.si.dendriteMode:s} DendExpt: {RCP.si.dendriteExpt:s}",
+            + f"\nExpt: {RCP.ri.Spirou:s}  DendMode: {RCP.si.dendriteMode:s} DendExpt: {RCP.si.dendriteExpt:s}"
+            + f"\nDepr: {RCP.si.ANSynapticDepression:d} ANInput: {RCP.si.SRType:s}",
             fontsize=11,
         )
         mpl.show()
@@ -3091,10 +3093,11 @@ class PlotSims:
                 if soundtype == "tone":
                     print("Tone: F0=%.3f at %3.1f dbSPL, cell CF=%.3f" % (F0, dB, F0))
                 if soundtype == "SAM" and plotflag:
-                    tstring = (
-                        "SAM Tone: F0=%.3f at %3.1f dbSPL, fMod=%3.1f  dMod=%5.2f, cell CF=%.3f"
-                        % (F0, dB, fmod, dmod, F0,)
-                    )
+                    tstring = f"SAM Tone: F0={F0:.3f} at {dB:3.1f} dbSPL, fMod={fmod:3.1f}  dMod={dmod:5.2f}, cell CF={F0:.3f}"
+                    # print('si: ', si)
+                    tstring += f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s} DendExpt: {si.dendriteExpt:s}"
+                    tstring += f"\nDepr: {si.ANSynapticDepression:d} ANInput: {si.SRType:s}"
+                    
                     P.figure_handle.suptitle(tstring, fontsize=10)
                 vs = self.vector_strength(
                     bu_spikesinwin, fmod,
