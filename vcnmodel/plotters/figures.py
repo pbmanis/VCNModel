@@ -1069,7 +1069,10 @@ class Figures(object):
 
     def plot_all_revcorr(self):
         for cell in grAList():
-            self.plot_revcorr(cell)
+            fig = self.plot_revcorr(cell)
+            if fig is not None:
+                self.save_figure(fig)
+        return None
     
     def plot_revcorr(self, cellN=None, parent_figure:Union[object, None]=None,
             loc:tuple=(0., 0., 0., 0.), 
@@ -1216,11 +1219,11 @@ class Figures(object):
             if cellN is None:
                 save_file = "Fig_M3.pdf"
             else:
-                save_file = f"Fig_Revcorr/Revcorr_VCN_c{cell_number:02d}.png"
+                save_file = f"Fig_Revcorr/Revcorr_VCN_c{cell_number:02d}.pdf"
         else:
             save_file = f"Fig_M3_{dBSPL:s}.pdf"
         title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
-        save_file = "Fig_M2_Efficacy_Revcorr.pdf"
+        # save_file = "Fig_M2_Efficacy_Revcorr.pdf"
         fig = FigInfo()
         if parent_figure is not None:
             fig.P = parent_figure

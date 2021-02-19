@@ -1654,8 +1654,8 @@ class PlotSims:
         sax1 = sax[p_labels[1]]
         sax2 = sax[p_labels[2]]
         sax3 = sax[p_labels[3]]
-        print('revcorr2: sax: ', sax)
-        print('plabels', p_labels)
+        # print('revcorr2: sax: ', sax)
+        # print('plabels', p_labels)
         if axarray is None:
             ax = sax1
             secax = sax0
