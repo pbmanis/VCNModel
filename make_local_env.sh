@@ -14,7 +14,7 @@ pip3 install cython
 #
 pip3 install -r requirements_local.txt
 source $ENVNAME/bin/activate
-
+pip3 install mayavi
 # build the mechanisms
 # this may equire a separate install of the standard NEURON package
 # with the same version as we have provided
