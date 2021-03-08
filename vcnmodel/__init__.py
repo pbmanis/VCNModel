@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+AUDIT_TESTS=False
 
 # import vcnmodel.model_run
 # import vcnmodel.model_params
