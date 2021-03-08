@@ -11,4 +11,4 @@ z = r*sin(phi)*sin(theta)
 # View it.
 from mayavi import mlab
 s = mlab.mesh(x, y, z)
-mlab.show()
+# mlab.show()
