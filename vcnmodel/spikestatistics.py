@@ -5,9 +5,9 @@ In all functions below, spikes is a sorted list of spike times
 """
 from __future__ import print_function
 import numpy as np
+from quantities import Hz, ms, s
 
-# from brian2.units import check_units, second
-# from brian2.units.stdunits import ms, Hz
+
 from operator import itemgetter
 
 __all__ = [
@@ -50,9 +50,9 @@ def CV(spikes):
 
 
 # Second-order statistics
-def correlogram(T1, T2, width=20.0, binwidth=1.0, T=None):
+def correlogram(T1, T2, width=20.0*ms, bin_width=1.0*ms, T=None):
     """
-    Returns a cross-correlogram with lag in [-width,width] and given binwidth size.
+    Returns a cross-correlogram with lag in [-width,width] and given bin_width size.
     T is the total duration (optional) and should be greater than or
     equal ti the duration of T1 and T2.
     The result is in Hz (rate of coincidences in each bin).
@@ -68,7 +68,7 @@ def correlogram(T1, T2, width=20.0, binwidth=1.0, T=None):
     T2 = np.array(T2)
     i = 0
     j = 0
-    n = int(np.ceil(width / binwidth)) # Histogram length
+    n = int(np.ceil(width / bin_width)) # Histogram length
     l = []
     for t in T1:
         while i < len(T2) and T2[i] < t - width:  # other possibility use searchsorted
@@ -76,78 +76,78 @@ def correlogram(T1, T2, width=20.0, binwidth=1.0, T=None):
         while j < len(T2) and T2[j] < t + width:
             j += 1
         l.extend(T2[i:j] - t)
-    H, _ = np.histogram(l, bins=np.arange(2 * n + 1) * binwidth - n * binwidth) #, new = True)
+    H, _ = np.histogram(l, bins=np.arange(2 * n + 1) * bin_width - n * bin_width) #, new = True)
 
     # Divide by time to get rate
     if T is None and len(T1) > 0:
-        T = np.max((T1[-1], T2[-1])) - np.min((T1[0], T2[0]))
+        T = np.max((T1[-1], T2[-1]))*ms - np.min((T1[0], T2[0]))*ms
     if len(T1) == 0:  # handle empty spike train
-        T = 0
+        T = 0*ms
     # Windowing function (triangle)
     W = np.zeros(2 * n)
-    W[:n] = T - binwidth * np.arange(n - 1, -1, -1)
-    W[n:] = T - binwidth * np.arange(n)
+    W[:n] = T - bin_width * np.arange(n - 1, -1, -1)
+    W[n:] = T - bin_width * np.arange(n)
 
     return H / W
 
 
-def autocorrelogram(T0, width=20.0, binwidth=1.0, T=None):
+def autocorrelogram(T0, width=20.0, bin_width=1.0, T=None):
     """
-    Returns an autocorrelogram with lag in [-width,width] and given binwidth size.
+    Returns an autocorrelogram with lag in [-width,width] and given bin_width size.
     T is the total duration (optional) and should be greater than the duration of T1 and T2.
     The result is in Hz (rate of coincidences in each bin).
 
     N.B.: units are discarded.
     """
-    return correlogram(T0, T0, width, binwidth, T)
+    return correlogram(T0, T0, width, bin_width, T)
 
 
-def CCF(T1, T2, width=20.0, binwidth=1.0, T=None):
+def CCF(T1, T2, width=20.0, bin_width=1.0, T=None):
     """
-    Returns the cross-correlation function with lag in [-width,width] and given binwidth size.
+    Returns the cross-correlation function with lag in [-width,width] and given bin_width size.
     T is the total duration (optional).
     The result is in Hz**2:
     CCF(T1,T2)=<T1(t)T2(t+s)>
 
     N.B.: units are discarded.
     """
-    return correlogram(T1, T2, width, binwidth, T) / binwidth
+    return correlogram(T1, T2, width, bin_width, T) / bin_width
 
 
-def ACF(T0, width=20, binwidth=1, T=None):
+def ACF(T0, width=20, bin_width=1, T=None):
     """
-    Returns the autocorrelation function with lag in [-width,width] and given binwidth size.
+    Returns the autocorrelation function with lag in [-width,width] and given bin_width size.
     T is the total duration (optional).
     The result is in Hz**2:
     ACF(T0)=<T0(t)T0(t+s)>
 
     N.B.: units are discarded.
     """
-    return CCF(T0, T0, width, binwidth, T)
+    return CCF(T0, T0, width, bin_width, T)
 
 
-def CCVF(T1, T2, width=20, binwidth=1, T=None):
+def CCVF(T1, T2, width=20, bin_width=1, T=None):
     """
-    Returns the cross-covariance function with lag in [-width,width] and given binwidth size.
+    Returns the cross-covariance function with lag in [-width,width] and given bin_width size.
     T is the total duration (optional).
     The result is in Hz**2:
     CCVF(T1,T2)=<T1(t)T2(t+s)>-<T1><T2>
 
     N.B.: units are discarded.
     """
-    return CCF(T1, T2, width, binwidth, T) - firing_rate(T1) * firing_rate(T2)
+    return CCF(T1, T2, width, bin_width, T) - firing_rate(T1) * firing_rate(T2)
 
 
-def ACVF(T0, width=20, binwidth=1, T=None):
+def ACVF(T0, width=20, bin_width=1, T=None):
     """
-    Returns the autocovariance function with lag in [-width,width] and given binwidth size.
+    Returns the autocovariance function with lag in [-width,width] and given bin_width size.
     T is the total duration (optional).
     The result is in Hz**2:
     ACVF(T0)=<T0(t)T0(t+s)>-<T0>**2
 
     N.B.: units are discarded.
     """
-    return CCVF(T0, T0, width, binwidth, T)
+    return CCVF(T0, T0, width, bin_width, T)
 
 
 def spike_triggered_average(
@@ -384,7 +384,7 @@ if __name__ == "__main__":
     T1 = T1[T1 < duration]
     T2 = T2[T2 < duration]
     print(firing_rate(T1))
-    C = CCVF(T1, T2, binwidth=1)
+    C = CCVF(T1, T2, bin_width=1)
     print(total_correlation(T1, T2))
     mpl.plot(C)
     mpl.show()
