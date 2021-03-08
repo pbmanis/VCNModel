@@ -2059,13 +2059,20 @@ class Figures(object):
             fh.write(
                 "    Results are printout from DataTablesVCN after selecting the data runs.\n"
             )
+            fh.write("NOTE: This table is automatically written by figures. py and should not be\n")
+            fh.write("      directly edited.")
             fh.write(f'    pbm\n"""\n')
             fh.write('\ndata = """')
 
+        fl = True
         for i, celln in enumerate(grAList()):
-            self.analyze_VS_data(VS_datasets, celln, fout, firstline=True)
+           # if i !=  1:
+   #              continue
+            self.analyze_VS_data(VS_datasets, celln, fout, firstline=fl)
+            fl = False
         with open(fout, "a") as fh:
             fh.write(f'"""\n')
+        print('VS_Finis')
 
     def plot_VC_gKLT(self, parent_figure=None, loc:Union[None, tuple]=None):
         cell_number = 17
