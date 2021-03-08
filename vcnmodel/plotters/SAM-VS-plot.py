@@ -31,6 +31,9 @@ Reads the data from VS_data.py
 # datas = {'100': data100Hz, '400': data400Hz}  # just keep adding...
 panels = {100: ["A", "B"], 200: ["C","D"], 300: ['E', 'F'], 
           400: ['G', 'H'], 500: ['I', "J"], 750: ['K', 'L'], 1000: ["M", "N"]}
+# plotwhat = "VectorStrength"
+plotwhat = "phasesd"
+plotwhat = "phasesdtime"
 
 def reset_style():
     sns.set_style(rc={"pdf.fonttype": 42})
@@ -54,6 +57,9 @@ def vs_an_freq(df):
     return vs_by_freq
 
 def plot_summary(dataframe, measure, P, axname, hue='Cell', legend=False):
+    if measure == 'phasesdtime':
+        df['phasesdtime'] = 1e3*(df['phasesd']/np.pi)/df['frequency']
+
     sns.boxplot(
         x="Configuration",
         y=measure,
@@ -88,6 +94,8 @@ def plot_summary(dataframe, measure, P, axname, hue='Cell', legend=False):
 
 
 def plot_summary2(dataframe, measure, P, axname, hue='Configuration', legend=False):
+    if measure == 'phasesdtime':
+        df['phasesdtime'] = 1e3*(df['phasesd']/np.pi)/df['frequency']
     sns.boxplot(
         x="frequency",
         y=measure,
@@ -166,7 +174,7 @@ def individual_plots():
             legend = True
         else:
             legend = False
-        plot_summary(dff, 'VectorStrength', P, panels[int(k)][0], hue=hue, legend=False)
+        plot_summary(dff, plotwhat, P, panels[int(k)][0], hue=hue, legend=False)
         PH.referenceline(P.axdict[panels[k][0]], pa[k], [-0.5,3], 'k')
         plot_summary(dff, 'phase', P, panels[int(k)][1], hue=hue, legend=legend)
 
@@ -208,7 +216,10 @@ def summary_plots():
     datas = VS_data.data
     sio = io.StringIO(datas)
     df = pd.read_table(sio, sep=",")
-    df['phase'] = df['phase']/(np.pi)  # convert to radians
+    # df['phase'] = df['phase']/(np.pi)  # convert to radians
+    # df['phasesd'] = df['phasesd']/np.pi  # also the phase SD
+    if plotwhat == 'phasesdtime':
+        df['phasesdtime'] = 1e3*(df['phasesd']/np.pi)/df['frequency']
     # df['frequency'] = int(df['frequency'])
     bins = [-np.inf, 150, 250, 450, 800, 1200]
 
@@ -217,10 +228,10 @@ def summary_plots():
     # df['frequency'] = pd.cut(df.frequency, bins=bins, labels=labels)
     # print(df['frequency'])
     hue='Configuration'
-    # plot_summary2(df, 'VectorStrength', P2, 'A', hue=hue, legend=False)
+    # plot_summary2(df, plotwhat, P2, 'A', hue=hue, legend=False)
     # plot_summary2(dff, 'phase', P2, 'B', hue=hue, legend=True)
-    # P2.axdict['A'].scatter(df['frequency'], df['VectorStrength'])
-    scp1 = sns.swarmplot(x="frequency", y="VectorStrength", data=df, hue=hue, ax=P2.axdict['A'],
+    # P2.axdict['A'].scatter(df['frequency'], df[plotwhat])
+    scp1 = sns.swarmplot(x="frequency", y=plotwhat, data=df, hue=hue, ax=P2.axdict['A'],
             clip_on=False, s=3)
     scp1.legend(
             loc="lower left", bbox_to_anchor=(0.0, 0.0), ncol=1,
@@ -241,7 +252,8 @@ def summary_plots():
     scp2.legend().remove()
     return P2
 
-P = individual_plots()
+#P = individual_plots()
+P = summary_plots()
 # save_file = f"Fig_M6_VS_SAM_Supplmental.pdf"
 # P.figure_handle.text(
 #     0.99,
