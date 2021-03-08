@@ -8,10 +8,9 @@ import matplotlib
 import numpy as np
 import pandas as pd
 import scipy.stats
+import toml
 from matplotlib import pyplot as mpl
 from pylibrary.plotting import plothelpers as PH
-
-import toml
 
 """
 Data sets are from George Spirou & Co. (Michael Morehead,
@@ -146,34 +145,38 @@ class SRMap:
 
 
 class CellConfig:
-    def __init__(self, datafile: Union[str, Path, None] = None, 
-            spont_mapping: Union[str, None]=None, verbose: bool = False):
+    def __init__(
+        self,
+        datafile: Union[str, Path, None] = None,
+        spont_mapping: Union[str, None] = None,
+        verbose: bool = False,
+    ):
         """
         Class to handle the configuration from tables of individual cell data.
-        
+
         Parameters
         ----------
         datafile: str, Path, or None
         Name of the source data file. This is an excel file, in a specific
-            format and with specific worksheet names. 
-        
+            format and with specific worksheet names.
+
         verbose: bool (default False)
             whether to print out info as we proceed for debugging purposes.
-        
+
         Returns
         -------
         Initialization does not return anything, but it restructures the data
         for later use
         """
 
-        assert spont_mapping in ['HS', 'LS', 'MS', 'mixed1', None]
+        assert spont_mapping in ["HS", "LS", "MS", "mixed1", None]
 
         self.synperum2 = synperum2
         if datafile is None:
             datafile = dendqual
         self.verbose = verbose
         self.datafile = datafile
-        self.spont_mapping = spont_mapping # only set if the spont map is determined
+        self.spont_mapping = spont_mapping  # only set if the spont map is determined
         if self.verbose:
             print("CellConfig: configuration dict: ")
         with open(datafile, "rb") as fh:
@@ -183,7 +186,10 @@ class CellConfig:
 
         with open(datafile, "rb") as fh:
             self.ASA = pd.read_excel(
-                fh, config["asaData"], skiprows=config["asaHeaderSkip"]
+                fh,
+                config["asaData"],
+                skiprows=config["asaHeaderSkip"],
+                engine="openpyxl",
             )
 
         self.VCN_Inputs = OrderedDict()
@@ -192,26 +198,27 @@ class CellConfig:
             self.build_cell(cellnum)
 
             r, ct = self.make_dict(
-                f"VCN_c{cellnum:02d}", synperum2=synperum2, synapsemap=self.spont_mapping,
+                f"VCN_c{cellnum:02d}",
+                synperum2=synperum2,
+                synapsemap=self.spont_mapping,
             )
 
         if self.spont_mapping in ["mixed1"]:
             self.divide_SR_by_size()
             for cellnum in cellsintable:
                 self.assign_SR_by_size(f"VCN_c{cellnum:02d}")
-        
-        
+
         if self.verbose:
             self.print_cell_inputs(self.VCN_Inputs)
 
     def build_cell(self, cellnum: str):
         """
         Put the data from the table from the given cell into a class dictionary
-        
+
         Parameters
         ----------
         cellnum : str (required)
-        
+
         """
         dcell = self.ASA[self.ASA["Cell-Inputs"] == cellnum]
         celln = f"VCN_c{cellnum:02d}"
@@ -249,7 +256,7 @@ class CellConfig:
         synapse_map: str
             one of allHS, allLS, all MS, or mixed
             This assigns the SR group
-    
+
         Parameters
         ----------
         cell : str (required)
@@ -261,7 +268,7 @@ class CellConfig:
         areainflate: float (default 1.0)
             Area correction to use, when mapping between swc areas and mesh areas
             for more accurate areal representations.
-    
+
         Returns
         -------
         r : list containing dict of each input
@@ -285,8 +292,10 @@ class CellConfig:
             elif synapsemap in ["mixed1"]:
                 sr = -1  # assignment will be done later
             self.VCN_Inputs[cell][1][j][2] = sr
-            r[j] = OrderedDict(  # this is nice, but we use a list directly (should have been a dataclass, but
-                                # that did not exist when this was started. Not really used anyway.
+            r[
+                j
+            ] = OrderedDict(  # this is nice, but we use a list directly (should have been a dataclass, but
+                # that did not exist when this was started. Not really used anyway.
                 [
                     ("input", j + 1),
                     ("asa", asa),
@@ -305,14 +314,12 @@ class CellConfig:
             )
         return r, celltype
 
-
     def assign_SR_by_size(
-        self,
-        cell,
+        self, cell,
     ):
         """
         Adjust the synapse map if using mixed1 or other mapping based on size
-    
+
         Parameters
         ----------
         cell : str (required)
@@ -323,7 +330,6 @@ class CellConfig:
         """
         assert cell in self.VCN_Inputs
         assert self.spont_mapping in ["mixed1"]
-        celltype = self.VCN_Inputs[cell][0]
         input_data = self.VCN_Inputs[cell][1]
         for i, ind in enumerate(input_data):
             srg = self.get_SR_from_ASA(ind[0])
@@ -374,15 +380,15 @@ class CellConfig:
         """
         Compute the inflation from the SWC/HOC to the mesh area
         for the soma
-        
+
         Parameters
         ----------
         cellID: str or int (required)
-        
+
         Returns
         -------
         inflation ratio : float
-        
+
         """
         cellnum = self._get_cell_num(cellID)
         dcell = self.SDSummary[self.SDSummary["Cell Number"] == cellnum]
@@ -402,15 +408,15 @@ class CellConfig:
         """
         Compute the inflation from the SWC/HOC to the mesh area
         for the dendrites
-        
+
         Parameters
         ----------
         cellID: str or int (required)
-        
+
         Returns
         -------
         inflation ratio : float
-        
+
         """
         cellnum = self._get_cell_num(cellID)
         dcell = self.SDSummary[self.SDSummary["Cell Number"] == cellnum]
@@ -439,11 +445,11 @@ class CellConfig:
         0.65 syn/um2 (early simulations; value taken from MNTB calyx)
         0.799 syn/um2 (April 2020-10 Nov 2020 simulations; based on subset of endings)
         0.7686 syn/um2 (based on 23 endings, data from June 2020)
-        
+
         Parameters
         ----------
         None
-        
+
         Returns
         -------
         Nothing
@@ -466,24 +472,24 @@ class CellConfig:
 
     def divide_SR_by_size(self, pct: list = [29, 39, 32]):
         """
-        This routine takes all of the individual measured 
+        This routine takes all of the individual measured
         surface measurments of endinbs, and determines which
         should be allocated to a particular spontaneous rate group,
         based solely on the percentiles in the distribution.
         The default percentiles are estimates and averaged from the
         3 papers: Sun et al., 2018; Sresthsa et al. 2018 and Petitpre et al.
-        2018. 
-        
+        2018.
+
         Parameters
         ----------
         pct : a list of percentages default: [29, 39, 32]
             3 values required; runs from highspont to low-spont groups
             should sum to 100.
-        
+
         Returns
         -------
         dict SRMap data class for each sr group (numbered)
-        
+
         """
         gname = {2: "HS", 1: "MS", 0: "LS"}
         allendings = []
@@ -526,14 +532,14 @@ class CellConfig:
     def get_SR_from_ASA(self, asa: float):
         """
         If the spont map is defined, return the SR group index
-        that this input area falls into. It is an error to run 
+        that this input area falls into. It is an error to run
         this without running divide_SR_by_size first.
-        
+
         Parameters
         ----------
         asa : float
             apposed surface area measurement (microns**2)
-        
+
         Returns
         -------
         SR as an index (2=high, 1=medium, 0=low)
@@ -685,7 +691,7 @@ class CellConfig:
 
 if __name__ == "__main__":
     # Check the formatting and display the results
-    cc = CellConfig(datafile, spont_mapping='mixed1')
+    cc = CellConfig(datafile, spont_mapping="mixed1")
     # make sure all is working
     cc.summarize_release_sites()
     cc.print_cell_inputs(cc.VCN_Inputs)
