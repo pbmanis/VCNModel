@@ -4,12 +4,12 @@ from pathlib import Path
 import matplotlib
 import numpy as np
 import pyqtgraph as pg
-import toml
+import seaborn as sns
 from matplotlib import pyplot as mpl
 from pylibrary.plotting import plothelpers as PH
-from pylibrary.plotting import styler as STY
 
-import seaborn as sns
+import toml
+
 matplotlib.rcParams["mathtext.fontset"] = "stixsans"
 # matplotlib.rcParams['font.family'] = 'sans-serif'
 # matplotlib.rcParams['font.sans-serif'] = ['stixsans'] #, 'Tahoma', 'DejaVu Sans',
@@ -19,6 +19,13 @@ matplotlib.rcParams["text.usetex"] = False
 sns.set_style(rc={"pdf.fonttype": 42})
 
 config = toml.load(open("wheres_my_data.toml", "r"))
+
+"""
+Plot the impedances as seen from the soma for VCN cells
+for different dendritic configurations
+Assumes that the analysis has already been done, and that the
+location of that data is given in the 'wheres_my_data.toml' file
+"""
 
 
 class PlotZ:
@@ -42,6 +49,9 @@ class PlotZ:
             self.mpl_plot()
 
     def pg_plot(self):
+        """
+        Pyqtgraph plotting version
+        """
         pg.mkQApp()
         win = pg.GraphicsWindow()
         win.setGeometry(100, 100, 500, 1200)
@@ -57,24 +67,29 @@ class PlotZ:
         p3.setLabels(title="Impedance Locus", left="-Zi (MOhm)", bottom="Zr (MOhm)")
         # legend = pg.LegendItem()
         # legend.setParentItem(p1)
-        legend = p2.addLegend((80, 50), offset=(-1, 1))
+        # legend = p2.addLegend((80, 50), offset=(-1, 1))
         # print(dir(legend))
         # legend.setProperty({textsize:'8pt'})
 
         for i, filename in enumerate(self.filenames):
-            with open(filename, "rb") as fh:
+            with open(
+                Path(
+                    config["cellDataDirectory"], config["impedanceDirectory"], filename
+                ),
+                "rb",
+            ) as fh:
                 d = pickle.load(fh)
-            col = pg.intColor(i, hues=len(f))
-            pz = p1.plot(
-                d["f"], d["zin"], pen=col, symbol=syms[i], symbolSize=3, name=filename
+            col = pg.intColor(i, hues=len(self.filenames))
+            p1.plot(
+                d["f"], d["zin"], pen=col, symbol=self.syms[i], symbolSize=3, name=filename
             )
-            pp = p2.plot(
-                d["f"], d["phase"], pen=col, symbol=syms[i], symbolSize=3, name=filename
+            p2.plot(
+                d["f"], d["phase"], pen=col, symbol=self.syms[i], symbolSize=3, name=filename
             )
             zr = d["zin"] * np.sqrt(1.0 / (1 + (np.tan(d["phase"]) ** 2.0)))
             zi = np.tan(d["phase"]) * zr
 
-            p3.plot(zr, -zi, pen=col, symbol=syms[i], symbolSize=3)
+            p3.plot(zr, -zi, pen=col, symbol=self.syms[i], symbolSize=3)
         # legendLabelStyle = {'color': '#FFF', 'size': '12pt', 'bold': True, 'italic': False}
         # for item in legend.items:
         #     for single_item in item:
@@ -84,7 +99,9 @@ class PlotZ:
         pg.QtGui.QApplication.instance().exec_()
 
     def mpl_plot(self):
-        # matplotlib etc.
+        """
+        matplotlib version (for production)
+        """
         # style = STY.styler('JNeurosci', "single")
         P = PH.regular_grid(
             3,
@@ -108,7 +125,6 @@ class PlotZ:
             f = []
             for fin in self.fi:
                 f.append(f"VCN_c{fin:02d}_{cond:s}_Z.pkl")
-            print(len(f))
             self.plot_col(col=i, f=f, P=P)
         save_file = "Fig_M1B_Supplemental_Zin.pdf"
         P.figure_handle.text(
@@ -135,16 +151,22 @@ class PlotZ:
             if i < 4:
                 a.set_xscale("log")
         for i, filename in enumerate(f):
-            print("col: ", col, i, "file: ", filename)
+            # print("col: ", col, i, "file: ", filename)
             label = filename[:]  # .replace('_', '\_')
-            with open(filename, "rb") as fh:
+            with open(
+                Path(
+                    config["cellDataDirectory"], config["impedanceDirectory"], filename
+                ),
+                "rb",
+            ) as fh:
                 d = pickle.load(fh)
-            print("dkeys: ", d.keys())  # col = pg.intColor(i, hues=len(f))
-            pz = ax[0, col].plot(
+            print(f"File read: {str(filename):s}")
+            # print("dkeys: ", d.keys())  # col = pg.intColor(i, hues=len(f))
+            ax[0, col].plot(
                 d["f"], d["zin"], marker=self.syms[i], markersize=3, label=label[:7]
             )
             ax[0, col].set_ylim(0, 100.0)
-            ax[0, col].set_ylabel("R (M$\Omega$)")
+            ax[0, col].set_ylabel(r"R (M$\Omega$)")
             ax[0, col].set_xlabel("Frequency (Hz)")
 
             if col == 0:
@@ -152,7 +174,7 @@ class PlotZ:
             if col == 1:
                 ax[0, col].set_title("No Dendrite", {"y": 1.15, "fontweight": "bold"})
 
-            pp = ax[1, col].plot(
+            ax[1, col].plot(
                 d["f"],
                 d["phase"],
                 marker=self.syms[i],
@@ -160,7 +182,7 @@ class PlotZ:
                 # label=filename
             )
             ax[1, col].set_ylim(-1.5, 0.25)
-            ax[1, col].set_ylabel("$\phi$ (radians)")
+            ax[1, col].set_ylabel(r"$\phi$ (radians)")
             ax[1, col].set_xlabel("Frequency (Hz)")
 
             zr = d["zin"] * np.sqrt(1.0 / (1 + (np.tan(d["phase"]) ** 2.0)))
@@ -171,8 +193,8 @@ class PlotZ:
             )
             ax[2, col].set_ylim(-10.0, 60.0)
             ax[2, col].set_xlim(5, 100)
-            ax[2, col].set_ylabel("-Im(Z) (M$\Omega$)")
-            ax[2, col].set_xlabel("Re(Z) (M$\Omega$)")
+            ax[2, col].set_ylabel(r"-Im(Z) (M$\Omega$)")
+            ax[2, col].set_xlabel(r"Re(Z) (M$\Omega$)")
 
         if col == 0:
             axbox = ax[0, col].get_position()
