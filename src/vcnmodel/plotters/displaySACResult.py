@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 from cnmodel.util import sound
-import vcnmodel.sac_campagnola as SAC
+import src.vcnmodel.sac_campagnola as SAC
 import pylibrary.plotting.plothelpers as PH
 
 def main():

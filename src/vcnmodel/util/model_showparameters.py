@@ -2,7 +2,7 @@ from collections import OrderedDict
 import pickle
 import pylibrary as PL
 import pprint
-import vcnmodel.model_params as model_params
+import src.vcnmodel.model_params as model_params
 
 
 """"

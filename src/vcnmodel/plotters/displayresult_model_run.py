@@ -32,11 +32,11 @@ import toml
 config = toml.load(open("wheres_my_data.toml", "r"))
 
 from cnmodel.util import sound
-import vcnmodel.sac_campagnola as SAC
+import src.vcnmodel.sac_campagnola as SAC
 import pylibrary.plotting.plothelpers as PH 
 from cnmodel.util import vector_strength
 # import GIF_fit as GFit
-import vcnmodel.vspfile
+import src.vcnmodel.vspfile
 
 # import warnings
 # warnings.filterwarnings("ignore")

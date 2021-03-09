@@ -25,7 +25,7 @@ from collections import OrderedDict
 from cnmodel.util import sound
 from cnmodel.util import vector_strength
 
-import vcnmodel.sac_campagnola as SAC
+import src.vcnmodel.sac_campagnola as SAC
 import pylibrary.plotting.plothelpers as PH
 # import GIF_fit as GFit
 

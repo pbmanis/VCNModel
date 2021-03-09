@@ -17,7 +17,7 @@ from pylibrary.plotting import styler as ST
 from pylibrary.tools import utility as PU
 from vcnmodel import cell_config as cell_config
 
-import vcnmodel.VS_data as VS_data
+import src.vcnmodel.VS_data as VS_data
 config = toml.load(open("wheres_my_data.toml", "r"))
 
 """

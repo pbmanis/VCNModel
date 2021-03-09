@@ -26,7 +26,7 @@ if len(sys.argv) > 1:
 else:
     modelName = default_modelName
 plotflag = True
-import vcnmodel.model_run as mrun
+import src.vcnmodel.model_run as mrun
 
 M = (
     mrun.ModelRun()

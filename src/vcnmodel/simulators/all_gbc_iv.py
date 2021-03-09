@@ -21,7 +21,7 @@ import numpy as np
 import pickle
 import matplotlib.pyplot as mpl
 import pylibrary.plotting.plothelpers as PH
-import vcnmodel.model_run as mrun
+import src.vcnmodel.model_run as mrun
 from ephys.ephysanalysis import MakeClamps
 from ephys.ephysanalysis import RmTauAnalysis
 from ephys.ephysanalysis import SpikeAnalysis

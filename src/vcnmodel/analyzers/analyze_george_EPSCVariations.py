@@ -5,7 +5,7 @@ import subprocess
 import logging
 import pickle
 
-import vcnmodel.vspfile as vspfile
+import src.vcnmodel.vspfile as vspfile
 
 
 def main():

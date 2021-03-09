@@ -17,7 +17,7 @@ from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
 import pylibrary.plotting.pyqtgraph_plothelpers as pgPH
 import pylibrary.plotting.plothelpers as PH  # matplotlib
-import vcnmodel.analyzers.analyze_run as AR
+import src.vcnmodel.analyzers.analyze_run as AR
 
 pg.setConfigOption('background', 'w')  # set background to white
 pg.setConfigOption('foreground', 'k')

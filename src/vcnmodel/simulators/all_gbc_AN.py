@@ -10,7 +10,7 @@ import os
 import sys
 import pickle
 from pathlib import Path
-import vcnmodel.model_run as mrun
+import src.vcnmodel.model_run as mrun
 
 class OneANRun(object):
     def __init__(self, gbc_name, modelName, modelType, protocol, SR, nrep, forcerun=False, 

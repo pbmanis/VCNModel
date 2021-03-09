@@ -22,11 +22,11 @@ rc('text', usetex=False)
 import seaborn
 
 from cnmodel.util import sound
-import vcnmodel.sac_campagnola as SAC
+import src.vcnmodel.sac_campagnola as SAC
 import pylibrary.plotting.plothelpers as PH
 import pylibrary.tools.utility as pu
-import vcnmodel.spikestatistics as SPKS
-import vcnmodel.cell_config as cell_config
+import src.vcnmodel.spikestatistics as SPKS
+import src.vcnmodel.cell_config as cell_config
 
 re_c10 = re.compile('_inp=VCN_c10_')
 re_self = re.compile('_inp=self_')

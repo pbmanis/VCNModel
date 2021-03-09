@@ -32,7 +32,7 @@ from __future__ import print_function
 import numpy as np
 import pyqtgraph as pg
 import pylibrary.plotting.pyqtgraph_plothelpers as pgh
-import vcnmodel.sac_asm
+import src.vcnmodel.sac_asm
 
 
 class SAC(object):
