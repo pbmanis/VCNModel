@@ -14,6 +14,7 @@ from functools import wraps
 from pathlib import Path
 from typing import List, Tuple, Union
 
+
 import lmfit
 import matplotlib.colorbar  # type: ignore
 import matplotlib.colors  # type: ignore
@@ -43,7 +44,7 @@ from vcnmodel import analysis as SPKANA
 from vcnmodel import cell_config as cell_config
 from vcnmodel import spikestatistics as SPKS
 from vcnmodel import sttc as STTC
-
+from vcnmodel.util import vector_strength  as VS
 import toml
 config = toml.load(open("wheres_my_data.toml", "r"))
 
@@ -459,6 +460,7 @@ class PlotSims:
             parent  # mostly to provide access to datatables elements (display)
         )
         self.firstline = True
+        self.VS = VS.VectorStrength()
 
     def textclear(self):
         if self.parent is None:
@@ -2663,51 +2665,6 @@ class PlotSims:
 
         return P
 
-    @TraceCalls()
-    def vector_strength(self, spikes, freq):
-        """
-        Calculate vector strength and related parameters from a spike train, for the specified frequency
-        :param spikes: Spike train, in sec.
-            If the data comes from repeated trials, the spike train needs to be flattened into a 1d array before 
-            calling. 
-        :param freq: Stimulus frequency in Hz
-        :return: a dictionary containing:
-    
-            r: vector strength
-            n: number of spikes
-            R: Rayleigh coefficient
-            p: p value (is distribution not flat?)
-            ph: the circularized spike train over period of the stimulus freq, freq, in radians
-            d: the "dispersion" computed according to Ashida et al., 2010, etc.
-        """
-        amax = 0.
-        if spikes is None:
-            print('NO spikes')
-        period = 1.0/freq
-        n_spikes = len(spikes)
-        twopi_per  = 2.0*np.pi/period
-        phasev = np.fmod(spikes, period)  # convert to radians within a cycle
-        phasev = phasev * twopi_per
-        sumcos = np.sum(np.cos(phasev))
-        sumsin = np.sum(np.sin(phasev))
-        mean_phase = np.arctan2(sumsin, sumcos)
-        sumc2 = sumcos*sumcos
-        sums2 = sumsin*sumsin
-
-        if n_spikes == 0:
-            return{'r': np.nan, 'n': 0, 'R': np.nan, 'p': 1.0, 'ph': np.nan, 'd': np.nan, 'amax': amax}
-        vs = (1./n_spikes)*np.sqrt(sumc2+sums2)  # standard vector strength computation
-        R = n_spikes*vs*vs  # Raleigh coefficient (Ashida et al, 2010 and many others: note some papers report 2nvs^2)
-        Rp = np.exp(-n_spikes*vs*vs)  # p value for n > 50 (see Ashida et al. 2010).
-        dx = np.sqrt(2.*(1-vs))/(2*np.pi*freq)
-        self.spikes = spikes
-        index_row = self.parent.selected_index_rows[0]
-        selected = self.parent.table_manager.get_table_data(
-            index_row
-        )
-        d = {'r': vs, 'n': n_spikes, 'R': R, 'p': Rp, 'ph': phasev, 'd': dx, 'amax': amax}
-        return d
-        
     @winprint_continuous
     def print_VS(self, d, freq, dmod, dB, experiment):
         print("Getting data")
@@ -2721,23 +2678,20 @@ class PlotSims:
                 amax = area
             sites[isite] = int(np.around(area * SC.synperum2))
 
-        self.VS_colnames  = f"Cell,Configuration,frequency,dmod,dB,VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,AN_VS,maxArea,ninputs"
-        if 'an_vs' in d.keys():
-            anvs = d['an_vs']
-        else:
-            anvs = np.nan
-        print('anvs: ', anvs)
+        self.VS_colnames  = f"Cell,Configuration,carrierfreq,frequency,dmod,dB,VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,AN_VS,AN_phase,AN_phasesd,maxArea,ninputs"
         line = f"{int(self.parent.cellID):d},{experiment:s},"
-        line += f"{freq:.1f},{dmod:.1f},{dB:.1f},"
-        line += f"{d['r']:.4f},"
-        line += f"{d['n']:d},"
-        line += f"{scipy.stats.circmean(d['ph'])/(2*np.pi):.4f},"
-        line += f"{scipy.stats.circstd(d['ph'])/(2.*np.pi):.4f},"
-        line += f"{d['R']:.4f},"
-        line += f"{d['p']:.4e},"
-        line += f"{anvs:.4f},"
+        line += f"{d.carrier_frequency:.1f},{freq:.1f},{dmod:.1f},{dB:.1f},"
+        line += f"{d.vs:.4f},"
+        line += f"{d.n_spikes:d},"
+        line += f"{d.circ_phaseMean:.4f},"
+        line += f"{d.circ_phaseSD:.4f},"
+        line += f"{d.Rayleigh:.4f},"
+        line += f"{d.pRayleigh:.4e},"
+        line += f"{d.an_vs:.4f},"
+        line += f"{d.an_circ_phaseMean:.4f},"
+        line += f"{d.an_circ_phaseSD:.4f},"
         line += f"{amax:.4f},"
-        line += f"{n_inputs:d}"
+        line += f"{d.n_inputs:d}"
         self.VS_line = line
         if self.firstline:
             self.textappend(self.VS_colnames)
@@ -3063,7 +3017,8 @@ class PlotSims:
             #     P.axdict[a].set_xlim((0.0, totaldur))
             # if a in ["F"] and soundtype == "SAM":
             #     P.axdict[a].set_xlim((0.0, totaldur))
-        P.figure_handle.text(x=0.95, y=0.02, s=f"Cell: {int(self.parent.cellID):02d}",
+        if plotflag:
+            P.figure_handle.text(x=0.95, y=0.02, s=f"Cell: {int(self.parent.cellID):02d}",
             horizontalalignment="right")
         if soundtype == "SAM":  # also calculate vs and plot histogram
             if len(all_bu_st) == 0 and plotflag:
@@ -3099,28 +3054,33 @@ class PlotSims:
                     tstring += f"\nDepr: {si.ANSynapticDepression:d} ANInput: {si.SRType:s}"
                     
                     P.figure_handle.suptitle(tstring, fontsize=10)
-                vs = self.vector_strength(
+                vs = self.VS.vector_strength(
                     bu_spikesinwin, fmod,
                 )  # vs expects spikes in msec
-                vs["n_imputs"] = n_inputs
+                vs.carrier_frequency = F0
+                vs.n_inputs = n_inputs
                 print(" Sound type: ", soundtype)
                 print(
-                    "CN Vector Strength at %.1f: %7.3f, d=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d"
-                    % (F0, vs["r"], vs["d"] * 1e6, vs["R"], vs["p"], vs["n"])
+                    "CN Vector Strength at %.1f: %7.3f, dispersion=%.2f (us) Rayleigh: %7.3f  p = %.3e  n_spikes = %d"
+                    % (fmod, vs.vs, vs.circ_timeSD * 1e6, vs.Rayleigh, vs.pRayleigh, vs.n_spikes)
                 )
-                vs_an = self.vector_strength(
+                vs_an = self.VS.vector_strength(
                     an_spikesinwin, fmod,
                 )  # vs expects spikes in msec
-                vs_an["n_inputs"] = n_inputs
+                vs_an.n_inputs = n_inputs
                 print(" Sound type: ", soundtype)
                 print(
                     "AN Vector Strength at %.1f: %7.3f, d=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d"
-                    % (F0, vs_an["r"], vs_an["d"] * 1e6, vs_an["R"], vs_an["p"], vs_an["n_inputs"])
+                    % (fmod, vs_an.vs, vs_an.circ_timeSD * 1e6, vs_an.Rayleigh, vs_an.pRayleigh, vs_an.n_spikes)
                 )
-                vs['an_vs'] = vs_an["r"] # copy 
+                vs.an_vs = vs_an.vs # copy 
+                vs.an_circ_phaseMean = vs_an.circ_phaseMean
+                vs.an_circ_phaseSD = vs_an.circ_phaseSD
+                vs.an_circ_timeSD = vs_an.circ_timeSD
+                
                 self.print_VS(vs, fmod, dmod, dB, ri.Spirou)
                 if plotflag:
-                    self.plot_psth(vs["ph"],
+                    self.plot_psth(vs.circ_phase,
                         run_info = ri,
                         max_time = 2 * np.pi,
                         bin_width = 2.0 * np.pi / 30.0, # 6 degree bins
@@ -3135,7 +3095,7 @@ class PlotSims:
                     # )
                     P.axdict["E"].set_xlim((0.0, 2 * np.pi))
                     P.axdict["E"].set_title(
-                        "Phase (VS = {0:.3f})".format(vs["r"]),
+                        "Phase (VS = {0:.3f})".format(vs.vs),
                         fontsize=9,
                         horizontalalignment="center",
                     )
@@ -3276,6 +3236,13 @@ def build_parser():
         help=("Just check selection criteria and return"),
     )
 
+    parser.add_argument(
+        "-v",
+        "--vectorstrength",
+        dest = "vstest",
+        action = "store_true",
+        help = ("test the vs calculation")
+    )
     return parser
 
 
@@ -3284,6 +3251,8 @@ def cmdline_display(args, PD):
     Display analysis and traces
     when called from the commandline
     """
+
+    
     PS = PlotSims(parent=None)
     args.protocol = args.protocol.upper()
     changetimestamp = get_changetimestamp()
@@ -3404,7 +3373,10 @@ def cmdline_display(args, PD):
 def getCommands():
     parser = build_parser()
     args = parser.parse_args()
-
+    if args.vstest:
+        test_vs()
+        exit()
+        
     # if args.configfile is not None:
     #     config = None
     #     if args.configfile is not None:
@@ -3447,6 +3419,59 @@ def getCommands():
 def main():
     args, PD = getCommands()
 
+def plot_ticks(ax, data, color):
+    ax.plot(np.tile(data, (2,1)), [np.zeros_like(data), np.ones_like(data)], color)
 
+def compute_vs(freq=100., nsp=1000., sd=0.0, rg=None):
+    if sd <= 1:
+        sdn = (2.0/freq)+sd*rg.standard_normal(size=nsp)  +np.pi# just express in temrs of time
+    else:  
+        sdn = (1./freq) * rg.uniform(size=nsp)  # uniform across the interval
+    spikes = np.cumsum(np.ones(nsp)*(1./freq))+sdn  # locked spike train with jitter
+    phsp = 2*np.pi*freq*np.fmod(spikes, 1./freq)
+    return(spikes, phsp)
+    
+def test_vs():
+    from numpy.random import default_rng
+    rg = default_rng(12345)
+    psi = PlotSims(parent=None)
+    freq = 100.
+    nsp = 1000
+    sd = 0.002 # in seconds, unles > 1 then is uniform
+    x = np.array([0.,0.00005, 0.0001, 0.0002, 0.0003, 0.0005, 0.00075, 0.001, 0.002, 0.003, 0.004, 0.0050, 0.0075, 2])
+    y = np.zeros_like(x)
+    ph = np.zeros_like(x)
+    vs = np.zeros_like(x)
+    fig, ax = mpl.subplots(3, 1)
+    ax = ax.ravel()
+    for i, sd in enumerate(x):
+        spikes, phsp = compute_vs(freq, nsp, sd, rg)
+        vsd = psi.VS.vector_strength(spikes, freq=freq)
+        y[i] = vsd.circ_timeSD
+        vs[i] = vsd.vs
+        ph[i] = vsd.circ_phaseSD
+    x[x==2] = 0.020
+    ax[0].plot(x, y, 'o')
+    ax[0].plot([0, np.max(x)], [0, np.max(x)], '--k', alpha=0.5)
+    ax[1].plot(x, vs, 'x-')
+    ax[2].plot(x, ph, 's-')
+    mpl.show()
+
+
+    fig, ax = mpl.subplots(2, 1)
+    ax = ax.ravel()
+    plot_ticks(ax[0], phsp, 'r-')
+    plot_ticks(ax[1], spikes, 'b-')
+    mpl.show()
+    print('mean isi: ', np.mean(np.diff(spikes)), 'stim period: ', 1./freq)
+    vsd = psi.VS.vector_strength(spikes, freq=freq)
+    print('VS: ', vsd.vs, 'SD sec: ', vsd.circ_timeSD)
+    print('circ_phase min max: ', np.min(vsd.circ_phase), np.max(vsd.circ_phase))
+    bins = np.linspace(0, 2*np.pi, 36)
+    mpl.hist(vsd.circ_phase, bins)
+    mpl.show()
+    
 if __name__ == "__main__":
-    main()
+    #main()
+    test_vs()
+    

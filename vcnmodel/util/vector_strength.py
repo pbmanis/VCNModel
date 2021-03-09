@@ -29,7 +29,7 @@ class VectorStrength():
     def __init__(self):
         pass
     
-    def vector_strength(self, spikes, freq):
+    def vector_strength(self, spikes, freq=None):
         """
         Calculate vector strength and related parameters from a spike train, for the specified frequency
         :param spikes: Spike train, in sec.
@@ -38,6 +38,7 @@ class VectorStrength():
         :param freq: Stimulus frequency in Hz
         :return: a dataclass of type VSResult:
         """
+        assert freq is not None
         VSR = VSResult()
         amax = 0.
         if spikes is None:
