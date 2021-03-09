@@ -7,4 +7,4 @@ from . import mpl_colormaps
 # from . import show_swc
 # from . import swc_to_hoc  # this belongs in neuronvis, and so there it is...
 # from . import vcn_cell_hoc_rename
-from .user_tester import UserTester
+from vcnmodel.util.user_tester import UserTester
