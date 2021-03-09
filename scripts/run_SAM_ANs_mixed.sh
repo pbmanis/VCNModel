@@ -16,6 +16,7 @@ CONFIG2="autoscale_xm13a_multisite_parallel_SAM_allHS.toml"
 RUNTEXT2="running the individual initialization and running AN PSTH protocols"
 NREPS="20"
 FMOD="400"
+DMOD="50.0"
 DEP=1
 
 echo $RUNTEXT1
@@ -30,27 +31,27 @@ do
     # if [ $? -ne 0 ]; then
     #     exit 1
     # fi
-    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r $NREPS --dB 20 --fmod $FMOD --depression $DEP --Spirou all --configfile $CONFIG1 --datatable data_XM13A_nacncoop
+    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r $NREPS --dB 20 --fmod $FMOD --dmod $DMOD --depression $DEP --Spirou all --configfile $CONFIG1 --datatable data_XM13A_nacncoop
     if [ $? -ne 0 ]; then
         exit 1
     fi
-    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r $NREPS --dB 50 --fmod $FMOD --depression $DEP --Spirou all --configfile $CONFIG1 --datatable data_XM13A_nacncoop
+    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r $NREPS --dB 50 --fmod $FMOD --dmod $DMOD --depression $DEP --Spirou all --configfile $CONFIG1 --datatable data_XM13A_nacncoop
     if [ $? -ne 0 ]; then
         exit 1
     fi
-    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r $NREPS --dB 80 --fmod $FMOD --depression $DEP --Spirou all --configfile $CONFIG1 --datatable data_XM13A_nacncoop
+    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r $NREPS --dB 80 --fmod $FMOD --dmod $DMOD --depression $DEP --Spirou all --configfile $CONFIG1 --datatable data_XM13A_nacncoop
     if [ $? -ne 0 ]; then
         exit 1
     fi
-    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r $NREPS --dB 20 --fmod $FMOD --depression $DEP --Spirou all --configfile $CONFIG2 --datatable data_XM13A_nacncoop
+    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r $NREPS --dB 20 --fmod $FMOD --dmod $DMOD --depression $DEP --Spirou all --configfile $CONFIG2 --datatable data_XM13A_nacncoop
     if [ $? -ne 0 ]; then
         exit 1
     fi
-    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r $NREPS --dB 50 --fmod $FMOD --depression $DEP --Spirou all --configfile $CONFIG2 --datatable data_XM13A_nacncoop
+    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r $NREPS --dB 50 --fmod $FMOD --dmod $DMOD --depression $DEP --Spirou all --configfile $CONFIG2 --datatable data_XM13A_nacncoop
     if [ $? -ne 0 ]; then
         exit 1
     fi
-    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r $NREPS --dB 80 --fmod $FMOD --depression $DEP --Spirou all --configfile $CONFIG2 --datatable data_XM13A_nacncoop
+    python vcnmodel/model_run2.py VCN_c$f  -D Full -P runANPSTH -r $NREPS --dB 80 --fmod $FMOD --dmod $DMOD --depression $DEP --Spirou all --configfile $CONFIG2 --datatable data_XM13A_nacncoop
     if [ $? -ne 0 ]; then
         exit 1
     fi
