@@ -329,9 +329,7 @@ class Figures(object):
             "CombinedEffRevCorr": self.plot_combined_Eff_Rev,
         }
         if figure_name in list(dispatch_table.keys()):
-            print("disp")
             fig = dispatch_table[figure_name]()
-            print('Fig: ', fig)
             if fig is not None:
                 self.save_figure(fig)
 
@@ -359,8 +357,7 @@ class Figures(object):
             )
         ofile = Path(config["baseDataDirectory"], "Figures", fig.filename)
         ofile.parent.mkdir(exist_ok=True)
-        print('saving to: ', str(Path(config["baseDataDirectory"], "Figures", fig.filename)))
-        print('fig: ', fig)
+        print('Saving to: ', str(Path(config["baseDataDirectory"], "Figures", fig.filename)))
         mpl.savefig(
             Path(config["baseDataDirectory"], "Figures", fig.filename),
             metadata={"Creator": "Paul Manis", "Author": "Paul Manis", "Title": fig.title['title']},
@@ -771,6 +768,7 @@ class Figures(object):
         All of the Zins for a supplemental figure
         """
         PZ.PlotZ()
+        
 
 
     def make_eff_fig(self):
@@ -2022,6 +2020,7 @@ class Figures(object):
                 "AN",
             )
             sfi = Path(cellpath, filename + ".pkl")
+            print('Opening pkl file: ', str(sfi))
             with open(sfi, "rb") as fh:
                 d = pickle.load(fh)
 
@@ -2037,7 +2036,7 @@ class Figures(object):
         print("anvs done for cell: ", cell_number)
 
     #
-    def generate_VS_data(self):
+    def generate_VS_data(self, testmode=True):
         if "vcnmodel.VS_datasets" not in list(dir()):
             from vcnmodel import VS_datasets as VS_datasets
         print(dir())
@@ -2066,8 +2065,8 @@ class Figures(object):
 
         fl = True
         for i, celln in enumerate(grAList()):
-           # if i !=  1:
-   #              continue
+            if testmode and i !=  1:
+                continue
             self.analyze_VS_data(VS_datasets, celln, fout, firstline=fl)
             fl = False
         with open(fout, "a") as fh:
