@@ -1,4 +1,4 @@
-import vcnmodel.analyzers.vector_strength as vector_strength
+import src.vcnmodel.analyzers.vector_strength as vector_strength
 import numpy as np
 
 plot_flag = False

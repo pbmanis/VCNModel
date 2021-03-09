@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 def main():
-    # Make sure we look for minis here first.
+    # Make sure we look for the right path first.
     path = Path(__file__).parent
     sys.path.insert(0, str(path))
 
@@ -18,7 +18,7 @@ def main():
     if '--audit' in sys.argv:
         sys.argv.remove('--audit')
         sys.argv.append('-s') # needed for cli-based user interaction
-        vcnmodel.AUDIT_TESTS = True
+        src.vcnmodel.AUDIT_TESTS = True
 
     # generate test flags
     flags = sys.argv[1:]
@@ -34,7 +34,7 @@ def main():
             add_path = False
             break
     if add_path:
-        flags.append('vcnmodel')
+        flags.append('src/vcnmodel')
 
     # ignore the an cache
     # flags.append('--ignore=minis/somedir')
