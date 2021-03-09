@@ -1488,26 +1488,24 @@ class Figures(object):
         ri: dict,
         time_base: np.ndarray,
         psth_binw: float = 0.5,
-        wstart: float = 0.0,
-        wdur: float = 1.0,
+        psth_win: Union[list, np.array] = [0., 1.0],
         ntr: int = 1,
         ninputs: int = 1,
     ):
-
         self.parent.PLT.plot_psth(
             data,
             run_info=ri,
-            max_time=np.max(time_base),
+            zero_time=psth_win[0],
+            max_time=psth_win[1],
             bin_width=psth_binw,
             ax=ax,
-            zero_time=wstart,
             scale=1.0 / ntr / psth_binw / ninputs,
         )
-        ax.set_xlim(0, wdur)
+        ax.set_xlim(0, np.fabs(np.diff(psth_win)))
         PH.talbotTicks(
             ax,
             axes="xy",
-            density=(1.0, 1.0),
+            density=(2, 1.0),
             insideMargin=0.02,
             # pointSize=ticklabelsize,
             tickPlacesAdd={"x": 2, "y": 0},
@@ -1634,7 +1632,7 @@ class Figures(object):
             st_ax=st_ax,
             bupsth_ax=bupsth_ax,
             anpsth_ax=anpsth_ax,
-            psth_win=(0.15, 0.3),  # default is 0.15, 0.3 (start, duration)
+            psth_win=(0.15, 0.4),  # default is 0.15, 0.4 (start, end)
             bufsl_ax=bufsl_ax,
             anfsl_ax=anfsl_ax,
             bu_fsl_win=bu_fsl_win,
@@ -1665,7 +1663,7 @@ class Figures(object):
         anpsth_ax: object,
         bufsl_ax: object,
         anfsl_ax: object,
-        psth_win: tuple = (0, 0.25), # (0.15, 0.3),
+        psth_win: tuple = (0, 0.25), # (0.15, 0.3), # [start, end]
         bu_fsl_win:Union[None, tuple] = None,
         an_fsl_win:Union[None, tuple] = None,
         label_x_axis=True,
@@ -1703,7 +1701,7 @@ class Figures(object):
         trstep = 25.0 / ntr
         inpstep = 5.0 / ntr
         sz = 50.0 / ntr
-        # print(dir(AR))
+        psth_dur = psth_win[1] - psth_win[0]
         si = d["Params"]
         ri = d["runInfo"]
         (
@@ -1725,6 +1723,10 @@ class Figures(object):
             time_base = AR.time_base / 1000.0  # convert to seconds
             dt = si.dtIC / 1000.0  # convert from msec to seconds
             trd = d["Results"][i]
+            tb_beg = int(psth_win[0]/dt)
+            tb_end = int(psth_win[1]/dt)
+            # cprint('r', f"{psth_win=}")
+            # cprint('r', f"{tb_beg=}, {tb_end=}")
             ninputs = len(trd["inputSpikeTimes"])
             if i == 0:
                 all_an_st = [[] for x in range(ninputs)]  # by input, then trial
@@ -1732,18 +1734,23 @@ class Figures(object):
 
             waveform = trd["stimWaveform"].tolist()
             stb = trd["stimTimebase"]
+            stimdt = np.mean(np.diff(stb))
+            sttb_beg = int(psth_win[0]/stimdt)
+            sttb_end = int(psth_win[1]/stimdt)
             if not isinstance(trd["spikeTimes"], list):
                 cprint("r", "spiketimes is not a list")
                 return
             all_bu_st.append(trd["spikeTimes"])
-            if i == 0:
+
+            if i == 0:  # Voltage for first trial
+                # cprint('r', f"i is 0, psth: {psth_win=}")
                 tr_ax.plot((time_base - psth_win[0]) * 1e3, vtrial, "k-", linewidth=0.5)
                 spiketimes = np.array(trd["spikeTimes"])
                 # trim spike mark array so we don't get spots at the edge of the plot
                 spikeindex = [
                     int(t / dt)
                     for t in spiketimes
-                    if (t >= psth_win[0] and t < ((psth_win[0] + psth_win[1])))
+                    if (t >= psth_win[0] and t < (psth_win[1]))
                 ]
                 tr_ax.plot(
                     (time_base[spikeindex] - psth_win[0]) * 1e3,
@@ -1761,7 +1768,7 @@ class Figures(object):
                         horizontalalignment="right",
                         verticalalignment="center",
                     )
-                tr_ax.set_xlim(0.0, psth_win[1] * 1e3)
+                tr_ax.set_xlim(0.0, psth_dur * 1e3)
                 PH.noaxes(tr_ax)
                 if label_x_axis:
                     PH.calbar(
@@ -1778,10 +1785,13 @@ class Figures(object):
                     )
 
             if i == 0 and waveform is not None and st_ax is not None:
+                # stimulus waveform
                 st_ax.plot(
-                    stb - psth_win[0], np.array(waveform) * 1e3, "k-", linewidth=0.5
+                    (stb[sttb_beg:sttb_end] - psth_win[0]), 
+                     np.array(waveform)[sttb_beg:sttb_end] * 1e3, 
+                     "k-", linewidth=0.5
                 )  # stimulus underneath
-                st_ax.set_xlim(0, psth_win[1])
+                st_ax.set_xlim(0, psth_dur)
                 PH.talbotTicks(
                     st_ax,
                     axes="xy",
@@ -1803,14 +1813,12 @@ class Figures(object):
                 ri=ri,
                 time_base=time_base,
                 psth_binw=psth_binw,
-                wstart=psth_win[0],
-                wdur=psth_win[1],
+                psth_win=psth_win,
                 ntr=ntr,
                 ninputs=1,
             )
             if label_x_axis:
                 bupsth_ax.set_xlabel("Time (s)")
-
         # Collapse the input data
         an_st_by_input = [[] for x in range(ninputs)]
         all_an_st = []  # collapsed in trial order only
@@ -1830,14 +1838,14 @@ class Figures(object):
                 an_st_grand[i].extend(tk * 1e-3)
 
         if anpsth_ax is not None:
+            print("anpsth to plotpsth")
             self.plot_psth_psth(
                 ax=anpsth_ax,
                 data=all_an_st,
                 ri=ri,
                 time_base=time_base,
                 psth_binw=psth_binw,
-                wstart=psth_win[0],
-                wdur=psth_win[1],
+                psth_win=psth_win,
                 ntr=ntr,
                 ninputs=ninputs,
             )
@@ -1902,7 +1910,7 @@ class Figures(object):
         #          )
 
         if anfsl_ax is not None:
-            print(an_fsl_win)
+            print('figures:anfslwin: ', an_fsl_win)
             self.plot_psth_ANFSL(
                 ax=anfsl_ax,
                 wstart=psth_win[0], 
@@ -2085,7 +2093,7 @@ class Figures(object):
         )
         sfi = []
         for i, ds in enumerate(dataset):
-            print(i, ds)
+            print("figures:klt:i, ds: ", i, ds)
             sfd = Path(cellpath, Path(ds).name)
             print(sfd)
             if not sfd.is_dir():

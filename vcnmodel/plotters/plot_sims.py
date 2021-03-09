@@ -40,10 +40,10 @@ from pylibrary.tools import cprint as CP
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 
 import vcnmodel.model_params
-from vcnmodel import analysis as SPKANA
 from vcnmodel import cell_config as cell_config
-from vcnmodel import spikestatistics as SPKS
-from vcnmodel import sttc as STTC
+from vcnmodel.analyzers import analysis as SPKANA
+from vcnmodel.analyzers import spikestatistics as SPKS
+from vcnmodel.analyzers import sttc as STTC
 from vcnmodel.analyzers import vector_strength  as VS
 import toml
 config = toml.load(open("wheres_my_data.toml", "r"))
@@ -2749,16 +2749,16 @@ class PlotSims:
         values are in seconds (times, binwidths)"""
         num_trials = run_info.nReps 
         bins = np.arange(
-            0.0, max_time, bin_width)
+            0.0, max_time-zero_time, bin_width)
         spf = []
         for x in spike_times:
             if isinstance(x, list):
                 spf.extend(x)
             else:
                 spf.extend([x])
-        spike_times_flat = np.array(spf, dtype=object).ravel()-stim_onset
+        spike_times_flat = np.array(spf, dtype=object).ravel()-zero_time
         # h, b = np.histogram(spike_times_flat, bins=bins)
-        bins = np.arange(zero_time, max_time, bin_width)
+        bins = np.arange(0., max_time-zero_time, bin_width)
         if len(spike_times_flat) > 0 and ax is not None:
             ax.hist(x=spike_times_flat, bins=bins, density=False, 
                 weights = scale*np.ones_like(spike_times_flat),
@@ -2794,6 +2794,9 @@ class PlotSims:
         # spike_times = np.array(spike_times, dtype=object)
 
         num_trials = run_info.nReps # self._ntrials(spike_times)
+        # for s in range(len(spike_times)):
+        #     spike_times[s] = [t*1e-3 for t in spike_times[s]]
+            # print('FSL SSL: ', zero_time, run_info.pip_start, fsl_win)
         fsl, ssl = SPKANA.CNfspike(spike_times, run_info.pip_start-zero_time, nReps=run_info.nReps,
              fsl_win = fsl_win,
             )
@@ -2915,56 +2918,72 @@ class PlotSims:
         all_bu_st = []
         all_bu_st_trials = []
         
-        plot_win = (0.15, 0.4)  # manually change to shorten... 
+        plot_win = (pip_start-0.05, pip_start+pip_duration+0.05)  # manually change to shorten... 
+        plot_dur = np.fabs(np.diff(plot_win))
         
         for i in range(ntr):  # for all trials in the measure.
-            vtrial = AR.traces[i] * 1e3
+            vtrial = AR.traces[i] * 1e3  # convert to mV
             time_base = AR.time_base/1000. # convert to seconds
             dt = si.dtIC/1000. # convert from msec to seconds
             trd = d["Results"][i]
             idx = (int(plot_win[0]/dt), int(plot_win[1]/dt))
             waveform = trd["stimWaveform"].tolist()
-            stb = trd["stimTimebase"]
+            stb = trd["stimTimebase"]  # convert to seconds
+            # print('max trd spike: ', np.max(trd['spikeTimes']))
+            if np.max(trd['spikeTimes']) > 2.0: # probably in miec... 
+                sf = 1e-3  # so scale to seconds
+            else:
+                sf = 1.0
+            sptimes = np.array(trd['spikeTimes'])*sf # convert to seconds
+
+            # print(f"{stb=}")
             stim_dt = stb[1]-stb[0]
+            # print(f"{stim_dt=}")
             idxs = (int(plot_win[0]/stim_dt), int(plot_win[1]/stim_dt))
-            if not isinstance(trd["spikeTimes"], list):
+            if not isinstance(trd["spikeTimes"], list) and not isinstance(trd["spikeTimes"], np.ndarray):
                 cprint('r', "spiketimes is not list")
+                cprint('r', f"    {type(trd['spikeTimes'])=}")
                 return
-            all_bu_st.extend(trd["spikeTimes"])
-            all_bu_st_trials.append(trd["spikeTimes"])
+            all_bu_st.extend(sptimes)
+            all_bu_st_trials.append(sptimes)
             if i == 0:
                 n_inputs = len(trd["inputSpikeTimes"])
-            if i < 1 and plotflag:
-                P.axdict["A"].plot(time_base[idx[0]:idx[1]], vtrial[idx[0]:idx[1]], "k-", linewidth=0.5)
-                spikeindex = [int(t / dt) for t in trd["spikeTimes"]]  # dt is in msec, so need to convert
-                ispt = [i for i in range(len(trd["spikeTimes"]))
-                         if trd["spikeTimes"][i] >= plot_win[0] and 
-                         trd["spikeTimes"][i] < plot_win[1]]
+            if i == 0 and plotflag:
+                P.axdict["A"].plot(time_base[idx[0]:idx[1]]-plot_win[0], vtrial[idx[0]:idx[1]], "k-", linewidth=0.5)
+                spikeindex = [int(t/ dt) for t in sptimes]  # dt is in sec, but spiketimes is in msec
+                ispt = [t for t in range(len(sptimes))
+                         if sptimes[t] >= plot_win[0] and 
+                         sptimes[t] < plot_win[1]]
                 P.axdict["A"].plot(
-                    np.array(trd["spikeTimes"])[ispt],
+                    sptimes[ispt]-plot_win[0],
                     vtrial[spikeindex][ispt],
                     "ro",
                     markersize=1.5,
                 )
-
+                P.axdict["A"].set_xlim(0., plot_dur)
             if i == 0 and waveform is not None and plotflag:
                 P.axdict["D"].plot(
                     stb[idxs[0]:idxs[1]], waveform[idxs[0]:idxs[1]], "k-", linewidth=0.5
                 )  # stimulus underneath
 
             if plotflag:  # plot the raster of spikes
-                ispt = [i for i in range(len(trd["spikeTimes"]))
-                         if trd["spikeTimes"][i] >= plot_win[0] and 
-                         trd["spikeTimes"][i] < plot_win[1]]
+                ispt = [i for i in range(len(sptimes))
+                         if sptimes[i] >= plot_win[0] and 
+                         sptimes[i] < plot_win[1]]
                 P.axdict["B"].plot(
-                    np.array(np.array(trd["spikeTimes"])[ispt]),
+                    np.array(sptimes[ispt])-plot_win[0],
                     i * np.ones(len(ispt)),
                     "|",
                     markersize=1.5,
                     color="b",
                 )
+                P.axdict["B"].set_xlim(0, plot_dur)
                 for k in range(n_inputs):  # raster of input spikes
-                    tk = np.array(trd["inputSpikeTimes"][k])*1e-3
+                    if np.max(trd['inputSpikeTimes'][k]) > 2.0: # probably in miec... 
+                        tk = np.array(trd["inputSpikeTimes"][k])*1e-3
+                    else:
+                        tk = np.array(trd["inputSpikeTimes"][k])
+                        
                     y = (i + 0.1 + k * 0.05) * np.ones(len(tk))
                     in_spt = [i for i in range(tk.shape[0])
                              if  (tk[i] >= plot_win[0]) and 
@@ -2984,11 +3003,15 @@ class PlotSims:
             if i == 0:
                 an_st_by_input = [[] for x in range(n_inputs)]
             for k in range(n_inputs):  # raster of input spikes
-                tk = trd["inputSpikeTimes"][k] 
-                all_an_st.extend(np.array(tk)*1e-3)  # strictly for the psth and VS calculation
-                an_st_by_input[k].append(tk*1e-3)  # index by input, then trials for that input
-                an_st_grand[i].extend(tk*1e-3)
+                if np.max(trd["inputSpikeTimes"][k]) > 2.0:
+                    tk = np.array(trd["inputSpikeTimes"][k])*1e-3
+                else:
+                    tk = np.array(trd["inputSpikeTimes"][k])
+                all_an_st.extend(tk)  # strictly for the psth and VS calculation
+                an_st_by_input[k].append(tk)  # index by input, then trials for that input
+                an_st_grand[i].extend(tk)
 
+        cprint('r', f"{soundtype=}")
         if soundtype in ["tonepip", 'SAM'] and plotflag:  # use panel F for FSL/SSL distributions
             # the histograms of the data
             psth_binw = 0.2e-3

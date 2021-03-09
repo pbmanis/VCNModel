@@ -21,7 +21,7 @@ from vcnmodel.plotters import plot_z
 from vcnmodel.plotters import efficacy_plot
 from pylibrary.tools import cprint as CP
 # import vcnmodel.correlation_calcs
-import vcnmodel.spikestatistics
+import vcnmodel.analyzers.spikestatistics
 import ephys
 
 
@@ -91,8 +91,9 @@ all_modules = [
     efficacy_plot,
     cell_config,
     # vcnmodel.correlation_calcs,
-    vcnmodel.spikestatistics,
-    vcnmodel.analysis,
+    vcnmodel.analyzers.spikestatistics,
+    vcnmodel.analyzers.analysis,
+    vcnmodel.analyzers.sttc,
     ephys.ephysanalysis.SpikeAnalysis,
     ephys.ephysanalysis.Utility,
     ephys.ephysanalysis.MakeClamps,

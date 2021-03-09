@@ -3,7 +3,7 @@ from elephant import spike_train_correlation as ESTC
 from elephant.conversion import BinnedSpikeTrain
 from elephant.spike_train_generation import homogeneous_poisson_process
 from quantities import Hz, ms, s
-from vcnmodel import spikestatistics as SPKS
+from vcnmodel.analyzers import spikestatistics as SPKS
 
 plot_flag = False
 
