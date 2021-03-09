@@ -164,9 +164,3 @@ if __name__ == '__main__':
     S.tests(distribution='regular', pdelete=0.0, independent=False, dither=.0,
         tilewindow=2.0)
     mpl.show()
-    
-        
-        
-    
-        
-        
