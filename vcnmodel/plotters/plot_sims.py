@@ -44,7 +44,7 @@ from vcnmodel import analysis as SPKANA
 from vcnmodel import cell_config as cell_config
 from vcnmodel import spikestatistics as SPKS
 from vcnmodel import sttc as STTC
-from vcnmodel.util import vector_strength  as VS
+from vcnmodel.analyzers import vector_strength  as VS
 import toml
 config = toml.load(open("wheres_my_data.toml", "r"))
 
