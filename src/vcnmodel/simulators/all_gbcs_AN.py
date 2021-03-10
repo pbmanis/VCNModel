@@ -10,7 +10,6 @@ import datetime
 from pathlib import Path
 import matplotlib
 
-matplotlib.use("Qt4Agg")
 import matplotlib.pyplot as mpl
 import pylibrary.plotting.plothelpers as PH
 from matplotlib import rc
