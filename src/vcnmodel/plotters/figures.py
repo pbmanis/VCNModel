@@ -22,6 +22,7 @@ from rich.text import Text
 import toml
 from src.vcnmodel.plotters import efficacy_plot as EF
 from src.vcnmodel.plotters import plot_z as PZ
+import src.vcnmodel.util.fixpicklemodule as FPM
 
 config = toml.load(open("wheres_my_data.toml", "r"))
 cprint = CP.cprint
@@ -318,7 +319,8 @@ class Figures(object):
             "Efficacy Supplement": self.plot_efficacy_supplement,
             "Revcorr Ex": self.plot_revcorr,
             "All Revcorr": self.plot_all_revcorr,
-            "Revcorr Supplement": self.plot_revcorr_supplement,
+            "Revcorr Supplement Spont": self.plot_revcorr_supplement_spont,
+            "Revcorr Supplement 40dB": self.plot_revcorr_supplement_40dB,
             "Revcorr Compare": self.plot_revcorr_compare,
             "PSTH-FSL": self.plot_PSTH,
             "All PSTHs": self.plot_All_PSTH,
@@ -538,7 +540,7 @@ class Figures(object):
             ax = self.P3.axdict[phaseplot1]
             label = sfi.name  # .replace("_", "\_")
             with open(sfi, "rb") as fh:
-                d = pickle.load(fh)
+                d = FPM.pickle_load(fh)
             pz = ax.plot(
                 d["f"],
                 d["zin"],
@@ -1081,13 +1083,14 @@ class Figures(object):
         else:
             cell_number = cellN
             example = figure_revcorr[cell_number]
-        dBSPL = "Spont"
 
+        dBSPL = "Spont"
+        recompute = False
         run_calcs = False
         rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
-        if rc_datafile.is_file():
+        if rc_datafile.is_file() and not recompute:
             with open(rc_datafile, "rb") as fh:
-                all_RCD_RCP = pickle.load(fh)
+                all_RCD_RCP = FPM.pickle_load(fh)
             RCD = all_RCD_RCP[cell_number][0]
             RCP = all_RCD_RCP[cell_number][1]
             PD = PData()
@@ -1108,7 +1111,7 @@ class Figures(object):
             fn = sorted(list(sfi.glob("*")))
             (P, PD, RCP, RCD) = self.parent.PLT.compute_revcorr(
                 P=None,  # no plotting (and return P is None)
-                gbc="17",
+                gbc=str(cell_number),
                 fn=fn[0],
                 PD=PData(),
                 protocol="runANPSTH",
@@ -1116,6 +1119,7 @@ class Figures(object):
                 thr=-20.0,
                 width=4.0,
             )
+
         str_a = string.ascii_uppercase
         p_labels = str_a[str_a.find(start_letter):str_a.find(start_letter)+4]  # will fail if you have > 26
         if parent_figure is None:
@@ -1232,10 +1236,16 @@ class Figures(object):
         fig.title2=title2
         return fig
 
+    def plot_revcorr_supplement_spont(self):
+        fig = self.plot_revcorr_supplement('Spont')
+        return fig
+        
+    def plot_revcorr_supplement_40dB(self):
+        fig = self.plot_revcorr_supplement('40dB')
+        return fig
 
-    def plot_revcorr_supplement(self):
+    def plot_revcorr_supplement(self,dBSPL: str):
 
-        dBSPL = "Spont"
         P = PH.regular_grid(
             rows=len(grAList()),
             cols=4,
@@ -1286,11 +1296,11 @@ class Figures(object):
             verticalalignment="bottom",
         )
 
-        run_calcs = False
+        run_calcs = True
         rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
-        if rc_datafile.is_file():
+        if rc_datafile.is_file() and not run_calcs:
             with open(rc_datafile, "rb") as fh:
-                all_RCD_RCP = pickle.load(fh)
+                all_RCD_RCP = FPM.pickle_load(fh)
         else:
             print(
                 "Must run revcorr_supplement plot first, then the file we need will be present"
@@ -1347,6 +1357,8 @@ class Figures(object):
                 yaxis_label=False,
             )
 
+            print(f"  Mean pre: {RCD.mean_pre_intervals=}")
+            print(f"  Mean Post: {RCD.mean_post_intervals:.3f}")
             P.axarr[i, 0].text(
                 -0.25,
                 0.5,
@@ -1428,7 +1440,7 @@ class Figures(object):
         title = ("SBEM Project Supplemental Figure 2 Modeling : Reverse Correlation Summary",)
         save_file = f"Fig_M3_supplemental_Full_{dBSPL:s}.pdf"
         fig = FigInfo()
-        fig.P = self.P
+        fig.P = P
         fig.filename  = save_file
         fig.title["title"] = title
         return fig
@@ -1451,7 +1463,7 @@ class Figures(object):
         for i, dBSPL in enumerate(dBSPLs):
             with open(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl", "rb") as fh:
                 try:
-                    R = pickle.load(fh)
+                    R = FPM.pickle_load(fh)
                 except:
                     print(
                         "Must run revcorr_supplement plot first, then the file we need will be present"
@@ -2030,7 +2042,7 @@ class Figures(object):
             sfi = Path(cellpath, filename + ".pkl")
             print('Opening pkl file: ', str(sfi))
             with open(sfi, "rb") as fh:
-                d = pickle.load(fh)
+                d = FPM.pickle_load(fh)
 
             self.parent.PLT.plot_AN_response(P, d.files[0], PD, "runANPSTH")
             with open(fout, "a") as fth:
