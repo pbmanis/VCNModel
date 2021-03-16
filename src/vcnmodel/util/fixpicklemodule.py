@@ -13,13 +13,10 @@ class RenameUnpickler(pickle.Unpickler):
         renamed_module = module
         # if module.startswith('vcnmodel'):
         #     print('module: ', module)
-        if module == "vcnmodel":
-            renamed_module = "src.vcnmodel"
-        if module == "vcnmodel.model_params":
-            renamed_module = "src.vcnmodel.model_params"
-        elif module == 'vcnmodel.table_manager':
-            renamed_module = "src.vcnmodel.table_manager"
-
+        if module in ["vcnmodel","vcnmodel.model_params", 'vcnmodel.table_manager',
+            "vcnmodel.plotters.plot_sims"]:
+            renamed_module = "src." + module
+        # print(renamed_module)
         return super(RenameUnpickler, self).find_class(renamed_module, name)
 
 # class RenameUnpickler_pandas(pandas.read_pickle):
