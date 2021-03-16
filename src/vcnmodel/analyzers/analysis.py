@@ -179,22 +179,30 @@ def CNfspike(spikes, stime, nReps, fsl_win: Union[None, tuple] = None):
     sl1, sl2 = getFirstSpikes(spikes, stime, nReps, fsl_win)
 
     print("Cochlear Nucleus Bushy Cell: ")
-    print(
-        "   mean First spike latency:  %8.3f ms stdev: %8.3f (N=%3d)"
-        % (
-            np.nanmean(sl1) * 1e3,
-            np.nanstd(sl1) * 1e3,
-            np.count_nonzero(~np.isnan(sl1)),
+
+    if len(sl1) > 0:
+        print(
+            "   mean First spike latency:  %8.3f ms stdev: %8.3f (N=%3d)"
+            % (
+                np.nanmean(sl1) * 1e3,
+                np.nanstd(sl1) * 1e3,
+                np.count_nonzero(~np.isnan(sl1)),
+            )
         )
-    )
-    print(
-        "   mean Second spike latency: %8.3f ms stdev: %8.3f (N=%3d)"
-        % (
-            np.nanmean(sl2) * 1e3,
-            np.nanstd(sl2) * 1e3,
-            np.count_nonzero(~np.isnan(sl2)),
+    else:
+        print('   No FSL data (no spikes)')
+
+    if len(sl2) > 0:
+        print(
+            "   mean Second spike latency: %8.3f ms stdev: %8.3f (N=%3d)"
+            % (
+                np.nanmean(sl2) * 1e3,
+                np.nanstd(sl2) * 1e3,
+                np.count_nonzero(~np.isnan(sl2)),
+            )
         )
-    )
+    else:
+        print('   No SSL data (no SSL spikes)')
     return (sl1, sl2)
 
 

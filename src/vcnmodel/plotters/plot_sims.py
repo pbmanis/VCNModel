@@ -23,6 +23,7 @@ import numpy as np  # type: ignore
 import pandas as pd
 import pyperclip
 import pyqtgraph as pg  # type: ignore
+import quantities as pq
 import rich as RI
 from rich.text import Text
 from rich.console import Console
@@ -44,6 +45,7 @@ from src.vcnmodel import cell_config as cell_config
 from src.vcnmodel.analyzers import analysis as SPKANA
 from src.vcnmodel.analyzers import spikestatistics as SPKS
 from src.vcnmodel.analyzers import sttc as STTC
+import src.vcnmodel.analyzers.reverseCorrelation as REVCORR
 import src.vcnmodel.util.fixpicklemodule as FPM
 from src.vcnmodel.analyzers import vector_strength  as VS
 import toml
@@ -253,12 +255,14 @@ class RevCorrData:
     nsp_avg: int = 0
     npost_spikes: int = 0
     npre_spikes: int = 0
+    mean_pre_intervals: np.array = field(default_factory=def_empty_np)
+    mean_post_intervals: float = 0.
     max_coin_rate: float = 0
     participation: np.array = field(default_factory=def_empty_np)
     s_pair: float = 0.
     ynspike: np.array = field(default_factory=def_empty_np)
     pre_w: list = field(default_factory=def_empty_list)
-     
+    pre_st: list = field(default_factory=def_empty_list)     
 
 
 def norm(p: Union[list, np.ndarray], n: int) -> np.ndarray:
@@ -1970,45 +1974,6 @@ class PlotSims:
         P.figure_handle.show()
 
     # @time_func
-    def revcorr(
-        self,
-        st1: Union[np.ndarray, List] = None,
-        st2: Union[np.ndarray, List] = None,
-        binwidth: float = 0.1,
-        datawindow: Union[List, Tuple] = [
-            0.0,
-            100.0,
-        ],  # time window for selecteing spikes
-        corrwindow: Union[List, Tuple] = [
-            -5.0,
-            1.0,
-        ],  # time window to examine correlation relative to st1
-    ) -> np.ndarray:
-        """
-        Comopute the reverse correlation between two spike trains
-        For all of the spikes in st1, compute the time difference
-        with each spike in st2, find where the difference is within a
-        time window we are interested in, then get and return the indices
-        for all of those spikes.
-        """
-        
-        if st1 is None or st2 is None:
-            raise ValueError(
-                "coincident_spikes_correlation: reference and comparator must be defined"
-            )
-        refa = st1  # [a for a in st1 if (datawindow[0] <= a <= datawindow[1])]
-        refb = st2  # [b for b in st2 if (datawindow[0] <= b <= datawindow[1])]
-        # xds  = [None]*len(refa)
-        xds = np.zeros(int((corrwindow[1] - corrwindow[0]) / binwidth))
-        for i, sp in enumerate(refa):
-            diff = refb - sp
-            v = diff[np.where((corrwindow[0] < diff) & (diff < corrwindow[1]))]
-            # print('v: ', v)
-            if len(v) > 0:
-                indxs = [int(vx / binwidth) for vx in v]
-                xds[indxs] = xds[indxs] + 1
-
-        return xds, len(st1)  # return the n postsynaptic spikes
 
     def _count_spikes_in_window(self, d, trial, site, s, RCP, pre_w):
         an_i = d["Results"][trial]["inputSpikeTimes"][
@@ -2053,11 +2018,9 @@ class PlotSims:
         #
         # 1. Gather data
         #
-        print("Getting data")
+        print(f"Getting data for gbc: {gbc:s}")
         SC, syninfo = self.get_synaptic_info(gbc)
-
         res = self.get_data(fn, PD, changetimestamp, protocol)
-        print('res is none: ')
         if res is None:
             return None
         (d, AR, SP, RMA, RCP, RCD) = res
@@ -2070,7 +2033,7 @@ class PlotSims:
         if RCP.algorithm == "RevcorrSTTC":
             sttccorr = STTC.STTC()
 
-        print("Preparing for computation")
+        print("Preparing for computation", gbc)
         RCP.ninputs = len(syninfo[1])
         self.ninputs = RCP.ninputs  # save for trace viewer.
         RCD.sites = np.zeros(RCP.ninputs)
@@ -2108,6 +2071,8 @@ class PlotSims:
         RCD.STTC = [None] * RCP.ninputs
         RCD.max_coin_rate = 0.0
         RCD.npost_spikes = 0  # count spikes used in analysis
+        RCD.mean_post_interval = 0.
+        RCD.mean_pre_intervals = np.zeros(RCP.ninputs)
         RCD.nsp_avg = 0
         nspk_plot = 0
         # spksplotted = False
@@ -2131,7 +2096,8 @@ class PlotSims:
         # sum across trials, and sort by inputs
         #
         # print("starting loop")
-
+        post_intervals = []
+        pre_intervals = [[] for x in range(RCP.ninputs)]
         start_time = datetime.datetime.now()
         srate = si.dtIC*1e-3  # this needs to be adjusted by the date of the run, somewhere...
         for trial in range(RCP.ntrials):  # sum across trials
@@ -2144,7 +2110,7 @@ class PlotSims:
             if len(stx) == 0:
                 continue
             RCD.npost_spikes += len(stx)
-
+            post_intervals.extend(np.diff(stx))
             # accumulate spikes and calculate average spike
             for n in range(len(stx)):
                 reltime = np.around(RCD.ti, 5) - np.around(stx[n], 5)
@@ -2177,6 +2143,7 @@ class PlotSims:
 
             # Now get reverse  correlation for each input
             for isite in range(RCP.ninputs):  # for each ANF input
+                # print(len( d["Results"][trial]["inputSpikeTimes"]), isite)
                 anx = d["Results"][trial]["inputSpikeTimes"][
                     isite
                 ]  # get input AN spikes and trim list to window
@@ -2184,13 +2151,14 @@ class PlotSims:
                 if len(anx) == 0:
                     continue
                 RCD.npre_spikes += len(anx)  # count up pre spikes.
+                pre_intervals[isite].extend(np.diff(anx))  # keep track of presynapit intervals by input
                 if revcorrtype == "RevcorrSPKS":
                     RCD.C[isite] += SPKS.correlogram(
-                        stx, anx, width=-RCP.minwin, binwidth=RCP.binw, T=None
+                        stx*pq.ms, anx*pq.ms, width=-RCP.minwin*pq.ms, bin_width=RCP.binw*pq.ms, T=None
                     )
 
                 elif revcorrtype == "RevcorrSimple":
-                    refcorr, npost = self.revcorr(
+                    refcorr, npost = REVCORR.reverse_correlation(
                         stx,
                         anx,
                         binwidth=RCP.binw,
@@ -2216,7 +2184,14 @@ class PlotSims:
                 maxtc = 1.0
         if RCD.nsp_avg > 0:
             RCD.sv_avg /= RCD.nsp_avg
-
+        RCD.mean_pre_intervals = [0]*RCP.ninputs
+        RCD.pre_st = [[]]*RCP.ninputs
+        print(len(pre_intervals))
+        # print(pre_intervals)
+        for isite in range(RCP.ninputs):
+            RCD.mean_pre_intervals[isite] = np.mean(pre_intervals[isite])
+            RCD.pre_st[isite] = pre_intervals[isite]
+        RCD.mean_post_intervals = np.mean(post_intervals)
         elapsed_time = datetime.datetime.now() - start_time
         print("Time for calculation: ", elapsed_time)
         RCD.pre_w = [-2.7, -0.5]
@@ -2340,24 +2315,28 @@ class PlotSims:
         print('\nPre solo drive: ', pre_solo_spikes)
         print('\nFiltered Spikes: ', nfilt_spikes)
         
-        # print(filttable)
+        # print('filttable: \n', filttable)
         filttable = np.array(filttable)
+        filttable2 = np.array(filttable2)
         print('Counts: ', filttable.sum(axis=0))
-        print('\nFilt Spike Proportions: ', filttable.sum(axis=0)/nfilt_spikes)
-        fs1 = np.array(filttable)[:,2:].sum(axis=0)/nfilt_spikes
+        if filttable.shape[0] > 0:
+            print('\nFilt Spike Proportions: ', filttable.sum(axis=0)/nfilt_spikes)
+            fs1 = np.array(filttable)[:,2:].sum(axis=0)/nfilt_spikes
         
-        print('\n ', fs1)
         fsa = np.array(RCD.sites[2:])/np.sum(RCD.sites[2:])
         print("Input Proportions: ", fsa)
+
         filttable2 = np.array(filttable2)
-        print('\nFilt Spike Proportions on input #3: ', filttable2.sum(axis=0)/nfilt2_spikes)
-        fs2 = np.array(filttable2)[:,2:].sum(axis=0)/nfilt2_spikes
-        print('\n, fs1')
+        # print('filttable 2 shape: ', filttable2.shape)
+        if filttable2.shape[0] > 0:
+            print('\nFilt Spike Proportions on input #3: ', filttable2.sum(axis=0)/nfilt2_spikes)
+            fs2 = np.array(filttable2)[:,2:].sum(axis=0)/nfilt2_spikes
         
         
-        f=mpl.figure()
-        mpl.plot(fs1, fsa)
-        mpl.show()
+        if filttable.shape[0] > 0:
+            f=mpl.figure()
+            mpl.plot(fs1, fsa)
+            mpl.show()
         # print('pre spike_count associated with a post spike: ', pre_spike_counts)
         # plot the position of the prespikes for every trial as determined by the
         # second trial loop above.
@@ -2391,8 +2370,6 @@ class PlotSims:
         # ynspike = np.cumsum(ynspike / nspikes)
         cprint('r', f"prespikecounts: {np.sum(pre_spike_counts[1:]):f}")
         RCD.ynspike = np.cumsum(pre_spike_counts[1:]) / np.sum(pre_spike_counts[1:])
-        # print(RCD.sites)
-        # print(pos)
 
         if P is None:
             return (P, PD, RCP, RCD)
@@ -2813,8 +2790,14 @@ class PlotSims:
         # else:
         #     print(f"Cell: '{int(cellID):d}','{selected.synapseExperiment:s}',", end="")
             
-        print(f"{np.nanmean(fsl):.3f},{np.nanstd(fsl):.3f},", end="")
-        print(f"{np.nanmean(ssl):.3f},{np.nanstd(ssl):.3f}")
+        if len(fsl) > 0:
+            print(f"{np.nanmean(fsl):.3f},{np.nanstd(fsl):.3f},", end="")
+        else:
+            print("No FSL spike data. ", end="")
+        if len(ssl) > 0:
+            print(f"{np.nanmean(ssl):.3f},{np.nanstd(ssl):.3f}")
+        else:
+            print("No SSL spike data")
         if ax is not None:
             latency_hbins = np.arange(min_time, max_time, bin_width)  # use msec here
             if (len(fsl)) > 0.0:
@@ -2829,8 +2812,14 @@ class PlotSims:
                 )
             ax.set_xlim(min_time, max_time)
             if show_values:
-                fsl_text = f"FSL: {np.nanmean(fsl):.3f} (SD {np.nanstd(fsl):.3f})"
-                fsl_text += f"\nSSL: {np.nanmean(ssl):.3f} (SD {np.nanstd(ssl):.3f})"
+                if len(fsl) > 0:
+                    fsl_text = f"FSL: {np.nanmean(fsl):.3f} (SD {np.nanstd(fsl):.3f})"
+                else:
+                    fsl_text = "No spikes for FSL measure. "
+                if len(ssl) > 0:
+                    fsl_text += f"\nSSL: {np.nanmean(ssl):.3f} (SD {np.nanstd(ssl):.3f})"
+                else:
+                    fsl_text = "No spikes for SSL measure. "
                 ax.text(
                     0.45,
                     0.95,
@@ -2930,8 +2919,13 @@ class PlotSims:
             idx = (int(plot_win[0]/dt), int(plot_win[1]/dt))
             waveform = trd["stimWaveform"].tolist()
             stb = trd["stimTimebase"]  # convert to seconds
+            if i == 0:
+                n_inputs = len(trd["inputSpikeTimes"])
             # print('max trd spike: ', np.max(trd['spikeTimes']))
-            if np.max(trd['spikeTimes']) > 2.0: # probably in miec... 
+            if len(trd['spikeTimes']) == 0:
+                trd['spikeTimes'] = np.array([np.nan])
+                sf = 1.0
+            elif np.nanmax(trd['spikeTimes']) > 2.0: # probably in miec... 
                 sf = 1e-3  # so scale to seconds
             else:
                 sf = 1.0
@@ -2947,11 +2941,10 @@ class PlotSims:
                 return
             all_bu_st.extend(sptimes)
             all_bu_st_trials.append(sptimes)
-            if i == 0:
-                n_inputs = len(trd["inputSpikeTimes"])
+
             if i == 0 and plotflag:
                 P.axdict["A"].plot(time_base[idx[0]:idx[1]]-plot_win[0], vtrial[idx[0]:idx[1]], "k-", linewidth=0.5)
-                spikeindex = [int(t/ dt) for t in sptimes]  # dt is in sec, but spiketimes is in msec
+                spikeindex = [int(t/ dt) for t in sptimes if not np.isnan(t)]  # dt is in sec, but spiketimes is in msec
                 ispt = [t for t in range(len(sptimes))
                          if sptimes[t] >= plot_win[0] and 
                          sptimes[t] < plot_win[1]]
