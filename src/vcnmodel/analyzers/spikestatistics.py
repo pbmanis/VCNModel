@@ -5,8 +5,7 @@ In all functions below, spikes is a sorted list of spike times
 """
 from __future__ import print_function
 import numpy as np
-from quantities import Hz, ms, s
-
+import quantities as pq
 
 from operator import itemgetter
 
@@ -50,7 +49,7 @@ def CV(spikes):
 
 
 # Second-order statistics
-def correlogram(T1, T2, width=20.0*ms, bin_width=1.0*ms, T=None):
+def correlogram(T1, T2, width=20.0*pq.ms, bin_width=1.0*pq.ms, T=None):
     """
     Returns a cross-correlogram with lag in [-width,width] and given bin_width size.
     T is the total duration (optional) and should be greater than or
@@ -80,9 +79,9 @@ def correlogram(T1, T2, width=20.0*ms, bin_width=1.0*ms, T=None):
 
     # Divide by time to get rate
     if T is None and len(T1) > 0:
-        T = np.max((T1[-1], T2[-1]))*ms - np.min((T1[0], T2[0]))*ms
+        T = np.max((T1[-1], T2[-1]))*pq.ms - np.min((T1[0], T2[0]))*pq.ms
     if len(T1) == 0:  # handle empty spike train
-        T = 0*ms
+        T = 0*pq.ms
     # Windowing function (triangle)
     W = np.zeros(2 * n)
     W[:n] = T - bin_width * np.arange(n - 1, -1, -1)
@@ -233,7 +232,7 @@ def group_correlations(spikes, delta=None):
     """
     Computes the pairwise correlation strength and timescale of the given pool of spike trains.
     spikes is a (i,t) list and must be sorted.
-    delta is the length of the time window, 10*ms by default.
+    delta is the length of the time window, 10*pq.ms by default.
     """
     aspikes = np.array(spikes)
     N = aspikes[:, 0].max() + 1  # neuron count
