@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from pathlib import Path
 import toml
 import pprint
@@ -11,6 +12,30 @@ from src.vcnmodel import h_reader
 pp = pprint.PrettyPrinter(indent=4)
 
 allcells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+bestcells = [ 6, 9,  10, 11, 13, 17, 30]
+
+def defemptylist():
+    return []
+
+@dataclass
+class AxonMorph:
+    cellID: str=''
+    HillockLength: list = field(default_factory=defemptylist)
+    HillockDiam0: list = field(default_factory=defemptylist)
+    HillockDiam1: list = field(default_factory=defemptylist)
+    HillockDiamAvg: list = field(default_factory=defemptylist)
+    AISLength: list = field(default_factory=defemptylist)
+    AISDiam0: list = field(default_factory=defemptylist)
+    AISDiam1: list = field(default_factory=defemptylist)
+    AISDiamAvg: list = field(default_factory=defemptylist)
+    MyelLength: list = field(default_factory=defemptylist)
+    MyelDiam0: list = field(default_factory=defemptylist)
+    MyelDiam1: list = field(default_factory=defemptylist)
+    MyelDiamAvg: list = field(default_factory=defemptylist)
+    AxonLength: list = field(default_factory=defemptylist)
+    AxonDiam0: list = field(default_factory=defemptylist)
+    AxonDiam1: list = field(default_factory=defemptylist)
+    AxonDiamAvg: list = field(default_factory=defemptylist)
 
 class MeasureAxons(object):
     def __init__(self):
@@ -60,7 +85,7 @@ class MeasureAxons(object):
 
     def run(self):
         sl = {}
-        for cell in allcells:
+        for cell in bestcells:
             cname = f"VCN_c{cell:02d}"
             cell_hoc = f"{cname}_full.hoc"
             fn = Path(self.baseDirectory, cname, self.morphDirectory, cell_hoc)
@@ -68,19 +93,82 @@ class MeasureAxons(object):
             # h.load_file(str(fn))
             # for sec in h.sections:
             #     print(sec, sec.name())
-            secs = self.get_axon_lengths(cname, fn)
+            secs = self.get_axon_measures(cname, fn)
             sl[cname] = secs
-        pp.pprint(sl)
-        print(f"Cell       Hillock     AIS      Unmeyl      Myel      Axon  (um)")
+        # pp.pprint(sl)
+        print(f"\nLengths: \nCell       Hillock     AIS      Myel      Axon  (um)")
+        h_s = []
+        ais_s = []
+        myel_s = []
+        ax_s = []
         for c in sl:
-            print(f"{c:s}   {np.sum(sl[c]['Axon_Hillock']):6.1f}", end="")
-            print(f"     {np.sum(sl[c]['Axon_Initial_Segment']):6.1f}", end="")
-            print(f"     {np.sum(sl[c]['Unmeylinated_Axon']):6.1f}", end="")
-            print(f"     {np.sum(sl[c]['Myelinated_Axon']):6.1f}", end="")
-            print(f"     {np.sum(sl[c]['Axon']):6.1f}")
-            
+            h_s.append(np.sum(sl[c].HillockLength))
+            ais_s.append(np.sum(sl[c].AISLength))
+            myel_s.append(np.sum(sl[c].MyelLength))
+            ax_s.append(np.sum(sl[c].AxonLength))
+            print(f"{c:s}   {h_s[-1]:6.2f}", end="")
+            print(f"     {ais_s[-1]:6.2f}", end="")
+            print(f"     {myel_s[-1]:6.2f}", end="")
+            print(f"     {ax_s[-1]:6.2f}")
+        print('-'*50)
+        print(f"Avg:      {np.mean(h_s):6.2f}     {np.mean(ais_s):6.2f}     {np.mean(myel_s):6.2f}     {np.mean(ax_s):6.2f}")
+        print(f"Std:      {np.std(h_s):6.2f}     {np.std(ais_s):6.2f}     {np.std(myel_s):6.2f}     {np.std(ax_s):6.2f}")
 
-    def get_axon_lengths(self, cname, fn):
+
+        print(f"\nAvgDiam: \nCell       Hillock     AIS      Myel      Axon  (um)")
+        h_s = []
+        ais_s = []
+        myel_s = []
+        ax_s = []
+        for c in sl:
+            h_s.append(np.sum(sl[c].HillockDiamAvg))
+            ais_s.append(np.sum(sl[c].AISDiamAvg))
+            myel_s.append(np.sum(sl[c].MyelDiamAvg))
+            ax_s.append(np.sum(sl[c].AxonDiamAvg))
+            print(f"{c:s}   {h_s[-1]:6.2f}", end="")
+            print(f"     {ais_s[-1]:6.2f}", end="")
+            print(f"     {myel_s[-1]:6.2f}", end="")
+            print(f"     {ax_s[-1]:6.2f}")
+        print('-'*50)
+        print(f"Avg:      {np.mean(h_s):6.2f}     {np.mean(ais_s):6.2f}     {np.mean(myel_s):6.2f}     {np.mean(ax_s):6.2f}")
+        print(f"Std:      {np.std(h_s):6.2f}     {np.std(ais_s):6.2f}     {np.std(myel_s):6.2f}     {np.std(ax_s):6.2f}")
+
+        print(f"\nBegDiam: \nCell       Hillock     AIS      Myel      Axon  (um)")
+        h_s = []
+        ais_s = []
+        myel_s = []
+        ax_s = []
+        for c in sl:
+            h_s.append(np.sum(sl[c].HillockDiam0))
+            ais_s.append(np.sum(sl[c].AISDiam0))
+            myel_s.append(np.sum(sl[c].MyelDiam0))
+            ax_s.append(np.sum(sl[c].AxonDiam0))
+            print(f"{c:s}   {h_s[-1]:6.2f}", end="")
+            print(f"     {ais_s[-1]:6.2f}", end="")
+            print(f"     {myel_s[-1]:6.2f}", end="")
+            print(f"     {ax_s[-1]:6.2f}")
+        print('-'*50)
+        print(f"Avg:      {np.mean(h_s):6.2f}     {np.mean(ais_s):6.2f}     {np.mean(myel_s):6.2f}     {np.mean(ax_s):6.2f}")
+        print(f"Std:      {np.std(h_s):6.2f}     {np.std(ais_s):6.2f}     {np.std(myel_s):6.2f}     {np.std(ax_s):6.2f}")
+        
+        print(f"\nEndDiam: \nCell       Hillock     AIS      Myel      Axon  (um)")
+        h_s = []
+        ais_s = []
+        myel_s = []
+        ax_s = []
+        for c in sl:
+            h_s.append(np.sum(sl[c].HillockDiam1))
+            ais_s.append(np.sum(sl[c].AISDiam1))
+            myel_s.append(np.sum(sl[c].MyelDiam1))
+            ax_s.append(np.sum(sl[c].AxonDiam1))
+            print(f"{c:s}   {h_s[-1]:6.2f}", end="")
+            print(f"     {ais_s[-1]:6.2f}", end="")
+            print(f"     {myel_s[-1]:6.2f}", end="")
+            print(f"     {ax_s[-1]:6.2f}")
+        print('-'*50)
+        print(f"Avg:      {np.mean(h_s):6.2f}     {np.mean(ais_s):6.2f}     {np.mean(myel_s):6.2f}     {np.mean(ax_s):6.2f}")
+        print(f"Std:      {np.std(h_s):6.2f}     {np.std(ais_s):6.2f}     {np.std(myel_s):6.2f}     {np.std(ax_s):6.2f}")
+    def get_axon_measures(self, cname, fn):
         cconfig = cell_config.CellConfig()
         sinflateratio = cconfig.get_soma_ratio(cname)
         dinflateratio = cconfig.get_dendrite_ratio(cname)
@@ -100,16 +188,39 @@ class MeasureAxons(object):
         pt3d = AdjArea.adjust_diameters(
             sectypes=AdjArea.dendrites, inflateRatio=dinflateratio
         )
-        secs = {n:[] for n in self.axons}
-        
+        AM = AxonMorph(cellID=cname)
+        sectypes = []
         for secname, sec in self.HR.sections.items():
             sectype = self.HR.find_sec_group(secname)
+            sectypes.append(sectype)
             if sectype not in self.axons:
                 continue
-            secs[sectype] = [sec.L]
-        # print('secs: ', secs)
-
-        return secs
+            if sectype == 'Axon_Hillock':
+                AM.HillockLength.append(sec.L)
+                AM.HillockDiamAvg.append(sec.diam)  # average diameter
+                segs = list(sec.allseg())
+                AM.HillockDiam0.append(segs[0].diam) # end diameters for section
+                AM.HillockDiam1.append(segs[-1].diam)
+            if sectype in ['Axon_Initial_Segment', 'Unmyelinated_Axon']:
+                AM.AISLength.append(sec.L)
+                AM.AISDiamAvg.append(sec.diam)  # average diameter
+                segs = list(sec.allseg())
+                AM.AISDiam0.append(segs[0].diam) # end diameters for section
+                AM.AISDiam1.append(segs[-1].diam)
+            if sectype == 'Myelinated_Axon':
+                AM.MyelLength.append(sec.L)
+                AM.MyelDiamAvg.append(sec.diam)  # average diameter
+                segs = list(sec.allseg())
+                AM.MyelDiam0.append(segs[0].diam) # end diameters for section
+                AM.MyelDiam1.append(segs[-1].diam)
+            if sectype == 'Axon':
+                AM.AxonLength.append(sec.L)
+                AM.AxonDiamAvg.append(sec.diam)  # average diameter
+                segs = list(sec.allseg())
+                AM.AxonDiam0.append(segs[0].diam) # end diameters for section
+                AM.AxonDiam1.append(segs[-1].diam)                
+                # print('secs: ', secs)
+        return AM
 
 
 if __name__ == '__main__':

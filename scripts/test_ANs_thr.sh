@@ -8,7 +8,7 @@
 # Note we do not have a full reconstruction for cell 18
 # in that dataset.
 #######################################################
-CELLNAMES="02 05 06 09 10 11 13 17 18 30" # 
+CELLNAMES="02" # "02 05 06 09 10 11 13 17 18 30" # 
 #CONFIG="noscale.toml" #"autoscale.toml"
 CONFIG="autoscale_multisite_0dB_parallel_synthr.toml"
 RUNTEXT="running the individual initialization and running AN PSTH protocols"
