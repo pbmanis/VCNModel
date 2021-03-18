@@ -2333,10 +2333,10 @@ class PlotSims:
             fs2 = np.array(filttable2)[:,2:].sum(axis=0)/nfilt2_spikes
         
         
-        if filttable.shape[0] > 0:
-            f=mpl.figure()
-            mpl.plot(fs1, fsa)
-            mpl.show()
+        # if filttable.shape[0] > 0:
+        #     f=mpl.figure()
+        #     mpl.plot(fs1, fsa)
+        #     mpl.show()
         # print('pre spike_count associated with a post spike: ', pre_spike_counts)
         # plot the position of the prespikes for every trial as determined by the
         # second trial loop above.

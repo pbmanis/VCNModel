@@ -1437,7 +1437,7 @@ class Figures(object):
         with open(rc_datafile, "wb") as fh:
             pickle.dump(all_RCD_RCP, fh)
 
-        title = ("SBEM Project Supplemental Figure 2 Modeling : Reverse Correlation Summary",)
+        title = ("SBEM Project Supplemental Figure 3 Modeling : Reverse Correlation Summary",)
         save_file = f"Fig_M3_supplemental_Full_{dBSPL:s}.pdf"
         fig = FigInfo()
         fig.P = P
