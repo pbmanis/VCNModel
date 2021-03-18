@@ -87,6 +87,7 @@ class CmdChoices:
         "runIV",
         "initandrunIV",
         "initVC",
+        "runIVSpikeThreshold",
         "runVC",
         "initAN",
         "runANPSTH",

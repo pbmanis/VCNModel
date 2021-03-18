@@ -460,7 +460,7 @@ class ModelRun:
         hocname = Path()
 
         print("\nRUNPROTOCOL: ", self.RunInfo.runProtocol)
-        if self.RunInfo.runProtocol in ["initIV", "initandrunIV", "runIV", "Zin"]:
+        if self.RunInfo.runProtocol in ["initIV", "initandrunIV", "runIV", "Zin", "runIVSpikeThreshold"]:
             simMode = "IV"
             self.RunInfo.postMode = "CC"
             initPath = Path(self.baseDirectory, self.Params.cellID, self.initDirectory)
@@ -1105,6 +1105,7 @@ class ModelRun:
             "initIV": self.initIV,
             "runIV": self.iv_run,
             "Zin": self.Zin,
+            "runIVSpikeThreshold": self.iv_run_spike_threshold,
             "initVC": self.initVC,
             "runVC": self.VC_run,
             "initAN": self.an_run_init,  # (self.post_cell, make_an_intial_conditions=True),
@@ -1322,6 +1323,83 @@ class ModelRun:
             "spikes": {"i": self.R.IVResult["Ispike"], "n": self.R.IVResult["Nspike"]},
         }
         return self.IVSummary
+
+    def iv_run_spike_threshold(self, par_map: dict = None):
+        """
+        find spike threshold - lowest current level (within a delta I) that generates a 
+        spike.
+
+        Parameters
+        ----------
+        par_map : dict (default: empty)
+            A dictionary of paramters, passed to models that are run (not used).
+
+        Returns
+        -------
+            summary : dict
+                A summary of the results, including the file, par_map, resting input resistance,
+                time constant, and spike times
+
+        """
+        print("iv_run_spike_threshold: starting")
+        start_time = timeit.default_timer()
+
+        # if self.RunInfo.sequence != "":  # replace sequence?
+       #      self.RunInfo.stimInj = {"pulse": np.linspace(0.01, 1.60, endpoint=True)}
+       #  self.R = GenerateRun(
+       #      self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
+       #  )
+        self.RunInfo.folder = Path(
+            self.baseDirectory, self.Params.cellID, self.simDirectory, "IV"
+        )
+        if self.Params.verbose:
+            print("iv_run_spike_threshold: calling do_run")
+        nworkers = self.Params.nWorkers
+        #        print(self.Params.Parallel)
+        if self.Params.Parallel is False:
+            nworkers = 1
+        #        print('Number of workers available on this machine: ', nworkers)
+        # coarse run first:
+        self.RunInfo.stimDur = 20.0  # msec short pulses are sufficient
+        
+        self.RunInfo.stimInj = {"pulse": np.linspace(0.1, 1.60, 16, endpoint=True)} # 0.1 nA steps
+        self.R = GenerateRun(
+            self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
+        )
+        self.R.doRun(
+            self.Params.hocfile,
+            parMap=self.RunInfo.stimInj,
+            save="monitor",
+            restore_from_file=True,
+            initfile=self.Params.initStateFile,
+            workers=nworkers,
+        )
+        print('Coarse Run: ')
+        # print(self.R.IVResult['Nspike'])
+        # print(self.R.IVResult["Ispike"])
+        fspk = np.where(self.R.IVResult['Nspike'])[0]
+        print("Coarse current threshold: ", self.R.IVResult["Ispike"][fspk[0]])
+        # repeat with samller pulse range
+        
+        self.RunInfo.stimInj = {"pulse": np.linspace(self.R.IVResult["Ispike"][fspk[0]-1],
+            self.R.IVResult["Ispike"][fspk[0]], 21, endpoint=True)} # 5 pA steps
+        self.R = GenerateRun(
+            self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
+        )
+        self.R.doRun(
+            self.Params.hocfile,
+            parMap=self.RunInfo.stimInj,
+            save="monitor",
+            restore_from_file=True,
+            initfile=self.Params.initStateFile,
+            workers=nworkers,
+        )
+        print('Fine Run: ')
+        # print(self.R.IVResult['Nspike'])
+        # print(self.R.IVResult["Ispike"])
+        fspk = np.where(self.R.IVResult['Nspike'])[0]
+        print(f"{str(self.Params.cellID):s}  {self.R.IVResult['Ispike'][fspk[0]]:.3f}")
+        return
 
     def initVC(self):
         self.R = GenerateRun(
@@ -2015,6 +2093,31 @@ class ModelRun:
     def an_run_omit_one(self):
         self.an_run_singles(exclude=True)
 
+    def _search(self, variable: float=0., 
+                target: float=0.,
+                current_value: float=0., 
+                factors:list = [0.6, 0.3],
+                last: int = 0,
+                ) -> (float, int):
+
+            if current_value > target:
+                if last == 1:
+                    factor = factors[0]
+                else:
+                    factor = factors[1]
+                last = 1
+                ndiff = int(variable*factor*(current_value-target)) # decrease "some" fraction of distance
+                variable -= ndiff
+            else:
+                if last == -1:
+                    factor = factors[0]
+                else:
+                    factor = factors[1]
+                last = -1
+                ndiff = int(variable*factor*(target-current_value))  # increase "some" fraction of distance
+                variable += ndiff
+            return variable, last, ndiff
+
     def an_run_find_syn_thr(self):
         """
         This routine finds the number of active zones needed to produce
@@ -2047,6 +2150,7 @@ class ModelRun:
         last = 0
         ndiff = 0
         factor = 1.0
+        min_diff = 0
         datestr = datetime.datetime.now().strftime(
             "%Y-%m-%d.%H-%M-%S"
         )  # get the actual start time for the top directory
@@ -2071,33 +2175,37 @@ class ModelRun:
                 fh.write(output_str+'\n')
 
             cprint('y', output_str)
-            if ratio > target_ratio:
-                if last == 1:
-                    factor = 0.6
-                else:
-                    factor = 0.3
-                last = 1
-                ndiff = int(nsyn*factor*(ratio-target_ratio)) # decrease "some" fraction of distance
-                nsyn -= ndiff
-            else:
-                if last == -1:
-                    factor = 0.6
-                else:
-                    factor = 0.3
-                last = -1
-                ndiff = int(factor*nsyn*(target_ratio-ratio))  # increase "some" fraction of distance
-                nsyn += ndiff
-            if iteration > maxiter or ndiff == 0:
-                 print('done, ndelta, iteration: ', iteration)
+            nsyn, last, ndiff = self._search(variable=nsyn,
+                target=target_ratio, 
+                current_value=ratio, 
+                factors=[0.33, 0.65], 
+                last=last)
+            # if ratio > target_ratio:
+            #     if last == 1:
+            #         factor = 0.6
+            #     else:
+            #         factor = 0.3
+            #     last = 1
+            #     ndiff = int(nsyn*factor*(ratio-target_ratio)) # decrease "some" fraction of distance
+            #     nsyn -= ndiff
+            # else:
+            #     if last == -1:
+            #         factor = 0.6
+            #     else:
+            #         factor = 0.3
+            #     last = -1
+            #     ndiff = int(factor*nsyn*(target_ratio-ratio))  # increase "some" fraction of distance
+            #     nsyn += ndiff
+            if iteration > maxiter or ndiff <= min_diff:
+                 print('done,iteration, ndiff: ', iteration, ndiff)
                  done = True
         print('\nFinal: ')
-        output_str = f"Niter: {iteration:3d}  nSyn: {nsyn:4d}  nbu: {n_bu:4d}  n_an: {n_an:4d} ratio: {ratio:.2f} target: {target_ratio:.2f} ndiff: {ndiff:3d}"
+        output_str = f"Iterations: {iteration:3d}  nSyn: {nsyn:4d}  nbu: {n_bu:4d}  n_an: {n_an:4d} ratio: {ratio:.2f} target: {target_ratio:.2f} ndiff: {ndiff:3d}"
         print(output_str)
         with(open(f_log, 'a')) as fh:
             fh.write(output_str+'\n')
         
-        
-        
+
     def an_run_syn_thr_finder(self, celltype, synapseConfig, nsyn=0):
         """
         Run a set of reps with one configuration of synapses
