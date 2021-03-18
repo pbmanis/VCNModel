@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -6,8 +7,8 @@ from matplotlib import pyplot as mpl
 from neuron import h
 from pylibrary.tools import cprint as CP
 
-from vcnmodel import cell_config as cell_config
-from vcnmodel import h_reader
+from src.vcnmodel import cell_config as cell_config
+from src.vcnmodel import h_reader
 
 import toml
 config = toml.load(open("wheres_my_data.toml", "r"))
@@ -143,6 +144,12 @@ sections[4] {
 }
 """
 
+@dataclass
+class AreaSummary:
+    soma_area: float = 0.0
+    soma_inflate: float = 00
+    dendrite_area: float = 0.0
+    dendrite_inflate: float = 0.0
 
 class AdjustAreas:
     """
@@ -154,6 +161,8 @@ class AdjustAreas:
         self.method = (
             method  # option of wheter to compute areas from pt3d data, or segment data
         )
+        self.AreaSummary = AreaSummary()
+        
         if self.method == "pt3d":
             self.areafunc = self.segareasec
             self.adjust_dia_func = self.adjust_pt3d_dia
@@ -307,35 +316,6 @@ class AdjustAreas:
         h.pt3dconst(0, sec=sec)
         for seg in sec.allseg():
             seg.diam *= sf
-
-    # def adjust_segment_dia_areamatch(
-    #     self, sec: object, sf: float, eps: float = 1e-4
-    # ):
-    #     """
-    #     This function expands the surface area of a section by a
-    #     specific fractional amount. Because of the way that the
-    #     areas are calculated, we focus on using the pt3d area
-    #     sums before they are converted to neuron sections, then
-    #     compute the areas from the  sumo of the individual segmentes
-    #     in the section. The routine is iterative as the calculation
-    #     as done in neuron is not always predicable.
-    #     """
-    #
-    #     if sf == 1.0:
-    #         return
-    #     section_area = self.areafunc(sec)  # starting value
-    #     target_area = section_area * sf
-    #     n = 0
-    #     while np.fabs(target_area - section_area) > eps:
-    #         ratio = target_area / section_area
-    #         if ratio < 0.01:
-    #             print("Inflation failed: ratio: ", ratio, section_area, target_area, n)
-    #             exit()
-    #         self.adjust_seg_dia(sec, ratio)
-    #         section_area = self.areafunc(sec)
-    #         n += 1
-    #         # print(f"n: {n:d} section area: {section_area:.3f}  target  area: {target_area:.3f}")
-    #     # print(f"sec: {str(sec):s}  iters: {n:d}")
 
     def adjust_dia_areamatch(
         self, sec: object, sf: float, eps: float = 1e-4,
@@ -723,8 +703,9 @@ class SetNSegs(object):
         print(f"{aother_inf/aother:6.3f} (should be: {1.0:6.3f})")
 
 
-def recon_hoc():
-    cname = "VCN_c09"
+def recon_hoc(cellname):
+    cname = cellname
+    # cname = "VCN_c05"
     basepath = config["cellDataDirectory"]
     cell = f"{cname:s}/Morphology/{cname:s}.hocx"
     cell = f"{cname:s}/Morphology/{cname:s}_Full.hoc"
@@ -750,10 +731,18 @@ def recon_hoc():
         sectypes=AdjArea.dendrites, inflateRatio=dinflateratio
     )
     AdjArea.cell.print_soma_info()
-    AdjArea.plot_areas(pt3d)
+    print(dir(AdjArea.cell))
+    AdjArea.AreaSummary.soma_area = AdjArea.cell.soma_area
+    # retun AdjArea.AreaSummary
+    # AdjArea.plot_areas(pt3d)
 
 
 if __name__ == "__main__":
     # simple_test()
     # neuron_example()
-    recon_hoc()
+    cell_no = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+    AS = []*len(cell_no)
+    for i, c in enumerate(cell_no):
+        cell_name = f"VCN_c{c:02d}"
+        AS[i] = recon_hoc(cell_name)
+    print(AS)
