@@ -18,11 +18,11 @@ from pylibrary.tools import cprint as CP
 from pyqtgraph import multiprocess as mproc
 from pyqtgraph.Qt import QtGui
 
-from vcnmodel import NoiseTrainingGen as NG
-from vcnmodel import cellInitialization as cellInit
-from vcnmodel.analyzers import analyze_run as ar
+from src.vcnmodel import NoiseTrainingGen as NG
+from src.vcnmodel import cellInitialization as cellInit
+from src.vcnmodel.analyzers import analyze_run as ar
 # from NoiseTrainingGen.NoiseGen import generator
-from vcnmodel.plotters import IVPlots as IVP
+from src.vcnmodel.plotters import IVPlots as IVP
 
 __author__ = "pbmanis"
 """
