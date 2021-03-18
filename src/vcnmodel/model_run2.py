@@ -534,6 +534,7 @@ class ModelRun:
             or self.RunInfo.runProtocol == "initAN"
             or self.RunInfo.runProtocol == "runANSingles"
             or self.RunInfo.runProtocol == "runANPSTH"
+            or self.RunInfo.runProtocol == "runANThreshold"
         ):
             simMode = "AN"
             self.RunInfo.postMode = "CC"
@@ -754,9 +755,9 @@ class ModelRun:
             changes = None
             nach = None  # uses default
             if self.Params.dataTable == "":
-                table_name = f"vcnmodel.model_data.data_{self.Params.modelName:s}{dmodes[self.Params.dendriteMode]:s}"
+                table_name = f"src.vcnmodel.model_data.data_{self.Params.modelName:s}{dmodes[self.Params.dendriteMode]:s}"
             else:
-                table_name = f"vcnmodel.model_data.{self.Params.dataTable:s}"
+                table_name = f"src.vcnmodel.model_data.{self.Params.dataTable:s}"
                 cprint("r", f"**** USING SPECIFIED DATA TABLE: {str(table_name):s}")
                 knownmodes = ["normal", "actdend", "pasdend"]
                 self.Params.dendriteMode = "normal"
@@ -1108,14 +1109,16 @@ class ModelRun:
             "runVC": self.VC_run,
             "initAN": self.an_run_init,  # (self.post_cell, make_an_intial_conditions=True),
             "runANPSTH": self.an_run,
-            "runANIO": self.an_run_IO,
+            "runANIO": self.an_run_IO_gSyn,
             "runANSingles": self.an_run_singles,
             "runANOmitOne": self.an_run_omit_one,  # .(self.post_cell, exclude=True),
+            "runANThreshold": self.an_run_find_syn_thr,
             "gifnoise": self.noise_run,
         }
         if self.RunInfo.runProtocol in [
             "runANPSTH",
             "runANSingles",
+            "runANThreshold",
             "runANOmitOne",
             "runANIO",
         ]:
@@ -1625,16 +1628,6 @@ class ModelRun:
             refract=0.0007,  # min refractory period, msec
         )
         allDendriteVoltages = []
-        # print('v[;50] =',  tresults[j]["Vsoma"][:50]*1e-3)
-        # print('threshold: ', self.RunInfo.threshold*1e03)
-        # print('max time: ', np.max(tresults[j]["time"]/1000.))
-        # print('h.dt: ',  self.post_cell.hr.h.dt*1e-3)
-        # print('dur: ', self.RunInfo.run_duration)
-        # spikeTimes = spikeTimes
-        # print('spike times: ', spikeTimes)
-        # spikeTimes = self.clean_spiketimes(spikeTimes, mindT=0.0007)
-        # print('spike times: ', spikeTimes)
-        # exit()
         inputSpikeTimes = tresults[
             "ANSpikeTimes"
         ]  # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
@@ -2022,9 +2015,166 @@ class ModelRun:
     def an_run_omit_one(self):
         self.an_run_singles(exclude=True)
 
-    def an_run_IO(self):
+    def an_run_find_syn_thr(self):
+        """
+        This routine finds the number of active zones needed to produce
+        a target amount of (entrainment)
+        Iterative process:
+        1. Only one terminal is active; the number of active zones is varied.
+        2. The number of zones is adjusted using a linear estimator until the
+            the target_ratio of bushy spikes to AN spikes is attained.
+        Note: this may get caught bouncing between two input sizes until it 
+        reaches the maxiter terminations. This is probably ok. 
+        
+            
+        """
+        self.start_time = time.time()
+        synapseConfig, celltype = self.cconfig.make_dict(self.Params.cellID)
+        self.Params.SynapseConfig = synapseConfig
+        max_nsyn = 0
+        for i, sc in enumerate(synapseConfig): # for each terminal
+            if synapseConfig[i]["nSyn"] > max_nsyn:
+                max_nsyn = synapseConfig[i]["nSyn"]
+            synapseConfig[i]["nSyn"] = 0  # turn off all but one synapse
+        # algorithm:
+        # start with largest input. If spike count is 0, 
+        # increase by 
+        nsyn = 180
+        done = False
+        target_ratio = 0.7
+        iteration = 0
+        maxiter = 25
+        last = 0
+        ndiff = 0
+        factor = 1.0
+        datestr = datetime.datetime.now().strftime(
+            "%Y-%m-%d.%H-%M-%S"
+        )  # get the actual start time for the top directory
+        f_log = f"thrtest_{str(self.Params.cellID):s}_{target_ratio:.2f}.txt"
+        ostr = f"testing syn threshold, cell {str(self.Params.cellID):s}"
+        ostr += f" target:{target_ratio:.1f} {datestr:s}\n"
+        with(open(f_log, 'w')) as fh:
+            fh.write(ostr)
+        while not done:
+            result = self.an_run_syn_thr_finder(celltype, synapseConfig, nsyn=nsyn)
+            iteration += 1
+            bu_st = np.array(result[0]['spikeTimes'])
+            bu_st = bu_st[np.where(bu_st > 0.01)[0]]
+            an_st = result[0]['inputSpikeTimes'][0]
+            an_st = an_st[an_st > 0.01]
+            n_bu = len(bu_st)
+            n_an = len(an_st)
+            ratio = float(n_bu)/float(n_an)
+            output_str = f"Niter: {iteration:3d}  nSyn: {nsyn:4d}  nbu: {n_bu:4d}  n_an: {n_an:4d} ratio: {ratio:.2f} target: {target_ratio:.2f} ndiff: {ndiff:3d}"
+            print(output_str)
+            with(open(f_log, 'a')) as fh:
+                fh.write(output_str+'\n')
+
+            cprint('y', output_str)
+            if ratio > target_ratio:
+                if last == 1:
+                    factor = 0.6
+                else:
+                    factor = 0.3
+                last = 1
+                ndiff = int(nsyn*factor*(ratio-target_ratio)) # decrease "some" fraction of distance
+                nsyn -= ndiff
+            else:
+                if last == -1:
+                    factor = 0.6
+                else:
+                    factor = 0.3
+                last = -1
+                ndiff = int(factor*nsyn*(target_ratio-ratio))  # increase "some" fraction of distance
+                nsyn += ndiff
+            if iteration > maxiter or ndiff == 0:
+                 print('done, ndelta, iteration: ', iteration)
+                 done = True
+        print('\nFinal: ')
+        output_str = f"Niter: {iteration:3d}  nSyn: {nsyn:4d}  nbu: {n_bu:4d}  n_an: {n_an:4d} ratio: {ratio:.2f} target: {target_ratio:.2f} ndiff: {ndiff:3d}"
+        print(output_str)
+        with(open(f_log, 'a')) as fh:
+            fh.write(output_str+'\n')
+        
+        
+        
+    def an_run_syn_thr_finder(self, celltype, synapseConfig, nsyn=0):
+        """
+        Run a set of reps with one configuration of synapses
+        
+        """
+        nReps = self.RunInfo.nReps
+        threshold = self.RunInfo.threshold  # spike threshold, mV
+
+        synapseConfig[0]["nSyn"] = nsyn
+        preCell, synapse, self.electrode_site = self.configure_cell(
+            self.post_cell, synapseConfig, celltype
+        )
+        if self.Params.ANSynapseType == "multisite":
+            for i, s in enumerate(synapse):
+                s.terminal.relsite.Dep_Flag = 0
+                # print(dir(s.terminal.relsite))
+        
+        seeds = self.compute_seeds(nReps, synapseConfig)
+        nSyns = len(preCell)
+        k = 0
+        # special conditions:
+        # no depression
+        # no variability
+
+        allDendriteVoltages = {}
+        celltime = []
+        parallel = self.Params.Parallel
+        self.setup_time = time.time() - self.start_time
+        self.nrn_run_time = 0.0
+        self.an_setup_time = 0.0
+
+        tagname = "SynIO%03d"
+        gmaxs = np.zeros(nReps)
+        tresults = [None] * nReps
+        celltime = [None] * nReps
+        result = {}
+        
+        if self.Params.testsetup:
+            return None
+        if parallel and self.Params.nWorkers > 1:
+            nWorkers = self.Params.nWorkers
+            TASKS = [s for s in range(nReps)]
+            # run using pyqtgraph's parallel support
+            with MP.Parallelize(
+                enumerate(TASKS), results=tresults, workers=nWorkers
+            ) as tasker:
+                for j, x in tasker:
+                    tresults = self.single_an_run(
+                        j, synapseConfig, seeds, preCell, self.an_setup_time,
+                    )
+                    tasker.results[j] = tresults
+        else:  # easier to debug witout parallelization
+            for j, N in enumerate(range(nReps)):
+                tresults[j] = self.single_an_run(
+                    j, synapseConfig, seeds, preCell, self.an_setup_time,
+                )
+        for j, N in enumerate(range(nReps)):
+            celltime[N], result[N] = self.retrieve_data(tresults[j])
+
+        # self.analysis_filewriter(self.Params.cell, result, tag=tagname % k)
+        if self.Params.testsetup:
+            return
+        if self.Params.plotFlag:
+            self.plot_an(celltime, result)
+        for rk in result:
+            r = result[rk]
+            print(len(r['spikeTimes']), len(r['inputSpikeTimes'][0]))
+            
+            # mpl.figure()
+            # mpl.eventplot([np.array(r['spikeTimes'])*1e3, r['inputSpikeTimes'][0]], ['r', 'k'])
+            # mpl.show()
+        return result
+
+    def an_run_IO_gSyn(self):
         """
         Establish AN inputs to soma, and run the model adjusting gmax over the reps from 0.5 to 4x.
+        
         synapseConfig: list of tuples
             each tuple represents an AN fiber (SGC cell) with:
             (N sites, delay (ms), and spont rate group [1=low, 2=medium, 3=high])
@@ -2296,12 +2446,17 @@ class ModelRun:
         #     return  # no plots when doing parallel runs...
         # nReps = self.RunInfo.nReps
         threshold = self.RunInfo.threshold
-        fig, ax = mpl.subplots(2, 1)
+        fig, ax = mpl.subplots(3, 1, sharex=True)
         fig.suptitle("AN Inputs")
         # win = pgh.figure(title='AN Inputs')
         # layout = pgh.LayoutMaker(cols=1,rows=2, win=win, labelEdges=True, ticks='talbot')
         for j, N in enumerate(range(len(result))):
+            dt = np.mean(np.diff(celltime[N]))
             ax[0].plot(celltime[N], result[N]["somaVoltage"], c="k", linewidth=0.75)
+            st = [int(x*1e3/dt) for x in result[N]['spikeTimes']]
+            ax[0].plot(celltime[N][st], result[N]['somaVoltage'][st], 'ro', markersize=3.0)
+            sta = [int(x/dt) for x in result[N]['inputSpikeTimes'][0]]
+            ax[0].plot(celltime[N][sta], result[N]['somaVoltage'][sta], 'b|', markersize=6)
             ax[0].plot(
                 [np.min(celltime[N]), np.max(celltime[N])],
                 [threshold, threshold],
@@ -2325,6 +2480,9 @@ class ModelRun:
                     linewidth=0.6,
                     linestyle="--",
                 )
+
+        st = result[0]['inputSpikeTimes'][0]
+        ax[2].eventplot([st, np.array(result[0]['spikeTimes'])*1e3], colors=['k', 'r'])
         mpl.show()
 
     def cleanNeuronObjs(self):
@@ -2443,7 +2601,7 @@ def main():
         parsedargs,
         params,
         runinfo,
-    ) = vcnmodel.model_params.getCommands(toml_dir='toml')  # get from command line
+    ) = src.vcnmodel.model_params.getCommands(toml_dir='toml')  # get from command line
     model = ModelRun(
         params=params, runinfo=runinfo, args=parsedargs
     )  # create instance of the model

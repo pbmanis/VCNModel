@@ -92,6 +92,7 @@ class CmdChoices:
         "runANPSTH",
         "runANIO",
         "runANSingles",
+        "runANThreshold",
         "gifnoise",
     ]
     soundChoices = ["tonepip", "noise", "stationaryNoise", "SAM", "CMMR"]
