@@ -83,11 +83,46 @@ class MeasureAxons(object):
             "Axon",
         ]
 
+    def print_table(self, sl, meas):
+        h_s = []
+        ais_s = []
+        myel_s = []
+        ax_s = []
+        for c in sl:
+            if meas == 'Length':
+                h_s.append(np.sum(sl[c].HillockLength))
+                ais_s.append(np.sum(sl[c].AISLength))
+                myel_s.append(np.sum(sl[c].MyelLength))
+                ax_s.append(np.sum(sl[c].AxonLength))
+            if meas == 'AvgDiam':
+                h_s.append(np.sum(sl[c].HillockDiamAvg))
+                ais_s.append(np.sum(sl[c].AISDiamAvg))
+                myel_s.append(np.sum(sl[c].MyelDiamAvg))
+                ax_s.append(np.sum(sl[c].AxonDiamAvg))
+            if meas == 'BegDiam':
+                h_s.append(np.sum(sl[c].HillockDiam0))
+                ais_s.append(np.sum(sl[c].AISDiam0))
+                myel_s.append(np.sum(sl[c].MyelDiam0))
+                ax_s.append(np.sum(sl[c].AxonDiam0))
+            if meas == 'EndDiam':
+                h_s.append(np.sum(sl[c].HillockDiam1))
+                ais_s.append(np.sum(sl[c].AISDiam1))
+                myel_s.append(np.sum(sl[c].MyelDiam1))
+                ax_s.append(np.sum(sl[c].AxonDiam1))
+            print(f"{c:s}   {h_s[-1]:6.2f}", end="")
+            print(f"     {ais_s[-1]:6.2f}", end="")
+            print(f"     {myel_s[-1]:6.2f}", end="")
+            print(f"     {ax_s[-1]:6.2f}")
+        print('-'*50)
+        print(f"Avg:      {np.mean(h_s):6.2f}     {np.mean(ais_s):6.2f}     {np.mean(myel_s):6.2f}     {np.mean(ax_s):6.2f}")
+        print(f"Std:      {np.std(h_s):6.2f}     {np.std(ais_s):6.2f}     {np.std(myel_s):6.2f}     {np.std(ax_s):6.2f}")        
+        
+        
     def run(self):
         sl = {}
         for cell in bestcells:
             cname = f"VCN_c{cell:02d}"
-            cell_hoc = f"{cname}_full.hoc"
+            cell_hoc = f"{cname}_Full_standardized_axon.hoc"
             fn = Path(self.baseDirectory, cname, self.morphDirectory, cell_hoc)
             # print(fn.is_file())
             # h.load_file(str(fn))
@@ -97,77 +132,17 @@ class MeasureAxons(object):
             sl[cname] = secs
         # pp.pprint(sl)
         print(f"\nLengths: \nCell       Hillock     AIS      Myel      Axon  (um)")
-        h_s = []
-        ais_s = []
-        myel_s = []
-        ax_s = []
-        for c in sl:
-            h_s.append(np.sum(sl[c].HillockLength))
-            ais_s.append(np.sum(sl[c].AISLength))
-            myel_s.append(np.sum(sl[c].MyelLength))
-            ax_s.append(np.sum(sl[c].AxonLength))
-            print(f"{c:s}   {h_s[-1]:6.2f}", end="")
-            print(f"     {ais_s[-1]:6.2f}", end="")
-            print(f"     {myel_s[-1]:6.2f}", end="")
-            print(f"     {ax_s[-1]:6.2f}")
-        print('-'*50)
-        print(f"Avg:      {np.mean(h_s):6.2f}     {np.mean(ais_s):6.2f}     {np.mean(myel_s):6.2f}     {np.mean(ax_s):6.2f}")
-        print(f"Std:      {np.std(h_s):6.2f}     {np.std(ais_s):6.2f}     {np.std(myel_s):6.2f}     {np.std(ax_s):6.2f}")
-
+        self.print_table(sl, "Length")
 
         print(f"\nAvgDiam: \nCell       Hillock     AIS      Myel      Axon  (um)")
-        h_s = []
-        ais_s = []
-        myel_s = []
-        ax_s = []
-        for c in sl:
-            h_s.append(np.sum(sl[c].HillockDiamAvg))
-            ais_s.append(np.sum(sl[c].AISDiamAvg))
-            myel_s.append(np.sum(sl[c].MyelDiamAvg))
-            ax_s.append(np.sum(sl[c].AxonDiamAvg))
-            print(f"{c:s}   {h_s[-1]:6.2f}", end="")
-            print(f"     {ais_s[-1]:6.2f}", end="")
-            print(f"     {myel_s[-1]:6.2f}", end="")
-            print(f"     {ax_s[-1]:6.2f}")
-        print('-'*50)
-        print(f"Avg:      {np.mean(h_s):6.2f}     {np.mean(ais_s):6.2f}     {np.mean(myel_s):6.2f}     {np.mean(ax_s):6.2f}")
-        print(f"Std:      {np.std(h_s):6.2f}     {np.std(ais_s):6.2f}     {np.std(myel_s):6.2f}     {np.std(ax_s):6.2f}")
+        self.print_table(sl, "AvgDiam")
 
         print(f"\nBegDiam: \nCell       Hillock     AIS      Myel      Axon  (um)")
-        h_s = []
-        ais_s = []
-        myel_s = []
-        ax_s = []
-        for c in sl:
-            h_s.append(np.sum(sl[c].HillockDiam0))
-            ais_s.append(np.sum(sl[c].AISDiam0))
-            myel_s.append(np.sum(sl[c].MyelDiam0))
-            ax_s.append(np.sum(sl[c].AxonDiam0))
-            print(f"{c:s}   {h_s[-1]:6.2f}", end="")
-            print(f"     {ais_s[-1]:6.2f}", end="")
-            print(f"     {myel_s[-1]:6.2f}", end="")
-            print(f"     {ax_s[-1]:6.2f}")
-        print('-'*50)
-        print(f"Avg:      {np.mean(h_s):6.2f}     {np.mean(ais_s):6.2f}     {np.mean(myel_s):6.2f}     {np.mean(ax_s):6.2f}")
-        print(f"Std:      {np.std(h_s):6.2f}     {np.std(ais_s):6.2f}     {np.std(myel_s):6.2f}     {np.std(ax_s):6.2f}")
+        self.print_table(sl, "BegDiam")
         
         print(f"\nEndDiam: \nCell       Hillock     AIS      Myel      Axon  (um)")
-        h_s = []
-        ais_s = []
-        myel_s = []
-        ax_s = []
-        for c in sl:
-            h_s.append(np.sum(sl[c].HillockDiam1))
-            ais_s.append(np.sum(sl[c].AISDiam1))
-            myel_s.append(np.sum(sl[c].MyelDiam1))
-            ax_s.append(np.sum(sl[c].AxonDiam1))
-            print(f"{c:s}   {h_s[-1]:6.2f}", end="")
-            print(f"     {ais_s[-1]:6.2f}", end="")
-            print(f"     {myel_s[-1]:6.2f}", end="")
-            print(f"     {ax_s[-1]:6.2f}")
-        print('-'*50)
-        print(f"Avg:      {np.mean(h_s):6.2f}     {np.mean(ais_s):6.2f}     {np.mean(myel_s):6.2f}     {np.mean(ax_s):6.2f}")
-        print(f"Std:      {np.std(h_s):6.2f}     {np.std(ais_s):6.2f}     {np.std(myel_s):6.2f}     {np.std(ax_s):6.2f}")
+        self.print_table(sl, "EndDiam")
+
     def get_axon_measures(self, cname, fn):
         cconfig = cell_config.CellConfig()
         sinflateratio = cconfig.get_soma_ratio(cname)
