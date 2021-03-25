@@ -80,7 +80,10 @@ class CmdChoices:
         "NoDistal",
         "NoUninnervated",
     ]
-
+    axonExptChoices = [
+        "default",
+        "standardized"
+    ]
     protocolChoices = [
         "initIV",
         "Zin",
@@ -145,6 +148,7 @@ class Params:
     dataTable: str = ""
     dendriteMode: str = CmdChoices.dendriteChoices[0]
     dendriteExpt: str = CmdChoices.dendriteExptChoices[0]
+    axonExpt: str = CmdChoices.axonExptChoices[0]
     modelType: str = CmdChoices.modelTypeChoices[0]
     SGCmodelType: str = CmdChoices.SGCmodelChoices[0]
     species: str = CmdChoices.speciesChoices[0]
@@ -368,6 +372,14 @@ def build_parser():
         default='default',
         choices=CmdChoices.dendriteExptChoices,
         help="Choose dendrite experiment (default, Full, NoDend, NoDistal, NoUninnervated)",
+    )
+    parser.add_argument(
+        "-A",
+        "--axonexpt",
+        dest="axonExpt",
+        default='default',
+        choices=CmdChoices.axonExptChoices,
+        help="Choose dendrite experiment (default, standardized)",
     )
     parser.add_argument(
         "--datatable",

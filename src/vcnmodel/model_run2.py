@@ -719,14 +719,22 @@ class ModelRun:
             label = f"specified hocfile"
 
         else:
+            label = ''
             if self.Params.dendriteExpt == "default":  # -dendriteExpt flags
-                self.Params.hocfile = self.Params.cell + ".hoc"
-            else:
+                self.Params.hocfile = self.Params.cell
+                label = self.Params.dendriteExpt
+            else: 
                 self.Params.hocfile = (
-                    self.Params.cell + f"_{self.Params.dendriteExpt:s}.hoc"
+                    self.Params.cell + f"_{self.Params.dendriteExpt:s}"
                 )
-            label = self.Params.dendriteExpt
+                label += self.Params.dendriteExpt
+            if self.Params.axonExpt != "default":
+                self.Params.hocfile += f"_standardized_axon"
 
+                label += ", "+self.Params.axonExpt
+            self.Params.hocfile += ".hoc" # now we can add extension
+            
+        
         cprint("c", f"Using {label:s} hoc file: {self.Params.hocfile:s}")
         filename = Path(
             self.baseDirectory,
@@ -1398,7 +1406,10 @@ class ModelRun:
         # print(self.R.IVResult['Nspike'])
         # print(self.R.IVResult["Ispike"])
         fspk = np.where(self.R.IVResult['Nspike'])[0]
-        print(f"{str(self.Params.cellID):s}  {self.R.IVResult['Ispike'][fspk[0]]:.3f}")
+        thrstr =  f"{str(self.Params.cellID):s}  {self.R.IVResult['Ispike'][fspk[0]]:.3f}"
+        cprint('m', thrstr)
+        with(open('thrrun.txt', 'a')) as fh:
+            fh.write(thrstr+'\n')
         return
 
     def initVC(self):
