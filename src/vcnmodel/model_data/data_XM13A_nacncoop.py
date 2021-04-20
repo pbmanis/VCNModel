@@ -40,7 +40,7 @@ ChannelData = u"""
         Conductances are for Mouse bushy cells
         Xie and Manis, 2013
         Age "adult", Temperature=34C
-        Units are nS.
+        Units are nS except as noted.
         nacn_vshift: was 4.3 in Xie and Manis (2013) for T-stellate cells; 0 for bushy cells
         Here reset to 0 for bushy cells
 
