@@ -9,13 +9,13 @@ proto="runIV"
 # in that dataset.
 #######################################################
 CELLNAMES="18" # "02 05 06 09 10 11 13 17 30"
-CONFIG="toml/autoscale_xm13a_multisite_parallel.toml"
+CONFIG="autoscale_xm13a_multisite_parallel.toml"
 echo "running the individual initialization and/or running of IV protocols"
 for f in $CELLNAMES
 do
     echo $f
-    python vcnmodel/model_run2.py VCN_c$f -P initIV --configfile $CONFIG -D Full --dendritemode normal --datatable data_XM13A_nacncoop
-    python vcnmodel/model_run2.py VCN_c$f -P runIV  --configfile $CONFIG -D Full --dendritemode normal --datatable data_XM13A_nacncoop
+    python src/vcnmodel/model_run2.py VCN_c$f -P initIV --configfile $CONFIG -D Full --dendritemode normal --datatable data_XM13A_nacncoop
+    python src/vcnmodel/model_run2.py VCN_c$f -P runIV  --configfile $CONFIG -D Full --dendritemode normal --datatable data_XM13A_nacncoop
 done
 
 wait
@@ -23,15 +23,15 @@ wait
 for f in $CELLNAMES
 do
     echo $f
-    python vcnmodel/model_run2.py VCN_c$f -P initIV --configfile $CONFIG -D Full --dendritemode passive --datatable data_XM13A_nacncoop_pasdend
-    python vcnmodel/model_run2.py VCN_c$f -P runIV  --configfile $CONFIG -D Full --dendritemode passive --datatable data_XM13A_nacncoop_pasdend
+    python src/vcnmodel/model_run2.py VCN_c$f -P initIV --configfile $CONFIG -D Full --dendritemode passive --datatable data_XM13A_nacncoop_pasdend
+    python src/vcnmodel/model_run2.py VCN_c$f -P runIV  --configfile $CONFIG -D Full --dendritemode passive --datatable data_XM13A_nacncoop_pasdend
 done
 
 for f in $CELLNAMES
 do
     echo $f
-    python vcnmodel/model_run2.py VCN_c$f -P initIV --configfile $CONFIG -D Full --dendritemode active --datatable data_XM13A_nacncoop_actdend
-    python vcnmodel/model_run2.py VCN_c$f -P runIV  --configfile $CONFIG -D Full --dendritemode active --datatable data_XM13A_nacncoop_actdend
+    python src/vcnmodel/model_run2.py VCN_c$f -P initIV --configfile $CONFIG -D Full --dendritemode active --datatable data_XM13A_nacncoop_actdend
+    python src/vcnmodel/model_run2.py VCN_c$f -P runIV  --configfile $CONFIG -D Full --dendritemode active --datatable data_XM13A_nacncoop_actdend
 done
 
 echo IV runs complete

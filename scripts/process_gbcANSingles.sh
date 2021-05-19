@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CELLNAMES="02" # " 05 06 09 10 11 13 17 30"
+CELLNAMES="18" # " 05 06 09 10 11 13 17 30"
 #CONFIG="noscale.toml" #"autoscale.toml"
 CONFIG="singles_autoscale_multisite_parallel.toml"
 RUNTEXT="running the AN Single protocols"
@@ -12,8 +12,8 @@ for t in $TABLES
     for f in $CELLNAMES
         do
         echo $f
-        python vcnmodel/model_run2.py VCN_c$f  -F -P initAN --configfile $CONFIG  --datatable $t
-        python vcnmodel/model_run2.py VCN_c$f  -F -P runANSingles -r 5 --configfile $CONFIG  --datatable $t
+        python src/vcnmodel/model_run2.py VCN_c$f  -D Full -P initAN --configfile $CONFIG  --datatable $t
+        python src/vcnmodel/model_run2.py VCN_c$f  -D Full -P runANSingles -r 5 --configfile $CONFIG  --datatable $t
      done
 done
 
