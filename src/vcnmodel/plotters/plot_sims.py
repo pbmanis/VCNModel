@@ -119,7 +119,6 @@ optional arguments:
 
 # make a shortcut for each of the clases
 AR = src.vcnmodel.util.readmodel.ReadModel()
-print(dir(AR))
 SP = SpikeAnalysis.SpikeAnalysis()
 RM = RmTauAnalysis.RmTauAnalysis()
 rc("text", usetex=True)
@@ -165,7 +164,7 @@ def grAList() -> list:
     Return a list of the 'grade A' cells from the SBEM project
     """
 
-    return [2, 5, 6, 9, 10, 11, 13, 17, 30]
+    return [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
 
 
 SpirouChoices = [
@@ -681,8 +680,8 @@ class PlotSims:
         if protocol == "IV":
             SP.fitOne(function="fitOneOriginal")
             RM.analyze(
-                rmpregion=[0.0, AR.tstart - 0.001],
-                tauregion=[AR.tstart, AR.tstart + (AR.tend - AR.tstart) / 5.0],
+                rmpregion=[0.0, AR.MC.tstart - 0.001],
+                tauregion=[AR.MC.tstart, AR.MC.tstart + (AR.MC.tend - AR.MC.tstart) / 5.0],
                 to_peak=True,
                 tgap=tgap,
             )
@@ -864,7 +863,7 @@ class PlotSims:
                 # cprint('r', 'spiketimes from results')
                 # print(d["Results"][icurr]["spikeTimes"])
                #  print(si.dtIC)
-                spikeindex = [int(t / (si.dtIs)) for t in d["Results"][icurr]["spikeTimes"]]
+                spikeindex = [int(t / (si.dtIC)) for t in d["Results"][icurr]["spikeTimes"]]
             else:
                 # cprint('r', 'spikes from SP.spikeIndices')
                 spikeindex = SP.spikeIndices[trial]

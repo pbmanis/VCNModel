@@ -183,13 +183,16 @@ class TableModel(QtGui.QStandardItemModel):
         if column == 0:
             self._sort_order = order
             QtGui.QStandardItemModel.sort(self, column, order)
-
+tdir = Path.cwd()
+sys.path.append(str(Path(tdir, 'src')))  # add to sys path in order to fix imports.
 
 class DataTables:
     """
     Main entry point for building the table and operating on the data
     """
     def __init__(self):
+
+        
         self.PLT = plot_sims.PlotSims(parent=self)
         self.FIGS = figures.Figures(parent=self)
         self.QColor = QtGui.QColor  # for access in plotsims (pass so we can reload)

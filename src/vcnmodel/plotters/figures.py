@@ -131,11 +131,16 @@ figure_AllIVs = {
         "passive": "runIV-all-2020-07-30.18-43-29",
         "active": "runIV-all-2020-07-30.18-56-13",
     },
-    18: {
-        "normal": "runIV-all-2020-11-16.10-54-53",
-        "active": "runIV-all-2020-11-16.10-55-23",
-        "passive": "runIV-all-2020-11-16.10-55-08",
+    18: {  # new reconstruction May 2021
+        'normal': 'runIV-all-2021-05-18.12-37-05' ,
+        'passive': 'runIV-all-2021-05-18.12-37-29' ,
+        'active': 'runIV-all-2021-05-18.12-37-53' ,
     },
+    # 18: {
+    #     "normal": "runIV-all-2020-11-16.10-54-53",
+    #     "active": "runIV-all-2020-11-16.10-55-23",
+    #     "passive": "runIV-all-2020-11-16.10-55-08",
+    # },
     30: {
         "normal": "runIV-all-2020-07-30.18-31-35",
         "passive": "runIV-all-2020-07-30.18-45-12",
@@ -182,7 +187,8 @@ figure_efficacy_supplement = {
     },
     18: {
         "NoDend": "runANSingles-all-2020-11-16.19-50-22",
-        "Full": "runANSingles-all-2020-11-16.19-57-52",
+        'Full': 'runANSingles-all-2021-05-18.14-43-58',  # new run
+        # "Full": "runANSingles-all-2020-11-16.19-57-52",
     },
     30: {
         "NoDend": "runANSingles-all-2020-11-16.20-09-36",

@@ -741,6 +741,7 @@ if __name__ == "__main__":
     # simple_test()
     # neuron_example()
     cell_no = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+    cell_no = [18]
     AS = []*len(cell_no)
     for i, c in enumerate(cell_no):
         cell_name = f"VCN_c{c:02d}"

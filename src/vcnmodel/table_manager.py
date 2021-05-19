@@ -179,9 +179,10 @@ class TableManager:
         cprint("c", f"Checking for index file: {str(indexfile):s}")
         if indexfile.is_file() and not force:
             cprint("g", f"    Found index file, reading")
-            print('indexfile: ', indexfile)
+            print('          indexfile: ', indexfile)
             with open(indexfile, "rb") as fh:
-                d = FPM.pickle_load(fh) # , encoding="latin1")
+                # d = FPM.pickle_load(fh, fix_imports=True) # , encoding="latin1")
+                d = pickle.load(fh, fix_imports=True) # , encoding="latin1")
             return d
         if force or not indexfile.is_file():
             cprint("c", f"Building a new .pkl index file for {str(indexdir):s}")
@@ -211,7 +212,7 @@ class TableManager:
         self.textappend(f"Reading pfile: {str(datafile.name):s}", color='white')
         try:
             with open(datafile, "rb") as fh:
-                d = FPM.pickle_load(fh) # , encoding="latin1")
+                d = pickle.load(fh, fix_imports=True, encoding="latin1")
         except (ModuleNotFoundError, IOError, pickle.UnpicklingError):
             self.textappend('SKIPPING: File is too old; re-run for new structure', color="red")
             self.textappend(f"File: {str(fh):s}", color="red")
@@ -241,7 +242,7 @@ class TableManager:
       
         """
         with open(filename, "rb") as fh:
-            d = FPM.pickle_load(fh)
+            d = pickle.load(fh, fix_imports=True) # d = FPM.pickle_load(fh)
         if d['runInfo'] is None:
             cprint('r', f"runinfo is None? file = {str(filename):s}")
             return None
@@ -416,7 +417,7 @@ class TableManager:
         """
         indexfilename = self.force_suffix(indexfilename)
         with open(indexfilename, "rb") as fh:
-            indexdata = FPM.pickle_load(fh) # , encoding="latin1")
+            indexdata = pickle.load(fh, fix_imports=True) # FPM.pickle_load(fh) # , encoding="latin1")
         return indexdata
 
     def remove_table_entry(self, indexrow):
@@ -462,7 +463,7 @@ class TableManager:
         print('Data: ', data)
         for f in data.files:
             with open(f, "rb") as fh:
-                fdata = FPM.pickle_load(fh) # , encoding="latin1")
+                fdata = pickle.load(fh, fix_imports=True) # FPM.pickle_load(fh) # , encoding="latin1")
                 print('*'*80)
                 cprint('c', f)
                 cprint('y', 'File Data Keys')

@@ -11,6 +11,7 @@ https://stackoverflow.com/questions/2121874/python-pickling-after-changing-a-mod
 class RenameUnpickler(pickle.Unpickler):
     def find_class(self, module, name):
         renamed_module = module
+        # print("Module: ", module, name)
         if module in ["vcnmodel","vcnmodel.model_params", 'vcnmodel.table_manager',
             "vcnmodel.plotters.plot_sims"]:
             renamed_module = "src." + module
