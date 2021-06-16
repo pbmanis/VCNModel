@@ -536,7 +536,7 @@ class Figures(object):
             if mode not in figure_IV.keys():
                 continue
             # cprint('r', f"doing iv: {str(mode):s}")
-            sfi = Path(config["codeDirectory"], figure_IV[mode])
+            sfi = Path(config["cellDataDirectory"], config["impedanceDirectory"], figure_IV[mode])
             if not sfi.is_file():
                 cprint('r', f"File not found!!!!!!\n->>> {str(sfi):s}")
                 return None
