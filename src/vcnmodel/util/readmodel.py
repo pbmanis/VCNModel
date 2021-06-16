@@ -136,8 +136,8 @@ class ReadModel():
             dur = dinfo.stimDur
             delay = dinfo.stimDelay
             mode = dinfo.postMode
-            # print(df.keys())
-            # print('Mode: ', mode)
+            print(df.keys())
+            print('Mode: ', mode)
             try:
                 self.rate = df['Params'].dt  # old version, now separated IC and VC
             except:

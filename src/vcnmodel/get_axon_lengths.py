@@ -12,7 +12,7 @@ from src.vcnmodel import h_reader
 pp = pprint.PrettyPrinter(indent=4)
 
 allcells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
-bestcells = [ 6, 9,  10, 11, 13, 17, 30]
+bestcells = [ 2, 5, 6, 9,  10, 11, 13, 17, 18, 30]
 
 def defemptylist():
     return []
@@ -88,6 +88,7 @@ class MeasureAxons(object):
         ais_s = []
         myel_s = []
         ax_s = []
+        # print(sl)
         for c in sl:
             if meas == 'Length':
                 h_s.append(np.sum(sl[c].HillockLength))
@@ -122,7 +123,7 @@ class MeasureAxons(object):
         sl = {}
         for cell in bestcells:
             cname = f"VCN_c{cell:02d}"
-            cell_hoc = f"{cname}_Full_standardized_axon.hoc"
+            cell_hoc = f"{cname}_Full.hoc" # could be f"{cname}"_Full_standardized_axon.hoc""
             fn = Path(self.baseDirectory, cname, self.morphDirectory, cell_hoc)
             # print(fn.is_file())
             # h.load_file(str(fn))

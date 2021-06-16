@@ -72,6 +72,30 @@ sbem_sectype = {
     
 }
 
+# section types for SBEM data on bushy cells (additional definitions)
+# This table is for swcs from Syglassfrom May 2021 (who changed it?)
+sbem2_sectype = {
+    #new swc mapping
+    0: 'Undefined',
+    1: 'Soma',
+    2: 'Myelinated_Axon',
+    3: 'Basal_Dendrite',
+    4: 'Apical_Dendrite',
+    5: 'Custom',
+    6: 'Unspecified_Neurites',
+    7: 'Glia_Processe',
+    8: 'Blank',
+    9: 'Blank',
+    10: 'Axon_Hillock',
+    11: 'Dendritic_Swelling',
+    12: 'Dendritic_Hub',
+    13: 'Proximal_Dendrite',
+    14: 'Distal_Dendrite',
+    15: 'Axon_Initial_Segment',
+    16: 'Axon_Heminode',
+    17: 'Axon_Node',
+}
+
 # crenaming of cell parts to match cnmodel data tables (temporary)
 renaming = {'basal_dendrite': 'dendrite',
             'Basal_Dendrite': 'dendrite',
@@ -131,6 +155,8 @@ class SWC(object):
             self.sectypes = swc_sectypes
         elif secmap == 'sbem':
             self.sectypes = sbem_sectypes
+        elif secmap == 'sbem2':
+            self.sectypes = sbem2_sectypes
         else:
             raise ValueError('SWC number map type is not recognized: %s' % secmap)
         
@@ -425,7 +451,7 @@ def main():
                    default=None,
                    help='Select theswc file to convert to hoc with section map')
     parser.add_argument('-s', '--secmap', type=str, default='swc', dest='secmap',
-                    choices=['swc', 'sbem'],
+                    choices=['swc', 'sbem', 'sbem2'],
                     help='Choose section ampping)')
     args = parser.parse_args()
     
