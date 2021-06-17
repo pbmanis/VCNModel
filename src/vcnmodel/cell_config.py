@@ -398,7 +398,7 @@ class CellConfig:
         hoc_soma_area = dcell[hocsomarecons].values[0]
         inflateratio = mesh_area / hoc_soma_area
         print(
-            f"    Cell: {cellnum:02d}: Soma mesh area: {mesh_area:.2f}  Soma hoc area: {hoc_soma_area:.2f}  ",
+            f"    Cell: {cellnum:02d}: Table Soma mesh area: {mesh_area:.2f}  Soma hoc area: {hoc_soma_area:.2f}  ",
             end="",
         )
         print(f"          Soma Inflation ratio: {inflateratio:.3f}")
@@ -427,7 +427,7 @@ class CellConfig:
         else:
             inflateratio = 1.0
         print(
-            f"    Cell: {cellnum:02d}: Dendrite mesh area: {mesh_area:.2f}  HOC Dendrite area: {hoc_dend_area:.2f}  ",
+            f"    Cell: {cellnum:02d}: Table Dendrite mesh area: {mesh_area:.2f}  HOC Dendrite area: {hoc_dend_area:.2f}  ",
             end="",
         )
         print(f"          Dendrite Inflation ratio: {inflateratio:.3f}")

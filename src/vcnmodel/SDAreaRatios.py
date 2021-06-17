@@ -53,11 +53,11 @@ def area(fn):
     )
     # post_cell.list_sections()
     post_cell.distances()
-    post_cell.computeAreas()
+    post_cell.computeAreas(source='seg')
     secareas = {}
     # print('soma: ', post_cell.areaMap['soma'])
     for am in list(post_cell.areaMap.keys()):
-        print('am: ', am)
+        # print('am: ', am)
         if am not in list(secareas.keys()):
             secareas[am] = one_sectype_area(post_cell.areaMap[am])
         else:

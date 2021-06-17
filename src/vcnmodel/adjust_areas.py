@@ -143,7 +143,7 @@ sections[4] {
 
 }
 """
-
+ 
 @dataclass
 class AreaSummary:
     soma_area: float = 0.0
@@ -157,14 +157,16 @@ class AdjustAreas:
     hoc reconstructed files using pt3d data.
     """
 
-    def __init__(self, method="pt3d"):
+    def __init__(self, method="segment"):
+        CP.cprint("m", f"in adjust_areas::Method: {method:s}")
+        assert method in ["pt3d", "segment"]
         self.method = (
             method  # option of wheter to compute areas from pt3d data, or segment data
         )
         self.AreaSummary = AreaSummary()
         
         if self.method == "pt3d":
-            self.areafunc = self.segareasec
+            self.areafunc = self.segareasec # pt3dareasec
             self.adjust_dia_func = self.adjust_pt3d_dia
         elif self.method == "segment":
             self.areafunc = self.segareasec
@@ -194,7 +196,7 @@ class AdjustAreas:
 
         self.somas = [
             "soma",
-            "Soma",
+            # "Soma",
         ]
 
     def sethoc_fromCNcell(self, cell):
@@ -337,12 +339,16 @@ class AdjustAreas:
         if sf == 1.0:
             return
         section_area = self.areafunc(sec)  # starting value
+        # print("section area to adust: ", section_area)
         target_area = section_area * sf
+        # print("target area: ", target_area)
         n = 0
         while np.fabs(target_area - section_area) > eps:
             ratio = target_area / section_area
+            # print(f"iter: {n:d},  Sectionarea: {section_area:.2f}, ratio: {ratio:.4f}")
             if ratio < 0.01:
-                print("Inflation failed: ratio: ", ratio, section_area, target_area, n)
+                cprint('r', f" Inflation failed: ratio = {ratio:.6f}")
+                cprint('r', f" section area: {section_area:.2f} {target_area:.2f}, trials: {n:d}")
                 exit()
             self.adjust_dia_func(sec, ratio)
 
@@ -356,7 +362,7 @@ class AdjustAreas:
     def adjust_diameters(
         self, sectypes: list, inflateRatio: float, verbose: bool = False
     ) -> dict:
-
+        print("    Adjust diameters, sectypes:", sectypes)
         adj_data = {  # data structure
             "Areas3D": [],
             "AreaMap": [],
@@ -388,31 +394,33 @@ class AdjustAreas:
                 usedtypes.append(sectype)
             else:
                 missedtypes.append(sectype)
+        # print(adj_data)
         # adj_data["AreaMap"][
         if verbose:
             cprint("c", f"Doing sectypes: {str(set(sectypes)):s}")
             cprint("c", f"used sectypes: {str(set(usedtypes)):s}")
+        # print(adj_data["sectypes"])
         cprint("y", f"    Skipped sections named: {str(set(missedtypes)):s}")
-        if self.method:
-            print("\n    Changing the areas by changing adj_data diams")
-        else:
-            print("\n    Changing the areas by changing segment diams")
+        print(f"\n    Changing the areas by changing {self.method:s} diams")
         print(
             f"       Cell AreaMap (cnmodel:cells) : {np.sum(adj_data['AreaMap']):10.2f} "
         )
+        original_area = np.sum(adj_data['Areas3D'])
         print(
-            f"       Original area (segareased:)  : {np.sum(adj_data['Areas3D']):10.2f} "
+            f"       Original area (segareased:)  : {original_area:10.2f} "
         )
         print(
             f"       Inflated area (adjarea )     : {np.sum(adj_data['Areas3DInflated']):10.2f} "
         )
         cnarea = self.getCNcellArea(sectypes=sectypes)
         print(f"    CN inflated area: {cnarea:10.2f} ")
-        s1 = f"Inflation factor: {np.sum(adj_data['Areas3DInflated'])/np.sum(adj_data['Areas3D']):6.3f}"
+        infl_factor = np.sum(adj_data['Areas3DInflated'])/np.sum(adj_data['Areas3D'])
+        s1 = f"Inflation factor: {infl_factor:6.3f}"
         print(
-            f"   {s1:s}  (should be: {adj_data['InflateRatio']:6.3f})"
+            f"    {s1:s}  (should be: {adj_data['InflateRatio']:6.3f})"
         )
-
+        if original_area > 0.0:
+            assert np.isclose(infl_factor, adj_data['InflateRatio'], rtol=1e-04, atol=1e-06)
         return adj_data
 
     def get_hoc_area(self, sectypes: list):
@@ -452,7 +460,8 @@ class AdjustAreas:
                     repeat=True
                 )  # make sure this is updated
 
-        print(f"    Section area: {np.sum(hoc_secarea):8.3f}")
+        # print(hoc_secarea)
+        print(f"    Section area: {str(sectypes):s}\n     area: {np.sum(hoc_secarea):8.3f}   # sections = {len(hoc_secarea):4f}")
         return np.sum(hocarea)
 
     def plot_areas(self, pt3d: dict):
@@ -708,14 +717,16 @@ def recon_hoc(cellname):
     # cname = "VCN_c05"
     basepath = config["cellDataDirectory"]
     cell = f"{cname:s}/Morphology/{cname:s}.hocx"
-    cell = f"{cname:s}/Morphology/{cname:s}_Full.hoc"
+    # cell = f"{cname:s}/Morphology/{cname:s}_Full.hoc"
+    cell = f"{cname:s}/Morphology/{cname:s}_NoDend.hoc"
     fn = Path(basepath, cell)
     # print(fn.is_file())
     cconfig = cell_config.CellConfig()
+    print("  cell_config table data: ")
     sinflateratio = cconfig.get_soma_ratio(cname)
     dinflateratio = cconfig.get_dendrite_ratio(cname)
-
-    AdjArea = AdjustAreas(method="pt3d")
+    print("  adjust_areas:")
+    AdjArea = AdjustAreas(method="segment")
     post_cell = cells.Bushy.create(
         morphology=str(fn),
         # decorator=Decorator,
@@ -731,19 +742,52 @@ def recon_hoc(cellname):
         sectypes=AdjArea.dendrites, inflateRatio=dinflateratio
     )
     AdjArea.cell.print_soma_info()
-    print(dir(AdjArea.cell))
-    AdjArea.AreaSummary.soma_area = AdjArea.cell.soma_area
+    print(AdjArea.cell.somaarea)
+    AdjArea.AreaSummary.soma_area = AdjArea.cell.somaarea
     # retun AdjArea.AreaSummary
     # AdjArea.plot_areas(pt3d)
+    return AdjArea.AreaSummary.soma_area
 
+def get_hoc_areas(cellname):
+    assert( 1 == 0)
+    print("adjareas hoc area")
+    secnames = ['soma']
+    cname = cellname
+    # cname = "VCN_c05"
+    basepath = config["cellDataDirectory"]
+    cell = f"{cname:s}/Morphology/{cname:s}.hocx"
+    cell = f"{cname:s}/Morphology/{cname:s}_Full.hoc"
+    # cell = f"{cname:s}/Morphology/{cname:s}_NoDend.hoc"
+    fn = Path(basepath, cell)
+    post_cell = cells.Bushy.create(
+        morphology=str(fn),
+        # decorator=Decorator,
+        species="mouse",
+        modelType="II",
+        modelName="XM13",
+    )
+    AdjArea = AdjustAreas(method="pt3d")
+    AdjArea.sethoc_fromCNcell(post_cell)
+    # AdjArea.sethoc_fromstring(hdata=hocstruct2)
+    AdjArea.cell.print_soma_info()
+    # print(fn.is_file())
+    # cconfig = cell_config.CellConfig()
+    # sinflateratio = cconfig.get_soma_ratio(cname)
+    # dinflateratio = cconfig.get_dendrite_ratio(cname)
+    
+    secnames = ['soma']
+    somaarea = AdjArea.getCNcellArea(sectypes=secnames)
+    secnames = AdjArea.dendrites
+    dendarea = AdjArea.getCNcellArea(sectypes=secnames)
+    print(f"HOC reconstruction areas: Soma = {somaarea:.2f}  Dendrite = {dendarea:.2f}")
 
 if __name__ == "__main__":
     # simple_test()
     # neuron_example()
     cell_no = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
     cell_no = [18]
-    AS = []*len(cell_no)
+    # get_hoc_areas(f"VCN_c{cell_no[0]:02d}")  # this might give different values if using pt3d vs. segment... so ignore
+    
     for i, c in enumerate(cell_no):
         cell_name = f"VCN_c{c:02d}"
-        AS[i] = recon_hoc(cell_name)
-    print(AS)
+        recon_hoc(cell_name)
