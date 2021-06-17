@@ -38,7 +38,7 @@ class PlotZ:
         # fi = [2, 5, 6, 10, 17]
         self.filenames = []
         for fin in self.fi:
-            self.filenames.append(f"VCN_c{fin:02d}_Full_Z.pkl")
+            self.filenames.append(f"VCN_c{fin:02d}_Full_normal_Z.pkl")
 
         # cols = ['w', 'm', 'c', 'y', 'g', 'r', 'b', pg.mkPen()]
         self.syms = ["s", "o", "x", "s", "o", "x", "s", "o", "x", "s"]
@@ -121,7 +121,7 @@ class PlotZ:
         )
 
         # style.style_apply()
-        for i, cond in enumerate(["Full", "NoDend"]):
+        for i, cond in enumerate(["Full_normal", "NoDend"]):
             f = []
             for fin in self.fi:
                 f.append(f"VCN_c{fin:02d}_{cond:s}_Z.pkl")

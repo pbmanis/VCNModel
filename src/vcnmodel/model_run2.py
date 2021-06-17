@@ -693,7 +693,8 @@ class ModelRun:
             "Proximal_Dendrite",
             "Distal_Dendrite",
             "Dendritic_Hub",
-            "Dendritic_Swelling" "dend",
+            "Dendritic_Swelling",
+            "dend",
             "proximaldendrite",
             "distaldendrite",
         ]
@@ -832,7 +833,7 @@ class ModelRun:
         else:
             raise ValueError(f"cell type {self.Params.cellType:s} not implemented")
 
-        AdjA = AdjustAreas()
+        AdjA = AdjustAreas(method=self.Params.area_adjustment_method)
         AdjA.sethoc_fromCNcell(self.post_cell)
         hoc_somaarea = AdjA.get_hoc_area(["soma"])
         hoc_dendritearea = AdjA.get_hoc_area(dendrite_names)
@@ -878,8 +879,8 @@ class ModelRun:
                     f"   Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
                 )
             # origdiam = {}
-
-            AdjA = AdjustAreas(method="pt3d")
+            cprint("c", f"Method: {self.Params.area_adjustment_method:s}, ratio: {inflateratio:.3f}")
+            AdjA = AdjustAreas(method=self.Params.area_adjustment_method)
             AdjA.sethoc_fromCNcell(self.post_cell)
             AdjA.adjust_diameters(sectypes=["soma", "Soma"], inflateRatio=inflateratio)
             # AdjA.plot_areas(pt3d)
@@ -915,7 +916,7 @@ class ModelRun:
                     f"     Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
                 )
 
-            AdjA = AdjustAreas()
+            AdjA = AdjustAreas(method=self.Params.area_adjustment_method)
             AdjA.sethoc_fromCNcell(self.post_cell)
             AdjA.adjust_diameters(sectypes=dendrite_names, inflateRatio=inflateratio)
             # AdjA.plot_areas(pt3d)  # just to take a look at the adjustment

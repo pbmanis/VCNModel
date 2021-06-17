@@ -170,6 +170,7 @@ class Params:
     ASA_inflation: float = 1.0
     ASA_fromsoma: bool = False
     lambdaFreq: float = 2000.0  # Hz for segment number
+    area_adjustment_method: str = "pt3d"
     # spontaneous rate (group, in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
     srnames = ["LS", "MS", "HS", "mixed1"]  # runs 0-2, not starting at 0    # same as CmcChoices
     SRType: str = CmdChoices.SRChoices[2]
