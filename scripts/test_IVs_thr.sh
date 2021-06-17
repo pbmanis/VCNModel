@@ -10,17 +10,19 @@
 # This script runs to get the thresholds for current injection for one
 # spike. 
 #######################################################
-CELLNAMES="30" # "02 05 06 09 10 11 13 17 18 30" # 
+CELLNAMES="02 05 06 09 10 11 13 17 18 30" # 
+CELLNAMES="18"
 #CONFIG="noscale.toml" #"autoscale.toml"
 CONFIG="autoscale_multisite_0dB_parallel_synthr.toml"
 RUNTEXT="running the individual initialization and running AN PSTH protocols"
+AXON="default" # or "standardized"
 echo $RUNTEXT
 for f in $CELLNAMES
 do
     echo $f
 
-    python src/vcnmodel/model_run2.py VCN_c$f  -D Full -P initIV -r 1 --configfile $CONFIG --datatable data_XM13A_nacncoop
-    python src/vcnmodel/model_run2.py VCN_c$f  -D Full -P runIVSpikeThreshold -r 1 --configfile $CONFIG --datatable data_XM13A_nacncoop
+    python src/vcnmodel/model_run2.py VCN_c$f  -D Full -A $AXON -P initIV -r 1 --configfile $CONFIG --datatable data_XM13A_nacncoop
+    python src/vcnmodel/model_run2.py VCN_c$f  -D Full -A $AXON -P runIVSpikeThreshold -r 1 --configfile $CONFIG --datatable data_XM13A_nacncoop
     if [ $? -ne 0 ]; then
         exit 1
     fi
