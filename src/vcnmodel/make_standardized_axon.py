@@ -531,6 +531,8 @@ class MakeStandardAxon:
         """
         Default standarized axon for VCN bushy cells
         values are diam[0], diam[1], length, and nsegments
+        See VCN-SBEM-Data/Hillock-AIS-threshold.pzfx for the values
+        entered here.
         
         """
         hil = [2.31, 1.87, 1.97, 3]

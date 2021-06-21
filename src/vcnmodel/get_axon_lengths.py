@@ -160,9 +160,9 @@ class MeasureAxons(object):
         AdjArea.sethoc_fromCNcell(post_cell)
         # AdjArea.sethoc_fromstring(hdata=hocstruct2)
         AdjArea.cell.print_soma_info()
-        pt3d = AdjArea.adjust_diameters(sectypes=AdjArea.somas, inflateRatio=sinflateratio)
+        pt3d = AdjArea.adjust_diameters(sectypes=AdjArea.somas, inflationRatio=sinflateratio)
         pt3d = AdjArea.adjust_diameters(
-            sectypes=AdjArea.dendrites, inflateRatio=dinflateratio
+            sectypes=AdjArea.dendrites, inflationRatio=dinflateratio
         )
         AM = AxonMorph(cellID=cname)
         sectypes = []
