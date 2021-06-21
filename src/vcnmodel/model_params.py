@@ -142,6 +142,7 @@ class Params:
     shortSimulationFilename: Union[str, Path, None] = None
     simPath: Union[str, Path, None] = None
     hocfile: Union[str, Path, None] = None
+    meshInflate: bool=True # use the hoc file that has been inflated to the mesh area
     usedefaulthoc: bool = False
     cellType: str = CmdChoices.cellChoices[0]
     modelName: str = CmdChoices.modelNameChoices[0]
@@ -366,6 +367,14 @@ def build_parser():
         help='hoc file to use for simulation (default is the selected "cell".hoc)',
     )
 
+    parser.add_argument(
+        "--rawhoc",
+        dest="rawhoc",
+        action="store_true",
+        default=False,
+        help="use raw hoc file, not mesh-inflated file (default: False, uses mesh inflated file)",
+    )
+    
     parser.add_argument(
         "-D",
         "--dendriteexpt",

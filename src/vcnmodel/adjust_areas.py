@@ -1,5 +1,8 @@
-from dataclasses import dataclass
+import argparse
+import copy
+from dataclasses import dataclass, field
 from pathlib import Path
+import re
 
 import numpy as np
 from cnmodel import cells
@@ -42,6 +45,8 @@ In the days of coronavirus, March 2020, Sunset Beach, NC.
 
 
 cprint = CP.cprint
+
+re_secno = re.compile(r"sections\[(?P<secno>\d+)\]")
 
 """
 Two Test cases: a simple soma,
@@ -88,7 +93,7 @@ sections[0] {
     pt3dadd(0., 0., -10., 0.5)
     pt3dadd(0., 0., -7.5, 2.5)
     pt3dadd(0., 0., -5., 8.5)
-    pt3dadd(0., 0., -0., 15.0)
+    pt3dadd(0., 0., -0., 158.0)
     pt3dadd(0., 0., 5., 9.5)
     pt3dadd(0., 0., 7.5, 7.5)
     pt3dadd(0., 0., 10., 5.0)
@@ -144,6 +149,7 @@ sections[4] {
 }
 """
  
+
 @dataclass
 class AreaSummary:
     soma_area: float = 0.0
@@ -151,10 +157,32 @@ class AreaSummary:
     dendrite_area: float = 0.0
     dendrite_inflate: float = 0.0
 
+
+@dataclass
+class Point3D:
+    point_no: int  # point order in the section
+    x: float
+    y: float
+    z: float
+    diam: float
+    comment: str=""  # possible comment field
+
+def defemptylist():
+    return []
+    
+@dataclass
+class Section:
+    number: int
+    points: list = field(default_factory=defemptylist)
+    
 class AdjustAreas:
     """
     This class encapsulates routines to adjust the areas of
     hoc reconstructed files using pt3d data.
+    An iterative approach is used to map the total section areas for a given
+    type of section data to match measured the reconstruction mesh area. The
+    area is computed from the pt3d data
+    
     """
 
     def __init__(self, method="segment"):
@@ -176,7 +204,7 @@ class AdjustAreas:
             raise ValueError(
                 "AdjustAReas: the method must be one of ['pt3d', 'segment']"
             )
-
+        self.verbose = False
         # default names for dendries and somas
         # def plot_areas(ax, xdend, a1, a2):
         self.dendrites = [
@@ -198,6 +226,9 @@ class AdjustAreas:
             "soma",
             # "Soma",
         ]
+
+    def set_verbose(self, verbosearg):
+        self.verbose = verbosearg
 
     def sethoc_fromCNcell(self, cell):
         """
@@ -232,17 +263,14 @@ class AdjustAreas:
         fn : filename (string or Path)
         """
 
+        self.HR_original = h_reader.HocReader(str(fn))
         self.HR = h_reader.HocReader(str(fn))
         for s in self.HR.h.allsec():
             s.Ra = 150.0
         S = SetNSegs(self.HR.h)
         S.set_nseg(
             freq=1000.0, d_lambda=0.025, minimum=3
-        )  # perform d_lambda adjustment on structure
-        # print(self.HR.get_section_prefixes())
-        # for s in self.HR.h.allsec():
-        #     print('adja sethoc_fromfile:', self.HR.get_sec_info(s))
-        # exit()
+        )
 
     def sethoc_fromstring(self, hdata: str):
         """
@@ -263,7 +291,7 @@ class AdjustAreas:
         S = SetNSegs(self.HR.h)
         S.set_nseg(freq=1000.0, d_lambda=0.025, minimum=3)
 
-    def section_diam_test(self, sf=1.0):
+    def section_diam_test(self, scale_factor=1.0):
         """now with just diam in section"""
         self.HR.h(hocstruct)
         self.HR.h.topology()
@@ -275,10 +303,10 @@ class AdjustAreas:
 
         a1 = self.HR.h.area(0.5, sec=dend)
 
-        dend.diam = dend.diam * sf
+        dend.diam = dend.diam * scale_factor
         a2 = self.HR.h.area(0.5, sec=dend)
 
-        print(f"sf: {sf:.2f}  a1: {a1:.3f}  a2: {a2:.3f}  a2/a1: {a2/a1:.2f}")
+        print(f"scale_factor: {scale_factor:.2f}  a1: {a1:.3f}  a2: {a2:.3f}  a2/a1: {a2/a1:.2f}")
 
     def segareasec(self, sec: object) -> float:
         """
@@ -288,44 +316,48 @@ class AdjustAreas:
 
         area = 0
         for i, seg in enumerate(sec.allseg()):
-            # print(f"   segment: {i:d} area={seg.area():.3f}")
             area += seg.area()
-        # print(f'{name:s} area: {area:.3f} ')
         return area
 
-    def pt3dareasec(self, sec: object) -> float:
+    def pt3dareasec(self, section: object) -> float:
         """
        Sum up the areas of all the pt3d pieces in a section
 
        """
 
         area = 0
-        for i in range(sec.n3d()):
-            area += np.pi * sec.arc3d(i) * sec.diam3d(i)
+        for i in range(section.n3d()):
+            area += np.pi * sectopm.arc3d(i) * section.diam3d(i)
         return area
 
-    def adjust_pt3d_dia(self, sec: object, sf: float):
+    def adjust_pt3d_dia(self, section: object, scale_factor: float):
         """
-        Change the diamete4r of the detailed pt3d type of representations
+        Change the diameter of the detailed pt3d type of representations
         before they are converted to the segmented representation
         """
-        h.pt3dconst(1, sec=sec)
-        for i in range(sec.n3d()):
-            diam = sec.diam3d(i)
-            sec.pt3dchange(i, diam * sf)
-
-    def adjust_seg_dia(self, sec: object, sf: float):
-        h.pt3dconst(0, sec=sec)
+        h.pt3dconst(1, sec=section)
+        if self.verbose:
+            print("pt3d changing: ", section)
+        for i in range(section.n3d()):
+            diam = section.diam3d(i)
+            section.pt3dchange(i, diam * scale_factor)
+            if self.verbose:
+                print(f"   old: {diam:.4f}  new: {diam*scale_factor:.4f}. SF = {scale_factor: .4f}")
+        if self.verbose:
+            print("pt3d diams in section: ", section, " changed")
+        
+    def adjust_seg_dia(self, section: object, scale_factor: float):
+        h.pt3dconst(0, sec=section)
         for seg in sec.allseg():
-            seg.diam *= sf
+            seg.diam *= scale_factor
 
     def adjust_dia_areamatch(
-        self, sec: object, sf: float, eps: float = 1e-4,
+        self, section: object, scale_factor: float, eps: float = 1e-4,
     ):
         """
         This function expands the surface area of a section by a
         specific fractional amount by manipulating all of the
-        pt3d diameters in the section.
+        pt3d diameters or segment diameters in the section.
         In other words, because of the way neuron calculates
         the areas, we focus on using the pt3d area
         sums before they are converted to neuron sections, then
@@ -336,56 +368,53 @@ class AdjustAreas:
         class instantiation.
         """
 
-        if sf == 1.0:
+        if scale_factor == 1.0:
             return
-        section_area = self.areafunc(sec)  # starting value
+        section_area = self.areafunc(section)  # starting value
         # print("section area to adust: ", section_area)
-        target_area = section_area * sf
+        target_area = section_area * scale_factor
         # print("target area: ", target_area)
         n = 0
         while np.fabs(target_area - section_area) > eps:
             ratio = target_area / section_area
             # print(f"iter: {n:d},  Sectionarea: {section_area:.2f}, ratio: {ratio:.4f}")
-            if ratio < 0.01:
+            if ratio < 0.01 or ratio > 100.:
                 cprint('r', f" Inflation failed: ratio = {ratio:.6f}")
                 cprint('r', f" section area: {section_area:.2f} {target_area:.2f}, trials: {n:d}")
                 exit()
-            self.adjust_dia_func(sec, ratio)
-
+            self.adjust_dia_func(section, ratio)
             # h.define_shape()
-            section_area = self.areafunc(sec)
-
-            # print(f"section area: {section_area:.3f}  target  area: {target_area:.3f}")
+            section_area = self.areafunc(section)
             n += 1
-        # print(f"sec: {str(sec):s}  iters: {n:d}")
 
     def adjust_diameters(
-        self, sectypes: list, inflateRatio: float, verbose: bool = False
+        self, sectypes: list, inflationRatio: float
     ) -> dict:
+        print("="*40)
         print("    Adjust diameters, sectypes:", sectypes)
         adj_data = {  # data structure
             "Areas3D": [],
             "AreaMap": [],
             "Areas3DInflated": [],
-            "InflateRatio": inflateRatio,
+            "InflateRatio": inflationRatio,
             "Diams": [],
             "Lengths": [],
             "n3d": [],
             "sectypes": [],
         }
+        self.allsections = []
         missedtypes = []
         usedtypes = []
         # self.HR.h.topology()
-        # print([s for s in self.HR.h.allsec()])
         for secname, sec in self.HR.sections.items():
             sectype = self.HR.find_sec_group(secname)
-            if verbose:
-                cprint("r", (secname, sectype))
+            if self.verbose:
+                cprint("r", f"Section: {secname:s}  type:  {sectype:s}  ratio: {inflationRatio:.4f}")
             if sectype in sectypes:
                 adj_data["Areas3D"].append(self.areafunc(sec))
                 adj_data["AreaMap"].append(self.cell.areaMap[sectype][sec])
                 h.pt3dconst(1, sec=sec)
-                self.adjust_dia_areamatch(sec, inflateRatio)
+                self.adjust_dia_areamatch(sec, inflationRatio)
                 adj_data["Areas3DInflated"].append(self.areafunc(sec))
                 adj_data["Diams"].append(sec.diam)
                 adj_data["Lengths"].append(sec.L)
@@ -394,12 +423,17 @@ class AdjustAreas:
                 usedtypes.append(sectype)
             else:
                 missedtypes.append(sectype)
-        # print(adj_data)
-        # adj_data["AreaMap"][
-        if verbose:
+                
+            pts = []
+            for i in range(sec.n3d()):
+                pts.append(Point3D(point_no=i, x=sec.x3d(i), y=sec.y3d(i), z=sec.z3d(i), diam=sec.diam3d(i)))
+            
+            self.allsections.append(Section(secname, pts))
+
+        if self.verbose:
             cprint("c", f"Doing sectypes: {str(set(sectypes)):s}")
             cprint("c", f"used sectypes: {str(set(usedtypes)):s}")
-        # print(adj_data["sectypes"])
+
         cprint("y", f"    Skipped sections named: {str(set(missedtypes)):s}")
         print(f"\n    Changing the areas by changing {self.method:s} diams")
         print(
@@ -421,6 +455,11 @@ class AdjustAreas:
         )
         if original_area > 0.0:
             assert np.isclose(infl_factor, adj_data['InflateRatio'], rtol=1e-04, atol=1e-06)
+        s1 = f"Inflation factor: {infl_factor:6.3f}"
+        cprint("g",
+            f"    {s1:s}  (should be: {adj_data['InflateRatio']:6.3f})"
+        )
+        print("="*40)
         return adj_data
 
     def get_hoc_area(self, sectypes: list):
@@ -432,8 +471,8 @@ class AdjustAreas:
 
         return np.sum(hocarea)
 
-    def getCNcellArea(self, sectypes: list, verbose: bool = False) -> float:
-        if verbose:
+    def getCNcellArea(self, sectypes: list) -> float:
+        if self.verbose:
             print("sectypes: ", sectypes)
         hocarea = []
         hoc_secarea = []
@@ -446,7 +485,7 @@ class AdjustAreas:
                 section_area = self.areafunc(sec)
                 hocarea.append(secarea)
                 hoc_secarea.append(section_area)
-                if verbose:
+                if self.verbose:
                     print(
                         f"    adding area from : {sectype:20s} = {secarea:8.3f} [{section_area:8.3f}]",
                         end="",
@@ -460,8 +499,8 @@ class AdjustAreas:
                     repeat=True
                 )  # make sure this is updated
 
-        # print(hoc_secarea)
-        print(f"    Section area: {str(sectypes):s}\n     area: {np.sum(hoc_secarea):8.3f}   # sections = {len(hoc_secarea):4f}")
+
+        print(f"    New Hoc section area: {str(sectypes):s}\n       Area: {np.sum(hoc_secarea):8.3f}   # sections = {len(hoc_secarea):4d}")
         return np.sum(hocarea)
 
     def plot_areas(self, pt3d: dict):
@@ -711,52 +750,164 @@ class SetNSegs(object):
             f"other inflated area: {aother_inf:10.2f} Infl factor: ", end='')
         print(f"{aother_inf/aother:6.3f} (should be: {1.0:6.3f})")
 
-
-def recon_hoc(cellname):
+def make_cell_name(cellname, args, compareflag=False):
     cname = cellname
     # cname = "VCN_c05"
     basepath = config["cellDataDirectory"]
     cell = f"{cname:s}/Morphology/{cname:s}.hocx"
     # cell = f"{cname:s}/Morphology/{cname:s}_Full.hoc"
-    cell = f"{cname:s}/Morphology/{cname:s}_NoDend.hoc"
+    if args.nodend:
+        cell = f"{cname:s}/Morphology/{cname:s}_NoDend"
+    else:
+        cell = f"{cname:s}/Morphology/{cname:s}_Full"
+    if compareflag:
+        cell += "_MeshInflate"
+    cell = cell + ".hoc"
     fn = Path(basepath, cell)
+    return cname, fn
+    
+def recon_hoc(cellname, args):
+    cname, fn = make_cell_name(cellname, args)
     # print(fn.is_file())
     cconfig = cell_config.CellConfig()
-    print("  cell_config table data: ")
+    print("  Table data from cell_config:")
     sinflateratio = cconfig.get_soma_ratio(cname)
     dinflateratio = cconfig.get_dendrite_ratio(cname)
-    print("  adjust_areas:")
-    AdjArea = AdjustAreas(method="segment")
-    post_cell = cells.Bushy.create(
+    AdjArea = AdjustAreas(method=args.method)
+    AdjArea.set_verbose(args.verbose)
+
+    RescaledCell = cells.Bushy.create(
         morphology=str(fn),
-        # decorator=Decorator,
         species="mouse",
         modelType="II",
         modelName="XM13",
     )
-    AdjArea.sethoc_fromCNcell(post_cell)
-    # AdjArea.sethoc_fromstring(hdata=hocstruct2)
-    AdjArea.cell.print_soma_info()
-    pt3d = AdjArea.adjust_diameters(sectypes=AdjArea.somas, inflateRatio=sinflateratio)
-    pt3d = AdjArea.adjust_diameters(
-        sectypes=AdjArea.dendrites, inflateRatio=dinflateratio
+    OrigCell = cells.Bushy.create(
+        morphology=str(fn),
+        species="mouse",
+        modelType="II",
+        modelName="XM13",
     )
-    AdjArea.cell.print_soma_info()
-    print(AdjArea.cell.somaarea)
+    print("Original Cell object: ", OrigCell)
+    print("Rescaled Cell object: ", RescaledCell)
+
+    AdjArea.sethoc_fromCNcell(RescaledCell)
+    print("Before adjustment, Rescaled Cell: ")
+    AdjArea.cell.print_soma_info(indent=4)
+    pt3d = AdjArea.adjust_diameters(sectypes=AdjArea.somas, inflationRatio=sinflateratio)
+    pt3d = AdjArea.adjust_diameters(
+        sectypes=AdjArea.dendrites, inflationRatio=dinflateratio
+    )
+    print("After adjustment, Rescaled Cell: ")
+    AdjArea.cell.print_soma_info(indent=4)
     AdjArea.AreaSummary.soma_area = AdjArea.cell.somaarea
     # retun AdjArea.AreaSummary
     # AdjArea.plot_areas(pt3d)
-    return AdjArea.AreaSummary.soma_area
+    return AdjArea, OrigCell
 
-def get_hoc_areas(cellname):
+def compare(cellno, args):
+    """
+    Directly compare the text in the two hoc files, one for the base name
+    and one for the "MeshInflated" name.
+    This is to verify that everything is identical EXCEPT for the diameters.
+    """
+    partparse = ['cmd', 'x', 'y', 'z', 'diam', "comment", "swc", "id", "=", "idno"]
+    for i, c in enumerate(cell_no):
+        cell_name = f"VCN_c{c:02d}"
+        cname1, fn1 = make_cell_name(cell_name, args)
+        cname2, fn2 = make_cell_name(cell_name, args, compareflag=True)
+        with open(fn1, "r") as fh:
+            lines1 = fh.readlines()
+        with open(fn2, "r") as fh:
+            lines2 = fh.readlines()
+        print("\n")
+        print("="*80)
+        print(f" {cname1:s}  vs. {cname2:s}")
+        lasttype = ""
+        lastsection = ""
+        for lineno, line in enumerate(lines1):
+            l1parts = [x for x in re.split("[\(, \)\t]", lines1[lineno]) if len(x) > 0]
+            l2parts = [x for x in re.split("[\(, \)\t]", lines2[lineno]) if len(x) > 0]
+            if l1parts[0].endswith(".append"):
+                lasttype = l1parts[0].split(".")[0]
+
+            if l1parts[0].startswith("sections["):
+                lastsection = l1parts[0]
+            for j, l1 in enumerate(l1parts):
+                if l1 != l2parts[j]:
+                    # print('\nline1: ', lines1[lineno][:-1])
+                   #  print('line2: ', lines2[lineno][:-1])
+                    print(f"#: {lineno:d} type: {lasttype:18s}  section  {lastsection:s} part {j:d}", end="")
+                    print(f" {partparse[j]:s}: {l1:10s} != {l2parts[j]:10s}   ratio: {float(l2parts[j])/float(l1parts[j]):.4f}")
+            
+def rescale(cellno, args):
+    """
+    Perform and check a rescale
+    """
+    for i, c in enumerate(cell_no):
+        cell_name = f"VCN_c{c:02d}"
+        cname, fn = make_cell_name(cell_name, args)
+        Rescaled, Original = recon_hoc(cell_name, args)
+        hoc_file = str(Path(fn.parent, fn.stem+ "_MeshInflate").with_suffix(".hoc"))
+        print("input file: ", fn)
+        with open(fn, "r") as fh:
+            lines = fh.readlines()
+        out_file = open(hoc_file, "w")
+        re_sects = re.compile(r"\nsections\[(?P<section>\d*)\]\s{")
+        for lineno, line in enumerate(lines):
+            if line.startswith("access sections["):  # stop at first access
+                break
+            out_file.write(line)
+
+        print("Writing outuput to: ", hoc_file)
+        print("Original Soma Area: ", Original.somaarea)
+        print("Adjusted Soma Area: ", Rescaled.cell.somaarea)
+        for j, rescaled_section in enumerate(Rescaled.HR.h.allsec()):
+            rescaled_secname = f"{str(rescaled_section):s}: "
+            original_section = Original.hr.h.sections[j]
+
+        for sec in Rescaled.allsections:
+            if lines[lineno].startswith("access"):
+                out_file.write(lines[lineno])
+                lineno += 1
+            if lines[lineno].endswith("append()\n"):
+                out_file.write(lines[lineno])
+                lineno += 1
+            if lines[lineno].startswith("connect"):
+                out_file.write(lines[lineno])
+                lineno += 1
+            
+            out_file.write(f"{sec.number:s} "+"{\n")
+            lineno += 1
+            # parse to get section number
+            
+            for p in sec.points:
+                swcid = ""
+                print(len(lines), lineno)
+                swc = lines[lineno].rpartition("//")
+                # if swc[2] == "}\n":
+                #     break
+                if swc[0] != "":
+                    swcid = swc[1]+swc[2].rstrip("\n")
+                    
+                out_file.write(f"    pt3dadd({p.x:f}, {p.y:f}, {p.z:f}, {p.diam:f}) {swcid:s}"+"\n")
+                lineno += 1
+            out_file.write("}\n\n")
+            lineno += 2
+        out_file.close()
+
+
+def print_hoc_areas(cellname, nodend):
     assert( 1 == 0)
     print("adjareas hoc area")
     secnames = ['soma']
     cname = cellname
     # cname = "VCN_c05"
     basepath = config["cellDataDirectory"]
-    cell = f"{cname:s}/Morphology/{cname:s}.hocx"
-    cell = f"{cname:s}/Morphology/{cname:s}_Full.hoc"
+    if nodend:
+        cell = f"{cname:s}/Morphology/{cname:s}_Full_nodend.hoc"
+    else:
+        cell = f"{cname:s}/Morphology/{cname:s}_Full.hoc"
     # cell = f"{cname:s}/Morphology/{cname:s}_NoDend.hoc"
     fn = Path(basepath, cell)
     post_cell = cells.Bushy.create(
@@ -766,9 +917,8 @@ def get_hoc_areas(cellname):
         modelType="II",
         modelName="XM13",
     )
-    AdjArea = AdjustAreas(method="pt3d")
+    AdjArea = AdjustAreas(method="segment")
     AdjArea.sethoc_fromCNcell(post_cell)
-    # AdjArea.sethoc_fromstring(hdata=hocstruct2)
     AdjArea.cell.print_soma_info()
     # print(fn.is_file())
     # cconfig = cell_config.CellConfig()
@@ -782,12 +932,59 @@ def get_hoc_areas(cellname):
     print(f"HOC reconstruction areas: Soma = {somaarea:.2f}  Dendrite = {dendarea:.2f}")
 
 if __name__ == "__main__":
-    # simple_test()
-    # neuron_example()
-    cell_no = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
-    cell_no = [18]
-    # get_hoc_areas(f"VCN_c{cell_no[0]:02d}")  # this might give different values if using pt3d vs. segment... so ignore
+    parser = argparse.ArgumentParser(
+        description="Adjust the area of the swc/hoc reconstruction to match area from mesh",
+        argument_default=argparse.SUPPRESS,
+        fromfile_prefix_chars="@",
+    )
+    parser.add_argument(
+        dest="cell", action="store", default=None, help="Select the cell (no default)"
+    )
+    parser.add_argument(
+        "--method",
+        "-m",
+        dest="method",
+        default="segment",
+        choices=["segment", "pt3d"],
+        help="Select the method (segment, pt3d)",
+    )
+    parser.add_argument(
+        "--nodend",
+        "-n",
+        action="store_true",
+        default=False,
+        dest="nodend",
+        help="use no-dendrite version of reconstruction",
+    )
+
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        default=False,
+        dest="verbose",
+        help="set verbose output for debugging",
+    )
+    parser.add_argument(
+        "--compareinflated",
+        "-c",
+        action="store_true",
+        dest="compare",
+        default = False,
+        help="compare with mesh-inflated version",
+    )
     
-    for i, c in enumerate(cell_no):
-        cell_name = f"VCN_c{c:02d}"
-        recon_hoc(cell_name)
+    args = parser.parse_args()
+        # simple_test()
+    # neuron_example()
+    if args.cell == "all":
+        cell_no = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+    else:
+        cell_no = [int(args.cell)]
+    # get_hoc_areas(f"VCN_c{cell_no[0]:02d}")  # this might give different values if using pt3d vs. segment... so ignore
+    print("compare: ", args.compare)
+    if args.compare:
+        compare(cell_no, args)
+        exit()
+        
+    rescale(cell_no, args)
