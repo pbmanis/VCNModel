@@ -721,16 +721,16 @@ class ModelRun:
 
         else:  # build filename based on flags
             label = ''
-            if not self.Params.rawhoc:  # not using raw? specify mesh inflated file
-                self.Params.cell += "_MeshInflate"
             if self.Params.dendriteExpt == "default":  # -dendriteExpt flags
-                self.Params.hocfile = self.Params.cell
+                self.Params.hocfile = self.Params.cell + "_Full"
                 label = self.Params.dendriteExpt
             else: 
                 self.Params.hocfile = (
                     self.Params.cell + f"_{self.Params.dendriteExpt:s}"
                 )
                 label += self.Params.dendriteExpt
+            if not self.Params.meshInflate:  # not using raw? specify mesh inflated file
+                self.Params.cell += "_Full_MeshInflate"
             
             if self.Params.axonExpt != "default":
                 self.Params.hocfile += f"_standardized_axon"

@@ -368,11 +368,11 @@ def build_parser():
     )
 
     parser.add_argument(
-        "--rawhoc",
-        dest="rawhoc",
-        action="store_true",
+        "--nomeshInflate",
+        dest="meshInflate",
+        action="store_false",
         default=False,
-        help="use raw hoc file, not mesh-inflated file (default: False, uses mesh inflated file)",
+        help="use uninflated hoc file, not mesh-inflated file (default: False, uses mesh inflated file)",
     )
     
     parser.add_argument(
