@@ -274,6 +274,7 @@ class CellConfig:
         r : list containing dict of each input
         celltype : cell type take from the table.
         """
+        cell = cell[:7]  # trim to base name
         assert cell in self.VCN_Inputs
         assert synapsemap in ["LS", "MS", "HS", "mixed1", None]
         indata = self.VCN_Inputs[cell][1]
