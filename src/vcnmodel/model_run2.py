@@ -721,16 +721,15 @@ class ModelRun:
 
         else:  # build filename based on flags
             label = ''
+            self.Params.hocfile = self.Params.cell
             if self.Params.dendriteExpt == "default":  # -dendriteExpt flags
-                self.Params.hocfile = self.Params.cell + "_Full"
+                self.Params.hocfile += "_Full"
                 label = self.Params.dendriteExpt
             else: 
-                self.Params.hocfile = (
-                    self.Params.cell + f"_{self.Params.dendriteExpt:s}"
-                )
+                self.Params.hocfile += f"_{self.Params.dendriteExpt:s}"
                 label += self.Params.dendriteExpt
             if not self.Params.meshInflate:  # not using raw? specify mesh inflated file
-                self.Params.cell += "_Full_MeshInflate"
+                self.Params.hocfile += "_MeshInflate"
             
             if self.Params.axonExpt != "default":
                 self.Params.hocfile += f"_standardized_axon"
@@ -741,16 +740,18 @@ class ModelRun:
             
         
         cprint("c", f"Using {label:s} hoc file: {self.Params.hocfile:s}")
-        filename = Path(
+        
+        hoc_filename = Path(
             self.baseDirectory,
             self.Params.cellID,
             self.morphDirectory,
             self.Params.hocfile,
         )
 
-        # if filename.with_suffix(".hocx").is_file():  # change to preferred if available
-        #     filename = filename.with_suffix(".hocx")
-        cprint("yellow", f"Using hoc file: {str(filename):s}")
+        cprint("c", f"Using hoc file at path: {str(hoc_filename):s}")
+        # confirm hoc file exists
+        if not hoc_filename.is_file():
+            cprint("r", f"No Hoc file matching: {str(hoc_filename):s}")
 
         # instantiate cells
         if self.Params.cellType in ["Bushy", "bushy"]:
@@ -809,7 +810,7 @@ class ModelRun:
                 data.report_changes(changes)
                 data.report_changes(changes_c)
             self.post_cell = cells.Bushy.create(
-                morphology=str(filename),
+                morphology=str(hoc_filename),
                 decorator=Decorator,
                 species=self.Params.species,
                 modelName=self.Params.modelName,

@@ -85,6 +85,7 @@ class IndexData:
     synapsetype: str = ""
     synapseExperiment: str = ""
     dataTable: str = ""
+    hocfile: str=""
 
 
 def winprint(func):
@@ -321,6 +322,7 @@ class TableManager:
             Index_data.SRType = params["SRType"]
             Index_data.soundType = params["soundtype"]
             Index_data.fmod = params["fmod"]
+            Index_data.hocfile = params['hocfile']
 
             try:
                 Index_data.ANSynapticDepression = params["ANSynapticDepression"]
@@ -353,6 +355,7 @@ class TableManager:
             Index_data.cellType = params.cellType
             Index_data.modelType = params.modelType
             Index_data.modelName = params.modelName
+            Index_data.hocfile = params.hocfile
             Index_data.runProtocol = runinfo.runProtocol
             Index_data.synapsetype = params.ANSynapseType
             Index_data.ANSynapticDepression = params.ANSynapticDepression
@@ -561,6 +564,7 @@ class TableManager:
                     indxs[i].fmod,
                     len(indxs[i].files),
                     indxs[i].dataTable,
+                    indxs[i].hocfile,
                     indxs[i].simulation_path,
                     str(Path("/".join(indexfiles[i].parts[-4:]))),
                 )
@@ -589,6 +593,7 @@ class TableManager:
                 ("fmod", object),
                 ("# Files", object),
                 ("DataTable", object),
+                ("HocFile", object),
                 ('simulation_path', object),
                 ("Filename", object),
                 # ("# files", object),
@@ -649,7 +654,6 @@ class TableManager:
             # print('Filter index: ', keep_index)
             filtered_table = [filtered_table[ft] for ft in keep_index]
             self.update_table(filtered_table, QtCore)
-
 
     def setColortoRow(self, rowIndex, color):
         for j in range(self.table.columnCount()):
