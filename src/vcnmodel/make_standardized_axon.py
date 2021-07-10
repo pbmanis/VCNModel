@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import datetime
-from typing import Union, Type
+from typing import Union, Type, List
 from pathlib import Path
 import re
 import toml
@@ -87,6 +87,17 @@ class AxonMorph:
     AxonDiam1: list = field(default_factory=defemptylist)
     AxonDiamAvg: list = field(default_factory=defemptylist)
 
+
+@dataclass(frozen=True)
+class StandardAxon:
+    """
+    Averaged axon
+    format is a list of diam[0], diam[1], length, and # of sections
+    all measurements are in microns
+    """
+    hil = [2.31, 1.87, 1.97, 3]
+    ais = [1.6, 0.82, 19.03, 19]
+    axn = [1.03, 1.49, 55.7, 55]
 
 """
 Regular expression definitions for parts of HOC file
@@ -558,13 +569,14 @@ class MakeStandardAxon:
         entered here.
         
         """
-        hil = [2.31, 1.87, 1.97, 3]
-        ais = [1.6, 0.82, 19.03, 19]
-        axn = [1.03, 1.49, 55.7, 55]
+        # hil = [2.31, 1.87, 1.97, 3]
+#         ais = [1.6, 0.82, 19.03, 19]
+#         axn = [1.03, 1.49, 55.7, 55]
 
-        p1 = self.populate_pt3d_list(hil)
-        p2 = self.populate_pt3d_list(ais)
-        p3 = self.populate_pt3d_list(axn)
+        print(dir(StandardAxon))
+        p1 = self.populate_pt3d_list(StandardAxon.hil)
+        p2 = self.populate_pt3d_list(StandardAxon.ais)
+        p3 = self.populate_pt3d_list(StandardAxon.axn)
 
         axon = self.concatenate([p1, p2, p3], translate=True)
         self.new_axon = axon
