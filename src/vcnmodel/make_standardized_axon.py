@@ -278,10 +278,10 @@ class MakeStandardAxon:
         # AdjArea.sethoc_fromstring(hdata=hocstruct2)
         AdjArea.cell.print_soma_info()
         pt3d = AdjArea.adjust_diameters(
-            sectypes=AdjArea.somas, inflateRatio=sinflateratio
+            sectypes=AdjArea.somas, inflationRatio=sinflateratio
         )
         pt3d = AdjArea.adjust_diameters(
-            sectypes=AdjArea.dendrites, inflateRatio=dinflateratio
+            sectypes=AdjArea.dendrites, inflationRatio=dinflateratio
         )
         AM = AxonMorph(cellID=cname)
         self.parent_soma = None
@@ -745,5 +745,5 @@ def read_standard_axon(cell:str) -> None:
 if __name__ == "__main__":
     cell = 11
     for cell in [6]: # [2, 5, 9, 10, 11, 13, 17, 18, 30]:
-        make_standard_axon(cell)
+        make_standard_axon(cell, write=False)
         # read_standard_axon(cell)
