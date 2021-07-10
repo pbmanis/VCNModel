@@ -693,7 +693,8 @@ class ModelRun:
             "Proximal_Dendrite",
             "Distal_Dendrite",
             "Dendritic_Hub",
-            "Dendritic_Swelling" "dend",
+            "Dendritic_Swelling",
+            "dend",
             "proximaldendrite",
             "distaldendrite",
         ]
@@ -718,34 +719,39 @@ class ModelRun:
         ):  # -H flag: a passed hoc file will be used - overrides everything.
             label = f"specified hocfile"
 
-        else:
+        else:  # build filename based on flags
             label = ''
+            self.Params.hocfile = self.Params.cell
             if self.Params.dendriteExpt == "default":  # -dendriteExpt flags
-                self.Params.hocfile = self.Params.cell
+                self.Params.hocfile += "_Full"
                 label = self.Params.dendriteExpt
             else: 
-                self.Params.hocfile = (
-                    self.Params.cell + f"_{self.Params.dendriteExpt:s}"
-                )
+                self.Params.hocfile += f"_{self.Params.dendriteExpt:s}"
                 label += self.Params.dendriteExpt
+            if not self.Params.meshInflate:  # not using raw? specify mesh inflated file
+                self.Params.hocfile += "_MeshInflate"
+            
             if self.Params.axonExpt != "default":
                 self.Params.hocfile += f"_standardized_axon"
 
                 label += ", "+self.Params.axonExpt
+            
             self.Params.hocfile += ".hoc" # now we can add extension
             
         
         cprint("c", f"Using {label:s} hoc file: {self.Params.hocfile:s}")
-        filename = Path(
+        
+        hoc_filename = Path(
             self.baseDirectory,
             self.Params.cellID,
             self.morphDirectory,
             self.Params.hocfile,
         )
 
-        # if filename.with_suffix(".hocx").is_file():  # change to preferred if available
-        #     filename = filename.with_suffix(".hocx")
-        cprint("yellow", f"Using hoc file: {str(filename):s}")
+        cprint("c", f"Using hoc file at path: {str(hoc_filename):s}")
+        # confirm hoc file exists
+        if not hoc_filename.is_file():
+            cprint("r", f"No Hoc file matching: {str(hoc_filename):s}")
 
         # instantiate cells
         if self.Params.cellType in ["Bushy", "bushy"]:
@@ -804,7 +810,7 @@ class ModelRun:
                 data.report_changes(changes)
                 data.report_changes(changes_c)
             self.post_cell = cells.Bushy.create(
-                morphology=str(filename),
+                morphology=str(hoc_filename),
                 decorator=Decorator,
                 species=self.Params.species,
                 modelName=self.Params.modelName,
@@ -832,14 +838,6 @@ class ModelRun:
         else:
             raise ValueError(f"cell type {self.Params.cellType:s} not implemented")
 
-        AdjA = AdjustAreas()
-        AdjA.sethoc_fromCNcell(self.post_cell)
-        hoc_somaarea = AdjA.get_hoc_area(["soma"])
-        hoc_dendritearea = AdjA.get_hoc_area(dendrite_names)
-        cprint(
-            "y",
-            f"HOC: Original Soma area: {hoc_somaarea:.2f}  Dendrite Area: {hoc_dendritearea:.2f} um^2",
-        )
 
         # Set up run parameters
         print(
@@ -853,81 +851,94 @@ class ModelRun:
         print("Ra (ohm.cm) = {:8.1f}".format(self.post_cell.hr.h.Ra))
 
         self.fix_singlets(self.post_cell.hr.h)
-        if (
-            self.Params.soma_autoinflate
-        ):  # get values and inflate soma automatically to match mesh
-            cprint("c", "Soma Autoinflation")
-
-            inflateratio = self.cconfig.get_soma_ratio(self.Params.cellID)
-            if np.isnan(inflateratio):
-                raise ValueError(
-                    f"Soma Inflation Ratio is not defined for cell {self.Params.cellID:s}"
-                )
-            self.Params.soma_inflation = inflateratio
-
-        if self.Params.soma_inflation != 1.0:
-            cprint("c", "    Inflating soma")
-            # print(self.RunInfo.postMode)
-            if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
-                self.post_cell.hr.h.finitialize()
-                rtau = self.post_cell.compute_rmrintau(
-                    auto_initialize=True, vrange=[-80.0, -50.0]
-                )
-
-                print(
-                    f"   Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
-                )
-            # origdiam = {}
-
-            AdjA = AdjustAreas(method="pt3d")
-            AdjA.sethoc_fromCNcell(self.post_cell)
-            AdjA.adjust_diameters(sectypes=["soma", "Soma"], inflateRatio=inflateratio)
-            # AdjA.plot_areas(pt3d)
-
+        if self.Params.ASA_fromsoma:
+            self.Params.ASA_inflation = self.Params.soma_inflation
             if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
                 rtau = self.post_cell.compute_rmrintau(
                     auto_initialize=True, vrange=[-80.0, -60.0]
                 )
                 print(f"    New Rin after somatic inflation: {rtau['Rin']:.2f}", end="")
                 print(f" , tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}")
-        if self.Params.ASA_fromsoma:
-            self.Params.ASA_inflation = self.Params.soma_inflation
 
-        if self.Params.dendrite_fromsoma:
-            self.Params.dendrite_inflation = self.Params.soma_inflation
-            cprint("c", "Dendrite inflation uses soma inflation.")
-        elif (
-            self.Params.dendrite_autoinflate
-        ):  # get values and inflate soma automatically to match mesh
-            cprint("c", "Dendrite Autoinflation")
-            inflateratio = self.cconfig.get_dendrite_ratio(self.Params.cellID)
-            if np.isnan(inflateratio):
-                raise ValueError("Dendrite Inflation Ratio is not defined!")
-            self.Params.dendrite_inflation = inflateratio
+        # adjustments are now all done with adjust_areas, but written to hoc file
+        # and stored. Flags control which hoc file is read
+        # AdjA = AdjustAreas(method=self.Params.area_adjustment_method)
+        # AdjA.sethoc_fromCNcell(self.post_cell)
+        # hoc_somaarea = AdjA.get_hoc_area(["soma"])
+        # hoc_dendritearea = AdjA.get_hoc_area(dendrite_names)
+        # cprint(
+        #     "y",
+        #     f"HOC: Original Soma area: {hoc_somaarea:.2f}  Dendrite Area: {hoc_dendritearea:.2f} um^2",
+        # )
+        # if (
+        #     self.Params.soma_autoinflate
+        # ):  # get values and inflate soma automatically to match mesh
+        #     cprint("c", "Soma Autoinflation")
+        #
+        #     inflateratio = self.cconfig.get_soma_ratio(self.Params.cellID)
+        #     if np.isnan(inflateratio):
+        #         raise ValueError(
+        #             f"Soma Inflation Ratio is not defined for cell {self.Params.cellID:s}"
+        #         )
+        #     self.Params.soma_inflation = inflateratio
+        #
+        # if self.Params.soma_inflation != 1.0:
+        #     cprint("c", "    Inflating soma")
+        #     # print(self.RunInfo.postMode)
+        #     if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
+        #         self.post_cell.hr.h.finitialize()
+        #         rtau = self.post_cell.compute_rmrintau(
+        #             auto_initialize=True, vrange=[-80.0, -50.0]
+        #         )
+        #
+        #         print(
+        #             f"   Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
+        #         )
+        #     # origdiam = {}
+        #     cprint("c", f"Method: {self.Params.area_adjustment_method:s}, ratio: {inflateratio:.3f}")
+        #     AdjA = AdjustAreas(method=self.Params.area_adjustment_method)
+        #     AdjA.sethoc_fromCNcell(self.post_cell)
+        #     AdjA.adjust_diameters(sectypes=["soma", "Soma"], inflateRatio=inflateratio)
+        #     # AdjA.plot_areas(pt3d)
+        #
+        #
+        #
+        # if self.Params.dendrite_fromsoma:
+        #     self.Params.dendrite_inflation = self.Params.soma_inflation
+        #     cprint("c", "Dendrite inflation uses soma inflation.")
+        # elif (
+        #     self.Params.dendrite_autoinflate
+        # ):  # get values and inflate soma automatically to match mesh
+        #     cprint("c", "Dendrite Autoinflation")
+        #     inflateratio = self.cconfig.get_dendrite_ratio(self.Params.cellID)
+        #     if np.isnan(inflateratio):
+        #         raise ValueError("Dendrite Inflation Ratio is not defined!")
+        #     self.Params.dendrite_inflation = inflateratio
+        #
+        # if self.Params.dendrite_inflation != 1.0:
+        #     cprint("c", "     Inflating dendrite")
+        #     if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
+        #         rtau = self.post_cell.compute_rmrintau(
+        #             auto_initialize=True, vrange=[-80.0, -55.0]
+        #         )
+        #         print(
+        #             f"     Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
+        #         )
+        #
+        #     AdjA = AdjustAreas(method=self.Params.area_adjustment_method)
+        #     AdjA.sethoc_fromCNcell(self.post_cell)
+        #     AdjA.adjust_diameters(sectypes=dendrite_names, inflateRatio=inflateratio)
+        #     # AdjA.plot_areas(pt3d)  # just to take a look at the adjustment
+        #
+        #     if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
+        #         rtau = self.post_cell.compute_rmrintau(
+        #             auto_initialize=True, vrange=[-80.0, -55.0]
+        #         )
+        #         print(
+        #             f"     New Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
+        #         )
 
-        if self.Params.dendrite_inflation != 1.0:
-            cprint("c", "     Inflating dendrite")
-            if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
-                rtau = self.post_cell.compute_rmrintau(
-                    auto_initialize=True, vrange=[-80.0, -55.0]
-                )
-                print(
-                    f"     Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
-                )
-
-            AdjA = AdjustAreas()
-            AdjA.sethoc_fromCNcell(self.post_cell)
-            AdjA.adjust_diameters(sectypes=dendrite_names, inflateRatio=inflateratio)
-            # AdjA.plot_areas(pt3d)  # just to take a look at the adjustment
-
-            if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
-                rtau = self.post_cell.compute_rmrintau(
-                    auto_initialize=True, vrange=[-80.0, -55.0]
-                )
-                print(
-                    f"     New Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
-                )
-
+        # Set Ra for all regions, uniformly
         for group in list(self.post_cell.hr.sec_groups.keys()):
             g = self.post_cell.hr.sec_groups[group]
             for section in list(g):

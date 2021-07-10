@@ -142,6 +142,7 @@ class Params:
     shortSimulationFilename: Union[str, Path, None] = None
     simPath: Union[str, Path, None] = None
     hocfile: Union[str, Path, None] = None
+    meshInflate: bool=True # use the hoc file that has been inflated to the mesh area
     usedefaulthoc: bool = False
     cellType: str = CmdChoices.cellChoices[0]
     modelName: str = CmdChoices.modelNameChoices[0]
@@ -170,6 +171,7 @@ class Params:
     ASA_inflation: float = 1.0
     ASA_fromsoma: bool = False
     lambdaFreq: float = 2000.0  # Hz for segment number
+    area_adjustment_method: str = "pt3d"
     # spontaneous rate (group, in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
     srnames = ["LS", "MS", "HS", "mixed1"]  # runs 0-2, not starting at 0    # same as CmcChoices
     SRType: str = CmdChoices.SRChoices[2]
@@ -365,6 +367,14 @@ def build_parser():
         help='hoc file to use for simulation (default is the selected "cell".hoc)',
     )
 
+    parser.add_argument(
+        "--nomeshInflate",
+        dest="meshInflate",
+        action="store_false",
+        default=False,
+        help="use uninflated hoc file, not mesh-inflated file (default: False, uses mesh inflated file)",
+    )
+    
     parser.add_argument(
         "-D",
         "--dendriteexpt",

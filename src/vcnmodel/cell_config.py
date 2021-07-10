@@ -274,6 +274,7 @@ class CellConfig:
         r : list containing dict of each input
         celltype : cell type take from the table.
         """
+        cell = cell[:7]  # trim to base name
         assert cell in self.VCN_Inputs
         assert synapsemap in ["LS", "MS", "HS", "mixed1", None]
         indata = self.VCN_Inputs[cell][1]
@@ -398,10 +399,10 @@ class CellConfig:
         hoc_soma_area = dcell[hocsomarecons].values[0]
         inflateratio = mesh_area / hoc_soma_area
         print(
-            f"    Cell: {cellnum:02d}: Soma mesh area: {mesh_area:.2f}  Soma hoc area: {hoc_soma_area:.2f}  ",
+            f"    From Table: Cell={cellnum:02d}: Soma mesh area:     {mesh_area:8.2f}  HOC Soma area:     {hoc_soma_area:8.2f}  ",
             end="",
         )
-        print(f"          Soma Inflation ratio: {inflateratio:.3f}")
+        print(f"    Soma Inflation ratio:     {inflateratio:6.3f}")
         return inflateratio
 
     def get_dendrite_ratio(self, cellID: Union[str, int]):
@@ -427,10 +428,10 @@ class CellConfig:
         else:
             inflateratio = 1.0
         print(
-            f"    Cell: {cellnum:02d}: Dendrite mesh area: {mesh_area:.2f}  HOC Dendrite area: {hoc_dend_area:.2f}  ",
+            f"    From Table: Cell={cellnum:02d}: Dendrite mesh area: {mesh_area:8.2f}  HOC Dendrite area: {hoc_dend_area:8.2f}  ",
             end="",
         )
-        print(f"          Dendrite Inflation ratio: {inflateratio:.3f}")
+        print(f"    Dendrite Inflation ratio: {inflateratio:6.3f}")
         return inflateratio
 
     def _get_dict(self, cellnum: int, area: Union[float, None]):

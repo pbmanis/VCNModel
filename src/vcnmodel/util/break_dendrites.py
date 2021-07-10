@@ -19,7 +19,7 @@ cells = [9] #, 5, 6, 9, 10, 11, 13, 17, 30]
 remove_types = ['Distal_Dendrite', 'Dendritic_Swelling', 'Dendritic_Hub']
 full_tag = "_Full"
 nodend_tag = "_NoDend"
-secmap = 'sbem'
+secmap = 'sbem2'
 # @dataclass
 # class args:
 #     pruneaxon: bool=False
