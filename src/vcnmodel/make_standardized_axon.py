@@ -1,22 +1,19 @@
 from dataclasses import dataclass, field
 import datetime
-from typing import Union, Type, List
+from typing import Union, Type
 from pathlib import Path
 import re
 import toml
 import pprint
 from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as mpl
-from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 from neuron import h
 from cnmodel import cells
 from src.vcnmodel.adjust_areas import AdjustAreas
 from src.vcnmodel import cell_config as cell_config
-from src.vcnmodel import h_reader
 
 pp = pprint.PrettyPrinter(indent=4)
-
 
 def defemptylist():
     """
@@ -24,26 +21,25 @@ def defemptylist():
     """
     return []
 
-
 @dataclass
 class Point:
     """
     Defines a point in 3d space
     """
+
     x: float = 0.0
     y: float = 0.0
     z: float = 0.0
 
-
 @dataclass
 class Point3D:
     """
-    Defines a pt3d for neuron, using point and diameter. 
+    Defines a pt3d for neuron, using point and diameter.
     All units are nominally in microns for NEURON
     """
+
     xyz: Point()
     d: float = 0.0
-
 
 @dataclass
 class List3DPoints:
@@ -56,7 +52,6 @@ class List3DPoints:
     y: list = field(default_factory=defemptylist)
     z: list = field(default_factory=defemptylist)
     d: list = field(default_factory=defemptylist)
-
 
 @dataclass
 class AxonMorph:
@@ -87,7 +82,6 @@ class AxonMorph:
     AxonDiam1: list = field(default_factory=defemptylist)
     AxonDiamAvg: list = field(default_factory=defemptylist)
 
-
 @dataclass(frozen=True)
 class StandardAxon:
     """
@@ -95,6 +89,7 @@ class StandardAxon:
     format is a list of diam[0], diam[1], length, and # of sections
     all measurements are in microns
     """
+
     hil = [2.31, 1.87, 1.97, 3]
     ais = [1.6, 0.82, 19.03, 19]
     axn = [1.03, 1.49, 55.7, 55]
@@ -150,19 +145,21 @@ re_find_AIS_pt3d = re.compile(s_ais + sa + sb, re.DOTALL)
 s_ma = r"(?P<section>access sections)\[(?P<secno>[\d]+)\]\s(?P<source>Myelinated_Axon\.append\(\))\s"
 re_find_MA_pt3d = re.compile(s_ma + sa + sb, re.DOTALL)
 
-
 class MakeStandardAxon:
     """
     Create a substitute standardized axon for a cell.
     To do this we:
         1. read the original hoc file
-        2. calculate the origin and direction of the assembly of 
+        2. calculate the origin and direction of the assembly of
+
             all parts of the axon, from hillock through the lat part.
         3. make a standardized axon consisting of 3 sections:
             a. which has the average axon parameters (diam, length) for the hillock, AIS and myelinated part
             b. which goes in the direction of the original axon, by rotating around the hillock origin
-                The standardized axon starts at the origin and is aligned along the X-axis (Y and Z are both zero). 
-                The standardized axon is made up of pt3d elements of 1 um in length. 
+                The standardized axon starts at the origin and is aligned along the X-axis (Y and Z are both zero).
+
+                The standardized axon is made up of pt3d elements of 1 um in length.
+
             c. which matches with the cell by translating the origin to the original hillock 0-end.
         4. We then remove all of the axon sections from the oritingal hoc text, and starting with the first
             section that would have been the hillock, add the 3 new sections.
@@ -170,7 +167,8 @@ class MakeStandardAxon:
             a. Get the section number of the part of the soma that is connected to the hillock
             b. Check for all axon containing sections, noting those of
                 axon_hillock, axon_initial_segment, and myelinated_axon which
-                might be missing in the current reconstruction. 
+                might be missing in the current reconstruction.
+
             c. Search and replace pt3d strings for each axon part,
                 adding missing parts at the end of the list (and adjusting the
                 create sections call to match)
@@ -183,7 +181,7 @@ class MakeStandardAxon:
     link to the right parts, and that everything is formatted correctly.
     """
 
-    def __init__(self, cell:str, revised:bool=False):
+    def __init__(self, cell: str, revised: bool = False):
         self.cconfig = cell_config.CellConfig(verbose=False, spont_mapping="HS",)
         self.revised = revised  # use the revised version with a standardized axon axon
         # find out where our files live
@@ -229,7 +227,9 @@ class MakeStandardAxon:
         cname, fn = self.make_name(cell, add_standardized_axon=self.revised)
         self.get_axon_measures(cname, fn)
 
-    def make_name(self, cell:str, add_standardized_axon:bool=False) -> (str, Type[Path]):
+    def make_name(
+        self, cell: str, add_standardized_axon: bool = False
+    ) -> (str, Type[Path]):
         """
         make a full filename that points to the cell morphology for the "Full" fyle type
         and for the standardized axon if needed.
@@ -242,7 +242,7 @@ class MakeStandardAxon:
         fn = Path(self.baseDirectory, cname, self.morphDirectory, cell_hoc)
         return cname, fn
 
-    def fill_coords(self, coords:list, sec:object, insertnan:bool=False)-> list:
+    def fill_coords(self, coords: list, sec: object, insertnan: bool = False) -> list:
         """
         append pt3d coordinates to the list
         """
@@ -258,18 +258,18 @@ class MakeStandardAxon:
             coords.d.append(sec.diam3d(i))
         return coords
 
-    def get_axon_measures(self, cname:str, fn:Union[str, Path]) -> AxonMorph:
+    def get_axon_measures(self, cname: str, fn: Union[str, Path]) -> AxonMorph:
         """
-        Compute a number of measures of the axon sections from the 
-        reconstructions. 
+        Compute a number of measures of the axon sections from the
+
+        reconstructions.
+
         This handles a single reconstruction
         It also computes som factors needed to do the prosethetic axon
-        
         Parameters
         ----------
         cname : str
             cell name in format 'VCN_cnn'
-        
         fn : str or path
             file name for hoc file
         """
@@ -288,10 +288,10 @@ class MakeStandardAxon:
         AdjArea.sethoc_fromCNcell(post_cell)
         # AdjArea.sethoc_fromstring(hdata=hocstruct2)
         AdjArea.cell.print_soma_info()
-        pt3d = AdjArea.adjust_diameters(
+        AdjArea.adjust_diameters(
             sectypes=AdjArea.somas, inflationRatio=sinflateratio
         )
-        pt3d = AdjArea.adjust_diameters(
+        AdjArea.adjust_diameters(
             sectypes=AdjArea.dendrites, inflationRatio=dinflateratio
         )
         AM = AxonMorph(cellID=cname)
@@ -356,13 +356,18 @@ class MakeStandardAxon:
 
         return AM
 
-    def remove_old_axon(self)->None:
+    def remove_old_axon(self) -> None:
         for secname, sec in self.HR.sections.items():
             sectype = self.HR.find_sec_group(secname)
             if sectype in self.axons:
                 h.delete_section(sec=sec)
 
-    def plot_3d(self, ax:Type[mpl.axes], data:Type[Point], otherdata:Union[None, Type[Point]]=None)->None:
+    def plot_3d(
+        self,
+        ax: Type[mpl.axes],
+        data: Type[Point],
+        otherdata: Union[None, Type[Point]] = None,
+    ) -> None:
         """
         plot the coordinates in data (which is expected to be a list of coordinates)
         in 3D
@@ -370,7 +375,8 @@ class MakeStandardAxon:
         connecting everything, and the other is symbols (spheres) at each point with a diam
         proportional to the diameter.
         This not meant to be the detailed representation, but just enough to indicate the
-        orientations of things. 
+        orientations of things.
+
         """
 
         markers = ["o", "o", "o", "o", "o"]
@@ -409,15 +415,15 @@ class MakeStandardAxon:
         ax.set_ylim(-100, 100)
         ax.set_zlim(-100, 100)
 
-    def concatenate(self, pt3d_lists:list, translate:bool=False)->object:
+    def concatenate(self, pt3d_lists: list, translate: bool = False) -> object:
         """
         Concatenate a list of sections, end to end along the x axis,
         starting with the first section at 0.
         Does not assign section numbers, just changes x positions
-        
         Parameters
         ----------
-        pt3d_lists : 
+        pt3d_lists :
+
             list of points to "concatenate" in the physical sense
             The lists are not adjoined, but the positions are adjusted
             so that they flow in order.
@@ -442,7 +448,7 @@ class MakeStandardAxon:
         return pt3d_lists
 
     def pt3d_to_hoc(
-        self, pt3d_lists:list, name: list = [], name_type: list = [], parent: list = []
+        self, pt3d_lists: list, name: list = [], name_type: list = [], parent: list = []
     ):
         hoc_string = {}
         for i, pt in enumerate(pt3d_lists):
@@ -467,16 +473,16 @@ class MakeStandardAxon:
     def populate_pt3d_list(self, tab) -> Type[List3DPoints]:
         """
         Make a list of 3D points corresponding to the table for
-        a section. 
+        a section.
+
         This list makes sections that vary in x, but are aligned along
         y and z = 0
-        
         Parameters
         ----------
         tab : the table specifying the values as:
-            0 : min diameter, 1: maximum diameter, 2 : maximum x, 
+            0 : min diameter, 1: maximum diameter, 2 : maximum x,
+
             3 : number of segments to populate
-        
         """
         coords = List3DPoints()
         x_steps = np.linspace(0.0, tab[2], tab[3], endpoint=True)
@@ -490,8 +496,8 @@ class MakeStandardAxon:
     def populate_section(self, name, name_type, parent, tab):
         """
         Create the hoc code for a section, using the pt3dadd formatting
-        
-        name : str 
+        name : str
+
             the name of the section
         name_type: str
             the name of the section list (in Neuron)
@@ -517,10 +523,9 @@ class MakeStandardAxon:
 
         return hoc_string
 
-    def collapse_list(self, axonslist:Type[List3DPoints]) -> Type[np.ndarray]:
+    def collapse_list(self, axonslist: Type[List3DPoints]) -> Type[np.ndarray]:
         """
         Take the list of axons and generate a single array of x, y, z values
-        
         Parameters
         ----------
         axonslist : a list of axon sections to collapse
@@ -534,10 +539,11 @@ class MakeStandardAxon:
         nl = np.vstack([newlist.x, newlist.y, newlist.z])
         return nl
 
-    def compute_axon_vector(self, axonslist:Type[List3DPoints]):
+    def compute_axon_vector(self, axonslist: Type[List3DPoints]):
         """
         Compute the mean 3d vector for the axon, going through all the points in the
-        axon list. 
+        axon list.
+
         Vector is anchored at the 0 end of the axon hillock (axonslist[0])
         """
         zp = np.array([axonslist[0].x[0], axonslist[0].y[0], axonslist[0].z[0]])
@@ -561,17 +567,16 @@ class MakeStandardAxon:
         alv = R.align_vectors(dp, nlr)
         print(alv)
 
-    def generate_standard_axon(self, translate:bool=True) -> str:
+    def generate_standard_axon(self, translate: bool = True) -> str:
         """
         Default standarized axon for VCN bushy cells
         values are diam[0], diam[1], length, and nsegments
         See VCN-SBEM-Data/Hillock-AIS-threshold.pzfx for the values
         entered here.
-        
         """
         # hil = [2.31, 1.87, 1.97, 3]
-#         ais = [1.6, 0.82, 19.03, 19]
-#         axn = [1.03, 1.49, 55.7, 55]
+        #         ais = [1.6, 0.82, 19.03, 19]
+        #         axn = [1.03, 1.49, 55.7, 55]
 
         print(dir(StandardAxon))
         p1 = self.populate_pt3d_list(StandardAxon.hil)
@@ -587,13 +592,13 @@ class MakeStandardAxon:
             parent=["soma", "hillock", "ais"],
         )
         return hoc_str
-    
-    def get_create_pos(self, hocf:str) -> int:
+
+    def get_create_pos(self, hocf: str) -> int:
         m = re_find_create_sections_position.search(hocf)
         startpos = m.start()
         return startpos
 
-    def verify_section_lists(self, hocf:str) -> str:
+    def verify_section_lists(self, hocf: str) -> str:
         """
         Verify that each of the axon section types is actually
         created at the top of the file
@@ -602,25 +607,25 @@ class MakeStandardAxon:
         m = re_find_create_AH.search(hocf)
         if m is None:
             add_str = "objref Axon_Hillock\nAxon_Hillock = new SectionList()\n"
-            hocf = hocf[:startpos]+add_str+hocf[startpos:]
-            print('Inserted Axon Hillock')
-        
+            hocf = hocf[:startpos] + add_str + hocf[startpos:]
+            print("Inserted Axon Hillock")
+
         m = re_find_create_AIS.search(hocf)
         if m is None:
             add_str = "objref Axon_Initial_Segment\nAxon_Initial_Segment = new SectionList()\n"
-            hocf = hocf[:startpos]+add_str+hocf[startpos:]
-            print('Inserted Axon Initial Segment')
-        
+            hocf = hocf[:startpos] + add_str + hocf[startpos:]
+            print("Inserted Axon Initial Segment")
+
         m = re_find_create_MA.search(hocf)
         if m is None:
             add_str = "objref Myelinated_Axon\nMyelinated_Axon = new SectionList()\n"
-            hocf = hocf[:startpos]+add_str+hocf[startpos:]
-            print('Inserted Myelinated_Axon')
+            hocf = hocf[:startpos] + add_str + hocf[startpos:]
+            print("Inserted Myelinated_Axon")
         startpos = self.get_create_pos(hocf)
         m = re_find_create_MA.search(hocf)
         return hocf
-        
-    def update_create_sections(self, func:object, hocf:str, nsec:int) -> (str, int):
+
+    def update_create_sections(self, func: object, hocf: str, nsec: int) -> (str, int):
         m = func.findall(hocf)
         if len(m) == 0:
             hocf, nrepl = re_find_create_sections.subn(
@@ -630,10 +635,12 @@ class MakeStandardAxon:
             print("update section count done")
         return hocf, nsec
 
-    def replace_points(self, func:object, hocf:str, hname:str, newpt3d:Type[Point3D]) -> str:
+    def replace_points(
+        self, func: object, hocf: str, hname: str, newpt3d: Type[Point3D]
+    ) -> str:
         m = func.search(hocf)
         if m is None:
-            current_used_secs = []
+            # current_used_secs = []
             asec = re_find_accessed_sections.findall(hocf)
             for a in asec:
                 if a == 0 or len(a) < 2:
@@ -678,7 +685,7 @@ class MakeStandardAxon:
             # print(dir(m[0]), '\n', m[0])
         return hocf
 
-    def change_hoc(self, cell:str, hocstr:str) -> None:
+    def change_hoc(self, cell: str, hocstr: str) -> None:
         cname, fn = self.make_name(cell)
         with open(fn) as fh:
             hocf = fh.read()
@@ -708,7 +715,7 @@ class MakeStandardAxon:
         # print('new hocf: ', hocf[:600])
         self.hocf = hocf
 
-    def write_revised_hoc(self, cell:str) -> None:
+    def write_revised_hoc(self, cell: str) -> None:
         cname, fn = self.make_name(cell, add_standardized_axon=True)
         new_comment = "//  Modified file: Uses a standardized bushy cell axon\n"
         new_comment += (
@@ -722,8 +729,7 @@ class MakeStandardAxon:
         with open(fn, "w") as fh:
             fh.write(self.hocf)
 
-
-def make_standard_axon(cell:str, write:bool=False) -> None:
+def make_standard_axon(cell: str, write: bool = False) -> None:
     """
     Read and fix original axon
     """
@@ -744,7 +750,7 @@ def make_standard_axon(cell:str, write:bool=False) -> None:
     PB.plot_3d(ax2, PB.all_coords)
     mpl.show()
 
-def read_standard_axon(cell:str) -> None:
+def read_standard_axon(cell: str) -> None:
     fig = mpl.figure(figsize=(12, 6))
     ax1 = fig.add_subplot(121, projection="3d")
     PA = MakeStandardAxon(cell, revised=False)
@@ -753,9 +759,9 @@ def read_standard_axon(cell:str) -> None:
     PB = MakeStandardAxon(cell, revised=True)
     PB.plot_3d(ax2, PB.all_coords)
     mpl.show()
-    
+
 if __name__ == "__main__":
     cell = 11
-    for cell in [6]: # [2, 5, 9, 10, 11, 13, 17, 18, 30]:
+    for cell in [6]:  # [2, 5, 9, 10, 11, 13, 17, 18, 30]:
         make_standard_axon(cell, write=False)
         # read_standard_axon(cell)
