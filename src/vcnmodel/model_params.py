@@ -21,7 +21,6 @@ Define data structures used for:
 
 """
 
-
 display_orient_cells = {
     "VCN_c02": [140.0, 0.0, -144.0],
     "VCN_c06": [140.0, -59.0, -12.0],
@@ -120,7 +119,6 @@ class CmdChoices:
     displayStyleChoices = ["cylinders", "graph", "volume", "surface"]
     channelChoices = ["klt", "kht", "ihvcn", "nacncoop", "nacn", "najsr"]
 
-
 # set up the Params data structure. This should hold everything that might be modified
 # or need to be known when running the CmdChoices.
 #
@@ -142,7 +140,7 @@ class Params:
     shortSimulationFilename: Union[str, Path, None] = None
     simPath: Union[str, Path, None] = None
     hocfile: Union[str, Path, None] = None
-    meshInflate: bool=True # use the hoc file that has been inflated to the mesh area
+    meshInflate: bool = True  # use the hoc file that has been inflated to the mesh area
     usedefaulthoc: bool = False
     cellType: str = CmdChoices.cellChoices[0]
     modelName: str = CmdChoices.modelNameChoices[0]
@@ -159,12 +157,12 @@ class Params:
 
     # cell specific parameters related to geometry
     fullhocfile: bool = False  # use the "full" hoc file (cellname_Full.hoc) (obselete)
-    dtIC: float = 0.025 # ok.
+    dtIC: float = 0.025  # ok.
     dtVC: float = 0.005  # voltage clamp; need shorter steop size for transient measure
     celsius: float = 37  # set the temperature.
     Ra: float = 150.0  # ohm.cm
     soma_inflation: float = 1.0  # factor to multiply soma section areas by
-    soma_autoinflate: bool = False  #
+    soma_autoinflate: bool = False
     dendrite_inflation: float = 1.0
     dendrite_autoinflate: bool = False
     dendrite_fromsoma: bool = False
@@ -196,7 +194,7 @@ class Params:
     commandline: str = ""  # store command line on run, all parser args
     commands: str = ""  # store command line on run, the actual given commands
     checkcommand: bool = False
-    testsetup: bool=False
+    testsetup: bool = False
     configfile: Union[str, None] = None
     tagstring: Union[str, None] = None
     initialization_time: float = 50.0
@@ -374,7 +372,7 @@ def build_parser():
         default=False,
         help="use uninflated hoc file, not mesh-inflated file (default: False, uses mesh inflated file)",
     )
-    
+
     parser.add_argument(
         "-D",
         "--dendriteexpt",
@@ -662,7 +660,7 @@ def build_parser():
         default=-80.0,
         help="Holding voltage in VClamp (mV) (default: -80 mV)",
     )
-    
+
     parser.add_argument(
         "--tagstring",
         type=str,
