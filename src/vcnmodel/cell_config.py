@@ -399,7 +399,9 @@ class CellConfig:
         hoc_soma_area = dcell[hocsomarecons].values[0]
         inflateratio = mesh_area / hoc_soma_area
         print(
-            f"    From Table: Cell={cellnum:02d}: Soma mesh area:     {mesh_area:8.2f}  HOC Soma area:     {hoc_soma_area:8.2f}  ",
+            f"    From Table: Cell={cellnum:02d}: Soma mesh area:     {mesh_area:8.2f}", end="")
+        print(
+            f"  HOC Soma area:     {hoc_soma_area:8.2f}  ",
             end="",
         )
         print(f"    Soma Inflation ratio:     {inflateratio:6.3f}")
@@ -427,10 +429,8 @@ class CellConfig:
             inflateratio = mesh_area / hoc_dend_area
         else:
             inflateratio = 1.0
-        print(
-            f"    From Table: Cell={cellnum:02d}: Dendrite mesh area: {mesh_area:8.2f}  HOC Dendrite area: {hoc_dend_area:8.2f}  ",
-            end="",
-        )
+        print(f"    From Table: Cell={cellnum:02d}: Dendrite mesh area: {mesh_area:8.2f}", end="")
+        print(f" HOC Dendrite area: {hoc_dend_area:8.2f}  ", end="")
         print(f"    Dendrite Inflation ratio: {inflateratio:6.3f}")
         return inflateratio
 
@@ -514,9 +514,10 @@ class CellConfig:
         # exit()
         for i, p in enumerate(pct):
             ne = int(0.5 + nendings * (float(p) / 100.0))
-            end_group = allendings[sp : sp + ne]
+            end_group = allendings[sp: sp + ne]
             # print(sp, sp+ne, ne, len(end_group))
-            # print(f"Group {i:d} ({gname[2-i]:s}) Range = {np.min(end_group):.2f} - {np.max(end_group):.2f}, N={len(end_group):d}", end='')
+            # print(f"Group {i:d} ({gname[2-i]:s}) Range = {np.min(end_group):.2f} - {np.max(end_group):.2f},
+            # N={len(end_group):d}", end='')
             # print(f"; pct of total: {float(len(end_group))/nendings:.3f}  Target pct={p:.1f}")
             SG = SRMap()
             SG.name = gname[2 - i]

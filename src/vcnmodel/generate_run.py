@@ -157,7 +157,7 @@ class GenerateRun:
 
     def _finalPrep(self, maxt):
         self.hf.h.tstop = maxt + self.RunInfo.stimDelay
-        print(f"PrepareRun, finalprep:\n ")
+        print("PrepareRun, finalprep:\n ")
         print(f"   maxt:     {maxt:8.2f} ms")
         print(f"   delay:    {self.RunInfo.stimDelay:8.2f} ms")
         print(f"   duration: {self.RunInfo.stimDur:8.2f} ms")
@@ -499,7 +499,7 @@ class GenerateRun:
             if save == "monitor":
                 self.saveRuns("gifnoise")
 
-    def testRun(self, title="testing...", level:float=-0.001, dur:float=50., initfile=None):
+    def testRun(self, title: str = "testing...", level: float = -0.001, dur: float = 50., initfile=None):
         if initfile is None:
             raise ValueError("generate_run:testRun needs initfile name")
         self._prepareRun(inj=level)
