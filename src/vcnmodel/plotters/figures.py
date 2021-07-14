@@ -23,6 +23,7 @@ import toml
 from src.vcnmodel.plotters import efficacy_plot as EF
 from src.vcnmodel.plotters import plot_z as PZ
 import src.vcnmodel.util.fixpicklemodule as FPM
+from src.vcnmodel.plotters import figure_data as FD # table of simulation runs for plotting
 
 config = toml.load(open("wheres_my_data.toml", "r"))
 cprint = CP.cprint
@@ -41,6 +42,8 @@ colors = ["c", "k", "m", "r"]
 title_text = {"passive": "Passive", "normal": "Half-active", "active": "Active"}
 font_colors = {"passive": "c", "normal": "k", "active": "m"}
 spike_colors = font_colors
+
+print(figure_data)
 
 
 def get_changetimestamp():
@@ -80,211 +83,6 @@ class FigInfo:
     filename: Union[str, Path] = ""
     title: dict = field(default_factory=title_data)
     title2: dict = field(default_factory=title_data)
-
-
-figure_IV = {
-    "Cell": 17,
-    "normal": "runIV-all-2020-07-30.18-29-53",
-    "passive": "runIV-all-2020-07-30.18-43-29",
-    "active": "runIV-all-2020-07-30.18-56-13",
-    "Z_normal": "VCN_c17_Full_normal_Z.pkl",
-    "Z_passive": "VCN_c17_Full_pasdend_Z.pkl",
-    "Z_active": "VCN_c17_Full_actdend_Z.pkl",
-}
-figure_AllIVs = {
-    2: {
-        "normal": "runIV-all-2020-07-30.18-20-16",
-        "passive": "runIV-all-2020-07-30.18-33-07",
-        "active": "runIV-all-2020-07-30.18-46-46",
-    },
-    5: {
-        "normal": "runIV-all-2020-07-30.18-21-32",
-        "passive": "runIV-all-2020-07-30.18-34-20",
-        "active": "runIV-all-2020-07-30.18-47-59",
-    },
-    6: {
-        "normal": "runIV-all-2020-07-30.18-23-12",
-        "passive": "runIV-all-2020-07-30.18-36-04",
-        "active": "runIV-all-2020-07-30.18-49-38",
-    },
-    9: {
-        "normal": "runIV-all-2020-07-30.18-24-19",
-        "passive": "runIV-all-2020-07-30.18-37-10",
-        "active": "runIV-all-2020-07-30.18-50-44",
-    },
-    10: {
-        "normal": "runIV-all-2020-07-30.18-25-42",
-        "passive": "runIV-all-2020-07-30.18-38-31",
-        "active": "runIV-all-2020-07-30.18-52-07",
-    },
-    11: {
-        "normal": "runIV-all-2020-07-30.18-27-24",
-        "passive": "runIV-all-2020-07-30.18-40-45",
-        "active": "runIV-all-2020-07-30.18-53-50",
-    },
-    13: {
-        "normal": "runIV-all-2020-07-30.18-28-30",
-        "passive": "runIV-all-2020-07-30.18-42-00",
-        "active": "runIV-all-2020-07-30.18-54-51",
-    },
-    17: {
-        "normal": "runIV-all-2020-07-30.18-29-53",
-        "passive": "runIV-all-2020-07-30.18-43-29",
-        "active": "runIV-all-2020-07-30.18-56-13",
-    },
-    18: {
-        "normal": "runIV-all-2021-06-16.13-11-52",
-        "passive": "runIV-all-2021-06-16.13-12-14",
-        "active": "runIV-all-2021-06-16.13-12-36",
-    },
-    # 18: {  # new reconstruction June 15 2021 - fixed swc->hoc
-    #     'normal': 'runIV-all-2021-05-18.12-37-05' ,
-    #     'passive': 'runIV-all-2021-05-18.12-37-29' ,
-    #     'active': 'runIV-all-2021-05-18.12-37-53' ,
-    # },
-    # 18: {
-    #     "normal": "runIV-all-2020-11-16.10-54-53",
-    #     "active": "runIV-all-2020-11-16.10-55-23",
-    #     "passive": "runIV-all-2020-11-16.10-55-08",
-    # },
-    30: {
-        "normal": "runIV-all-2020-07-30.18-31-35",
-        "passive": "runIV-all-2020-07-30.18-45-12",
-        "active": "runIV-all-2020-07-30.18-57-54",
-    },
-}
-
-"""
-The efficacy data is taken from runs using the latest measure
-of synapse density, 0.7686 syn/um2  11/15/2020
-"""
-figure_efficacy_supplement = {
-    2: {
-        "NoDend": "runANSingles-all-2020-11-16.17-04-23",
-        "Full": "runANSingles-all-2020-11-16.17-08-55",
-    },
-    5: {
-        "NoDend": "runANSingles-all-2020-11-16.17-19-30",
-        "Full": "runANSingles-all-2020-11-16.17-25-11",
-    },
-    6: {
-        "NoDend": "runANSingles-all-2020-11-16.17-40-50",
-        "Full": "runANSingles-all-2020-11-16.17-46-05",
-    },
-    9: {
-        "NoDend": "runANSingles-all-2020-11-16.17-56-43",
-        "Full": "runANSingles-all-2020-11-16.18-04-06",
-    },
-    10: {
-        "NoDend": "runANSingles-all-2020-11-16.18-20-31",
-        "Full": "runANSingles-all-2020-11-16.18-28-43",
-    },
-    11: {
-        "NoDend": "runANSingles-all-2020-11-16.18-51-40",
-        "Full": "runANSingles-all-2020-11-16.18-57-43",
-    },
-    13: {
-        "NoDend": "runANSingles-all-2020-11-16.19-09-30",
-        "Full": "runANSingles-all-2020-11-16.19-14-35",
-    },
-    17: {
-        "NoDend": "runANSingles-all-2020-11-16.19-27-02",
-        "Full": "runANSingles-all-2020-11-16.19-33-47",
-    },
-    18: {
-        "NoDend": "runANSingles-all-2020-11-16.19-50-22",
-        "Full": "runANSingles-all-2021-05-18.14-43-58",  # new run
-        # "Full": "runANSingles-all-2020-11-16.19-57-52",
-    },
-    30: {
-        "NoDend": "runANSingles-all-2020-11-16.20-09-36",
-        "Full": "runANSingles-all-2020-11-16.20-16-56",
-    },
-}
-
-
-figure_revcorr_example = {
-    17: {
-        "Spont": "runANPSTH-all-2020-11-24.09-12-49",
-        "40dB": "runANPSTH-all-2020-08-20.14-54-39",
-    }
-}
-
-figure_revcorr = {
-    2: {
-        "Spont": "runANPSTH-all-2020-11-24.06-59-18",
-        "40dB": "runANPSTH-all-2020-11-24.11-13-17",
-    },
-    5: {
-        "Spont": "runANPSTH-all-2020-11-24.07-15-41",
-        "40dB": "runANPSTH-all-2020-11-24.11-19-05",
-    },
-    6: {
-        "Spont": "runANPSTH-all-2020-11-24.07-38-28",
-        "40dB": "runANPSTH-all-2020-11-24.11-27-20",
-    },
-    9: {
-        "Spont": "runANPSTH-all-2020-11-24.07-55-04",
-        "40dB": "runANPSTH-all-2020-11-24.11-33-12",
-    },
-    10: {
-        "Spont": "runANPSTH-all-2020-11-24.08-15-28",
-        "40dB": "runANPSTH-all-2020-11-24.11-40-19",
-    },
-    11: {
-        "Spont": "runANPSTH-all-2020-11-24.08-39-48",
-        "40dB": "runANPSTH-all-2020-11-24.11-47-36",
-    },
-    13: {
-        "Spont": "runANPSTH-all-2020-11-24.08-55-43",
-        "40dB": "runANPSTH-all-2020-11-24.11-52-44",
-    },
-    17: {
-        "Spont": "runANPSTH-all-2020-11-24.09-12-49",
-        "40dB": "runANPSTH-all-2020-11-24.11-58-11",
-        "50dB": "runANPSTH-all-2020-08-20.14-54-39",
-    },
-    18: {
-        "Spont": "runANPSTH-all-2020-11-24.09-37-01",
-        "40dB": "runANPSTH-all-2020-11-24.12-05-53",
-    },
-    30: {
-        "Spont": "runANPSTH-all-2020-11-24.09-51-06",
-        "40dB": "runANPSTH-all-2020-11-24.12-10-28",
-    },
-}
-
-
-figure_VClamp = {
-    17: [
-        "runVC-all-2020-07-29.10-36-59",
-        "runVC-all-2020-07-29.10-30-30",
-        "runVC-all-2020-07-29.12-17-13",
-    ],
-}
-
-figure_psth = {
-    2: {"40dB": "runANPSTH-all-2020-11-24.15-39-05",},
-    5: {"40dB": "runANPSTH-all-2020-11-24.15-46-45",},
-    6: {"40dB": "runANPSTH-all-2020-11-24.15-57-32",},
-    9: {"40dB": "runANPSTH-all-2020-11-24.16-05-10",},
-    10: {"40dB": "runANPSTH-all-2020-11-24.16-14-34",},
-    11: {"40dB": "runANPSTH-all-2020-11-24.16-25-29",},
-    13: {"40dB": "runANPSTH-all-2020-11-24.16-32-59",},
-    17: {"40dB": "runANPSTH-all-2020-11-24.16-40-56",},
-    18: {"40dB": "runANPSTH-all-2020-11-24.16-51-50",},
-    30: {"40dB": "runANPSTH-all-2020-11-24.16-58-24",},
-}
-
-all_figures = [
-    figure_psth,
-    figure_VClamp,
-    figure_revcorr,
-    figure_revcorr_example,
-    figure_efficacy_supplement,
-    figure_IV,
-    figure_AllIVs,
-]
 
 
 class Figures(object):
@@ -401,11 +199,11 @@ class Figures(object):
     def plotIV(self, cell=None, parent_figure=None, loc: Union[None, tuple] = None):
         # style = STY.styler(journal="JNeurosci", figuresize='full', font='stixsans')  # two colukn...
         if cell is None:
-            cellN = figure_IV["Cell"]
-            d1 = figure_IV["passive"]
+            cellN = FD.figure_IV["Cell"]
+            d1 = FD.figure_IV["passive"]
         else:
             cellN = cell
-            d1 = figure_AllIVs[cellN]["passive"]
+            d1 = FD.figure_AllIVs[cellN]["passive"]
         cellpath = Path(
             self.config["cellDataDirectory"], f"VCN_c{cellN:02d}", "Simulations", "IV"
         )
@@ -503,9 +301,9 @@ class Figures(object):
 
         for iax, iv in enumerate(["passive", "normal", "active"]):
             if cell is None:
-                dfile = figure_IV[iv]
+                dfile = FD.figure_IV[iv]
             else:
-                dfile = figure_AllIVs[cellN][iv]
+                dfile =FD.figure_AllIVs[cellN][iv]
             sfi = Path(cellpath, Path(dfile).name)
             if not sfi.is_dir():
                 print("Missing file: sfi 1: ", sfi)
@@ -561,13 +359,13 @@ class Figures(object):
 
         # plot overlays of all cell z/phase
         for iax, mode in enumerate(["Z_passive", "Z_normal", "Z_active"]):
-            if mode not in figure_IV.keys():
+            if mode not in FD.figure_IV.keys():
                 continue
             # cprint('r', f"doing iv: {str(mode):s}")
             sfi = Path(
                 config["cellDataDirectory"],
                 config["impedanceDirectory"],
-                figure_IV[mode],
+                FD.figure_IV[mode],
             )
             if not sfi.is_file():
                 cprint("r", f"File not found!!!!!!\n->>> {str(sfi):s}")
@@ -620,7 +418,7 @@ class Figures(object):
         taus = {}
 
         k = 0
-        for rax, iv in enumerate(figure_AllIVs.keys()):
+        for rax, iv in enumerate(FD.figure_AllIVs.keys()):
             # cellpath = Path(self.config['cellDataDirectory'], f"VCN_c{iv:02d}", 'Simulations', 'IV')
             for iax, dendmode in enumerate(["passive", "normal", "active"]):
                 sfi = Path(
@@ -628,7 +426,7 @@ class Figures(object):
                     f"VCN_c{iv:02d}",
                     "Simulations",
                     "IV",
-                    figure_AllIVs[iv][dendmode],
+                   FD.figure_AllIVs[iv][dendmode],
                 )
                 if not sfi.is_dir():
                     print("sfi is not a dir")
@@ -730,7 +528,8 @@ class Figures(object):
         Passive, normal, active, plus the crossed IV
         Also put the PNG for the cell on the left.
         """
-        nivs = len(figure_AllIVs)
+        nivs = len(FD.figure_AllIVs)
+        
         rows = nivs
         cols = 5
         height = 1.5 * nivs
@@ -760,7 +559,7 @@ class Figures(object):
         )
         cellpath = config["cellDataDirectory"]
         png_path = Path(config["baseDataDirectory"], config["pngDirectory"])
-        for rax, iv in enumerate(figure_AllIVs.keys()):
+        for rax, iv in enumerate(FD.figure_AllIVs.keys()):
             celln = Path(png_path, f"VCN_c{iv:02d}.png")
             if celln.is_file():  # add images from png files
                 img = mpimg.imread(str(celln))
@@ -775,7 +574,7 @@ class Figures(object):
                     f"VCN_c{iv:02d}",
                     "Simulations",
                     "IV",
-                    figure_AllIVs[iv][dendmode],
+                   FD.figure_AllIVs[iv][dendmode],
                 )
                 if not sfi.is_dir():
                     continue
@@ -892,7 +691,7 @@ class Figures(object):
         colormap="tab10",
     ):
         cell_number = 17
-        example = figure_efficacy_supplement[cell_number]
+        example = FD.figure_efficacy_supplement[cell_number]
 
         cellpath = Path(
             self.config["cellDataDirectory"],
@@ -1142,10 +941,10 @@ class Figures(object):
     ):
         if cellN == None:
             cell_number = 17
-            example = figure_revcorr_example[cell_number]
+            example = FD.figure_revcorr_example[cell_number]
         else:
             cell_number = cellN
-            example = figure_revcorr[cell_number]
+            example = FD.figure_revcorr[cell_number]
 
         dBSPL = "Spont"
         recompute = False
@@ -1396,7 +1195,7 @@ class Figures(object):
         for i, cell_number in enumerate(grAList()):
             # if i > 1:
             #                 continue
-            dataset = figure_revcorr[cell_number]
+            dataset = FD.figure_revcorr[cell_number]
 
             cellpath = Path(
                 self.config["cellDataDirectory"],
@@ -1767,7 +1566,7 @@ class Figures(object):
         an_fsl_win: Union[None, tuple] = None,
         label_x_axis=True,
     ):
-        dataset = figure_psth[cell_number]
+        dataset = FD.figure_psth[cell_number]
         PD = PData()
         cellpath = Path(
             self.config["cellDataDirectory"],
@@ -2185,7 +1984,7 @@ class Figures(object):
 
     def plot_VC_gKLT(self, parent_figure=None, loc: Union[None, tuple] = None):
         cell_number = 17
-        dataset = figure_VClamp[cell_number]
+        dataset = FD.figure_VClamp[cell_number]
 
         cellpath = Path(
             self.config["cellDataDirectory"],

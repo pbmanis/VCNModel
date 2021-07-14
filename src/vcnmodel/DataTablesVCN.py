@@ -17,6 +17,7 @@ from src.vcnmodel import table_manager as table_manager
 from src.vcnmodel import cell_config
 from src.vcnmodel.plotters import plot_sims
 from src.vcnmodel.plotters import figures
+from src.vcnmodel.plotters import figure_data
 from src.vcnmodel.plotters import plot_z
 from src.vcnmodel.plotters import efficacy_plot
 from pylibrary.tools import cprint as CP
@@ -87,6 +88,7 @@ all_modules = [
     table_manager,
     plot_sims,
     figures,
+    figure_data,
     plot_z,
     efficacy_plot,
     cell_config,
@@ -97,7 +99,7 @@ all_modules = [
     src.vcnmodel.util.fixpicklemodule,
     src.vcnmodel.util.readmodel,
     ephys.ephysanalysis.SpikeAnalysis,
-    ephys.ephysanalysis.Utility,
+    ephys.tools.Utility,
     ephys.ephysanalysis.MakeClamps,
     PH,
 ]
