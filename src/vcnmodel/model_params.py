@@ -75,6 +75,7 @@ class CmdChoices:
     dendriteExptChoices = [
         "default",
         "Full",
+        "AxonOnly",
         "NoDend",
         "NoDistal",
         "NoUninnervated",

@@ -58,8 +58,8 @@ class GenerateRun:
         self.idnum = idnum
         self.startTime = starttime
 
-        somasecs = list(self.hf.sec_groups["soma"])
-        electrodeSection = somasecs[0]
+        esecs = list(self.hf.sec_groups[self.RunInfo.electrodeSectionName])
+        electrodeSection = esecs[0]
         self.electrode_site = self.hf.get_section(electrodeSection)
         if self.RunInfo.dendriticElectrodeSection is not None:
             print(

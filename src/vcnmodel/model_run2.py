@@ -15,7 +15,7 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
 
-import ephys.ephysanalysis.Utility
+import ephys.tools.Utility
 import matplotlib
 import numpy as np
 import toml
@@ -35,7 +35,7 @@ from src.vcnmodel import cell_config as cell_config
 from src.vcnmodel import cellInitialization as cellInit
 from src.vcnmodel.generate_run import GenerateRun
 
-EPU = ephys.ephysanalysis.Utility.Utility()
+EPU = ephys.tools.Utility.Utility()
 matplotlib.use("Qt5Agg")
 """
 model_run2.py
@@ -148,7 +148,7 @@ optional arguments:
                         Choose dendrite table (normal, active, passive)
   --hocfile HOCFILE     hoc file to use for simulation (default is the
                         selected "cell".hoc)
-  -D {default,Full,NoDend,NoDistal,NoUninnervated}, --dendriteexpt {default,Full,NoDend,NoDistal,NoUninnervated}
+  -D {default,Full,NoDend,NoDistal,NoUninnervated}, --dendriteexpt {default,Full,NoDend,AxonOnly,NoDistal,NoUninnervated}
                         Choose dendrite experiment (default, Full, NoDend,
                         NoDistal, NoUninnervated)
   --datatable DATATABLE
@@ -963,9 +963,14 @@ class ModelRun:
                     print("Section: ", section)
                     print("Ra: ", self.post_cell.hr.get_section(section).Ra)
 
-        electrode_section = list(self.post_cell.hr.sec_groups["soma"])[0]
+        if 'soma' in self.post_cell.hr.sec_groups.keys() and len(self.post_cell.hr.sec_groups["soma"]) > 0:
+            electrode_section = list(self.post_cell.hr.sec_groups["soma"])[0]
+            secname = 'soma'
+            self.RunInfo.electrodeSectionName = "soma"
+        else:
+            electrode_section = list(self.post_cell.hr.sec_groups["Axon_Initial_Segment"])[0]
+            self.RunInfo.electrodeSectionName = "Axon_Initial_Segment"
         self.RunInfo.electrodeSection = self.post_cell.hr.get_section(electrode_section)
-        self.RunInfo.electrodeSectionName = "soma"
         # self.hg = hoc_graphics
         self.get_hoc_file(self.post_cell.hr)
 
@@ -1184,7 +1189,7 @@ class ModelRun:
         )
         print(f"Ran to get initial state for {self.post_cell.hr.h.t:.1f} msec")
 
-    def Zin(self, measure_section=Union[str, None]):
+    def Zin(self, measure_section:Union[str, None]=None):
         """
         Measure Zin from the soma for a compartmental cell.
 
@@ -1216,6 +1221,7 @@ class ModelRun:
         fo = Path(self.Params.hocfile).stem
         fo += f"_{self.Params.dendriteMode:s}"
         fo += "_Z.pkl"
+        fo = Path(self.baseDirectory, "Impedance_Calculations", fo)
         d = {"f": freqs, "zin": Zin, "phase": Zphase, "Vm": measure_section.v}
         with open(fo, "wb") as fh:
             pickle.dump(d, fh)
@@ -1234,39 +1240,6 @@ class ModelRun:
             pg.QtGui.QApplication.instance().exec_()
 
         exit()
-
-        # self.RunInfo.stimDelay = 10.0
-        # self.R.testRun(initfile=self.Params.initStateFile, level=-0.01)
-        # tstart = self.RunInfo.stimDelay
-        # tx = np.array(self.R.monitor["time"])
-        # vx = np.array(self.R.monitor["postsynapticV"])
-        # ix = np.array(self.R.monitor["i_stim0"])
-        # ET = electrotonic.Electrotonic(I=ix, T=tx, V=vx, tstart=tstart, tdur=3.0)
-        #
-        # ET.fitexps(ET.Tfit, ET.Vfit)
-        # print("Fitresult:\n", ET.fitresult.fit_report())
-        # print("Coeffs Ratio: ", ET.coeffs_ratio())
-        # print(dir(ET.fitresult))
-        # print(ET.fitresult.values)
-        #
-        # yfit = ET.doubleexp(
-        #     ET.Tfit,
-        #     amp=ET.fitresult.values["amp"],
-        #     C0=ET.fitresult.values["C0"],
-        #     C1=ET.fitresult.values["C1"],
-        #     tau0=ET.fitresult.values["tau0"],
-        #     tau1=ET.fitresult.values["tau1"],
-        # )
-        #
-        # import pyqtgraph as pg
-        #
-        # pg.mkQApp()
-        # pl = pg.plot(tx, vx, pen="k", symbol="o", symbolsize=1,)
-        # pl.plot(ET.Tfit + tstart, yfit, pen="r")
-        # # pl.setTitle(title)
-        # pg.QtGui.QApplication.instance().exec_()
-
-        return  # that is ALL, never make Zin/init and then keep running.
 
     def iv_run(self, par_map: dict = None):
         """
