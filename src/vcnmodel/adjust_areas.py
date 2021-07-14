@@ -374,13 +374,13 @@ class AdjustAreas:
         if scale_factor == 1.0:
             return
         section_area = self.areafunc(section)  # starting value
-        # print("section area to adust: ", section_area)
+        print("section area to adust: ", section_area)
         target_area = section_area * scale_factor
-        # print("target area: ", target_area)
+        print("target area: ", target_area)
         n = 0
         while np.fabs(target_area - section_area) > eps:
             ratio = target_area / section_area
-            # print(f"iter: {n:d},  Sectionarea: {section_area:.2f}, ratio: {ratio:.4f}")
+            print(f"iter: {n:d},  Sectionarea: {section_area:.2f}, ratio: {ratio:.4f}")
             if ratio < 0.01 or ratio > 100.0:
                 cprint("r", f" Inflation failed: ratio = {ratio:.6f}")
                 cprint(
@@ -793,7 +793,7 @@ def recon_hoc(cellname, args):
     OrigCell = cells.Bushy.create(
         morphology=str(fn), species="mouse", modelType="II", modelName="XM13",
     )
-    print("Original Cell object: ", OrigCell)
+    print("Original Cell object: ", OrigCell, fn)
     print("Rescaled Cell object: ", RescaledCell)
 
     AdjArea.sethoc_fromCNcell(RescaledCell)
@@ -859,11 +859,12 @@ def rescale(cellno, args):
     Perform and check a rescale
     """
     for i, c in enumerate(cell_no):
+        print("I, c: ", i, c)
         cell_name = f"VCN_c{c:02d}"
         cname, fn = make_cell_name(cell_name, args)
         Rescaled, Original = recon_hoc(cell_name, args)
         hoc_file = str(Path(fn.parent, fn.stem + "_MeshInflate").with_suffix(".hoc"))
-        print("input file: ", fn)
+        cprint('m', f"input file: {str(fn):s}")
         with open(fn, "r") as fh:
             lines = fh.readlines()
         out_file = open(hoc_file, "w")
@@ -962,7 +963,7 @@ if __name__ == "__main__":
         "--method",
         "-m",
         dest="method",
-        default="segment",
+        default="pt3d",
         choices=["segment", "pt3d"],
         help="Select the method (segment, pt3d)",
     )
@@ -1000,9 +1001,9 @@ if __name__ == "__main__":
     else:
         cell_no = [int(args.cell)]
     # get_hoc_areas(f"VCN_c{cell_no[0]:02d}")  # this might give different values if using pt3d vs. segment... so ignore
-    print("compare: ", args.compare)
-    if args.compare:
-        compare(cell_no, args)
-        exit()
+    cprint("g", f"compare: {str(args.compare):s}")
+    # if args.compare:
+    #     compare(cell_no, args)
+    #     exit()
 
     rescale(cell_no, args)

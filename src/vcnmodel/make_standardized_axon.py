@@ -362,6 +362,12 @@ class MakeStandardAxon:
             if sectype in self.axons:
                 h.delete_section(sec=sec)
 
+    def remove_all_except_axon(self) -> None;
+        for secname, sec in self.HR.sections.items():
+            sectype = self.HR.find_sec_group(secname)
+            if sectype not in self.axons:
+                h.delete_section(sec=sec)
+    
     def plot_3d(
         self,
         ax: Type[mpl.axes],
