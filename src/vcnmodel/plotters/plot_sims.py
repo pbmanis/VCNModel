@@ -583,14 +583,17 @@ class PlotSims:
 
     @winprint
     def print_file_info(self, selected):
+        self.textappend("For copy into figure_data.py: ")
         br = "{}"
         self.textappend(f"{int(self.parent.cellID):d}: {br[0]:s}")
         for sel in selected:
             data = self.parent.table_manager.get_table_data(sel)
             fn = Path(data.files[0])
             fnr = str(fn.parts[-2])
+            fkey = data.dendriteExpt
+            fkey = data.dendriteMode
             # self.textappend(f"    '{data.dendriteMode:s}': '{fnr:s}' {br[1]:s},")
-            self.textappend(f"    '{data.dendriteExpt:s}': '{fnr:s}' {br[1]:s},")
+            self.textappend(f'    "{fkey:s}": "{fnr:s}",')
         self.textappend(f"{br[1]:s},")
         
             

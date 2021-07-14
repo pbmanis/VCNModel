@@ -38,7 +38,7 @@ class PlotZ:
         # fi = [2, 5, 6, 10, 17]
         self.filenames = []
         for fin in self.fi:
-            self.filenames.append(f"VCN_c{fin:02d}_Full_normal_Z.pkl")
+            self.filenames.append(f"VCN_c{fin:02d}_Full_Meshinflate_normal_Z.pkl")
 
         # cols = ['w', 'm', 'c', 'y', 'g', 'r', 'b', pg.mkPen()]
         self.syms = ["s", "o", "x", "s", "o", "x", "s", "o", "x", "s"]
@@ -105,27 +105,48 @@ class PlotZ:
         # style = STY.styler('JNeurosci', "single")
         P = PH.regular_grid(
             3,
-            2,
+            4,
             order="rowsfirst",
-            figsize=(6, 7),
+            figsize=(10, 8),
             verticalspacing=0.08,
-            horizontalspacing=0.12,
+            horizontalspacing=0.08,
             margins={
                 "bottommargin": 0.1,
                 "leftmargin": 0.08,
                 "rightmargin": 0.08,
                 "topmargin": 0.12,
             },
-            panel_labels=["A", "B", "C", "D", "E", "F"],
+            panel_labels=["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"],
             labelposition=(-0.05, 1.05),
         )
 
         # style.style_apply()
-        for i, cond in enumerate(["Full_normal", "NoDend"]):
+        for i, cond in enumerate(["Full_Meshinflate_normal", "NoDend_Meshinflate_normal", "AxonOnly_Meshinflate_normal"]):
             f = []
             for fin in self.fi:
                 f.append(f"VCN_c{fin:02d}_{cond:s}_Z.pkl")
             self.plot_col(col=i, f=f, P=P)
+        for i, fin in enumerate(self.fi):
+            with open(
+                Path(
+                    config["cellDataDirectory"], config["impedanceDirectory"], f"VCN_c{fin:02d}_Full_Meshinflate_normal_Z.pkl"
+                ),
+                "rb",
+            ) as fh:
+                d1 = pickle.load(fh)
+            with open(
+                Path(
+                    config["cellDataDirectory"], config["impedanceDirectory"], f"VCN_c{fin:02d}_AxonOnly_Meshinflate_normal_Z.pkl"
+                ),
+                "rb",
+            ) as fh:
+                d2 = pickle.load(fh)
+            g_ds = (1./d1['zin'])  # g_dend _ g soma / g-axon
+            g_axon = (1./d2['zin'])
+            rho_axon = g_ds/g_axon
+            
+            P.axarr[0, 3].plot(d1['f'], rho_axon, marker=self.syms[i], markersize=3, label=f"VCN_{fin:02d}")
+
         save_file = "Fig_M1B_Supplemental_Zin.pdf"
         P.figure_handle.text(
             0.99,
@@ -148,7 +169,7 @@ class PlotZ:
     def plot_col(self, col, f, P):
         ax = P.axarr
         for i, a in enumerate(ax.ravel()):
-            if i < 4:
+            if i < 6:
                 a.set_xscale("log")
         for i, filename in enumerate(f):
             # print("col: ", col, i, "file: ", filename)
@@ -173,7 +194,9 @@ class PlotZ:
                 ax[0, col].set_title("Full Dendrite", {"y": 1.15, "fontweight": "bold"})
             if col == 1:
                 ax[0, col].set_title("No Dendrite", {"y": 1.15, "fontweight": "bold"})
-
+            if col == 2:
+                ax[0, col].set_title("Axon Only", {"y": 1.15, "fontweight": "bold"})
+                ax[0, col].set_ylim(0, 15000.)
             ax[1, col].plot(
                 d["f"],
                 d["phase"],
@@ -181,7 +204,7 @@ class PlotZ:
                 markersize=3,
                 # label=filename
             )
-            ax[1, col].set_ylim(-1.5, 0.25)
+            ax[1, col].set_ylim(-1.1*np.pi/2., 1.1*np.pi/2)
             ax[1, col].set_ylabel(r"$\phi$ (radians)")
             ax[1, col].set_xlabel("Frequency (Hz)")
 
@@ -191,8 +214,13 @@ class PlotZ:
             ax[2, col].plot(
                 zr, -zi, marker=self.syms[i], markersize=3,
             )
-            ax[2, col].set_ylim(-10.0, 60.0)
-            ax[2, col].set_xlim(5, 100)
+            if col < 2:
+                ax[2, col].set_ylim(-10.0, 60.0)
+                ax[2, col].set_xlim(5, 100)
+            else:
+                ax[2, col].set_ylim(-5000.0, 15000.0)
+                ax[2, col].set_xlim(-5000.0, 15000.)
+            
             ax[2, col].set_ylabel(r"-Im(Z) (M$\Omega$)")
             ax[2, col].set_xlabel(r"Re(Z) (M$\Omega$)")
 
