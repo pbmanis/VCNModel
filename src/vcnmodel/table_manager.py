@@ -64,6 +64,7 @@ class IndexData:
     modelName: str = ""
     dendriteExpt: str=""
     dendriteMode: str=""
+    axonExpt: str=""
     command_line: str = ""
     changed_data: Union[None, str] = None  # changed_data
     cnmodel_hash: str = cnmodel_git_hash  # save hash for the model code
@@ -389,6 +390,10 @@ class TableManager:
                 Index_data.dendriteExpt = params.dendriteExpt
             except:
                 Index_data.dendriteExpt = "Full"
+            try:
+                Index_data.axonExpt = params.axonExpt
+            except:
+                Index_data.axonExpt = "default"
 
             try:
                 Index_data.dendriteMode = params.dendriteMode
@@ -554,6 +559,7 @@ class TableManager:
                     indxs[i].runProtocol,
                     indxs[i].dendriteExpt,
                     indxs[i].dendriteMode,
+                    indxs[i].axonExpt,
                     indxs[i].synapseExperiment,
                     indxs[i].SRType,
                     indxs[i].ANSynapticDepression,
@@ -579,6 +585,7 @@ class TableManager:
                 ("Protocol", object),
                 ("DendExpt", object),
                 ("DendMode", object),
+                ("AxonExpt", object),
                 ("Experiment", object),
                 # ("inputtype", object),
                 # ("modetype", object),
@@ -629,7 +636,8 @@ class TableManager:
         
     def filter_table(self, filters, QtCore):
             
-            coldict = {'modelName': 4, 'Protocol': 5, 'dendMode': 6, 'dendExpt':7, 'Experiment': 8, 'SRType': 9,
+            coldict = {'modelName': 4, 'Protocol': 5, 'dendMode': 6, 
+                        'dendExpt':7, 'Experiment': 8, 'SRType': 9,
                         'Depr':10,'dBspl': 11, 'nReps': 12,
                          "pipDur": 13, "soundType": 14, "fmod": 15, "DataTable": 17,}
             filtered_table = self.data.copy()
