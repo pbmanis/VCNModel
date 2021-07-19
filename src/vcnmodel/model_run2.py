@@ -1191,7 +1191,7 @@ class ModelRun:
 
     def Zin(self, measure_section:Union[str, None]=None):
         """
-        Measure Zin from the soma for a compartmental cell.
+        Measure Zin from the soma or specific compartment for a compartmental cell.
 
         Parameters
         ----------
