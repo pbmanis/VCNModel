@@ -250,28 +250,33 @@ class AnalyzeRun:
                 print("   >>> completed analyzing trace %d" % j)
         if verbose:
             print("done with traces")
-        icg = np.gradient(ic)
-        icn = np.argwhere(ic <= 0.0)
-        RinIVss = (np.gradient(vss)) / icg  # measure steady-state input resistance
-        RinIVpk = (np.gradient(vmin)) / icg  # measure "peak" input resistance
-        if verbose:
-            print("ic: ", ic)
-            print("icn: ", icn)
-            print("icg: ", icg)
-            print("vss: ", vss)
-            print("vmin: ", vmin)
-            print("RinIVss: ", RinIVss)
-            print("RinIVpk: ", RinIVpk)
+        if len(ic) > 1:
+            icg = np.gradient(ic)
+            icn = np.argwhere(ic <= 0.0)
+            RinIVss = (np.gradient(vss)) / icg  # measure steady-state input resistance
+            RinIVpk = (np.gradient(vmin)) / icg  # measure "peak" input resistance
+            if verbose:
+                print("ic: ", ic)
+                print("icn: ", icn)
+                print("icg: ", icg)
+                print("vss: ", vss)
+                print("vmin: ", vmin)
+                print("RinIVss: ", RinIVss)
+                print("RinIVpk: ", RinIVpk)
 
-        if len(RinIVss[icn]) > 0:
-            Rinss = np.max(RinIVss[icn])  # extract max
+            if len(RinIVss[icn]) > 0:
+                Rinss = np.max(RinIVss[icn])  # extract max
+            else:
+                Rinss = np.nan
+            if len(RinIVpk[icn]) > 0:
+                Rinpk = np.max(RinIVpk[icn])  # extract max
+            else:
+                Rinpk = np.nan
+            print("RinSS, RinPeak: ", Rinss, Rinpk)
         else:
             Rinss = np.nan
-        if len(RinIVpk[icn]) > 0:
-            Rinpk = np.max(RinIVpk[icn])  # extract max
-        else:
             Rinpk = np.nan
-        print("RinSS, RinPeak: ", Rinss, Rinpk)
+
         if verbose:
             print("building IVResult")
         self.IVResult = {

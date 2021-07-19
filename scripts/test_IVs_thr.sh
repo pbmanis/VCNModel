@@ -11,18 +11,24 @@
 # spike. 
 #######################################################
 CELLNAMES="02 05 06 09 10 11 13 17 18 30" # 
-CELLNAMES="18"
+#CELLNAMES="05"
 #CONFIG="noscale.toml" #"autoscale.toml"
-CONFIG="autoscale_multisite_0dB_parallel_synthr.toml"
+CONFIG="--configfile autoscale_multisite_0dB_parallel_synthr.toml"
+DATATABLE="--datatable data_XM13A_nacncoop"
 RUNTEXT="running the individual initialization and running AN PSTH protocols"
-AXON="default" # or "standardized"
+# AXON="default" # or "standardized"
 echo $RUNTEXT
 for f in $CELLNAMES
 do
     echo $f
-
-    python src/vcnmodel/model_run2.py VCN_c$f  -D Full -A $AXON -P initIV -r 1 --configfile $CONFIG --datatable data_XM13A_nacncoop
-    python src/vcnmodel/model_run2.py VCN_c$f  -D Full -A $AXON -P runIVSpikeThreshold -r 1 --configfile $CONFIG --datatable data_XM13A_nacncoop
+    AXON=""
+    case $f in
+        02 | 05)
+            AXON="-A standardized"
+            ;;
+    esac
+    python src/vcnmodel/model_run2.py VCN_c$f  -D Full $AXON -P initIV -r 1 $CONFIG $DATATABLE
+    python src/vcnmodel/model_run2.py VCN_c$f  -D Full $AXON -P runIVSpikeThreshold -r 1 $CONFIG $DATATABLE
     if [ $? -ne 0 ]; then
         exit 1
     fi
