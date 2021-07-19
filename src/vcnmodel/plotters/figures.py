@@ -43,7 +43,7 @@ title_text = {"passive": "Passive", "normal": "Half-active", "active": "Active"}
 font_colors = {"passive": "c", "normal": "k", "active": "m"}
 spike_colors = font_colors
 
-print(figure_data)
+print(FD)
 
 
 def get_changetimestamp():
