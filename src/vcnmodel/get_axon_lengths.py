@@ -10,8 +10,10 @@ from src.vcnmodel import cell_config as cell_config
 pp = pprint.PrettyPrinter(indent=4)
 
 allcells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
-bestcells = [2, 5, 6, 9,  10, 11, 13, 17, 18, 30]
+bestcells = [6, 9,  10, 11, 13, 17, 18, 30]
+additional_axons = [12, 14, 15, 16, 19, 20, 21, 22, 23, 24, 27, 29]
 
+good_axons = bestcells + additional_axons
 
 def defemptylist():
     return []
@@ -111,10 +113,10 @@ class MeasureAxons(object):
                 ais_s.append(np.sum(sl[c].AISDiam1))
                 myel_s.append(np.sum(sl[c].MyelDiam1))
                 ax_s.append(np.sum(sl[c].AxonDiam1))
-            print(f"{c:s}   {h_s[-1]:6.2f}", end="")
-            print(f"     {ais_s[-1]:6.2f}", end="")
-            print(f"     {myel_s[-1]:6.2f}", end="")
-            print(f"     {ax_s[-1]:6.2f}")
+            print(f"{c:s}\t{h_s[-1]:6.2f}", end="")
+            print(f"\t{ais_s[-1]:6.2f}", end="")
+            print(f"\t{myel_s[-1]:6.2f}", end="")
+            print(f"\t{ax_s[-1]:6.2f}")
         print('-'*50)
         print(f"Avg:      {np.mean(h_s):6.2f}     {np.mean(ais_s):6.2f}     {np.mean(myel_s):6.2f}", end="")
         print(f"     {np.mean(ax_s):6.2f}")
@@ -123,9 +125,9 @@ class MeasureAxons(object):
 
     def run(self):
         sl = {}
-        for cell in bestcells:
+        for cell in good_axons:
             cname = f"VCN_c{cell:02d}"
-            cell_hoc = f"{cname}_Full.hoc"  # could be f"{cname}"_Full_standardized_axon.hoc""
+            cell_hoc = f"{cname}_AxonOnly_MeshInflate.hoc"  # could be f"{cname}"_Full_standardized_axon.hoc""
             fn = Path(self.baseDirectory, cname, self.morphDirectory, cell_hoc)
             # print(fn.is_file())
             # h.load_file(str(fn))

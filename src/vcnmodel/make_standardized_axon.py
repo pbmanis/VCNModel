@@ -89,11 +89,16 @@ class StandardAxon:
     Averaged axon
     format is a list of diam[0], diam[1], length, and # of sections
     all measurements are in microns
+    The values in the table come from a run of get_axon_lengths on 7/19/2021,
+    from the excel table where the averages are computed leaving out the "axon"
+    for cell 21, for which only a short distance is visible.
+    Measurement data is in VCN-SBEM-Data/MorphologyData/VCN/Axon_Measurements
+    
     """
-
-    hil = [2.31, 1.87, 1.97, 3]
-    ais = [1.6, 0.82, 19.03, 19]
-    axn = [1.03, 1.49, 55.7, 55]
+    #      dia1  dia2   len   # secs
+    hil = [2.58, 1.89,  2.90,  3]
+    ais = [1.46, 0.80, 16.93, 19]  
+    axn = [1.47, 1.88, 55.47, 55]  # length excludes one with a very short length
 
 """
 List of axons : includes all 10 gradeA Cells, plus axon
@@ -235,9 +240,9 @@ class MakeStandardAxon:
     
     def do_axon(self, cell: str):
         cname, fn = self.make_name(cell, add_standardized_axon=self.revised)
-        cname = f"VCN_c{cell:02d}"
-        cell_hoc = f"{cname:s}_AxonOnly_MeshInflate.hoc"
-        fn = Path(self.baseDirectory, cname, self.morphDirectory, cell_hoc)
+        # cname = f"VCN_c{cell:02d}"
+ #        cell_hoc = f"{cname:s}_Full_MeshInflate.hoc"
+        # fn = Path(self.baseDirectory, cname, self.morphDirectory, cname)
         self.get_axon_measures(cname, fn)
         
 
@@ -245,12 +250,12 @@ class MakeStandardAxon:
         self, cell: str, add_standardized_axon: bool = False
     ) -> (str, Type[Path]):
         """
-        make a full filename that points to the cell morphology for the "Full" fyle type
+        make a full filename that points to the cell morphology for the "Full" file type
         and for the standardized axon if needed.
         """
         cname = f"VCN_c{cell:02d}"
 
-        cell_hoc = f"{cname:s}_Full"
+        cell_hoc = f"{cname:s}_Full_MeshInflate"
         if add_standardized_axon:
             cell_hoc += "_standardized_axon"
         cell_hoc += ".hoc"
@@ -317,7 +322,7 @@ class MakeStandardAxon:
         reconstructions.
 
         This handles a single reconstruction
-        It also computes som factors needed to do the prosethetic axon
+        It also computes some factors needed to do attach the prosethetic axon
         Parameters
         ----------
         cname : str
@@ -325,6 +330,7 @@ class MakeStandardAxon:
         fn : str or path
             file name for hoc file
         """
+        print("getaxonmeasures fn: ", fn)
         cconfig = cell_config.CellConfig()
         sinflateratio = cconfig.get_soma_ratio(cname)
         dinflateratio = cconfig.get_dendrite_ratio(cname)
@@ -337,15 +343,17 @@ class MakeStandardAxon:
         )
         self.HR = post_cell.hr
         AdjArea = AdjustAreas(method="pt3d")
-        AdjArea.sethoc_fromCNcell(post_cell)
-        # AdjArea.sethoc_fromstring(hdata=hocstruct2)
-        AdjArea.cell.print_soma_info()
-        AdjArea.adjust_diameters(
-            sectypes=AdjArea.somas, inflationRatio=sinflateratio
-        )
-        AdjArea.adjust_diameters(
-            sectypes=AdjArea.dendrites, inflationRatio=dinflateratio
-        )
+        fns = str(fn)
+        if not fns.find('MeshInflate'): # if mesh inflated, this has already been applied
+            AdjArea.sethoc_fromCNcell(post_cell)
+            # AdjArea.sethoc_fromstring(hdata=hocstruct2)
+            AdjArea.cell.print_soma_info()
+            AdjArea.adjust_diameters(
+                sectypes=AdjArea.somas, inflationRatio=sinflateratio
+            )
+            AdjArea.adjust_diameters(
+                sectypes=AdjArea.dendrites, inflationRatio=dinflateratio
+            )
         AM = AxonMorph(cellID=cname)
         self.parent_soma = None
         sectypes = []
@@ -788,7 +796,7 @@ class MakeStandardAxon:
 
 def make_standard_axon(cell: str, write: bool = False) -> None:
     """
-    Read and fix original axon
+    Read and replace original axon with a "standard axon" (average)
     """
     fig = mpl.figure(figsize=(12, 6))
     ax1 = fig.add_subplot(121, projection="3d")
@@ -824,8 +832,8 @@ def read_standard_axon(cell: str) -> None:
 if __name__ == "__main__":
 
     cell = 11
-    for cell in additional_axons:
+    for cell in  gradeACells:
         # PA = MakeStandardAxon(revised=False)
         # PA.convert_swc_hoc(cell)
-        make_standard_axon(cell, write=False)
+        make_standard_axon(cell, write=True)
         # read_standard_axon(cell)
