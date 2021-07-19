@@ -8,7 +8,7 @@ proto="runIV"
 # Note we do not have a full reconstruction for cell 18
 # in that dataset.
 #######################################################
-CELLNAMES="18" # "02 05 06 09 10 11 13 17 30"
+CELLNAMES="10" # "02 05 06 09 10 11 13 17 30"
 CONFIG="autoscale_xm13a_multisite_parallel.toml"
 echo "running the individual initialization and/or running of IV protocols"
 for f in $CELLNAMES

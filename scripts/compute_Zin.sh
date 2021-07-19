@@ -8,20 +8,20 @@ proto="testIV"
 # Note we do not have a full reconstruction for cell 18
 # in that dataset.
 #######################################################
-CELLNAMES="02 05 06 09 10 11 13 17 18 30"
+CELLNAMES="10" # "02 05 06 09 10 11 13 17 18 30"
 CONFIG="autoscale_multisite_parallel.toml"
 # CONFIG="autoscale_xm13a_multisite_parallel.toml"
 echo "computing Zin for each gradeA Cell"
 
 
-# for f in $CELLNAMES
-# do
-#     echo $f
-#     python src/vcnmodel/model_run2.py VCN_c$f -P initIV --configfile $CONFIG -D Full  --dendritemode normal --datatable data_XM13A_nacncoop
-#     python src/vcnmodel/model_run2.py VCN_c$f -P Zin --configfile $CONFIG -D Full  --dendritemode normal --datatable data_XM13A_nacncoop
-# done
-# wait
-#
+for f in $CELLNAMES
+do
+    echo $f
+    python src/vcnmodel/model_run2.py VCN_c$f -P initIV --configfile $CONFIG -D Full  --dendritemode normal --datatable data_XM13A_nacncoop
+    python src/vcnmodel/model_run2.py VCN_c$f -P Zin --configfile $CONFIG -D Full  --dendritemode normal --datatable data_XM13A_nacncoop
+done
+wait
+
 # for f in $CELLNAMES
 # do
 #     echo $f
@@ -42,6 +42,14 @@ do
     echo $f
     python src/vcnmodel/model_run2.py VCN_c$f -P initIV --configfile $CONFIG -D NoDend  --dendritemode normal --datatable data_XM13A_nacncoop
     python src/vcnmodel/model_run2.py VCN_c$f -P Zin --configfile $CONFIG -D NoDend  --dendritemode normal --datatable data_XM13A_nacncoop
+done
+wait
+
+for f in $CELLNAMES
+do
+    echo $f
+    python src/vcnmodel/model_run2.py VCN_c$f -P initIV --configfile $CONFIG -D AxonOnly  --dendritemode normal --datatable data_XM13A_nacncoop
+    python src/vcnmodel/model_run2.py VCN_c$f -P Zin --configfile $CONFIG -D AxonOnly  --dendritemode normal --datatable data_XM13A_nacncoop
 done
 wait
 
