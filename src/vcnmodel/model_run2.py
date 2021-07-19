@@ -148,7 +148,7 @@ optional arguments:
                         Choose dendrite table (normal, active, passive)
   --hocfile HOCFILE     hoc file to use for simulation (default is the
                         selected "cell".hoc)
-  -D {default,Full,NoDend,NoDistal,NoUninnervated}, --dendriteexpt {default,Full,NoDend,AxonOnly,NoDistal,NoUninnervated}
+  -D {default,Full,NoDend,NoDistal,NoUninnervated}, --dendriteexpt {default,Full,FullSA,NoDend,AxonOnly,NoDistal,NoUninnervated}
                         Choose dendrite experiment (default, Full, NoDend,
                         NoDistal, NoUninnervated)
   --datatable DATATABLE
@@ -748,7 +748,7 @@ class ModelRun:
             if not self.Params.meshInflate:  # not using raw? specify mesh inflated file
                 self.Params.hocfile += "_MeshInflate"
 
-            if self.Params.axonExpt != "default":
+            if self.Params.axonExpt == "standardized":
                 self.Params.hocfile += "_standardized_axon"
 
                 label += ", " + self.Params.axonExpt
@@ -1349,7 +1349,6 @@ class ModelRun:
     def iv_run_spike_threshold(self, par_map: dict = None):
         """
         find spike threshold - lowest current level (within a delta I) that generates a
-
         spike.
 
         Parameters
@@ -1385,52 +1384,85 @@ class ModelRun:
         # coarse run first:
         self.RunInfo.stimDur = 20.0  # msec short pulses are sufficient
 
-        self.RunInfo.stimInj = {
-            "pulse": np.linspace(0.1, 1.60, 16, endpoint=True)
-        }  # 0.1 nA steps
-        self.R = GenerateRun(
-            self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
-        )
-        self.R.doRun(
-            self.Params.hocfile,
-            parMap=self.RunInfo.stimInj,
-            save="monitor",
-            restore_from_file=True,
-            initfile=self.Params.initStateFile,
-            workers=nworkers,
-        )
-        print("Coarse Run: ")
-        # print(self.R.IVResult['Nspike'])
-        # print(self.R.IVResult["Ispike"])
-        fspk = np.where(self.R.IVResult["Nspike"])[0]
-        print("Coarse current threshold: ", self.R.IVResult["Ispike"][fspk[0]])
-        # repeat with samller pulse range
-
-        self.RunInfo.stimInj = {
-            "pulse": np.linspace(
-                self.R.IVResult["Ispike"][fspk[0] - 1],
-                self.R.IVResult["Ispike"][fspk[0]],
-                51,
-                endpoint=True,
+        current_I = 1.6  # this is large so that we elicit spike on first try
+        precision = 0.001  # measure to nearest 1 pA
+        step = current_I / 2.0
+        nworkers = 1
+        niter = 0
+        last_spike_thr = current_I
+        while step > precision:
+            niter += 1
+            self.RunInfo.stimInj = {
+                "pulse": [current_I]
+            }
+            self.R = GenerateRun(
+                self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
             )
-        }  # 2 pA steps
-        self.R = GenerateRun(
-            self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
-        )
-        self.R.doRun(
-            self.Params.hocfile,
-            parMap=self.RunInfo.stimInj,
-            save="monitor",
-            restore_from_file=True,
-            initfile=self.Params.initStateFile,
-            workers=nworkers,
-        )
-        print("Fine Run: ")
-        # print(self.R.IVResult['Nspike'])
-        # print(self.R.IVResult["Ispike"])
-        fspk = np.where(self.R.IVResult["Nspike"])[0]
+            self.R.doRun(
+                self.Params.hocfile,
+                parMap=self.RunInfo.stimInj,
+                save="monitor",
+                restore_from_file=True,
+                initfile=self.Params.initStateFile,
+                workers=nworkers,
+            )
+            fspk = np.where(self.R.IVResult["Nspike"])[0]
+            if len(fspk) == 0: # no spikes, increase current
+                current_I += step
+            else:
+                current_I -= step
+                last_spike_thr = current_I
+                step /= 2.0  # only decrease step size when spike detected
+            
+        # # Coarse Run has 16 steps
+       #  self.RunInfo.stimInj = {
+       #      "pulse": np.linspace(0.1, 1.60, 16, endpoint=True)
+       #  }  # 0.1 nA steps
+       #  self.R = GenerateRun(
+       #      self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
+       #  )
+       #  self.R.doRun(
+       #      self.Params.hocfile,
+       #      parMap=self.RunInfo.stimInj,
+       #      save="monitor",
+       #      restore_from_file=True,
+       #      initfile=self.Params.initStateFile,
+       #      workers=nworkers,
+       #  )
+       #  print("Coarse Run: ")
+       #  # print(self.R.IVResult['Nspike'])
+       #  # print(self.R.IVResult["Ispike"])
+       #  fspk = np.where(self.R.IVResult["Nspike"])[0]
+       #  print("Coarse current threshold: ", self.R.IVResult["Ispike"][fspk[0]])
+       #
+       #  # repeat with samller pulse range
+       #  # fine run will have 2 pA steps with 51 values
+       #  self.RunInfo.stimInj = {
+       #      "pulse": np.linspace(
+       #          self.R.IVResult["Ispike"][fspk[0] - 1],
+       #          self.R.IVResult["Ispike"][fspk[0]],
+       #          51,
+       #          endpoint=True,
+       #      )
+       #  }
+       #  self.R = GenerateRun(
+       #      self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
+       #  )
+       #  self.R.doRun(
+       #      self.Params.hocfile,
+       #      parMap=self.RunInfo.stimInj,
+       #      save="monitor",
+       #      restore_from_file=True,
+       #      initfile=self.Params.initStateFile,
+       #      workers=nworkers,
+       #  )
+       #  print("Fine Run: ")
+       #  # print(self.R.IVResult['Nspike'])
+       #  # print(self.R.IVResult["Ispike"])
+       #  fspk = np.where(self.R.IVResult["Nspike"])[0]
         thrstr = (
-            f"{str(self.Params.cellID):s}  {self.R.IVResult['Ispike'][fspk[0]]:.3f}"
+            # f"{str(self.Params.cellID):s}  {self.R.IVResult['Ispike'][fspk[0]]:.3f}"
+            f"{str(self.Params.hocfile):s}  {last_spike_thr:.3f} niter={niter:3d}"
         )
         cprint("m", thrstr)
         with (open("thrrun.txt", "a")) as fh:
