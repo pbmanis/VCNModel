@@ -109,9 +109,9 @@ def set_table_and_cells(
     changes = None
     nach = None  # uses default
     if dataTable is "":
-        table_name = f"vcnmodel.model_data.data_{modelName:s}{dmodes[dendriteMode]:s}"
+        table_name = f"src.vcnmodel.model_data.data_{modelName:s}{dmodes[dendriteMode]:s}"
     else:
-        table_name = f"vcnmodel.model_data.{dataTable:s}"
+        table_name = f"src.vcnmodel.model_data.{dataTable:s}"
         CP.cprint('r', f"**** USING SPECIFIED DATA TABLE: {str(table_name):s}")
         knownmodes = ["normal", "actdend", "pasdend"]
         dendriteMode = "normal"

@@ -12,6 +12,7 @@ from neuron import h
 from cnmodel import cells
 from src.vcnmodel.adjust_areas import AdjustAreas
 from src.vcnmodel import cell_config as cell_config
+from neuronvis import swc_to_hoc, hocRender
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -94,6 +95,13 @@ class StandardAxon:
     ais = [1.6, 0.82, 19.03, 19]
     axn = [1.03, 1.49, 55.7, 55]
 
+"""
+List of axons : includes all 10 gradeA Cells, plus axon
+    reconstructions from other bushy cells
+"""
+gradeACells = [2, 5, 9, 10, 11, 13, 17, 18, 30]
+additional_axons = [12, 14, 15, 16, 19, 20, 21, 22, 23, 24, 27, 29]
+all_cells = gradeACells + additional_axons
 """
 Regular expression definitions for parts of HOC file
 We use these to find and change parts of the HOC file automatically
@@ -181,7 +189,7 @@ class MakeStandardAxon:
     link to the right parts, and that everything is formatted correctly.
     """
 
-    def __init__(self, cell: str, revised: bool = False):
+    def __init__(self, revised: bool = False):
         self.cconfig = cell_config.CellConfig(verbose=False, spont_mapping="HS",)
         self.revised = revised  # use the revised version with a standardized axon axon
         # find out where our files live
@@ -224,8 +232,14 @@ class MakeStandardAxon:
             "Myelinated_Axon",
             "Axon",
         ]
+    
+    def do_axon(self, cell: str):
         cname, fn = self.make_name(cell, add_standardized_axon=self.revised)
+        cname = f"VCN_c{cell:02d}"
+        cell_hoc = f"{cname:s}_AxonOnly_MeshInflate.hoc"
+        fn = Path(self.baseDirectory, cname, self.morphDirectory, cell_hoc)
         self.get_axon_measures(cname, fn)
+        
 
     def make_name(
         self, cell: str, add_standardized_axon: bool = False
@@ -235,12 +249,50 @@ class MakeStandardAxon:
         and for the standardized axon if needed.
         """
         cname = f"VCN_c{cell:02d}"
-        cell_hoc = f"{cname}_Full"
+
+        cell_hoc = f"{cname:s}_Full"
         if add_standardized_axon:
             cell_hoc += "_standardized_axon"
         cell_hoc += ".hoc"
         fn = Path(self.baseDirectory, cname, self.morphDirectory, cell_hoc)
         return cname, fn
+
+    def convert_swc_hoc(
+        self, cell: str,
+        ) -> (str, Type[Path]):
+        """
+        Wrapper to convert the axon-only swcs to hoc files
+        Assumes specific filename structure, and generates the output
+        as the "axononly meshinflate" hoc file. Should also render the axon.
+        """
+        cname = f"VCN_c{cell:02d}"
+        if cell in additional_axons and cell not in gradeACells:
+            cell_swc = f"{cname:s}_Axon_00000.swc"
+            cell_hoc = f"{cname:s}_AxonOnly_MeshInflate.hoc"
+            hocf = Path(self.baseDirectory, cname, self.morphDirectory, cell_hoc)
+            swcf = Path(self.baseDirectory, cname, self.morphDirectory, cell_swc)
+            if not hocf.is_file() and swcf.is_file():
+                scales = {"x": 1.0, "y": 1.0, "z": 1.0, "r": 1.0, "soma": 1.0, "dend":1.0}
+                if swcf.is_file():
+                    s = swc_to_hoc.SWC(filename=swcf, secmap="sbem", scales=scales, verify=True)
+                    s.topology = True
+                    s.show_topology()
+                    print(hocf)
+                    s.write_hoc(hocf)
+                    hocRender.Render(
+                        hoc_file=hocf,
+                        display_style='cylinders',
+                        display_renderer='pyqtgraph',
+                        display_mode='sec-type',
+                        mechanism="None",
+                        # alpha=args["alpha"],
+ #                        verify=args["verify"],
+ #                        sim_data=sim_data,
+                        secmap="sbem",
+                    )
+            else:
+                print("swc file not found: ", swcf)
+                exit()
 
     def fill_coords(self, coords: list, sec: object, insertnan: bool = False) -> list:
         """
@@ -362,7 +414,7 @@ class MakeStandardAxon:
             if sectype in self.axons:
                 h.delete_section(sec=sec)
 
-    def remove_all_except_axon(self) -> None;
+    def remove_all_except_axon(self) -> None:
         for secname, sec in self.HR.sections.items():
             sectype = self.HR.find_sec_group(secname)
             if sectype not in self.axons:
@@ -553,25 +605,25 @@ class MakeStandardAxon:
         Vector is anchored at the 0 end of the axon hillock (axonslist[0])
         """
         zp = np.array([axonslist[0].x[0], axonslist[0].y[0], axonslist[0].z[0]])
-        print("anchor point: ", zp)
+        print("compute_axon_vector: anchor point: ", zp)
         print(axonslist)
         u = -1
-        print(axonslist[u].x)
+        print("compute_axon_vector: ", axonslist[u].x)
         if len(axonslist[u].x) == 0:
             u = -2
-        print(u, axonslist[u].x)
+        print("compute_axon_vector:", u, axonslist[u].x)
         dp = np.array(
             [axonslist[u].x[-1], axonslist[u].y[-1], axonslist[-u].z[-1]]
         )  # distal point
         vp = np.vstack([zp, dp])
         dp = vp - zp
-        print("distal point (relative to zp): ", dp)
+        print("compute_axon_vector:", "distal point (relative to zp): ", dp)
         nl = self.collapse_list(axonslist)  # make original axon into 3d array
         nlr = np.mean(nl, axis=1)
         nlr = np.vstack([[0, 0, 0], nlr])
-        print(nlr)
+        print("compute_axon_vector:", "nlr: ", nlr)
         alv = R.align_vectors(dp, nlr)
-        print(alv)
+        print("compute_axon_vector:", "alv: ", alv)
 
     def generate_standard_axon(self, translate: bool = True) -> str:
         """
@@ -584,7 +636,6 @@ class MakeStandardAxon:
         #         ais = [1.6, 0.82, 19.03, 19]
         #         axn = [1.03, 1.49, 55.7, 55]
 
-        print(dir(StandardAxon))
         p1 = self.populate_pt3d_list(StandardAxon.hil)
         p2 = self.populate_pt3d_list(StandardAxon.ais)
         p3 = self.populate_pt3d_list(StandardAxon.axn)
@@ -741,7 +792,8 @@ def make_standard_axon(cell: str, write: bool = False) -> None:
     """
     fig = mpl.figure(figsize=(12, 6))
     ax1 = fig.add_subplot(121, projection="3d")
-    PA = MakeStandardAxon(cell, revised=False)
+    PA = MakeStandardAxon(revised=False)
+    PA.do_axon(cell)
     PA.plot_3d(ax1, PA.all_coords)
     hocstr = PA.generate_standard_axon()
     PA.change_hoc(cell, hocstr)
@@ -752,22 +804,28 @@ def make_standard_axon(cell: str, write: bool = False) -> None:
 
     # now display the new version
     ax2 = fig.add_subplot(122, projection="3d")
-    PB = MakeStandardAxon(cell, revised=True)
+    PB = MakeStandardAxon(revised=True)
+    PB.do_axon(cell)
     PB.plot_3d(ax2, PB.all_coords)
     mpl.show()
 
 def read_standard_axon(cell: str) -> None:
     fig = mpl.figure(figsize=(12, 6))
     ax1 = fig.add_subplot(121, projection="3d")
-    PA = MakeStandardAxon(cell, revised=False)
+    PA = MakeStandardAxon(revised=False)
+    PA.do_axon(cell)
     PA.plot_3d(ax1, PA.all_coords)
     ax2 = fig.add_subplot(122, projection="3d")
-    PB = MakeStandardAxon(cell, revised=True)
+    PB = MakeStandardAxon(revised=True)
+    PB.do_axon(cell)
     PB.plot_3d(ax2, PB.all_coords)
     mpl.show()
 
 if __name__ == "__main__":
+
     cell = 11
-    for cell in [6]:  # [2, 5, 9, 10, 11, 13, 17, 18, 30]:
+    for cell in additional_axons:
+        # PA = MakeStandardAxon(revised=False)
+        # PA.convert_swc_hoc(cell)
         make_standard_axon(cell, write=False)
         # read_standard_axon(cell)
