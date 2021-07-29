@@ -5,34 +5,34 @@ Figure data: a dict of which simulations are in which figures
 
 figure_IV = {
     "Cell": 17,
-    "normal": "runIV-all-2020-07-30.18-29-53",
-    "passive": "runIV-all-2020-07-30.18-43-29",
-    "active": "runIV-all-2020-07-30.18-56-13",
-    "Z_normal": "VCN_c17_Full_normal_Z.pkl",
-    "Z_passive": "VCN_c17_Full_pasdend_Z.pkl",
-    "Z_active": "VCN_c17_Full_actdend_Z.pkl",
+    "normal": "runIV-all-2021-07-20.11-04-10",
+    "pasdend": "runIV-all-2021-07-20.11-08-06",
+    "actdend": "runIV-all-2021-07-20.11-11-59",
+    "Z_normal": "VCN_c17_Full_MeshInflate_normal_Z.pkl",
+    "Z_passive": "VCN_c17_Full_MeshInflate_pasdend_Z.pkl",
+    "Z_active": "VCN_c17_Full_MeshInflate_actdend_Z.pkl",
 }
 
 figure_AllIVs = {
-    2: {
-        "normal": "runIV-all-2020-07-30.18-20-16",
-        "passive": "runIV-all-2020-07-30.18-33-07",
-        "active": "runIV-all-2020-07-30.18-46-46",
+    2: {  # using standard axon **********************
+        "normal": "runIV-all-2021-07-20.11-01-30",
+        "pasdend": "runIV-all-2021-07-20.11-05-23",
+        "actdend": "runIV-all-2021-07-20.11-09-20",
     },
-    5: {
-        "normal": "runIV-all-2020-07-30.18-21-32",
-        "passive": "runIV-all-2020-07-30.18-34-20",
-        "active": "runIV-all-2020-07-30.18-47-59",
+    5: {  # using standard axon **********************
+        "normal": "runIV-all-2021-07-20.11-01-51",
+        "pasdend": "runIV-all-2021-07-20.11-05-46",
+        "actdend": "runIV-all-2021-07-20.11-09-41",
     },
     6: {
-        "normal": "runIV-all-2020-07-30.18-23-12",
-        "passive": "runIV-all-2020-07-30.18-36-04",
-        "active": "runIV-all-2020-07-30.18-49-38",
+        "normal": "runIV-all-2021-07-20.11-02-18",
+        "pasdend": "runIV-all-2021-07-20.11-06-12",
+        "actdend": "runIV-all-2021-07-20.11-10-08",
     },
     9: {
-        "normal": "runIV-all-2020-07-30.18-24-19",
-        "passive": "runIV-all-2020-07-30.18-37-10",
-        "active": "runIV-all-2020-07-30.18-50-44",
+        "normal": "runIV-all-2021-07-20.11-02-37",
+        "pasdend": "runIV-all-2021-07-20.11-06-32",
+        "actdend": "runIV-all-2021-07-20.11-10-27",
     },
     # 10: {
     #     "normal": "runIV-all-2020-07-30.18-25-42",
@@ -40,44 +40,34 @@ figure_AllIVs = {
     #     "active": "runIV-all-2020-07-30.18-52-07",
     # },
     10: {
-        "normal": "runIV-all-2021-07-14.14-13-45",
-        "passive": "runIV-all-2021-07-14.14-14-12",
-        "active": "runIV-all-2021-07-14.14-14-40",
+        "normal": "runIV-all-2021-07-20.11-03-01",
+        "pasdend": "runIV-all-2021-07-20.11-06-55",
+        "actdend": "runIV-all-2021-07-20.11-10-51",
     },
     11: {
-        "normal": "runIV-all-2020-07-30.18-27-24",
-        "passive": "runIV-all-2020-07-30.18-40-45",
-        "active": "runIV-all-2020-07-30.18-53-50",
+        "normal": "runIV-all-2021-07-20.11-03-28",
+        "pasdend": "runIV-all-2021-07-20.11-07-23",
+        "actdend": "runIV-all-2021-07-20.11-11-17",
     },
     13: {
-        "normal": "runIV-all-2020-07-30.18-28-30",
-        "passive": "runIV-all-2020-07-30.18-42-00",
-        "active": "runIV-all-2020-07-30.18-54-51",
+        "normal": "runIV-all-2021-07-20.11-03-47",
+        "pasdend": "runIV-all-2021-07-20.11-07-42",
+        "actdend": "runIV-all-2021-07-20.11-11-37",
     },
     17: {
-        "normal": "runIV-all-2020-07-30.18-29-53",
-        "passive": "runIV-all-2020-07-30.18-43-29",
-        "active": "runIV-all-2020-07-30.18-56-13",
+        "normal": "runIV-all-2021-07-20.11-04-10",
+        "pasdend": "runIV-all-2021-07-20.11-08-06",
+        "actdend": "runIV-all-2021-07-20.11-11-59",
     },
-    18: {
-        "normal": "runIV-all-2021-06-16.13-11-52",
-        "passive": "runIV-all-2021-06-16.13-12-14",
-        "active": "runIV-all-2021-06-16.13-12-36",
+    18: { # new reconstruction June 15 2021 - fixed swc->hoc
+        "normal": "runIV-all-2021-07-20.11-04-36",
+        "pasdend": "runIV-all-2021-07-20.11-08-33",
+        "actdend": "runIV-all-2021-07-20.11-12-24",
     },
-    # 18: {  # new reconstruction June 15 2021 - fixed swc->hoc
-    #     'normal': 'runIV-all-2021-05-18.12-37-05' ,
-    #     'passive': 'runIV-all-2021-05-18.12-37-29' ,
-    #     'active': 'runIV-all-2021-05-18.12-37-53' ,
-    # },
-    # 18: {
-    #     "normal": "runIV-all-2020-11-16.10-54-53",
-    #     "active": "runIV-all-2020-11-16.10-55-23",
-    #     "passive": "runIV-all-2020-11-16.10-55-08",
-    # },
     30: {
-        "normal": "runIV-all-2020-07-30.18-31-35",
-        "passive": "runIV-all-2020-07-30.18-45-12",
-        "active": "runIV-all-2020-07-30.18-57-54",
+        "normal": "runIV-all-2021-07-20.11-04-59",
+        "pasdend": "runIV-all-2021-07-20.11-08-55",
+        "actdend": "runIV-all-2021-07-20.11-12-47",
     },
 }
 
@@ -88,44 +78,54 @@ of synapse density, 0.7686 syn/um2  11/15/2020
 figure_efficacy_supplement = {
     2: {
         "NoDend": "runANSingles-all-2020-11-16.17-04-23",
-        "Full": "runANSingles-all-2020-11-16.17-08-55",
+        #"Full": "runANSingles-all-2020-11-16.17-08-55",
+        "Full": "runANSingles-all-2021-07-19.17-41-17",
     },
     5: {
         "NoDend": "runANSingles-all-2020-11-16.17-19-30",
-        "Full": "runANSingles-all-2020-11-16.17-25-11",
+        #"Full": "runANSingles-all-2020-11-16.17-25-11",
+        "Full": "runANSingles-all-2021-07-19.17-51-57",
     },
     6: {
         "NoDend": "runANSingles-all-2020-11-16.17-40-50",
-        "Full": "runANSingles-all-2020-11-16.17-46-05",
+        # "Full": "runANSingles-all-2020-11-16.17-46-05",
+         "Full": "runANSingles-all-2021-07-19.18-07-39",
     },
     9: {
         "NoDend": "runANSingles-all-2020-11-16.17-56-43",
-        "Full": "runANSingles-all-2020-11-16.18-04-06",
+        # "Full": "runANSingles-all-2020-11-16.18-04-06",
+         "Full": "runANSingles-all-2021-07-19.18-18-08",
     },
     10: {
         "NoDend": "runANSingles-all-2020-11-16.18-20-31",
-        "Full": "runANSingles-all-2020-11-16.18-28-43",
+        # "Full": "runANSingles-all-2020-11-16.18-28-43",
+         "Full": "runANSingles-all-2021-07-19.18-34-51",
     },
     11: {
         "NoDend": "runANSingles-all-2020-11-16.18-51-40",
-        "Full": "runANSingles-all-2020-11-16.18-57-43",
+        # "Full": "runANSingles-all-2020-11-16.18-57-43",
+        "Full": "runANSingles-all-2021-07-19.18-57-54",
     },
     13: {
         "NoDend": "runANSingles-all-2020-11-16.19-09-30",
-        "Full": "runANSingles-all-2020-11-16.19-14-35",
+        # "Full": "runANSingles-all-2020-11-16.19-14-35",
+        "Full": "runANSingles-all-2021-07-19.19-09-53",
     },
     17: {
         "NoDend": "runANSingles-all-2020-11-16.19-27-02",
-        "Full": "runANSingles-all-2020-11-16.19-33-47",
+        # "Full": "runANSingles-all-2020-11-16.19-33-47",
+        "Full": "runANSingles-all-2021-07-19.19-22-32",
     },
     18: {
         "NoDend": "runANSingles-all-2020-11-16.19-50-22",
-        "Full": "runANSingles-all-2021-05-18.14-43-58",  # new run
+        # "Full": "runANSingles-all-2021-05-18.14-43-58",  # new run
         # "Full": "runANSingles-all-2020-11-16.19-57-52",
+        "Full": "runANSingles-all-2021-07-19.19-39-15",
     },
     30: {
         "NoDend": "runANSingles-all-2020-11-16.20-09-36",
-        "Full": "runANSingles-all-2020-11-16.20-16-56",
+        # "Full": "runANSingles-all-2020-11-16.20-16-56",
+        "Full": "runANSingles-all-2021-07-19.19-55-51",
     },
 }
 
