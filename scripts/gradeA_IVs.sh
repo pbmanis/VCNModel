@@ -8,32 +8,56 @@ proto="runIV"
 # Note we do not have a full reconstruction for cell 18
 # in that dataset.
 #######################################################
-CELLNAMES="10" # "02 05 06 09 10 11 13 17 30"
-CONFIG="autoscale_xm13a_multisite_parallel.toml"
+CELLNAMES="02 05 06 09 10 11 13 17 18 30"
+CONFIG="--configfile xm13a_multisite_parallel.toml"
+DATATABLE="--datatable data_XM13A_nacncoop_normal"
+DATATABLEA="--datatable data_XM13A_nacncoop_actdend"
+DATATABLEP="--datatable data_XM13A_nacncoop_pasdend"
+
 echo "running the individual initialization and/or running of IV protocols"
 for f in $CELLNAMES
 do
+    AXON=""
+    case $f in
+        02 | 05)
+            AXON="-A standardized"
+            ;;
+    esac
     echo $f
-    python src/vcnmodel/model_run2.py VCN_c$f -P initIV --configfile $CONFIG -D Full --dendritemode normal --datatable data_XM13A_nacncoop
-    python src/vcnmodel/model_run2.py VCN_c$f -P runIV  --configfile $CONFIG -D Full --dendritemode normal --datatable data_XM13A_nacncoop
+    echo $AXON
+    python src/vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D Full $AXON $DATATABLE --dendritemode normal
+    python src/vcnmodel/model_run2.py VCN_c$f -P runIV  $CONFIG -D Full $AXON $DATATABLE --dendritemode normal
 done
-
 wait
 
 for f in $CELLNAMES
 do
+    AXON=""
+    case $f in
+        02 | 05)
+            AXON="-A standardized"
+            ;;
+    esac
     echo $f
-    python src/vcnmodel/model_run2.py VCN_c$f -P initIV --configfile $CONFIG -D Full --dendritemode passive --datatable data_XM13A_nacncoop_pasdend
-    python src/vcnmodel/model_run2.py VCN_c$f -P runIV  --configfile $CONFIG -D Full --dendritemode passive --datatable data_XM13A_nacncoop_pasdend
+    echo $AXON
+    python src/vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D Full $AXON $DATATABLEP --dendritemode passive
+    python src/vcnmodel/model_run2.py VCN_c$f -P runIV  $CONFIG -D Full $AXON $DATATABLEP --dendritemode passive
 done
+wait
 
 for f in $CELLNAMES
 do
+    AXON=""
+    case $f in
+        02 | 05)
+            AXON="-A standardized"
+            ;;
+    esac
     echo $f
-    python src/vcnmodel/model_run2.py VCN_c$f -P initIV --configfile $CONFIG -D Full --dendritemode active --datatable data_XM13A_nacncoop_actdend
-    python src/vcnmodel/model_run2.py VCN_c$f -P runIV  --configfile $CONFIG -D Full --dendritemode active --datatable data_XM13A_nacncoop_actdend
+    echo $AXON
+    python src/vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D Full $AXON $DATATABLEA --dendritemode active
+    python src/vcnmodel/model_run2.py VCN_c$f -P runIV  $CONFIG -D Full $AXON $DATATABLEA --dendritemode active
 done
+wait
 
 echo IV runs complete
-# with "A", we do all cells in grade A
-#python vcnmodel/plotters/plot_gbc_ivresults_2.py "A" -s

@@ -1,0 +1,6 @@
+#  Configuration for basic scaled inflation
+# Note that these are the variable names, not the command parser flags
+modelName='XM13A_nacncoop'  # decoration data table in
+save_all_sections=false #
+SGCmodelType='cochlea'  # which sgc model to run
+Parallel=false

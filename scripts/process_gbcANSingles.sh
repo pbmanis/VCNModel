@@ -1,8 +1,8 @@
 #!/bin/bash
 
-CELLNAMES="18" # " 05 06 09 10 11 13 17 30"
+CELLNAMES="02 05 06 09 10 11 13 17 18 30"
 #CONFIG="noscale.toml" #"autoscale.toml"
-CONFIG="singles_autoscale_multisite_parallel.toml"
+CONFIG="xm13a_multisite_parallel.toml"
 RUNTEXT="running the AN Single protocols"
 TABLES="data_XM13A_nacncoop_normal data_XM13A_nacncoop_pasdend data_XM13A_nacncoop_actdend"
 

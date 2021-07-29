@@ -1,0 +1,13 @@
+# Configuration for basic scaled inflation
+# Note that these are the variable names, not the command parser flags
+# 6/30/2020, updated 7/20/2021
+modelName='XM13A_nacncoop'  # decoration data table in
+save_all_sections=false # 
+SGCmodelType='cochlea'  # which sgc model to run
+SRType='HS'
+ANSynapseType='multisite'
+seed=9
+Parallel=true
+nWorkers=8
+
+
