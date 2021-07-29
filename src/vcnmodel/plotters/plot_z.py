@@ -38,7 +38,8 @@ class PlotZ:
         # fi = [2, 5, 6, 10, 17]
         self.filenames = []
         for fin in self.fi:
-            self.filenames.append(f"VCN_c{fin:02d}_Full_Meshinflate_normal_Z.pkl")
+            fin_r = self.checkfi(fin)
+            self.filenames.append(fin_r)
 
         # cols = ['w', 'm', 'c', 'y', 'g', 'r', 'b', pg.mkPen()]
         self.syms = ["s", "o", "x", "s", "o", "x", "s", "o", "x", "s"]
@@ -48,6 +49,18 @@ class PlotZ:
         else:
             self.mpl_plot()
 
+    def checkfi(self, fin, cellmode:str="Full", decorate:str="normal"):
+        """
+        Map and generate filename - fixing cells 2 and 5
+        cellmode is either "Full", "NoDend", or "AxonOnly"
+        decorate is "normal, actdend, or pasdend
+        """
+        if fin not in [2, 5]:
+            fname = f"VCN_c{fin:02d}_{cellmode:s}_Meshinflate_{decorate:s}_Z.pkl"
+        else:
+            fname = f"VCN_c{fin:02d}_{cellmode:s}_Meshinflate_standardized_axon_{decorate:s}_Z.pkl"
+        return fname
+        
     def pg_plot(self):
         """
         Pyqtgraph plotting version
@@ -121,22 +134,22 @@ class PlotZ:
         )
 
         # style.style_apply()
-        for i, cond in enumerate(["Full_Meshinflate_normal", "NoDend_Meshinflate_normal", "AxonOnly_Meshinflate_normal"]):
+        for i, cond in enumerate(["Full", "NoDend", "AxonOnly"]):
             f = []
             for fin in self.fi:
-                f.append(f"VCN_c{fin:02d}_{cond:s}_Z.pkl")
+                f.append(self.checkfi(fin, cellmode=cond, decorate="normal"))
             self.plot_col(col=i, f=f, P=P)
         for i, fin in enumerate(self.fi):
             with open(
                 Path(
-                    config["cellDataDirectory"], config["impedanceDirectory"], f"VCN_c{fin:02d}_Full_Meshinflate_normal_Z.pkl"
+                    config["cellDataDirectory"], config["impedanceDirectory"], self.checkfi(fin, cellmode="Full", decorate="normal")
                 ),
                 "rb",
             ) as fh:
                 d1 = pickle.load(fh)
             with open(
                 Path(
-                    config["cellDataDirectory"], config["impedanceDirectory"], f"VCN_c{fin:02d}_AxonOnly_Meshinflate_normal_Z.pkl"
+                    config["cellDataDirectory"], config["impedanceDirectory"], self.checkfi(fin, cellmode="AxonOnly", decorate="normal")
                 ),
                 "rb",
             ) as fh:
@@ -146,6 +159,10 @@ class PlotZ:
             rho_axon = g_ds/g_axon
             
             P.axarr[0, 3].plot(d1['f'], rho_axon, marker=self.syms[i], markersize=3, label=f"VCN_{fin:02d}")
+            P.axarr[0, 3].set_xlabel("Frequency (Hz)")
+            P.axarr[0, 3].set_ylabel(r"$\rho_{axon}$")
+            P.axarr[0, 3].set_ylim((0, 80))
+            
 
         save_file = "Fig_M1B_Supplemental_Zin.pdf"
         P.figure_handle.text(
@@ -196,7 +213,7 @@ class PlotZ:
                 ax[0, col].set_title("No Dendrite", {"y": 1.15, "fontweight": "bold"})
             if col == 2:
                 ax[0, col].set_title("Axon Only", {"y": 1.15, "fontweight": "bold"})
-                ax[0, col].set_ylim(0, 15000.)
+                ax[0, col].set_ylim(0, 3500.)
             ax[1, col].plot(
                 d["f"],
                 d["phase"],
@@ -218,8 +235,8 @@ class PlotZ:
                 ax[2, col].set_ylim(-10.0, 60.0)
                 ax[2, col].set_xlim(5, 100)
             else:
-                ax[2, col].set_ylim(-5000.0, 15000.0)
-                ax[2, col].set_xlim(-5000.0, 15000.)
+                ax[2, col].set_ylim(-1000.0, 3000.0)
+                ax[2, col].set_xlim(-1000.0, 3000.)
             
             ax[2, col].set_ylabel(r"-Im(Z) (M$\Omega$)")
             ax[2, col].set_xlabel(r"Re(Z) (M$\Omega$)")

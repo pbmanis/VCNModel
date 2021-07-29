@@ -789,7 +789,7 @@ class ModelRun:
                 table_name += f"{dmodes[self.Params.dendriteMode]:s}"
             else:
                 table_name = f"src.vcnmodel.model_data.{self.Params.dataTable:s}"
-                cprint("r", f"**** USING SPECIFIED DATA TABLE: {str(table_name):s}")
+                cprint("c", f"**** USING SPECIFIED DATA TABLE: {str(table_name):s}")
                 knownmodes = ["normal", "actdend", "pasdend"]
                 self.Params.dendriteMode = "normal"
                 for mode in knownmodes:
@@ -805,8 +805,13 @@ class ModelRun:
             CHAN = importlib.import_module(table_name)
             channels = f"{name_parts[0]:s}_{nach:s}_channels"
             compartments = f"{name_parts[0]:s}_{nach:s}_channels_compartments"
-            print("Channels: ", channels)
-            print("Compartments: ", compartments)
+            # print("table name: ", table_name)
+            # print(self.Params.dataTable)
+            # print('nach: ', nach)
+            # print("Channels: ", channels)
+            # print("Compartments: ", compartments)
+            # print(CHAN.ChannelData)
+            # print(CHAN.ChannelCompartments)
             changes = data.add_table_data(
                 channels,
                 row_key="field",
@@ -814,6 +819,7 @@ class ModelRun:
                 species="mouse",
                 data=CHAN.ChannelData,
             )
+            cprint("r", f"Channel Changes: {str(changes):s}")
             changes_c = data.add_table_data(
                 compartments,
                 row_key="parameter",
@@ -822,7 +828,7 @@ class ModelRun:
                 model_type="II",
                 data=CHAN.ChannelCompartments,
             )
-
+            cprint("r", f"Compartment Changes: {str(changes_c):s}")
             if changes is not None:
                 data.report_changes(changes)
                 data.report_changes(changes_c)
@@ -876,84 +882,8 @@ class ModelRun:
                 print(f"    New Rin after somatic inflation: {rtau['Rin']:.2f}", end="")
                 print(f" , tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}")
 
-        # adjustments are now all done with adjust_areas, but written to hoc file
-        # and stored. Flags control which hoc file is read
-        # AdjA = AdjustAreas(method=self.Params.area_adjustment_method)
-        # AdjA.sethoc_fromCNcell(self.post_cell)
-        # hoc_somaarea = AdjA.get_hoc_area(["soma"])
-        # hoc_dendritearea = AdjA.get_hoc_area(dendrite_names)
-        # cprint(
-        #     "y",
-        #     f"HOC: Original Soma area: {hoc_somaarea:.2f}  Dendrite Area: {hoc_dendritearea:.2f} um^2",
-        # )
-        # if (
-        #     self.Params.soma_autoinflate
-        # ):  # get values and inflate soma automatically to match mesh
-        #     cprint("c", "Soma Autoinflation")
-        #
-        #     inflateratio = self.cconfig.get_soma_ratio(self.Params.cellID)
-        #     if np.isnan(inflateratio):
-        #         raise ValueError(
-        #             f"Soma Inflation Ratio is not defined for cell {self.Params.cellID:s}"
-        #         )
-        #     self.Params.soma_inflation = inflateratio
-        #
-        # if self.Params.soma_inflation != 1.0:
-        #     cprint("c", "    Inflating soma")
-        #     # print(self.RunInfo.postMode)
-        #     if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
-        #         self.post_cell.hr.h.finitialize()
-        #         rtau = self.post_cell.compute_rmrintau(
-        #             auto_initialize=True, vrange=[-80.0, -50.0]
-        #         )
-        #
-        #         print(
-        #             f"   Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
-        #         )
-        #     # origdiam = {}
-        #     cprint("c", f"Method: {self.Params.area_adjustment_method:s}, ratio: {inflateratio:.3f}")
-        #     AdjA = AdjustAreas(method=self.Params.area_adjustment_method)
-        #     AdjA.sethoc_fromCNcell(self.post_cell)
-        #     AdjA.adjust_diameters(sectypes=["soma", "Soma"], inflateRatio=inflateratio)
-        #     # AdjA.plot_areas(pt3d)
-        #
-        #
-        #
-        # if self.Params.dendrite_fromsoma:
-        #     self.Params.dendrite_inflation = self.Params.soma_inflation
-        #     cprint("c", "Dendrite inflation uses soma inflation.")
-        # elif (
-        #     self.Params.dendrite_autoinflate
-        # ):  # get values and inflate soma automatically to match mesh
-        #     cprint("c", "Dendrite Autoinflation")
-        #     inflateratio = self.cconfig.get_dendrite_ratio(self.Params.cellID)
-        #     if np.isnan(inflateratio):
-        #         raise ValueError("Dendrite Inflation Ratio is not defined!")
-        #     self.Params.dendrite_inflation = inflateratio
-        #
-        # if self.Params.dendrite_inflation != 1.0:
-        #     cprint("c", "     Inflating dendrite")
-        #     if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
-        #         rtau = self.post_cell.compute_rmrintau(
-        #             auto_initialize=True, vrange=[-80.0, -55.0]
-        #         )
-        #         print(
-        #             f"     Original Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
-        #         )
-        #
-        #     AdjA = AdjustAreas(method=self.Params.area_adjustment_method)
-        #     AdjA.sethoc_fromCNcell(self.post_cell)
-        #     AdjA.adjust_diameters(sectypes=dendrite_names, inflateRatio=inflateratio)
-        #     # AdjA.plot_areas(pt3d)  # just to take a look at the adjustment
-        #
-        #     if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
-        #         rtau = self.post_cell.compute_rmrintau(
-        #             auto_initialize=True, vrange=[-80.0, -55.0]
-        #         )
-        #         print(
-        #             f"     New Rin: {rtau['Rin']:.2f}, tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}"
-        #         )
-
+        # adjustments to areas are done with adjust_areas.py, and stored as a hoc file
+        # no adjustments to areas are done on the fly here.
         # Set Ra for all regions, uniformly
         for group in list(self.post_cell.hr.sec_groups.keys()):
             g = self.post_cell.hr.sec_groups[group]
@@ -1043,17 +973,18 @@ class ModelRun:
                 try:
                     srindex = self.Params.srnames.index(self.Params.SRType)
                     print(
-                        f"(configure_cell: NOT mixed): Retrieved SR index {srindex:d}"
+                        f"(configure_cell: NOT mixed): Retrieved SR index {srindex:d}", end=" "
                     )
-                    print(f" with SR type {self.Params.SRType:s}",)
+                    print(f" with SR type {self.Params.SRType:s}")
                 except ValueError:
                     raise ValueError(
-                        "SR type '%s' not found in SR type list" % self.Params.SRType
+                        "\nSR type '%s' not found in SR type list" % self.Params.SRType
                     )
 
                 preCell.append(
                     cells.DummySGC(cf=self.RunInfo.F0, sr=srindex)
                 )  # override
+
             if self.Params.verbose:
                 print("  SRtype, srindex: ", self.Params.SRType, srindex)
             # print(self.Params.ANSynapseType)
@@ -1072,7 +1003,7 @@ class ModelRun:
                 # print('postsite: ', postsite)
 
                 if self.Params.ANSynapseType == "simple":
-                    print("  Synapsetype: simple")
+                    print("  Synapsetype: simple", end=" ")
                     synapse.append(
                         preCell[-1].connect(
                             thisCell,
@@ -1081,7 +1012,7 @@ class ModelRun:
                         )
                     )
                 else:
-                    print(f" Synapsetype: multisite, with {int(syn['nSyn']):4d} zones")
+                    print(f" Synapsetype: multisite, with {int(syn['nSyn']):4d} zones", end=" ")
                     synapse.append(
                         preCell[-1].connect(
                             thisCell,
@@ -1384,8 +1315,8 @@ class ModelRun:
         # coarse run first:
         self.RunInfo.stimDur = 20.0  # msec short pulses are sufficient
 
-        current_I = 1.6  # this is large so that we elicit spike on first try
-        precision = 0.001  # measure to nearest 1 pA
+        current_I = 0.4  # start near middle of the range
+        precision = 0.001  # measure to nearest 10 pA
         step = current_I / 2.0
         nworkers = 1
         niter = 0
@@ -1413,56 +1344,10 @@ class ModelRun:
                 current_I -= step
                 last_spike_thr = current_I
                 step /= 2.0  # only decrease step size when spike detected
-            
-        # # Coarse Run has 16 steps
-       #  self.RunInfo.stimInj = {
-       #      "pulse": np.linspace(0.1, 1.60, 16, endpoint=True)
-       #  }  # 0.1 nA steps
-       #  self.R = GenerateRun(
-       #      self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
-       #  )
-       #  self.R.doRun(
-       #      self.Params.hocfile,
-       #      parMap=self.RunInfo.stimInj,
-       #      save="monitor",
-       #      restore_from_file=True,
-       #      initfile=self.Params.initStateFile,
-       #      workers=nworkers,
-       #  )
-       #  print("Coarse Run: ")
-       #  # print(self.R.IVResult['Nspike'])
-       #  # print(self.R.IVResult["Ispike"])
-       #  fspk = np.where(self.R.IVResult["Nspike"])[0]
-       #  print("Coarse current threshold: ", self.R.IVResult["Ispike"][fspk[0]])
-       #
-       #  # repeat with samller pulse range
-       #  # fine run will have 2 pA steps with 51 values
-       #  self.RunInfo.stimInj = {
-       #      "pulse": np.linspace(
-       #          self.R.IVResult["Ispike"][fspk[0] - 1],
-       #          self.R.IVResult["Ispike"][fspk[0]],
-       #          51,
-       #          endpoint=True,
-       #      )
-       #  }
-       #  self.R = GenerateRun(
-       #      self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
-       #  )
-       #  self.R.doRun(
-       #      self.Params.hocfile,
-       #      parMap=self.RunInfo.stimInj,
-       #      save="monitor",
-       #      restore_from_file=True,
-       #      initfile=self.Params.initStateFile,
-       #      workers=nworkers,
-       #  )
-       #  print("Fine Run: ")
-       #  # print(self.R.IVResult['Nspike'])
-       #  # print(self.R.IVResult["Ispike"])
-       #  fspk = np.where(self.R.IVResult["Nspike"])[0]
+
         thrstr = (
-            # f"{str(self.Params.cellID):s}  {self.R.IVResult['Ispike'][fspk[0]]:.3f}"
-            f"{str(self.Params.hocfile):s}  {last_spike_thr:.3f} niter={niter:3d}"
+            f"{datetime.datetime.now().strftime('%m.%d.%Y %H:%M:%S'):s} Prec. {precision:.3f} pA, " +
+            f" {last_spike_thr:.3f} niter={niter:3d} {str(self.Params.hocfile):s}"
         )
         cprint("m", thrstr)
         with (open("thrrun.txt", "a")) as fh:
@@ -1628,10 +1513,9 @@ class ModelRun:
         if self.Params.verbose:
             print("noise_run: calling do_run")
         nworkers = self.Params.nWorkers
-        #        print(self.Params.Parallel)
+
         if self.Params.Parallel is False:
             nworkers = 1
-        #        print('Number of workers available on this machine: ', nworkers)
         self.R.doRun(
             self.Params.hocfile,
             parMap=par_map,
@@ -1733,7 +1617,7 @@ class ModelRun:
             print("  getsyn")
             print("  Syn#    nsites    AMPA gmax    NMDA gmax   synperum2    SRType")
             for i, s in enumerate(synapses):
-                print(self.Params.SynapseConfig[i])
+                # print(self.Params.SynapseConfig[i])
                 print(
                     f"  {i:>4d}   {int(nSyn[i]):>5d}    {eng(gMax[i]):>9s}    {eng(ngMax[i]):>9s}",
                     end="",
@@ -1829,7 +1713,7 @@ class ModelRun:
 
         """
         if make_an_intial_conditions:
-            cprint("g", "\n*** Initializing for an_run\n")
+            cprint("g", f"\n*** Initializing for an_run, time={self.Params.initialization_time:.5f}\n")
         else:
             cprint("g", "\n*** an_run\n")
         if self.Params.inputPattern is not None:
@@ -1842,10 +1726,9 @@ class ModelRun:
         synapseConfig, celltype = self.cconfig.make_dict(
             fromdict, areainflate=self.Params.ASA_inflation,
         )
-        print(self.cconfig.VCN_Inputs["VCN_c17"])
 
         self.Params.SynapseConfig = synapseConfig
-        print("SynapseConfig: ", self.Params.SynapseConfig)
+        # print("SynapseConfig: ", self.Params.SynapseConfig)
 
         self.start_time = time.time()
         # compute delays in a simple manner
@@ -2478,6 +2361,12 @@ class ModelRun:
         """
         print(f"\n*** single_an_run: j={j:4d}")
 
+        # print("restoring state from : ", self.Params.initStateFile)
+        # cellInit.restore_initial_conditions_state(
+        #     cell = self.post_cell,
+        #     filename = self.Params.initStateFile,
+        #     electrode_site = self.electrode_site,
+        # )
         # make independent inputs for each synapse
         ANSpikeTimes = []
         an0_time = time.time()
@@ -2539,7 +2428,7 @@ class ModelRun:
         nrn_start = time.time()
         Vsoma = self.post_cell.hr.h.Vector()
         Vdend = self.post_cell.hr.h.Vector()
-        rtime = self.post_cell.hr.h.Vector()
+        rectime = self.post_cell.hr.h.Vector()
         if (
             "dendrite" in self.post_cell.all_sections
             and len(self.post_cell.all_sections["dendrite"]) > 0
@@ -2562,28 +2451,42 @@ class ModelRun:
                         sec(0.5)._ref_v, sec=sec
                     )  # recording of voltage all set up here
         Vsoma.record(self.post_cell.soma(0.5)._ref_v, sec=self.post_cell.soma)
-        rtime.record(self.post_cell.hr.h._ref_t)
+        rectime.record(self.post_cell.hr.h._ref_t)
+        # print("restoring state from : ", self.Params.initStateFile)
+        # cellInit.restore_initial_conditions_state(
+        #     cell = self.post_cell,
+        #     filename = self.Params.initStateFile,
+        #     electrode_site = self.electrode_site,
+        # )
         self.post_cell.hr.h.finitialize()
         self.post_cell.hr.h.tstop = self.RunInfo.run_duration * 1000.0
         self.post_cell.hr.h.t = 0.0
         self.post_cell.hr.h.batch_save()  # save nothing
         self.post_cell.hr.h.dt = self.Params.dtIC
+        cprint("c", "single_an_run: Running")
+
         self.post_cell.hr.h.batch_run(
             self.post_cell.hr.h.tstop, self.post_cell.hr.h.dt, "an.dat"
         )
         nrn_run_time += time.time() - nrn_start
+        # if len(rectime) == 0:
+        #     npts = np.array(Vsoma).shape[0]
+        #     rectime = np.linspace(0., npts*self.post_cell.hr.h.dt, num=npts)
         if dendsite is None:
             Vdend = np.zeros_like(Vsoma)
 
         anresult = {
             "Vsoma": np.array(Vsoma),
             "Vdend": np.array(Vdend),
-            "time": np.array(rtime),
+            "time": np.array(rectime),
             "ANSpikeTimes": ANSpikeTimes,
             "stim": stim,
             "stimWaveform": stimWaveform,
             "stimTimebase": stimTimebase,
         }
+        # print("max time: ", max(anresult["time"]))
+        # mpl.plot(anresult["time"], anresult["Vsoma"], 'k-')
+        # mpl.show()
         if self.Params.save_all_sections:
             anresult["allsecVec"] = self.allsecVec
         return anresult

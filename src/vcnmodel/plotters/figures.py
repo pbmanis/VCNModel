@@ -39,7 +39,8 @@ def grAList() -> list:
 syms = ["s", "o", "x", "s", "o", "x", "s", "o", "x"]
 colors = ["c", "k", "m", "r"]
 
-title_text = {"passive": "Passive", "normal": "Half-active", "active": "Active"}
+title_text = {"passive": "Passive", "normal": "Half-active", "active": "Active",
+            "pasdend": "Passive", "actdend": "Active"}
 font_colors = {"passive": "c", "normal": "k", "active": "m"}
 spike_colors = font_colors
 
@@ -196,14 +197,26 @@ class Figures(object):
         for cell in grAList():
             self.plotIV(cell)
 
+    def get_dendmode(self, dendmode:str=""):
+        if dendmode == "passive":
+            dendm = "pasdend"
+        elif dendmode == "active":
+            dendm = "actdend"
+        elif dendmode == "normal":
+            dendm = "normal"
+        else:
+            raise ValueError(f"figures.py: dendmode not recognized: {dendmode:s}")
+        return dendm
+
     def plotIV(self, cell=None, parent_figure=None, loc: Union[None, tuple] = None):
         # style = STY.styler(journal="JNeurosci", figuresize='full', font='stixsans')  # two colukn...
         if cell is None:
+            print(FD.figure_IV.keys())
             cellN = FD.figure_IV["Cell"]
-            d1 = FD.figure_IV["passive"]
+            d1 = FD.figure_IV["pasdend"]
         else:
             cellN = cell
-            d1 = FD.figure_AllIVs[cellN]["passive"]
+            d1 = FD.figure_AllIVs[cellN]["pasdend"]
         cellpath = Path(
             self.config["cellDataDirectory"], f"VCN_c{cellN:02d}", "Simulations", "IV"
         )
@@ -299,7 +312,7 @@ class Figures(object):
             panel_labels=p3panels,
         )
 
-        for iax, iv in enumerate(["passive", "normal", "active"]):
+        for iax, iv in enumerate(["pasdend", "normal", "actdend"]):
             if cell is None:
                 dfile = FD.figure_IV[iv]
             else:
@@ -421,12 +434,14 @@ class Figures(object):
         for rax, iv in enumerate(FD.figure_AllIVs.keys()):
             # cellpath = Path(self.config['cellDataDirectory'], f"VCN_c{iv:02d}", 'Simulations', 'IV')
             for iax, dendmode in enumerate(["passive", "normal", "active"]):
+                dendm = self.get_dendmode(dendmode)
+                
                 sfi = Path(
                     self.config["cellDataDirectory"],
                     f"VCN_c{iv:02d}",
                     "Simulations",
                     "IV",
-                   FD.figure_AllIVs[iv][dendmode],
+                   FD.figure_AllIVs[iv][dendm],
                 )
                 if not sfi.is_dir():
                     print("sfi is not a dir")
@@ -569,12 +584,13 @@ class Figures(object):
                 PH.noaxes(self.P.axarr[rax, 0])
             # plot 3 dendrite decorations
             for iax, dendmode in enumerate(["passive", "normal", "active"]):
+                dendm = self.get_dendmode(dendmode)
                 sfi = Path(
                     cellpath,
                     f"VCN_c{iv:02d}",
                     "Simulations",
                     "IV",
-                   FD.figure_AllIVs[iv][dendmode],
+                   FD.figure_AllIVs[iv][dendm],
                 )
                 if not sfi.is_dir():
                     continue
@@ -699,12 +715,12 @@ class Figures(object):
             "Simulations",
             "AN",
         )
-        print("??")
+
         sfi = Path(cellpath, Path(example[dendrite_mode]).name)
         if not sfi.is_dir():
             return
         fn = sorted(list(sfi.glob("*")))
-        print("fn: ", fn)
+        print("plot_efficacy fn: ", fn)
         PD = PData()
         calx = 800.0
         if parent_figure is None:
@@ -800,8 +816,8 @@ class Figures(object):
 
     def plot_efficacy_supplement(self):
         cells = grAList()
-        EFP = EF.EfficacyPlots(None, hold=True, cols=1, rows=1)
-        EFP.P.figure_handle.set_size_inches((8.0, 8.0))
+        EFP = EF.EfficacyPlots(None) # , cols=1, rows=1)
+        EFP.parent_figure.figure_handle.set_size_inches((8.0, 8.0))
         effp = []
         simulation_experiment = "Full"
         hspc = 0.04

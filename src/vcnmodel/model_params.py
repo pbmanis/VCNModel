@@ -198,7 +198,7 @@ class Params:
     testsetup: bool = False
     configfile: Union[str, None] = None
     tagstring: Union[str, None] = None
-    initialization_time: float = 50.0
+    initialization_time: float = 200.0
 
 
 # runinfo parameters are filled by generate_run at the initialization of a single trace run

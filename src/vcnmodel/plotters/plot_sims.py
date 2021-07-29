@@ -847,6 +847,7 @@ class PlotSims:
         elif not hasattr('ax', 'len'):
             ax1 = ax
             ax2 = None
+        print("max time base: ", )
         for trial, icurr in enumerate(d['Results']):
             if rep is not None and trial != rep:
                 continue
@@ -866,7 +867,7 @@ class PlotSims:
                 # cprint('r', 'spiketimes from results')
                 # print(d["Results"][icurr]["spikeTimes"])
                #  print(si.dtIC)
-                spikeindex = [int(t / (si.dtIC)) for t in d["Results"][icurr]["spikeTimes"]]
+                spikeindex = [int(t*1e3 / (si.dtIC)) for t in d["Results"][icurr]["spikeTimes"]]
             else:
                 # cprint('r', 'spikes from SP.spikeIndices')
                 spikeindex = SP.spikeIndices[trial]
