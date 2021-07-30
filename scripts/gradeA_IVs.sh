@@ -1,12 +1,11 @@
 # Example:
 # scripts/process_gbcIV.sh run all 
 #
-proto="runIV"
+PROTO="runIV"
 #######################################################
 # Full models are from data/reconstuctions Matthew Kersting sent on
 # March 6, 2020. 
-# Note we do not have a full reconstruction for cell 18
-# in that dataset.
+# 
 #######################################################
 CELLNAMES="02 05 06 09 10 11 13 17 18 30"
 CONFIG="--configfile xm13a_multisite_parallel.toml"
