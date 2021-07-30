@@ -47,11 +47,8 @@ xlrd>=1.0.0
 imreg_dft>=2.0
 
 # required for mayavi in neuronvis
-# required for mayavi in neuronvis
 vtk==9.0.1
 
-
-xlrd>=1.0.0
 # required for 3d display in pyqtgraph
 #PyOpenGL==3.1.5  # broken in Big Sur
 descartes
@@ -62,6 +59,6 @@ mahotas
 -e /Users/pbmanis/Desktop/Python/pyqtgraph
 -e /Users/pbmanis/Desktop/Python/pylibrary
 -e /Users/pbmanis/Desktop/Python/ephys
-# -e /Users/pbmanis/Desktop/Python/montage
+-e /Users/pbmanis/Desktop/Python/montager
 -e /Users/pbmanis/Desktop/Python/neuronvis
 
