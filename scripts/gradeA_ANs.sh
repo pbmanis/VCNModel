@@ -5,9 +5,9 @@
 #######################################################
 # Full models are from data/reconstuctions Matthew Kersting sent on
 # March 6, 2020. 
-# 
+# Updated 30 July 2021 
 #######################################################
-PROTO="runANPSTH"
+PROTO="-P runANPSTH"
 #######################################################
 # Full models are from data/reconstuctions Matthew Kersting sent on
 # March 6, 2020. 
@@ -19,11 +19,10 @@ CONFIG="--configfile xm13a_multisite_parallel.toml"
 DATATABLE="--datatable data_XM13A_nacncoop_normal"
 DATATABLEA="--datatable data_XM13A_nacncoop_actdend"
 DATATABLEP="--datatable data_XM13A_nacncoop_pasdend"
-CONFIG="autoscale_xm13a_multisite_parallel.toml"
 RUNTEXT="running the individual initialization and running AN PSTH protocols"
 WORKERS="16"
 REPS="100"
-CHECK="--check"  # or "" to run
+CHECK="" #"--check"  # or "" to run
 
 echo $RUNTEXT
 for f in $CELLNAMES
@@ -37,16 +36,16 @@ do
     esac
     echo $f
     echo $AXON
-    python vcnmodel/model_run2.py VCN_c$f  -F -P initAN $CONFIG $AXON $DATATABLE $CHECK
-    python vcnmodel/model_run2.py VCN_c$f  -F $PROTO -r $REPS --dB 10 --Spirou all $CONFIG $AXON $DATATABLE $CHECK
+    python src/vcnmodel/model_run2.py VCN_c$f -D Full -P initAN --dendritemode normal $CONFIG $AXON $DATATABLE $CHECK
+    python src/vcnmodel/model_run2.py VCN_c$f -D Full $PROTO -r $REPS --dB 10 --Spirou all --dendritemode normal $CONFIG $AXON $DATATABLE $CHECK
     if [ $? -ne 0 ]; then
         exit 1
     fi
-    python vcnmodel/model_run2.py VCN_c$f  -F $PROTO -r $REPS --dB 10 --Spirou largestonly $CONFIG $AXON $DATATABLE $CHECK
+    python src/vcnmodel/model_run2.py VCN_c$f -D Full $PROTO -r $REPS --dB 10 --Spirou largestonly --dendritemode normal $CONFIG $AXON $DATATABLE $CHECK
     if [ $? -ne 0 ]; then
         exit 1
     fi
-    python vcnmodel/model_run2.py VCN_c$f  -F $PROTO -r $REPS --dB 10 --Spirou removelargest $CONFIG $AXON $DATATABLE $CHECK
+    python src/vcnmodel/model_run2.py VCN_c$f -D Full $PROTO -r $REPS --dB 10 --Spirou removelargest --dendritemode normal $CONFIG $AXON $DATATABLE $CHECK
    if [ $? -ne 0 ]; then
         exit 1
     fi
