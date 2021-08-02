@@ -5,34 +5,37 @@ Figure data: a dict of which simulations are in which figures
 
 figure_IV = {
     "Cell": 17,
-    "normal": "runIV-all-2021-07-20.11-04-10",
-    "pasdend": "runIV-all-2021-07-20.11-08-06",
-    "actdend": "runIV-all-2021-07-20.11-11-59",
+    "normal": "runIV-all-2021-07-27.12-18-24",
+    "pasdend": "runIV-all-2021-07-27.12-23-27",
+    "actdend": "runIV-all-2021-07-27.12-28-28",
     "Z_normal": "VCN_c17_Full_MeshInflate_normal_Z.pkl",
     "Z_passive": "VCN_c17_Full_MeshInflate_pasdend_Z.pkl",
     "Z_active": "VCN_c17_Full_MeshInflate_actdend_Z.pkl",
 }
 
+"""
+Updated 8/1/2021 with runs from 7/27/2021, 12:14-12:29pm
+"""
 figure_AllIVs = {
-    2: {  # using standard axon **********************
-        "normal": "runIV-all-2021-07-20.11-01-30",
-        "pasdend": "runIV-all-2021-07-20.11-05-23",
-        "actdend": "runIV-all-2021-07-20.11-09-20",
+    2: { # using standard axon ******************
+        "normal": "runIV-all-2021-07-27.12-14-54",
+        "pasdend": "runIV-all-2021-07-27.12-19-58",
+        "actdend": "runIV-all-2021-07-27.12-25-00",
     },
-    5: {  # using standard axon **********************
-        "normal": "runIV-all-2021-07-20.11-01-51",
-        "pasdend": "runIV-all-2021-07-20.11-05-46",
-        "actdend": "runIV-all-2021-07-20.11-09-41",
+    5: {  # using standard axon ******************
+        "normal": "runIV-all-2021-07-27.12-15-25",
+        "pasdend": "runIV-all-2021-07-27.12-20-28",
+        "actdend": "runIV-all-2021-07-27.12-25-30",
     },
     6: {
-        "normal": "runIV-all-2021-07-20.11-02-18",
-        "pasdend": "runIV-all-2021-07-20.11-06-12",
-        "actdend": "runIV-all-2021-07-20.11-10-08",
+        "normal": "runIV-all-2021-07-27.12-15-56",
+        "pasdend": "runIV-all-2021-07-27.12-21-01",
+        "actdend": "runIV-all-2021-07-27.12-26-01",
     },
     9: {
-        "normal": "runIV-all-2021-07-20.11-02-37",
-        "pasdend": "runIV-all-2021-07-20.11-06-32",
-        "actdend": "runIV-all-2021-07-20.11-10-27",
+        "normal": "runIV-all-2021-07-27.12-16-23",
+        "pasdend": "runIV-all-2021-07-27.12-21-28",
+        "actdend": "runIV-all-2021-07-27.12-26-28",
     },
     # 10: {
     #     "normal": "runIV-all-2020-07-30.18-25-42",
@@ -40,34 +43,35 @@ figure_AllIVs = {
     #     "active": "runIV-all-2020-07-30.18-52-07",
     # },
     10: {
-        "normal": "runIV-all-2021-07-20.11-03-01",
-        "pasdend": "runIV-all-2021-07-20.11-06-55",
-        "actdend": "runIV-all-2021-07-20.11-10-51",
+        "normal": "runIV-all-2021-07-27.12-16-56",
+        "pasdend": "runIV-all-2021-07-27.12-22-00",
+        "actdend": "runIV-all-2021-07-27.12-27-00",
     },
+    # unclear; cell 11 did not have all runs on 7/27 (missing pasdend)
     11: {
-        "normal": "runIV-all-2021-07-20.11-03-28",
-        "pasdend": "runIV-all-2021-07-20.11-07-23",
-        "actdend": "runIV-all-2021-07-20.11-11-17",
+        "normal": "runIV-all-2021-08-01.11-37-28",
+        "pasdend": "runIV-all-2021-08-01.11-37-52",
+        "actdend": "runIV-all-2021-08-01.11-38-14",
     },
     13: {
-        "normal": "runIV-all-2021-07-20.11-03-47",
-        "pasdend": "runIV-all-2021-07-20.11-07-42",
-        "actdend": "runIV-all-2021-07-20.11-11-37",
+        "normal": "runIV-all-2021-07-27.12-17-52",
+        "pasdend": "runIV-all-2021-07-27.12-22-56",
+        "actdend": "runIV-all-2021-07-27.12-27-56",
     },
     17: {
-        "normal": "runIV-all-2021-07-20.11-04-10",
-        "pasdend": "runIV-all-2021-07-20.11-08-06",
-        "actdend": "runIV-all-2021-07-20.11-11-59",
+        "normal": "runIV-all-2021-07-27.12-18-24",
+        "pasdend": "runIV-all-2021-07-27.12-23-27",
+        "actdend": "runIV-all-2021-07-27.12-28-28",
     },
-    18: { # new reconstruction June 15 2021 - fixed swc->hoc
-        "normal": "runIV-all-2021-07-20.11-04-36",
-        "pasdend": "runIV-all-2021-07-20.11-08-33",
-        "actdend": "runIV-all-2021-07-20.11-12-24",
+    18: {
+        "normal": "runIV-all-2021-07-27.12-18-56",
+        "pasdend": "runIV-all-2021-07-27.12-23-59",
+        "actdend": "runIV-all-2021-07-27.12-29-00",
     },
     30: {
-        "normal": "runIV-all-2021-07-20.11-04-59",
-        "pasdend": "runIV-all-2021-07-20.11-08-55",
-        "actdend": "runIV-all-2021-07-20.11-12-47",
+        "normal": "runIV-all-2021-07-27.12-19-27",
+        "pasdend": "runIV-all-2021-07-27.12-24-30",
+        "actdend": "runIV-all-2021-07-27.12-29-31",
     },
 }
 

@@ -322,7 +322,9 @@ class Figures(object):
                 print("Missing file: sfi 1: ", sfi)
                 return None
             fn = list(sfi.glob("*"))
-
+            if len(fn) == 0:
+                print("sfi: ", sfi)
+                raise ValueError("no files found")
             sfi = Path(sfi, fn[0])
             self.parent.PLT.plot_traces(
                 self.P.axarr[0, iax],
@@ -544,7 +546,7 @@ class Figures(object):
         Also put the PNG for the cell on the left.
         """
         nivs = len(FD.figure_AllIVs)
-        
+        cprint('c', "plot_IVS.")
         rows = nivs
         cols = 5
         height = 1.5 * nivs
@@ -574,7 +576,10 @@ class Figures(object):
         )
         cellpath = config["cellDataDirectory"]
         png_path = Path(config["baseDataDirectory"], config["pngDirectory"])
+        cprint('c', "prepping fo run")
+
         for rax, iv in enumerate(FD.figure_AllIVs.keys()):
+            cprint('r', f"Doing Cell VCN_c{iv:02d} -----------------------------------")
             celln = Path(png_path, f"VCN_c{iv:02d}.png")
             if celln.is_file():  # add images from png files
                 img = mpimg.imread(str(celln))
@@ -593,6 +598,7 @@ class Figures(object):
                    FD.figure_AllIVs[iv][dendm],
                 )
                 if not sfi.is_dir():
+                    cprint("r", f"Unable to find dir: {str(sfi):s}")
                     continue
                 fn = list(sfi.glob("*"))
                 sfi = Path(sfi, fn[0])
@@ -623,7 +629,10 @@ class Figures(object):
             fig = FigInfo()
             fig.P = self.P
             fig.filename = f"Fig_M1A_Supplemental.pdf"
-            fig.title["title"] = "SBEM Project Figure 1 Modeling (Supplemental A)"
+            timestamp_str = datetime.datetime.now().strftime(
+                "%Y-%m-%d-%H:%M"
+            )
+            fig.title["title"] = f"SBEM Project Figure 1 Modeling (Supplemental A) ({timestamp_str:s})"
             return fig
         else:
             return self.P
