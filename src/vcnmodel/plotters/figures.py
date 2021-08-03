@@ -504,7 +504,7 @@ class Figures(object):
             size=4.0,
             edgecolor="k",
         )
-        self.P2.axdict[tauplot].set_ylim(0, 2.0)
+        self.P2.axdict[tauplot].set_ylim(0, 2.5)
         self.P2.axdict[tauplot].set_ylabel(tau_label)
         self.P2.axdict[tauplot].set_xlabel("Dendrite Decoration")
 

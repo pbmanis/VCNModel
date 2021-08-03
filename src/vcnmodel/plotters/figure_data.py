@@ -17,25 +17,27 @@ figure_IV = {
 Updated 8/1/2021 with runs from 7/27/2021, 12:14-12:29pm
 """
 figure_AllIVs = {
-    2: { # using standard axon ******************
-        "normal": "runIV-all-2021-07-27.12-14-54",
-        "pasdend": "runIV-all-2021-07-27.12-19-58",
-        "actdend": "runIV-all-2021-07-27.12-25-00",
+    # using standard axon ******
+    2: {
+        "normal": "runIV-all-2021-08-01.13-47-29",
+        "pasdend": "runIV-all-2021-08-01.13-52-43",
+        "actdend": "runIV-all-2021-08-01.13-57-57",
     },
-    5: {  # using standard axon ******************
-        "normal": "runIV-all-2021-07-27.12-15-25",
-        "pasdend": "runIV-all-2021-07-27.12-20-28",
-        "actdend": "runIV-all-2021-07-27.12-25-30",
+     # using standard axon ******************
+    5: {
+         "normal": "runIV-all-2021-08-01.13-48-01",
+         "pasdend": "runIV-all-2021-08-01.13-53-16",
+         "actdend": "runIV-all-2021-08-01.13-58-29",
     },
     6: {
-        "normal": "runIV-all-2021-07-27.12-15-56",
-        "pasdend": "runIV-all-2021-07-27.12-21-01",
-        "actdend": "runIV-all-2021-07-27.12-26-01",
+        "normal": "runIV-all-2021-08-01.13-48-34",
+        "pasdend": "runIV-all-2021-08-01.13-53-48",
+        "actdend": "runIV-all-2021-08-01.13-59-02",
     },
     9: {
-        "normal": "runIV-all-2021-07-27.12-16-23",
-        "pasdend": "runIV-all-2021-07-27.12-21-28",
-        "actdend": "runIV-all-2021-07-27.12-26-28",
+        "normal": "runIV-all-2021-08-01.13-49-02",
+        "pasdend": "runIV-all-2021-08-01.13-54-15",
+        "actdend": "runIV-all-2021-08-01.13-59-30",
     },
     # 10: {
     #     "normal": "runIV-all-2020-07-30.18-25-42",
@@ -43,35 +45,35 @@ figure_AllIVs = {
     #     "active": "runIV-all-2020-07-30.18-52-07",
     # },
     10: {
-        "normal": "runIV-all-2021-07-27.12-16-56",
-        "pasdend": "runIV-all-2021-07-27.12-22-00",
-        "actdend": "runIV-all-2021-07-27.12-27-00",
+        "normal": "runIV-all-2021-08-01.13-49-36",
+        "pasdend": "runIV-all-2021-08-01.13-54-48",
+        "actdend": "runIV-all-2021-08-01.14-00-02",
     },
     # unclear; cell 11 did not have all runs on 7/27 (missing pasdend)
     11: {
-        "normal": "runIV-all-2021-08-01.11-37-28",
-        "pasdend": "runIV-all-2021-08-01.11-37-52",
-        "actdend": "runIV-all-2021-08-01.11-38-14",
+        "normal": "runIV-all-2021-08-01.13-50-09",
+        "pasdend": "runIV-all-2021-08-01.13-55-22",
+        "actdend": "runIV-all-2021-08-01.14-00-33",
     },
     13: {
-        "normal": "runIV-all-2021-07-27.12-17-52",
-        "pasdend": "runIV-all-2021-07-27.12-22-56",
-        "actdend": "runIV-all-2021-07-27.12-27-56",
+        "normal": "runIV-all-2021-08-01.13-50-35",
+        "pasdend": "runIV-all-2021-08-01.13-55-49",
+        "actdend": "runIV-all-2021-08-01.14-00-59",
     },
     17: {
-        "normal": "runIV-all-2021-07-27.12-18-24",
-        "pasdend": "runIV-all-2021-07-27.12-23-27",
-        "actdend": "runIV-all-2021-07-27.12-28-28",
+        "normal": "runIV-all-2021-08-01.13-51-07",
+        "pasdend": "runIV-all-2021-08-01.13-56-20",
+        "actdend": "runIV-all-2021-08-01.14-01-31",
     },
     18: {
-        "normal": "runIV-all-2021-07-27.12-18-56",
-        "pasdend": "runIV-all-2021-07-27.12-23-59",
-        "actdend": "runIV-all-2021-07-27.12-29-00",
+        "normal": "runIV-all-2021-08-01.13-51-42",
+        "pasdend": "runIV-all-2021-08-01.13-56-53",
+        "actdend": "runIV-all-2021-08-01.14-02-02",
     },
     30: {
-        "normal": "runIV-all-2021-07-27.12-19-27",
-        "pasdend": "runIV-all-2021-07-27.12-24-30",
-        "actdend": "runIV-all-2021-07-27.12-29-31",
+        "normal": "runIV-all-2021-08-01.13-52-12",
+        "pasdend": "runIV-all-2021-08-01.13-57-26",
+        "actdend": "runIV-all-2021-08-01.14-02-31",
     },
 }
 
