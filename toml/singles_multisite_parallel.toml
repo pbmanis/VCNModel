@@ -6,8 +6,15 @@ save_all_sections=false #
 SGCmodelType='cochlea'  # which sgc model to run
 SRType='HS'
 ANSynapseType='multisite'
+dB=30.0
+F0=16000.0
+pip_duration=1.0
+pip_start=0.1  # give model lots of time to settle down
+pip_offduration=0.05
+soundtype="tonepip"  # or "tonepip" or "noise" or "SAM"
+fmod=100.0  # fmod and dmod are not applited for tonepip
+dmod=0.0
 seed=9
 Parallel=true
 nWorkers=8
-
 
