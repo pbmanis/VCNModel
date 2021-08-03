@@ -2372,6 +2372,9 @@ class PlotSims:
 
         # ynspike = np.cumsum(ynspike / nspikes)
         cprint('r', f"prespikecounts: {np.sum(pre_spike_counts[1:]):f}")
+        if np.sum(pre_spike_counts[1:]) == 0:
+            return (P, PD, RCP, RCD)
+            
         RCD.ynspike = np.cumsum(pre_spike_counts[1:]) / np.sum(pre_spike_counts[1:])
 
         if P is None:
@@ -2434,7 +2437,7 @@ class PlotSims:
         # ticks = [int(p) for p in np.linspace(vmin, vmax, num=4, endpoint=True)]
         ticks = [int(p) for p in np.linspace(0, vmax, num=5, endpoint=True)]
         cm_sns = mpl.cm.get_cmap(colormap)
-        c2 = matplotlib.colorbar.ColorbarBase(
+        colorbar = matplotlib.colorbar.ColorbarBase(
             axcbar, cmap=cm_sns, ticks=ticks, norm=norm
         )
         ticks = [int(p) for p in np.arange(1, RCP.ninputs+0.5, 1)]
@@ -2491,11 +2494,11 @@ class PlotSims:
         )
         PH.talbotTicks(
             axcbar,
-            tickPlacesAdd={"x": 0, "y": 2},
-            floatAdd={"x": 0, "y": 2},
+            tickPlacesAdd={"x": 0, "y": 1},
+            floatAdd={"x": 0, "y": 1},
             pointSize=7,
+            colorbar=colorbar  # use the colorbar tick settings instead
         )
-        print('RCP.si: ', RCP.si)
         P.figure_handle.suptitle(
             f"Cell {PD.thiscell:s} {str(RCP.si.shortSimulationFilename):s}\n[{RCP.ri.runTime:s}] dB:{RCP.ri.dB:.1f} Prot: {RCP.ri.runProtocol:s}"
             + f"\nExpt: {RCP.ri.Spirou:s}  DendMode: {RCP.si.dendriteMode:s} DendExpt: {RCP.si.dendriteExpt:s}"
