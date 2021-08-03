@@ -83,55 +83,44 @@ of synapse density, 0.7686 syn/um2  11/15/2020
 """
 figure_efficacy_supplement = {
     2: {
-        "NoDend": "runANSingles-all-2020-11-16.17-04-23",
-        #"Full": "runANSingles-all-2020-11-16.17-08-55",
-        "Full": "runANSingles-all-2021-07-19.17-41-17",
+        "Full": "runANSingles-all-2021-08-02.17-58-19",
+        "NoDend": "runANSingles-all-2021-08-02.23-13-48",
     },
     5: {
-        "NoDend": "runANSingles-all-2020-11-16.17-19-30",
-        #"Full": "runANSingles-all-2020-11-16.17-25-11",
-        "Full": "runANSingles-all-2021-07-19.17-51-57",
+        "Full": "runANSingles-all-2021-08-02.18-07-35",
+        "NoDend": "runANSingles-all-2021-08-02.23-17-51",
     },
     6: {
-        "NoDend": "runANSingles-all-2020-11-16.17-40-50",
-        # "Full": "runANSingles-all-2020-11-16.17-46-05",
-         "Full": "runANSingles-all-2021-07-19.18-07-39",
+        "Full": "runANSingles-all-2021-08-02.18-21-35",
+        "NoDend": "runANSingles-all-2021-08-02.23-22-53",
     },
     9: {
-        "NoDend": "runANSingles-all-2020-11-16.17-56-43",
-        # "Full": "runANSingles-all-2020-11-16.18-04-06",
-         "Full": "runANSingles-all-2021-07-19.18-18-08",
+        "Full": "runANSingles-all-2021-08-02.18-30-57",
+        "NoDend": "runANSingles-all-2021-08-02.23-27-30",
     },
     10: {
-        "NoDend": "runANSingles-all-2020-11-16.18-20-31",
-        # "Full": "runANSingles-all-2020-11-16.18-28-43",
-         "Full": "runANSingles-all-2021-07-19.18-34-51",
+        "Full": "runANSingles-all-2021-08-02.18-45-37",
+        "NoDend": "runANSingles-all-2021-08-02.23-34-04",
     },
     11: {
-        "NoDend": "runANSingles-all-2020-11-16.18-51-40",
-        # "Full": "runANSingles-all-2020-11-16.18-57-43",
-        "Full": "runANSingles-all-2021-07-19.18-57-54",
+        "Full": "runANSingles-all-2021-08-02.19-06-04",
+        "NoDend": "runANSingles-all-2021-08-02.23-41-21",
     },
     13: {
-        "NoDend": "runANSingles-all-2020-11-16.19-09-30",
-        # "Full": "runANSingles-all-2020-11-16.19-14-35",
-        "Full": "runANSingles-all-2021-07-19.19-09-53",
+        "Full": "runANSingles-all-2021-08-02.19-16-40",
+        "NoDend": "runANSingles-all-2021-08-02.23-46-44",
     },
     17: {
-        "NoDend": "runANSingles-all-2020-11-16.19-27-02",
-        # "Full": "runANSingles-all-2020-11-16.19-33-47",
-        "Full": "runANSingles-all-2021-07-19.19-22-32",
+        "Full": "runANSingles-all-2021-08-02.19-27-45",
+        "NoDend": "runANSingles-all-2021-08-02.23-51-15",
     },
     18: {
-        "NoDend": "runANSingles-all-2020-11-16.19-50-22",
-        # "Full": "runANSingles-all-2021-05-18.14-43-58",  # new run
-        # "Full": "runANSingles-all-2020-11-16.19-57-52",
-        "Full": "runANSingles-all-2021-07-19.19-39-15",
+        "Full": "runANSingles-all-2021-08-02.19-42-24",
+        "NoDend": "runANSingles-all-2021-08-02.23-57-14",
     },
     30: {
-        "NoDend": "runANSingles-all-2020-11-16.20-09-36",
-        # "Full": "runANSingles-all-2020-11-16.20-16-56",
-        "Full": "runANSingles-all-2021-07-19.19-55-51",
+        "Full": "runANSingles-all-2021-08-02.19-56-49",
+        "NoDend": "runANSingles-all-2021-08-03.00-03-56",
     },
 }
 

@@ -591,7 +591,7 @@ class PlotSims:
             fn = Path(data.files[0])
             fnr = str(fn.parts[-2])
             fkey = data.dendriteExpt
-            fkey = data.dendriteMode
+            # fkey = data.dendriteMode
             # self.textappend(f"    '{data.dendriteMode:s}': '{fnr:s}' {br[1]:s},")
             self.textappend(f'    "{fkey:s}": "{fnr:s}",')
         self.textappend(f"{br[1]:s},")

@@ -821,12 +821,10 @@ class Figures(object):
         fig.P = EFP.P
         fig.filename = save_file
         fig.title["title"] = "SBEM Project Figure 2 Modeling: Efficacy and Revcorr"
-        return None
+        return fig
 
     def plot_efficacy_supplement(self):
         cells = grAList()
-        EFP = EF.EfficacyPlots(None) # , cols=1, rows=1)
-        EFP.parent_figure.figure_handle.set_size_inches((8.0, 8.0))
         effp = []
         simulation_experiment = "Full"
         hspc = 0.04
@@ -842,8 +840,17 @@ class Figures(object):
         height = 0.38
         xp = lmar + np.arange(ncol) * (width + hspc)
         yp = bmar + np.arange(nrow) * (height + rowspc)
-        # print(xp)
-        #        print(yp)
+        self.P = PH.regular_grid(  # dummy figure space
+            1,
+            1,
+            figsize=(8.0, 8.0),
+            order="rowsfirst",
+            units="in",
+            showgrid=True,
+            parent_figure=None,
+        )
+        EFP = EF.EfficacyPlots(parent_figure=self.P) # , cols=1, rows=1)
+        EFP.parent_figure.figure_handle.set_size_inches((8.0, 8.0))
 
         for ic, cellN in enumerate(cells):
             # if ic > 0:  # for quick tests
@@ -856,7 +863,7 @@ class Figures(object):
             )
             sfiles = Path(
                 cellpath,
-                Path(Figure_efficacy_supplement[cellN][simulation_experiment]).name,
+                Path(FD.figure_efficacy_supplement[cellN][simulation_experiment]).name,
             )
             if not sfiles.is_dir():
                 return
@@ -882,7 +889,7 @@ class Figures(object):
                     "height": height,
                 },
                 labelposition=(-0.05, 1.06),
-                parent_figure=EFP.P,
+                parent_figure=EFP.parent_figure,
                 # panel_labels=['A', 'B', 'C', 'D', 'E', 'F'],
             )
             effp.append(P_Eff)
@@ -1231,8 +1238,9 @@ class Figures(object):
             sfi = Path(cellpath, Path(dataset[dBSPL]).name)
             if not sfi.is_dir():
                 return
-
+            print(sfi)
             fn = sorted(list(sfi.glob("*")))
+            print("revcorr supplement fn: ", fn)
             if run_calcs:
                 (P0, PD, RCP, RCD) = self.parent.PLT.compute_revcorr(
                     P=None,
