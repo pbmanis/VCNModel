@@ -148,6 +148,24 @@ experimenttypes = [
     "threelargest",
     "fourlargest",
 ]
+run_dates = [
+    "None",
+    "2020-11-01",
+    "2020-12-01",
+    "2021-01-01",
+    "2021-02-01",
+    "2021-03-01",
+    "2021-04-01",
+    "2021-05-01",
+    "2021-06-01",
+    "2021-07-01",
+    "2021-08-01",
+    "2021-09-01",
+    "2021-10-01",
+    "2021-11-01",
+    "2021-12-01",
+    
+]
 # Modes for synapse model runs - not all are used.
 modetypes = ["find", "singles", "IO", "multi"]
 # For analysis - but not used.
@@ -267,6 +285,8 @@ class DataTables:
         self.voltage = False
         self.runtype = runtypes[0]
         self.cellID = 2
+        self.start_date = "None"
+        self.end_date = "None"
         self.modeltype = modeltypes[0]
         self.modetype = modetypes[0]
         self.experimenttype = experimenttypes[0]
@@ -276,6 +296,8 @@ class DataTables:
             "ModelType": [modeltypes, self.modeltype],
             "Run Type": [runtypes, self.runtype],
             "Cells": [cellvalues, self.cellID],
+            "Start Date": [run_dates, self.start_date],
+            "End Date": [run_dates, self.end_date],
             "Mode": [modetypes, self.modetype],
             "Experiment": [experimenttypes, self.experimenttype],
             "Analysis": [analysistypes, self.analysistype],
@@ -327,6 +349,18 @@ class DataTables:
                         "value": 2,
                     },
                     {
+                        "name": "Start Date",
+                        "type": "list",
+                        "values": run_dates,
+                        "value": run_dates[0],
+                    },
+                    {
+                        "name": "End Date",
+                        "type": "list",
+                        "values": run_dates,
+                        "value": run_dates[0],
+                    },
+                     {
                         "name": "ModelType",
                         "type": "list",
                         "values": modeltypes,
@@ -647,6 +681,8 @@ class DataTables:
                 self.selvals[path[1]][1] = str(data)
                 self.cellID = self.selvals["Cells"][1]
                 self.setPaths("AN", cell=data)
+                self.start_date = self.selvals["Start Date"][1]
+                self.end_date = self.selvals["End Date"][1]
                 self.table_manager.build_table(mode="scan")
 
             if path[0] == "Analysis":

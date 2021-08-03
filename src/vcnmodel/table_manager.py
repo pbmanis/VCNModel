@@ -488,6 +488,44 @@ class TableManager:
                 
                 print('*'*80)
     
+    def select_dates(self, rundirs, mode="D"):
+        """
+        For every entry in rundirs, see if the date is later than or equal to our limit date
+        if the mode is "D", we treat the directory format
+        if the mode is "F", we treat it as a file (very old format)
+        rundirs is a list of directories - in the case of the old format, just pass a single
+        file as a list...
+        """
+        if self.parent.start_date == "None" and self.parent.end_date == "None":
+            return rundirs
+
+        if self.parent.start_date != "None":
+            sd = int(self.parent.start_date.replace('-', ""))
+        else:
+            sd = 0
+        if self.parent.end_date != "None":
+            ed = int(self.parent.end_date.replace('-', ""))
+        else:
+            ed = 30000000
+        sel_runs = []
+        for d in rundirs:
+            if mode == "D":
+                dname = d.stem
+                if d.is_dir():
+                    fdate = dname[-10:].replace('-', "")
+                else:
+                    fdate = dname[-19:-9].replace('-', "")  # extract the date
+            elif mode == 'F':
+                fdate = d.datestr[-19:-9].replace('-', "")
+            else:
+                raise ValueError("table manager select_dates: bad mode in call: ", mode)
+            if fdate[:4] not in ["2020", "2021"]:
+                continue 
+            idate = int(fdate)
+            if idate >= sd and idate <= ed:
+                sel_runs.append(d)
+        return sel_runs
+    
     @winprint_continuous
     def build_table(self, mode="scan"):
         if mode == 'scan':
@@ -507,6 +545,7 @@ class TableManager:
         )
         # cprint('c', thispath)
         rundirs = list(thispath.glob("*"))
+        rundirs = self.select_dates(rundirs)
         indxs = []
         # first build elements with directories
         indexable_dirs = sorted([r for r in rundirs if r.is_dir()])
@@ -520,6 +559,7 @@ class TableManager:
                 )  # get the indexed data and update as necessary.
             # load up the index files
             indexfiles = list(thispath.glob("*.pkl"))
+            indexfiles = self.select_dates(indexfiles)
             for i, f in enumerate(indexfiles):
                 indxs.append(self.read_indexfile(f))
                 # if indxs[-1] is None:
@@ -541,8 +581,11 @@ class TableManager:
                 self.textappend(f"None in #{i:d} :{str(f):s}", "yellow")
             else:
                 params, runinfo, fn = p  # ok to unpack
-                indxs.append(self.make_indexdata(params, runinfo, fn))
-                valid_dfiles.append(f)  # keep track of accepted files
+                index_file_data = self.make_indexdata(params, runinfo, fn)
+                fd = self.select_dates([index_file_data], mode='F')
+                if len(fd) > 0:
+                    indxs.append(index_file_data)
+                    valid_dfiles.append(f)  # keep track of accepted files
         dfiles = valid_dfiles  # replace with shorter list with only the valid files
         indexfiles = indexfiles + dfiles
         self.table_data = indxs
