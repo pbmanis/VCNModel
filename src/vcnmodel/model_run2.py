@@ -803,6 +803,15 @@ class ModelRun:
             else:
                 nach = "nav11"
             CHAN = importlib.import_module(table_name)
+            """
+            save the channel data and compartment data tables, as pulled from the 
+            file we just imported, directly into the simulations
+            This makes sure the file has even more (if not all) of the data needed to specify the
+            run parameters
+            """
+            self.RunInfo.tableData["ChannelData"] = CHAN.ChannelData
+            self.RunInfo.tableData["ChannelCompartments"] = CHAN.ChannelCompartments
+
             channels = f"{name_parts[0]:s}_{nach:s}_channels"
             compartments = f"{name_parts[0]:s}_{nach:s}_channels_compartments"
             # print("table name: ", table_name)

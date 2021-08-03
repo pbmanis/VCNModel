@@ -228,6 +228,8 @@ def defemptydict():
 def defemptylist():
     return []
 
+def defdatadict():
+    return {'ChannelCompartments': "", 'ChannelData': ""}
 
 @dataclass
 class RunInfo:
@@ -248,6 +250,7 @@ class RunInfo:
         object, str, None
     ] = None  # dendriticElectrodeSection,
     dendriticSectionDistance: float = 100.0  # microns.
+    tableData: dict = field(default_factory=defdatadict)  # the table data itself, which might change between runs...
 
     nReps: int = 1
     seeds: list = field(default_factory=defemptylist)
