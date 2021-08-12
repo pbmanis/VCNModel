@@ -620,29 +620,29 @@ class TableManager:
                 for i in range(len(indxs))
             ],
             dtype=[
-                ("type", object),
-                ("date", object),
-                ("cell", object),
-                ("modelType", object),
-                ("modelName", object),
-                ("Protocol", object),
-                ("DendExpt", object),
-                ("DendMode", object),
-                ("AxonExpt", object),
-                ("Experiment", object),
+                ("type", object), # 0
+                ("date", object), # 1
+                ("cell", object), # 2
+                ("modelType", object), # 3
+                ("modelName", object), # 4
+                ("Protocol", object), # 5
+                ("DendExpt", object), # 6
+                ("DendMode", object), # 7
+                ("AxonExpt", object), # 8
+                ("Experiment", object), # 9
                 # ("inputtype", object),
                 # ("modetype", object),
                 # ("scaling", object),
                 # ("Freq", object),
-                ('SRType', object),
-                ("Depr", object),
-                ("dBspl", object),
-                ("nReps", object),
-                ("pipDur", object),
-                ("soundType", object),
-                ("fmod", object),
-                ("# Files", object),
-                ("DataTable", object),
+                ('SRType', object), # 10
+                ("Depr", object), # 11
+                ("dBspl", object), # 12
+                ("nReps", object), # 13
+                ("pipDur", object), # 14
+                ("soundType", object), # 15
+                ("fmod", object), # 16
+                ("# Files", object), # 17
+                ("DataTable", object), # 18
                 ("HocFile", object),
                 ('simulation_path', object),
                 ("Filename", object),
@@ -679,10 +679,10 @@ class TableManager:
         
     def filter_table(self, filters, QtCore):
             
-            coldict = {'modelName': 4, 'Protocol': 5, 'dendMode': 6, 
-                        'dendExpt':7, 'Experiment': 8, 'SRType': 9,
-                        'Depr':10,'dBspl': 11, 'nReps': 12,
-                         "pipDur": 13, "soundType": 14, "fmod": 15, "DataTable": 17,}
+            coldict = {'modelName': 4, 'Protocol': 5, 'dendMode': 7, 
+                        'dendExpt':6, 'Experiment': 9, 'SRType': 10,
+                        'Depr':11,'dBspl': 12, 'nReps': 13,
+                         "pipDur": 14, "soundType": 15, "fmod": 16, "DataTable": 18,}
             filtered_table = self.data.copy()
             matchsets = dict([(x, set()) for x in filters.keys() if x != 'Use Filter'])
             for k, d in enumerate(self.data):
