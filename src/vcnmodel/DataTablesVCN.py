@@ -324,7 +324,7 @@ class DataTables:
         self.movie_state = False
         self.frame_intervals = [0.033, 0.05, 0.1, 0.2, 0.3, 0.5, 1.0, 2.0]
         self.frame_interval = self.frame_intervals[3]
-        self.target_figure = "IV Figure"
+        self.target_figure = "Fig M0: VC-KLTCalibration (Fig_M0_VC_Adjustment)"
         
         # We use pyqtgraph's ParameterTree to set up the menus/buttons.
         # This defines the layout.
@@ -542,15 +542,28 @@ class DataTables:
                 "type": "group",
                 "children": [
                     {"name": "Figures", "type": "list", 
-                    "values": ["IV Figure", "All IVs", "IV Supplement", "Zin Supplement",
-                               "Efficacy", "Efficacy Supplement",
-                               "Revcorr Ex", "All Revcorr", 
-                               "Revcorr Supplement Spont", "Revcorr Supplement 40dB",
-                               "Revcorr Compare", 
-                               "PSTH-FSL", "All PSTHs", "PSTH-FSL Supplement",
-                               "VS-SAM Tone", "VC-KLTCalibration",
-                               "CombinedVCIV", "CombinedEffRevCorr"],
-                    "value": "IV Figure",
+                    "values":  ["Fig M0: VC-KLTCalibration (Fig_M0_VC_Adjustment)",
+                                "Fig M0 Supp: CombinedVCIV (Figure_M0-Combined_Supplemental)",
+                                "Fig M1: IV Figure (Fig_M1)",
+                                "Fig M1A Supp: IV Supplement (Fig_M1A_Supplemental)",
+                                "Fig M1B Supp: Zin Supplement (Fig_M1B_Supplemental_Zin)",
+                                "Fig_IV/ All IVs (Fig_IV/IV_cell_VCN_c##)",
+                                "Fig M2: CombinedEffRevCorr (Fig_M2)",
+                                "Fig M2B: Efficacy (Fig_M2_Efficacy_Revcorr)",
+                                "Fig M2 Supp: Efficacy Supplement (Fig_M2_Supplemental_[experiment])",
+                                "Fig M3: Revcorr Ex (Fig_M3_spont|dBSPL)",
+                                "Fig M3 Supp1: Revcorr Supplement Spont (Fig_M3_supplemental_Full_Spont)",
+                                "Fig M3 Supp2: Revcorr Supplement (Fig_M3_supplemental_Full_40dB)",
+                                "Fig M3 Supp3: Revcorr Supplement (Fig_M3_supplemental_Full_30dB)",
+                                "Fig_Revcorr/ All Revcorrs (Revcorr_VCN_c##)", 
+                                "Fig M4: Revcorr Compare (Fig_M4_Revcorr_Compare)", 
+                                "Fig M5: PSTH-FSL (Fig_M5)",
+                                "Fig M5 Supp: PSTH-FSL Supplement (Fig_M5_supplemental_Full_dBSPL)",
+                                "Fig M5 Suppl1: All PSTHs (All_PSTH/PSTH_VCN_c##)",
+                                "VS-SAM Tone (no figure file - analysis only)",
+
+                               ],
+                    "value": "Fig M0: VC-KLTCalibration (Fig_M0_VC_Adjustment)",
                 },
                     {"name": "Create Figure", "type": "action"},
                 ],

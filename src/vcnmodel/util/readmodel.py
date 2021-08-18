@@ -84,9 +84,9 @@ class ReadModel():
         with open(filename, 'rb') as fh:
             df = FPM.pickle_load(fh)
         if filemode in ['vcnmodel.v0']:
-            print('rpfile v0: ', len(df['Results']))
+            print(f"Reading model file in version v0:, with {len(df['Results']):4d} trials")
         elif filemode in ['vcnmodel.v1']:
-            print('rpfile v1: ', len(df['Results']))
+            print(f"Reading model file in version v1:, with {len(df['Results']):4d} trials")
         else:
             raise ValueError(f'Unknown file mode: {filemode:s}')
         # print('\nrpfile v0:  File keys: ', df.keys())
@@ -136,7 +136,7 @@ class ReadModel():
             dur = dinfo.stimDur
             delay = dinfo.stimDelay
             mode = dinfo.postMode
-            print(df.keys())
+            print("Keys found in file: ", df.keys())
             print('Mode: ', mode)
             try:
                 self.rate = df['Params'].dt  # old version, now separated IC and VC
