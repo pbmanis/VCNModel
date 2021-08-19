@@ -15,7 +15,7 @@ import toml
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.plotting import styler as ST
 from pylibrary.tools import utility as PU
-from vcnmodel import cell_config as cell_config
+from src.vcnmodel import cell_config as cell_config
 
 import src.vcnmodel.VS_data as VS_data
 config = toml.load(open("wheres_my_data.toml", "r"))
@@ -58,7 +58,7 @@ def vs_an_freq(df):
 
 def plot_summary(dataframe, measure, P, axname, hue='Cell', legend=False):
     if measure == 'phasesdtime':
-        df['phasesdtime'] = 1e3*(df['phasesd']/np.pi)/df['frequency']
+        dataframe['phasesdtime'] = 1e3*(dataframe['phasesd']/np.pi)/dataframe['frequency']
 
     sns.boxplot(
         x="Configuration",
@@ -74,10 +74,10 @@ def plot_summary(dataframe, measure, P, axname, hue='Cell', legend=False):
         clip_on=False)
  
     if measure == 'phase':
-        scp.set_ylim(0.0, 2.0)
+        scp.set_ylim(0.0, 2.0*np.pi)
         scp.set_ylabel('Phase (radians)')
     else:
-        scp.set_ylim(0.0, 1.0)
+        scp.set_ylim(0.0, 2.0)
     if legend:
         scp.legend(
         loc="upper right", bbox_to_anchor=(1.0, 1.0), ncol=2, 
@@ -252,7 +252,7 @@ def summary_plots():
     scp2.legend().remove()
     return P2
 
-#P = individual_plots()
+# P = individual_plots()
 P = summary_plots()
 # save_file = f"Fig_M6_VS_SAM_Supplmental.pdf"
 # P.figure_handle.text(
