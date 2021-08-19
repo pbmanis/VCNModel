@@ -5,7 +5,7 @@ REMOTEDIR="pbmanis@lytle.med.unc.edu:"
 FLAGS="-RDa0P -r -v" #" --dry-run"
 EXC="--exclude=Z*"
 # RS1="--files-from=<(ssh pbmanis@lytle.med.unc.edu find /Users/pbmanis/Desktop/Python/VCN-SBEM-DATA/VCN_Cells/ -mtime -1 -print0)"
-SIM="IV"
+SIM="VC" # "IV"
 #
 # The goal here is to only check the relevant directories,
 # and only for data from the last day
@@ -16,12 +16,14 @@ touch files.txt
 
 for cell in $CELLS
 do
-	echo "getting remote file list: " $cell $FLAGS
+	echo "getting remote file list: " VCN_c$cell $FLAGS
 	# RCMD=${RS1}VCN_c$cell/Simulations/$SIM
 	# echo $RCMD
-	ssh $REMOTESYSTEM "cd /Users/pbmanis/Desktop/Python/VCN-SBEM-Data; find -f VCN_Cells/VCN_c$cell/Simulations/$SIM/* -mtime -2 -print0" > files.txt
+	ssh $REMOTESYSTEM "cd /Users/pbmanis/Desktop/Python/VCN-SBEM-Data; find -f VCN_Cells/VCN_c$cell/Simulations/$SIM/* -mtime -400 -print0" > files.txt
+#	ssh $REMOTESYSTEM "cd /Users/pbmanis/Desktop/Python/VCN-SBEM-Data; find -f VCN_Cells/VCN_c$cell/Morphology/* -mtime -800 -print0" > files.txt
 	rsync $FLAGS  --files-from=files.txt $REMOTESYSTEM:$DIR .
 done
+
 # less files_VCN_c02.txt
 # # exit
 # # # wait
