@@ -132,13 +132,14 @@ class PlotZ:
             panel_labels=["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"],
             labelposition=(-0.05, 1.05),
         )
-
+        axonly_scale = 5500.
+        rho_scale=150.
         # style.style_apply()
         for i, cond in enumerate(["Full", "NoDend", "AxonOnly"]):
             f = []
             for fin in self.fi:
                 f.append(self.checkfi(fin, cellmode=cond, decorate="normal"))
-            self.plot_col(col=i, f=f, P=P)
+            self.plot_col(col=i, f=f, P=P, axonly_scale=axonly_scale)
         for i, fin in enumerate(self.fi):
             with open(
                 Path(
@@ -161,7 +162,7 @@ class PlotZ:
             P.axarr[0, 3].plot(d1['f'], rho_axon, marker=self.syms[i], markersize=3, label=f"VCN_{fin:02d}")
             P.axarr[0, 3].set_xlabel("Frequency (Hz)")
             P.axarr[0, 3].set_ylabel(r"$\rho_{axon}$")
-            P.axarr[0, 3].set_ylim((0, 80))
+            P.axarr[0, 3].set_ylim((0, rho_scale))
             
 
         save_file = "Fig_M1B_Supplemental_Zin.pdf"
@@ -183,7 +184,7 @@ class PlotZ:
         )
         mpl.show()
 
-    def plot_col(self, col, f, P):
+    def plot_col(self, col, f, P, axonly_scale=3000.):
         ax = P.axarr
         for i, a in enumerate(ax.ravel()):
             if i < 6:
@@ -213,7 +214,7 @@ class PlotZ:
                 ax[0, col].set_title("No Dendrite", {"y": 1.15, "fontweight": "bold"})
             if col == 2:
                 ax[0, col].set_title("Axon Only", {"y": 1.15, "fontweight": "bold"})
-                ax[0, col].set_ylim(0, 3500.)
+                ax[0, col].set_ylim(0, axonly_scale)
             ax[1, col].plot(
                 d["f"],
                 d["phase"],
@@ -235,8 +236,8 @@ class PlotZ:
                 ax[2, col].set_ylim(-10.0, 60.0)
                 ax[2, col].set_xlim(5, 100)
             else:
-                ax[2, col].set_ylim(-1000.0, 3000.0)
-                ax[2, col].set_xlim(-1000.0, 3000.)
+                ax[2, col].set_ylim(-1000.0, axonly_scale)
+                ax[2, col].set_xlim(-1000.0, axonly_scale)
             
             ax[2, col].set_ylabel(r"-Im(Z) (M$\Omega$)")
             ax[2, col].set_xlabel(r"Re(Z) (M$\Omega$)")

@@ -214,10 +214,10 @@ class Figures(object):
     def plotIV(self, cell=None, parent_figure=None, loc: Union[None, tuple] = None):
         if cell is None:
             cellN = FD.figure_IV["Cell"]
-            d1 = FD.figure_IV["pasdend"]
+            d1 = FD.figure_IV["normal"]
         else:
             cellN = cell
-            d1 = FD.figure_AllIVs[cellN]["pasdend"]
+            d1 = FD.figure_AllIVs[cellN]["normal"]
         cellpath = Path(
             self.config["cellDataDirectory"], f"VCN_c{cellN:02d}", "Simulations", "IV"
         )
@@ -511,10 +511,10 @@ class Figures(object):
 
         fig = FigInfo()
         fig.P = self.P
-        if cellN == None:
+        if cell is None:
             fig.filename = "Fig_M1.pdf"
         else:
-            fig.filename = f"Fig_IV/IV_cell_VCN_c{cellN:02d}.png"
+            fig.filename = f"Fig_IV/IV_cell_VCN_c{cellN:02d}.pdf"
         fig.title["title"] = "SBEM Project Figure 1 Modeling (Main)"
         # self.save_figure(self.P, save_file, title)
         return fig
