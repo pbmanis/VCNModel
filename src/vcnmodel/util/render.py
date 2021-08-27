@@ -1,135 +1,244 @@
-#!/usr/bin/python
-
-from __future__ import print_function
-__author__ = 'pbmanis'
-
-import sys
+__author__ = "pbmanis"
 import importlib
 import os
+import sys
+import typing
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Union
+
 import pyqtgraph as pg
 from cnmodel import cells
 from cnmodel.decorator import Decorator
 from neuronvis.hoc_viewer import HocViewer
 from pylibrary.tools import cprint as CP
 
+"""
+States sets up the display orientation for each cell 
+for an initial view 
+These values can be obtained by running
+render celln Full vispy
+when you rotate or move the cell, the new dict of the position
+state will be printed. Just copy it into this dict to save it.
+"""
 
-class Render():
-    def __init__(self, hf):
+states = {
+    2: {
+        "scale_factor": 148.5,
+        "center": (-25.0, -9.38, -25.2),
+        "fov": 45.0,
+        "elevation": 13.0,
+        "azimuth": -121.5,
+        "roll": 0.0,
+    },
+    5: {
+        "scale_factor": 86.58,
+        "center": (41.95, 6.67, -26.02),
+        "fov": 45.0,
+        "elevation": -26.0,
+        "azimuth": -123.5,
+        "roll": 0.0,
+    },
+    6: {
+        "scale_factor": 138.12,
+        "center": (20.57, -7.60, -29.2),
+        "fov": 45.0,
+        "elevation": 73.0,
+        "azimuth": -136.0,
+        "roll": 0.0,
+    },
+    9: {
+        "scale_factor": 131.56,
+        "center": (39.42, -35.72, -30.19),
+        "fov": 45.0,
+        "elevation": 85.5,
+        "azimuth": -119.75,
+        "roll": 0.0,
+    },
+    10: {
+        "scale_factor": 143.71,
+        "center": (10.88, 24.80, 0.116),
+        "fov": 45.0,
+        "elevation": -20.6,
+        "azimuth": 20.37,
+        "roll": 0.0,
+    },
+    11: {
+        "scale_factor": 128.18,
+        "center": (-15.98, -0.060, -1.66),
+        "fov": 45.0,
+        "elevation": 22.0,
+        "azimuth": -59.5,
+        "roll": 0.0,
+    },
+    13: {
+        "scale_factor": 136.16,
+        "center": (59.741, 1.099, -20.94),
+        "fov": 45.0,
+        "elevation": -7.5,
+        "azimuth": -105.5,
+        "roll": 0.0,
+    },
+    17: {
+        "scale_factor": 126.57,
+        "center": (-15.88, -9.56, -2.81),
+        "fov": 45.0,
+        "elevation": -30.0,
+        "azimuth": -45.0,
+        "roll": 0.0,
+    },
+    18: {
+        "scale_factor": 116.72,
+        "center": (-27.21, 17.54, -1.56),
+        "fov": 45.0,
+        "elevation": 40.5,
+        "azimuth": -20.0,
+        "roll": 0.0,
+    },
+    30: {
+        "scale_factor": 201.58,
+        "center": (16.90, -17.64, -33.48),
+        "fov": 45.0,
+        "elevation": 70.0,
+        "azimuth": -128.0,
+        "roll": 0.0,
+    },
+}
+
+
+class Render:
+    def __init__(self, cell_number:int, hf:object):
+        self.cell_number = int(cell_number)
         self.hf = hf
-        self.section_colors={'axon': 'red', 'hillock': 'r', 'initialsegment': 'orange',
-             'unmyelinatedaxon': 'cyan', 'myelinatedaxon': 'white', 'dendrite': 'green',
-             'soma': 'blue',
-             'Axon_Hillock': 'red', 'Axon_Initial_Segment': 'lilac', 'Myelinated_Axon': 'darkgreen',
-             "Unmyelinated_Axon": 'brown',
-             'Proximal_Dendrite': 'purple', 'Dendritic_Hub': 'green', 'Dendritic_Swelling': 'magenta',
-             'Distal_Dendrite': 'powder blue',
+        self.section_colors = {
+            "axon": "spring green",
+            "hillock": "red",
+            "initialsegment": "lilac",
+            "unmyelinatedaxon": "lilac",
+            "myelinatedaxon": "spring green",
+            "dendrite": "green",
+            "soma": "black",
+            "Axon_Hillock": "red",
+            "Axon_Initial_Segment": "lilac",
+            "Myelinated_Axon": "spring green",
+            "Unmyelinated_Axon": "lilac",
+            "Proximal_Dendrite": "cyan",
+            "Dendritic_Hub": "royal blue",
+            "Dendritic_Swelling": "gold",
+            "Distal_Dendrite": "sky blue",
             # terminals (calyx of Held):
-             'heminode': 'green', 'stalk':'yellow', 'branch': 'blue', 'neck': 'brown',
-            'swelling': 'magenta', 'tip': 'powderblue', 'parentaxon': 'orange', 'synapse': 'k'}
+            "heminode": "green",
+            "stalk": "yellow",
+            "branch": "blue",
+            "neck": "brown",
+            "swelling": "magenta",
+            "tip": "powderblue",
+            "parentaxon": "orange",
+            "synapse": "k",
+        }
 
-    def get_hoc_file(self, infile):
+    def get_hoc_file(self)->None:
         if self.hf.file_loaded is False:
             exit()
-        if not HAVE_PG:
-            return()
         self.section_list = self.hf.get_section_prefixes()
         self.hf.sec_groups.keys()
-        # if len(self.hf.sec_groups) > 5: # multiple names, so assign colors to structure type
-        #     self.section_colors = {}
-        #     for i, s in enumerate(self.hf.sec_groups.keys()):
-        #         self.section_colors[s] = self.hg.get_color_map(i)
-        # else: # single section name, assign colors to SectionList types:
-        #     self.section_colors={'axon': 'r', 'hillock': 'r', 'initialsegment': 'orange',
-        #      'unmyelinatedaxon': 'yellow', 'myelinatedaxon': 'white', 'dendrite': 'white',
-        #     'heminode': 'g', 'stalk':'y', 'branch': 'b', 'neck': 'brown',
-        #     'swelling': 'magenta', 'tip': 'powderblue', 'parentaxon': 'orange', 'synapse': 'k'}
 
         (v, e) = self.hf.get_geometry()
         self.clist = []
 
-        for si in self.hf.sections: # self.section_list[s]:
-            self.hf.h('access %s' % si)
+        for si in self.hf.sections:
+            self.hf.h("access %s" % si)
             sr = self.hf.h.SectionRef()
             n1 = self.hf.h.cas().name()
             if sr.has_parent() == 1:
-                x=sr.parent
+                x = sr.parent
                 n2 = x.name()
                 self.clist.append([n1, n2])
             else:
                 self.clist.append([n1, None])
 
-    def render(self, rendertype='cylinder', mech=None, colormap='viridis', backgroundcolor='w'): #'magma'):
-        renderer = HocViewer(self.hf.hr.h)
-        renderer.setBackcolor(backgroundcolor)
-        if rendertype in ['line', 'graph']:
-            g = renderer.draw_graph()
+    def render(
+        self, rendertype:str="cylinder", mechanism:Union[list, None]=None,
+            colormap:Union[str, dict]="viridis",
+            backgroundcolor:Union[str, list]="k",
+            )-> (object, object):
+        viewer = HocViewer(self.hf.hr.h, renderer=rendertype)
+        if rendertype not in ["mpl", "vispy"]:
+            viewer.setBackcolor(backgroundcolor)
+        if rendertype in ["line", "graph"]:
+            g = viewer.draw_graph()
             g.set_group_colors(self.section_colors, mechanism=mech, colormap=colormap)
-        elif rendertype == 'surface':
-            g = renderer.draw_surface()
+        elif rendertype == "surface":
+            g = viewer.draw_surface()
             g.set_group_colors(self.section_colors, mechanism=mech, colormap=colormap)
-        elif rendertype == 'cylinder':
-            g = renderer.draw_cylinders()
-            g.set_group_colors(self.section_colors,  mechanism=mech, colormap=colormap)
-        elif rendertype == 'volume':
-#            volume = render.draw_volume(resolution = 1.0, max_size=1e9)
-            g = renderer.draw_volume()
-            g.set_group_colors(self.section_colors, mechanism=mech, alpha=1, colormap=colormap)
-        elif rendertype == 'mpl':
-            g = renderer.draw_mpl()
-        elif rendertype == 'vispy':
-            g = renderer.draw_vispy()
+        elif rendertype == "cylinder":
+            g = viewer.draw_cylinders()
+            g.set_group_colors(self.section_colors, mechanism=mech, colormap=colormap)
+        elif rendertype == "volume":
+            #            volume = render.draw_volume(resolution = 1.0, max_size=1e9)
+            g = viewer.draw_volume()
+            g.set_group_colors(
+                self.section_colors, mechanism=mech, alpha=1, colormap=colormap
+            )
+        elif rendertype == "mpl":
+            g = viewer.draw_mpl()
+        elif rendertype == "vispy":
+            g = viewer.draw_vispy(
+                mechanism=mechanism,
+                color=self.section_colors,
+                state=states[self.cell_number],
+            )
 
         else:
-            print('rendertype: ', rendertype)
-            raise ValueError('Render type %s not known: ' % rendertype)
-        return g, renderer 
+            raise ValueError("Render type %s not known: " % rendertype)
+        return g, viewer
 
 
-    # post_cell = set_table_and_celle(
-    #      morphology=str(filename),
-    #      decorator=Decorator,
-    #      species='mouse',
-    #      modelName='XM13',
-    #      modelType="II",
-    #      nach="nacncoop")
-         
 def set_table_and_cells(
-                       filename:str,
-                       dataTable:str,
-                       morphology:str,
-                       decorator:object,
-                       species:str,
-                       modelName:str,
-                       modelType:str,
-                       nach:str,
-                       dendriteMode:str) -> object:
+    filename: str,
+    dataTable: str,
+    morphology: str,
+    decorator: object,
+    species: str,
+    modelName: str,
+    modelType: str,
+    nach: str,
+    dendriteMode: str,
+) -> object:
     from cnmodel import data
-    dmodes = {"normal": "", "passive": "_pasdend", "active": "_actdend", "allpassive": "_allpassive"}
+
+    dmodes = {
+        "normal": "",
+        "passive": "_pasdend",
+        "active": "_actdend",
+        "allpassive": "_allpassive",
+    }
     changes = None
     nach = None  # uses default
-    if dataTable is "":
-        table_name = f"src.vcnmodel.model_data.data_{modelName:s}{dmodes[dendriteMode]:s}"
+    if dataTable == "":
+        table_name = (
+            f"src.vcnmodel.model_data.data_{modelName:s}{dmodes[dendriteMode]:s}"
+        )
     else:
         table_name = f"src.vcnmodel.model_data.{dataTable:s}"
-        CP.cprint('r', f"**** USING SPECIFIED DATA TABLE: {str(table_name):s}")
+        CP.cprint("r", f"**** USING SPECIFIED DATA TABLE: {str(table_name):s}")
         knownmodes = ["normal", "actdend", "pasdend"]
         dendriteMode = "normal"
         for mode in knownmodes:
             if table_name.find(mode) > 0:
                 dendriteMode = mode
 
-        CP.cprint('c', f"Dendrite mode: {dendriteMode:s}")
-    name_parts = modelName.split('_')
+        CP.cprint("c", f"Dendrite mode: {dendriteMode:s}")
+    name_parts = modelName.split("_")
     if len(name_parts) > 1:
         nach = name_parts[1]
     else:
-        nach = 'nav11'
+        nach = "nav11"
     CHAN = importlib.import_module(table_name)
     channels = f"{name_parts[0]:s}_{nach:s}_channels"
     compartments = f"{name_parts[0]:s}_{nach:s}_channels_compartments"
-    print('Channels: ', channels)
-    print('Compartments: ', compartments)
+    print("Channels: ", channels)
+    print("Compartments: ", compartments)
     changes = data.add_table_data(
         channels,
         row_key="field",
@@ -148,7 +257,9 @@ def set_table_and_cells(
     if changes is not None:
         data.report_changes(changes)
         data.report_changes(changes_c)
-    
+    else:
+        CP.cprint("g", "No changes to data tables")
+
     post_cell = cells.Bushy.create(
         morphology=str(filename),
         decorator=Decorator,
@@ -159,55 +270,51 @@ def set_table_and_cells(
     )
     return post_cell
 
-def main():
-    rendertype = 'cylinder' #'surface'
-    mechanisms = None # ['klt', 'gbar']
 
-    #mechanisms = None
+def main():
+    rendertype = "vispy"  # 'cylinder' #'surface'
+    mechanism = None  # ["klt", "gbar"]  #  None # ['klt', 'gbar']
+
+    # mechanisms = None
     fn = sys.argv[1]
-    mod = 'Full'
+    mod = "Full"
     if len(sys.argv) > 2:
-         mod = sys.argv[2]
-         hocfile = f"VCN_c{int(fn):02d}_{mod:s}.hoc"
+        mod = sys.argv[2]
+        hocfile = f"VCN_c{int(fn):02d}_{mod:s}.hoc"
     else:
         hocfile = f"VCN_c{int(fn):02d}_Full.hoc"
     # if mod == 'Full':
     cell_dir = f"VCN_c{int(fn):02d}"
-    filename = Path('../VCN-SBEM-Data', 'VCN_Cells', cell_dir,
-         'Morphology', hocfile)
+    filename = Path("../VCN-SBEM-Data", "VCN_Cells", cell_dir, "Morphology", hocfile)
     post_cell = set_table_and_cells(
-         filename=filename,
-         dataTable='data_XM13A_nacncoop_normal',
-         morphology=str(filename),
-         decorator=Decorator,
-         species='mouse',
-         modelName='XM13A_nacncoop',
-         modelType="II",
-         nach="nacncoop",
-         dendriteMode="normal")
-    #post_cell.distances()
+        filename=filename,
+        dataTable="data_XM13A_nacncoop_normal",
+        morphology=str(filename),
+        decorator=Decorator,
+        species="mouse",
+        modelName="XM13A_nacncoop",
+        modelType="II",
+        nach="nacncoop",
+        dendriteMode="normal",
+    )
+    # post_cell.distances()
     if len(sys.argv) > 3:
         rendertype = sys.argv[3]
-    R = Render(post_cell)
+    R = Render(int(fn), post_cell)
     backgroundcolor = (32, 32, 32, 128)  # 'blue'
-    if rendertype in ['volume', 'line', 'graph']:
+    if rendertype in ["volume", "line", "graph"]:
         backgroundcolor = (125, 125, 125, 255)
     print(backgroundcolor, rendertype)
-    g, renderer = R.render(rendertype=rendertype, mech=mechanisms, backgroundcolor=backgroundcolor)
+    g, renderer = R.render(
+        rendertype=rendertype, mechanism=mechanism, backgroundcolor=backgroundcolor
+    )
 
-    if rendertype == 'mpl':
+    if rendertype in ["mpl", "mayavi", "vispy"]:
         return None
     else:
         if not sys.flags.interactive:
             pg.Qt.QtGui.QApplication.exec_()
 
-if __name__ == '__main__':
-    
-    g = main()
-#    pg.mkQApp()
 
-    if not sys.flags.interactive:
-        pg.Qt.QtGui.QApplication.exec_()
-    
-    
-    
+if __name__ == "__main__":
+    g = main()
