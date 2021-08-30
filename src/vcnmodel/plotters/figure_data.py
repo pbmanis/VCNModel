@@ -132,47 +132,91 @@ figure_revcorr_example = {
     }
 }
 
+# figure_revcorr = {
+#     2: {
+#         "Spont": "runANPSTH-all-2020-11-24.06-59-18",
+#         "40dB": "runANPSTH-all-2020-11-24.11-13-17",
+#     },
+#     5: {
+#         "Spont": "runANPSTH-all-2020-11-24.07-15-41",
+#         "40dB": "runANPSTH-all-2020-11-24.11-19-05",
+#     },
+#     6: {
+#         "Spont": "runANPSTH-all-2020-11-24.07-38-28",
+#         "40dB": "runANPSTH-all-2020-11-24.11-27-20",
+#     },
+#     9: {
+#         "Spont": "runANPSTH-all-2020-11-24.07-55-04",
+#         "40dB": "runANPSTH-all-2020-11-24.11-33-12",
+#     },
+#     10: {
+#         "Spont": "runANPSTH-all-2020-11-24.08-15-28",
+#         "40dB": "runANPSTH-all-2020-11-24.11-40-19",
+#     },
+#     11: {
+#         "Spont": "runANPSTH-all-2020-11-24.08-39-48",
+#         "40dB": "runANPSTH-all-2020-11-24.11-47-36",
+#     },
+#     13: {
+#         "Spont": "runANPSTH-all-2020-11-24.08-55-43",
+#         "40dB": "runANPSTH-all-2020-11-24.11-52-44",
+#     },
+#     17: {
+#         "Spont": "runANPSTH-all-2020-11-24.09-12-49",
+#         "40dB": "runANPSTH-all-2020-11-24.11-58-11",
+#         "50dB": "runANPSTH-all-2020-08-20.14-54-39",
+#     },
+#     18: {
+#         "Spont": "runANPSTH-all-2020-11-24.09-37-01",
+#         "40dB": "runANPSTH-all-2020-11-24.12-05-53",
+#     },
+#     30: {
+#         "Spont": "runANPSTH-all-2020-11-24.09-51-06",
+#         "40dB": "runANPSTH-all-2020-11-24.12-10-28",
+#     },
+# }
+
 figure_revcorr = {
     2: {
-        "Spont": "runANPSTH-all-2020-11-24.06-59-18",
-        "40dB": "runANPSTH-all-2020-11-24.11-13-17",
+        "Spont": "runANPSTH-all-2021-08-05.21-36-21",
+        "30dB": "runANPSTH-all-2021-08-03.12-48-09",
     },
     5: {
-        "Spont": "runANPSTH-all-2020-11-24.07-15-41",
-        "40dB": "runANPSTH-all-2020-11-24.11-19-05",
+        "Spont": "runANPSTH-all-2021-08-05.21-41-33",
+        "30dB": "runANPSTH-all-2021-08-03.12-53-12",
     },
     6: {
-        "Spont": "runANPSTH-all-2020-11-24.07-38-28",
-        "40dB": "runANPSTH-all-2020-11-24.11-27-20",
+        "Spont": "runANPSTH-all-2021-08-05.21-48-33",
+        "30dB": "runANPSTH-all-2021-08-03.13-00-08",
     },
     9: {
-        "Spont": "runANPSTH-all-2020-11-24.07-55-04",
-        "40dB": "runANPSTH-all-2020-11-24.11-33-12",
+        "Spont": "runANPSTH-all-2021-08-05.21-53-41",
+        "30dB": "runANPSTH-all-2021-08-03.13-05-00",
     },
     10: {
-        "Spont": "runANPSTH-all-2020-11-24.08-15-28",
-        "40dB": "runANPSTH-all-2020-11-24.11-40-19",
+        "Spont": "runANPSTH-all-2021-08-05.21-59-59",
+        "30dB": "runANPSTH-all-2021-08-03.13-10-54",
     },
     11: {
-        "Spont": "runANPSTH-all-2020-11-24.08-39-48",
-        "40dB": "runANPSTH-all-2020-11-24.11-47-36",
+        "Spont": "runANPSTH-all-2021-08-05.22-07-14",
+        "30dB": "runANPSTH-all-2021-08-03.13-17-50",
     },
     13: {
-        "Spont": "runANPSTH-all-2020-11-24.08-55-43",
-        "40dB": "runANPSTH-all-2020-11-24.11-52-44",
+        "Spont": "runANPSTH-all-2021-08-05.22-12-15",
+        "30dB": "runANPSTH-all-2021-08-03.13-22-54",
     },
     17: {
-        "Spont": "runANPSTH-all-2020-11-24.09-12-49",
-        "40dB": "runANPSTH-all-2020-11-24.11-58-11",
-        "50dB": "runANPSTH-all-2020-08-20.14-54-39",
+        "Spont": "runANPSTH-all-2021-08-05.22-17-36",
+        "30dB": "runANPSTH-all-2021-08-03.13-28-16",
+        # "50dB": "runANPSTH-all-2020-08-20.14-54-39",
     },
     18: {
-        "Spont": "runANPSTH-all-2020-11-24.09-37-01",
-        "40dB": "runANPSTH-all-2020-11-24.12-05-53",
+        "Spont": "runANPSTH-all-2021-08-05.22-25-16",
+        "30dB": "runANPSTH-all-2021-08-03.13-35-32",
     },
     30: {
-        "Spont": "runANPSTH-all-2020-11-24.09-51-06",
-        "40dB": "runANPSTH-all-2020-11-24.12-10-28",
+        "Spont": "runANPSTH-all-2021-08-05.22-31-41",
+        "30dB": "runANPSTH-all-2021-08-03.13-41-59",
     },
 }
 
@@ -185,17 +229,50 @@ figure_VClamp = {
     ],
 }
 
+# figure_psth = {
+#     2: {"40dB": "runANPSTH-all-2020-11-24.15-39-05",},
+#     5: {"40dB": "runANPSTH-all-2020-11-24.15-46-45",},
+#     6: {"40dB": "runANPSTH-all-2020-11-24.15-57-32",},
+#     9: {"40dB": "runANPSTH-all-2020-11-24.16-05-10",},
+#     10: {"40dB": "runANPSTH-all-2020-11-24.16-14-34",},
+#     11: {"40dB": "runANPSTH-all-2020-11-24.16-25-29",},
+#     13: {"40dB": "runANPSTH-all-2020-11-24.16-32-59",},
+#     17: {"40dB": "runANPSTH-all-2020-11-24.16-40-56",},
+#     18: {"40dB": "runANPSTH-all-2020-11-24.16-51-50",},
+#     30: {"40dB": "runANPSTH-all-2020-11-24.16-58-24",},
+# }
 figure_psth = {
-    2: {"40dB": "runANPSTH-all-2020-11-24.15-39-05",},
-    5: {"40dB": "runANPSTH-all-2020-11-24.15-46-45",},
-    6: {"40dB": "runANPSTH-all-2020-11-24.15-57-32",},
-    9: {"40dB": "runANPSTH-all-2020-11-24.16-05-10",},
-    10: {"40dB": "runANPSTH-all-2020-11-24.16-14-34",},
-    11: {"40dB": "runANPSTH-all-2020-11-24.16-25-29",},
-    13: {"40dB": "runANPSTH-all-2020-11-24.16-32-59",},
-    17: {"40dB": "runANPSTH-all-2020-11-24.16-40-56",},
-    18: {"40dB": "runANPSTH-all-2020-11-24.16-51-50",},
-    30: {"40dB": "runANPSTH-all-2020-11-24.16-58-24",},
+    2: {
+        "30dB": "runANPSTH-all-2021-08-07.10-59-50",
+    },
+    5: {
+        "30dB": "runANPSTH-all-2021-08-07.11-05-56",
+    },
+    6: {
+        "30dB": "runANPSTH-all-2021-08-07.11-14-07",
+    },
+    9: {
+        "30dB": "runANPSTH-all-2021-08-07.11-20-03",
+    },
+    10: {
+        "30dB": "runANPSTH-all-2021-08-07.11-27-22",
+    },
+    11: {
+        "30dB": "runANPSTH-all-2021-08-07.11-35-47",
+    },
+    13: {
+        "30dB": "runANPSTH-all-2021-08-07.11-41-38",
+    },
+    17: {
+        "30dB": "runANPSTH-all-2021-08-07.11-47-48",
+    },
+    18: {
+        "30dB": "runANPSTH-all-2021-08-07.11-56-23",
+    },
+    30: {
+        "30dB": "runANPSTH-all-2021-08-07.12-03-55",
+    },
+    
 }
 
 all_figures = [

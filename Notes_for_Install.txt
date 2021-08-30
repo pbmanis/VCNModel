@@ -1,0 +1,11 @@
+Notes on installation 8/10/2021
+
+1. Neuronvis needs to be on branch Python3
+2. Montager name -> Montage. Need to fix or remove the montager - as is not used.
+3. Data table .xls in VCN-SBEM-Data/MorphologyData/VCN. needs to be mapped into place
+4. .matplotlib/figures.mplstyle - can we remove this? 
+
+
+
+Julia:
+arch -arm64 brew install cmake (required to build hdf5)

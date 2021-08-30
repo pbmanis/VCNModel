@@ -1159,7 +1159,7 @@ class PlotSims:
             sizer[panel_letter+"3"] = {"pos": [xl, cwid, 0.4+bmar, 1.35], "labelpos": (-0.15, 1.05)}
 
         P = PH.arbitrary_grid(
-            sizer, units="in", order="columnsfirst", label=True, showgrid=True, figsize=figsize,
+            sizer, units="in", order="columnsfirst", label=True, showgrid=False, figsize=figsize,
             parent_figure=parent_figure,
         )
         P.figure_handle.show()

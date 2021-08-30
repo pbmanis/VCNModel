@@ -122,24 +122,27 @@ class Figures(object):
         print("make_figure:", figure_name)
         # dispatch
         dispatch_table = {
-            "IV Figure": self.plotIV,
-            "All IVs": self.allIVs,
-            "IV Supplement": self.plot_IVS,
-            "Zin Supplement": self.plot_ZinS,
-            "Efficacy": self.plot_efficacy,
-            "Efficacy Supplement": self.plot_efficacy_supplement,
-            "Revcorr Ex": self.plot_revcorr,
-            "All Revcorr": self.plot_all_revcorr,
-            "Revcorr Supplement Spont": self.plot_revcorr_supplement_spont,
-            "Revcorr Supplement 40dB": self.plot_revcorr_supplement_40dB,
-            "Revcorr Compare": self.plot_revcorr_compare,
-            "PSTH-FSL": self.plot_PSTH,
-            "All PSTHs": self.plot_All_PSTH,
-            "PSTH-FSL Supplement": self.plot_PSTH_supplement,
-            "VS-SAM Tone": self.plot_VS_SAM,
-            "VC-KLTCalibration": self.plot_VC_gKLT,
-            "CombinedVCIV": self.plot_combined_VC_IV,
-            "CombinedEffRevCorr": self.plot_combined_Eff_Rev,
+            "Fig M0: VC-KLTCalibration (Fig_M0_VC_Adjustment)": self.plot_VC_gKLT,
+            "Fig M0 Supp: CombinedVCIV (Figure_M0-Combined_Supplemental)": self.plot_combined_VC_IV,
+            "Fig M1: IV Figure (Fig_M1)": self.plotIV,
+            "Fig_IV/ All IVs (Fig_IV/IV_cell_VCN_c##)": self.allIVs,
+            "Fig M1A Supp: IV Supplement (Fig_M1A_Supplemental)": self.plot_IVS,
+            "Fig M1B Supp: Zin Supplement (Fig_M1B_Supplemental_Zin)": self.plot_ZinS,
+            "Fig M2: CombinedEffRevCorr (Fig_M2)": self.plot_combined_Eff_Rev,
+            "Fig M2B: Efficacy (Fig_M2_Efficacy_Revcorr)": self.plot_efficacy,
+            "Fig M2 Supp: Efficacy Supplement (Fig_M2_Supplemental_[experiment])": self.plot_efficacy_supplement,
+            "Fig M3: Revcorr Ex (Fig_M3_spont|dBSPL)": self.plot_revcorr,
+            "Fig_Revcorr/ All Revcorrs (Revcorr_VCN_c##)" : self.plot_all_revcorr,
+            "Fig M3 Supp1: Revcorr Supplement Spont (Fig_M3_supplemental_Full_Spont)": self.plot_revcorr_supplement_spont,
+            "Fig M3 Supp3: Revcorr Supplement (Fig_M3_supplemental_Full_30dB)": self.plot_revcorr_supplement_30dB,
+            "Fig M3 Supp2: Revcorr Supplement (Fig_M3_supplemental_Full_40dB)": self.plot_revcorr_supplement_40dB,
+            "Fig M4: Revcorr Compare (Fig_M4_Revcorr_Compare)": self.plot_revcorr_compare,
+            "Fig M5: PSTH-FSL (Fig_M5)": self.plot_PSTH,
+            "Fig M5 Suppl1: All PSTHs (All_PSTH/PSTH_VCN_c##)": self.plot_All_PSTH,
+            "Fig M5 Supp: PSTH-FSL Supplement (Fig_M5_supplemental_Full_dBSPL)": self.plot_PSTH_supplement,
+            "VS-SAM Tone (no figure file - analysis only)": self.plot_VS_SAM,
+
+
         }
         if figure_name in list(dispatch_table.keys()):
             fig = dispatch_table[figure_name]()
@@ -209,14 +212,12 @@ class Figures(object):
         return dendm
 
     def plotIV(self, cell=None, parent_figure=None, loc: Union[None, tuple] = None):
-        # style = STY.styler(journal="JNeurosci", figuresize='full', font='stixsans')  # two colukn...
         if cell is None:
-            print(FD.figure_IV.keys())
             cellN = FD.figure_IV["Cell"]
-            d1 = FD.figure_IV["pasdend"]
+            d1 = FD.figure_IV["normal"]
         else:
             cellN = cell
-            d1 = FD.figure_AllIVs[cellN]["pasdend"]
+            d1 = FD.figure_AllIVs[cellN]["normal"]
         cellpath = Path(
             self.config["cellDataDirectory"], f"VCN_c{cellN:02d}", "Simulations", "IV"
         )
@@ -510,10 +511,10 @@ class Figures(object):
 
         fig = FigInfo()
         fig.P = self.P
-        if cellN == None:
+        if cell is None:
             fig.filename = "Fig_M1.pdf"
         else:
-            fig.filename = f"Fig_IV/IV_cell_VCN_c{cellN:02d}.png"
+            fig.filename = f"Fig_IV/IV_cell_VCN_c{cellN:02d}.pdf"
         fig.title["title"] = "SBEM Project Figure 1 Modeling (Main)"
         # self.save_figure(self.P, save_file, title)
         return fig
@@ -525,14 +526,14 @@ class Figures(object):
             figsize=(8.0, 9.0),
             order="rowsfirst",
             units="in",
-            showgrid=True,
+            showgrid=False,
             parent_figure=None,
         )
 
         figp1 = self.plot_VC_gKLT(parent_figure=P0, loc=(0, 8, 4.0, 9.0))
         P2 = self.plotIV(parent_figure=figp1.P, loc=(0, 8, 0.0, 4.0))
         fig = FigInfo()
-        fig.P = self.P
+        fig.P = self.P2
         fig.filename = f"Figure_M0-Combined_Supplemental.pdf"
         fig.title[
             "title"
@@ -846,7 +847,7 @@ class Figures(object):
             figsize=(8.0, 8.0),
             order="rowsfirst",
             units="in",
-            showgrid=True,
+            showgrid=False,
             parent_figure=None,
         )
         EFP = EF.EfficacyPlots(parent_figure=self.P) # , cols=1, rows=1)
@@ -990,7 +991,7 @@ class Figures(object):
             PD = PData()
         else:
             print(
-                "Must run revcorr_supplement plot first, then the file we need will be present"
+                "You must run revcorr_supplement plot first, then the file we need will be present"
             )
             run_calcs = True
             cellpath = Path(
@@ -1154,6 +1155,10 @@ class Figures(object):
 
     def plot_revcorr_supplement_spont(self):
         fig = self.plot_revcorr_supplement("Spont")
+        return fig
+
+    def plot_revcorr_supplement_30dB(self):
+        fig = self.plot_revcorr_supplement("30dB")
         return fig
 
     def plot_revcorr_supplement_40dB(self):
@@ -1365,7 +1370,7 @@ class Figures(object):
         return fig
 
     def plot_revcorr_compare(self):
-        dBSPLs = ["Spont", "40dB"]
+        dBSPLs = ["Spont", "30dB"] # , "40dB"]
         P = PH.regular_grid(
             1,
             2,
@@ -1385,7 +1390,7 @@ class Figures(object):
                     R = FPM.pickle_load(fh)
                 except:
                     print(
-                        "Must run revcorr_supplement plot first, then the file we need will be present"
+                        "You must run revcorr_supplement plot first, then the file we need will be present"
                     )
                     return
 
@@ -1408,9 +1413,12 @@ class Figures(object):
                 P.axarr[0, i].legend()
             P.axarr[0, i].set_title(dBSPL)
 
-        save_file = f"Fig_M4.pdf"
-        title = "SBEM Project Figure 4 Modeling : Reverse Correlation Comparison"
-        self.save_figure(P, save_file, title=title)
+        save_file = f"Fig_M4_Revcorr_Compare.pdf"
+        fig = FigInfo()
+        fig.P = P
+        fig.filename = save_file
+        fig.title["title"] = "SBEM Project Figure 4 Modeling : Reverse Correlation Comparison"
+        return fig
 
     def plot_psth_psth(
         self,
@@ -1504,7 +1512,7 @@ class Figures(object):
 
     def plot_PSTH(self, cellN=None):
         print("PSTH")
-        dBSPL = "40dB"
+        dBSPL = "30dB"
         if cellN is None:
             cell_number = 17
         else:
@@ -1575,8 +1583,8 @@ class Figures(object):
         else:
             save_file = f"All_PSTH/PSTH_VCN_c{cell_number:02d}.png"
         title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
-        title = ("SBEM Project Figure 3 Modeling : Reverse Correlation Summary",)
-        save_file = f"Fig_M3_supplemental_Full_{dBSPL:s}.pdf"
+        title = ("SBEM Project Figure 5 Modeling : PSTH Summary",)
+        # save_file = f"Fig_M5_supplemental_Full_{dBSPL:s}.pdf"
         fig = FigInfo()
         fig.P = P
         fig.filename = save_file
@@ -1625,6 +1633,7 @@ class Figures(object):
             return
         # unpack x
         par, stitle, ivdatafile, filemode, d = x
+        axon_name = par["axonExpt"]
         protocol = "runANPSTH"
         AR, SP, RMA = self.parent.PLT.analyze_data(ivdatafile, filemode, protocol)
         ntr = len(AR.MC.traces)  # number of trials
@@ -1852,10 +1861,11 @@ class Figures(object):
                 label_x_axis=label_x_axis,
                 fsl_win=an_fsl_win,
             )
+        return axon_name
 
     def plot_PSTH_supplement(self):
         print("PSTH supplement")
-        dBSPL = "40dB"
+        dBSPL = "30dB"
         lmar = 0.125
         rmar = 0.1
         hspc = 0.08
@@ -1906,10 +1916,10 @@ class Figures(object):
             show_label = False
             if i == ncells - 1:
                 show_label = True
-            self.plot_one_PSTH(
+            axon_name = self.plot_one_PSTH(
                 cell_number=cell_number,
                 dBSPL=dBSPL,
-                psth_win=(0.15, 0.3),
+                psth_win=(0.15, 0.4),
                 tr_ax=P.axarr[i, 0],
                 st_ax=None,
                 bupsth_ax=P.axarr[i, 1],
@@ -1921,13 +1931,22 @@ class Figures(object):
             )
 
             P.axarr[i, 0].text(
-                -0.25,
+                -0.60,
                 0.5,
                 f"VCN_c{cell_number:02d}",
                 fontsize=9,
                 color="k",
                 transform=P.axarr[i, 0].transAxes,
-                horizontalalignment="right",
+                horizontalalignment="left",
+            )
+            P.axarr[i, 0].text(
+                -0.60,
+                0.3,
+                "\nAxon: "+axon_name,
+                fontsize=7,
+                color="k",
+                transform=P.axarr[i, 0].transAxes,
+                horizontalalignment="left",
             )
 
         save_file = f"Fig_M5_Supplmental_PSTHs.pdf"
@@ -1991,19 +2010,20 @@ class Figures(object):
         Generate the table in VS_data.py by analyzing the data from 
         VS_datasets.py
         """
-
+        cprint("r", "Generate VS Data")
+        
         fout = "VS_data.py"  # we will generate this automatically
         with open(fout, "w") as fh:
             fh.write(f'"""\n')
             fh.write(
                 "    Vector strength for models with SAM tones, different input configurations.\n"
             )
-            fh.write("    9 Dec 2020 version.\n")
+            fh.write("    17 Aug 2021 version.\n")
             fh.write(
                 "    Results are printout from DataTablesVCN after selecting the data runs.\n"
             )
             fh.write(
-                "NOTE: This table is automatically written by figures. py and should not be\n"
+                "NOTE: This table is automatically written by figures.py and should not be\n"
             )
             fh.write("      directly edited.")
             fh.write(f'    pbm\n"""\n')
@@ -2031,9 +2051,9 @@ class Figures(object):
         )
         sfi = []
         for i, ds in enumerate(dataset):
-            print("figures:klt:i, ds: ", i, ds)
+            # print("figures:klt:i, ds: ", i, ds)
             sfd = Path(cellpath, Path(ds).name)
-            print(sfd)
+            # print(sfd)
             if not sfd.is_dir():
                 print("Directory not found: ", str(sfd))
                 return
@@ -2045,10 +2065,11 @@ class Figures(object):
         save_file = f"Fig_M0_VC_Adjustment.pdf"
         fig = FigInfo()
         fig.P = P
+        
         if cell_number == None:
-            fig.filename = "Fig_M1.pdf"
+            fig.filename = "Fig_M0.pdf"
         else:
             fig.filename = save_file
-        fig.title = "SBEM Project Figure Modeling Supplemental : VC"
+        fig.title['title'] = "SBEM Project Figure Modeling Supplemental : VC"
         fig.title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.05}
         return fig
