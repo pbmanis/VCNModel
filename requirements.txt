@@ -82,6 +82,7 @@ mahotas
 #-e git+https://github.com/pbmanis/pylibrary.git@f16bcbe490e8a11d99792dfd65d3ed18a0cd6756#egg=pylibrary
 #-e git+https://github.com/pbmanis/ephys.git#egg=ephys
 #-e git+https://github.com/pbmanis/montager.git@578ba75af12bb2321e377451f35921977656041a#egg=montage
+-e git+https://github.com/vispy.git/commit/d901f6430784416bacb028e1ff450a3640400e44#egg=vispy
 
 # the following are handled by the shell script makeenv_local.sh
 #-e git+https://github.com/pbmanis/cnmodel.git@5522473356de7d1733212ce5a652cd5cc0fb7c9b#egg=cnmodel

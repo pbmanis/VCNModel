@@ -37,6 +37,8 @@ scipy==1.5.4
 pyqt5==5.13.1
 pyqt5-sip==12.8.1 # 4.19.19
 pyqtgraph
+PyOpenGL==3.1.5
+PyOpenGL-accelerate==3.1.5
 openpyxl
 seaborn==0.10.1
 Shapely==1.7.1
@@ -54,8 +56,6 @@ vtk==9.0.1
 
 
 xlrd>=1.0.0
-# required for 3d display in pyqtgraph
-#PyOpenGL==3.1.5  # broken in Big Sur
 descartes
 mahotas
 #mayavi # install in main branch
@@ -65,5 +65,7 @@ mahotas
 -e /Users/pbmanis/Desktop/Python/pylibrary
 -e /Users/pbmanis/Desktop/Python/ephys
 -e /Users/pbmanis/Desktop/Python/montage
+# -e git+https://github.com/vispy.git/commit/d901f6430784416bacb028e1ff450a3640400e44#egg=vispy
+vispy>=0.8.1
 -e /Users/pbmanis/Desktop/Python/neuronvis
 
