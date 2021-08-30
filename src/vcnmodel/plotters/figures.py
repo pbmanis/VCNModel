@@ -1977,6 +1977,10 @@ class Figures(object):
 
     #
     def generate_VS_data(self, testmode=True):
+        """
+        Write the VS_data file from the selected datasets.
+        The datasets are in VS_datasets.py
+        """
         if "vcnmodel.VS_datasets" not in list(dir()):
             from vcnmodel import VS_datasets as VS_datasets
         print(dir())

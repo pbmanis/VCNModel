@@ -18,7 +18,7 @@ from pylibrary.tools import utility as PU
 from vcnmodel import cell_config as cell_config
 
 import src.vcnmodel.VS_data as VS_data
-config = toml.load(open("wheres_my_data.toml", "r"))
+config = toml.load(open("toml/wheres_my_data.toml", "r"))
 
 """
 Plot the vector strength measures as a function of frequency for VCNModel
