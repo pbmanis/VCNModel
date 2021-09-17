@@ -1,4 +1,5 @@
 __author__ = "pbmanis"
+import argparse
 import importlib
 import os
 import sys
@@ -107,10 +108,11 @@ states = {
 
 
 class Render:
-    def __init__(self, cell_number:int, hf:object):
+    def __init__(self, cell_number:int, hf:object, renderer:str):
         self.cell_number = int(cell_number)
+        self.renderer = renderer
         self.hf = hf
-        self.section_colors = {
+        self.section_colors = { # colors are xkcd color palette
             "axon": "spring green",
             "hillock": "red",
             "initialsegment": "lilac",
@@ -119,13 +121,13 @@ class Render:
             "dendrite": "green",
             "soma": "black",
             "Axon_Hillock": "red",
-            "Axon_Initial_Segment": "lilac",
-            "Myelinated_Axon": "spring green",
+            "Axon_Initial_Segment": "baby blue",
+            "Myelinated_Axon": "dark red", # "spring green",
             "Unmyelinated_Axon": "lilac",
-            "Proximal_Dendrite": "cyan",
+            "Proximal_Dendrite": "medium purple", # "cyan",
             "Dendritic_Hub": "royal blue",
             "Dendritic_Swelling": "gold",
-            "Distal_Dendrite": "sky blue",
+            "Distal_Dendrite": "dark magenta", # "sky blue",
             # terminals (calyx of Held):
             "heminode": "green",
             "stalk": "yellow",
@@ -158,31 +160,33 @@ class Render:
                 self.clist.append([n1, None])
 
     def render(
-        self, rendertype:str="cylinder", mechanism:Union[list, None]=None,
+        self, view:str="cylinders", mechanism:Union[list, None]=None,
             colormap:Union[str, dict]="viridis",
             backgroundcolor:Union[str, list]="k",
             )-> (object, object):
-        viewer = HocViewer(self.hf.hr.h, renderer=rendertype)
-        if rendertype not in ["mpl", "vispy"]:
+        viewer = HocViewer(self.hf.hr.h, renderer=self.renderer)
+        if self.renderer not in ["mpl", "vispy"]:
             viewer.setBackcolor(backgroundcolor)
-        if rendertype in ["line", "graph"]:
-            g = viewer.draw_graph()
-            g.set_group_colors(self.section_colors, mechanism=mech, colormap=colormap)
-        elif rendertype == "surface":
-            g = viewer.draw_surface()
-            g.set_group_colors(self.section_colors, mechanism=mech, colormap=colormap)
-        elif rendertype == "cylinder":
-            g = viewer.draw_cylinders()
-            g.set_group_colors(self.section_colors, mechanism=mech, colormap=colormap)
-        elif rendertype == "volume":
-            #            volume = render.draw_volume(resolution = 1.0, max_size=1e9)
-            g = viewer.draw_volume()
-            g.set_group_colors(
-                self.section_colors, mechanism=mech, alpha=1, colormap=colormap
-            )
-        elif rendertype == "mpl":
+        print('render: renderer: ', self.renderer, view)
+        if self.renderer == 'pyqtgraph':
+            if view in ["line", "graph"]:
+                g = viewer.draw_graph()
+                g.set_group_colors(self.section_colors, mechanism=mechanism, colormap=colormap)
+            elif view == "surface":
+                g = viewer.draw_surface()
+                g.set_group_colors(self.section_colors, mechanism=mechanism, colormap=colormap)
+            elif view == "cylinders":
+                g = viewer.draw_cylinders()
+                g.set_group_colors(self.section_colors, mechanism=mechanism, colormap=colormap)
+            elif view == "volume":
+                #            volume = render.draw_volume(resolution = 1.0, max_size=1e9)
+                g = viewer.draw_volume()
+                g.set_group_colors(
+                    self.section_colors, mechanism=mechanism, alpha=1, colormap=colormap
+                )
+        elif self.renderer == "mpl":
             g = viewer.draw_mpl()
-        elif rendertype == "vispy":
+        elif self.renderer == "vispy":
             g = viewer.draw_vispy(
                 mechanism=mechanism,
                 color=self.section_colors,
@@ -190,7 +194,7 @@ class Render:
             )
 
         else:
-            raise ValueError("Render type %s not known: " % rendertype)
+            raise ValueError("Render type %s not known: " % self.renderer)
         return g, viewer
 
 
@@ -272,20 +276,69 @@ def set_table_and_cells(
 
 
 def main():
-    rendertype = "vispy"  # 'cylinder' #'surface'
-    mechanism = None  # ["klt", "gbar"]  #  None # ['klt', 'gbar']
-
-    # mechanisms = None
-    fn = sys.argv[1]
-    mod = "Full"
-    if len(sys.argv) > 2:
-        mod = sys.argv[2]
-        hocfile = f"VCN_c{int(fn):02d}_{mod:s}.hoc"
+    parser = argparse.ArgumentParser(description="VCN Cell Morphology Renderer")
+    parser.add_argument(
+        "-n",
+        type=int,
+        default=0,
+        dest="cellnumber",
+        help="Cell by Number (2, 6, 11, etc), looks for VCN_cnn/Morphology/VCN_cnn_Full_MeshInflated.hoc",
+    )
+    parser.add_argument(
+        "-f",
+        dest="filename",
+        type=str,
+        default="None",
+        help="Full Filename/path for rendering",
+    )
+    parser.add_argument(
+        "-p",
+        "--parts",
+        dest="parts",
+        type=str,
+        default="Full",
+        choices=["Full", "NoDend", ],
+        help="select hoc files with parts removed",
+    )
+    parser.add_argument(
+        "-r",
+        "--renderer",
+        type=str,
+        dest="renderer",
+        default="vispy",
+        choices=["pyqtgraph", "mpl", "vispy"],
+        help="Select render pipeline - pyqtgraph, matplotlib (mpl) or vispy",
+    )
+    parser.add_argument(
+        "-v",
+        "--view",
+        type=str,
+        default="cylinders",
+        choices=["line", "graph", "cylinders", "volume"],
+        help="view representation type - usually the cylinder default is best; others only work with pyqtgraph",
+    )
+    parser.add_argument(
+        "-m",
+        dest="mechanism",
+        type=str,
+        default="None",
+        choices=["None", "klt", "kht", "ihvcn", "nacncoop", "ka", "kif", "kis"],
+        help="Mechanism to render density",
+    )
+    
+    args = parser.parse_args()
+    if args.cellnumber > 0:
+        hocfile = f"VCN_c{int(args.cellnumber):02d}_Full_MeshInflate.hoc"
+        cell_dir = f"VCN_c{int(args.cellnumber):02d}"
+        filename = Path("../VCN-SBEM-Data", "VCN_Cells", cell_dir, "Morphology", hocfile)
+        fnum = args.cellnumber
+    elif args.filename != "None":
+        filename = Path(args.filename)
+        fnum = filename.stem
+        fnum = int(fnum[5:7])
     else:
-        hocfile = f"VCN_c{int(fn):02d}_Full.hoc"
-    # if mod == 'Full':
-    cell_dir = f"VCN_c{int(fn):02d}"
-    filename = Path("../VCN-SBEM-Data", "VCN_Cells", cell_dir, "Morphology", hocfile)
+        raise ValueError("Need either -n cell number or -f filename")
+        exit(1)
     post_cell = set_table_and_cells(
         filename=filename,
         dataTable="data_XM13A_nacncoop_normal",
@@ -298,22 +351,22 @@ def main():
         dendriteMode="normal",
     )
     # post_cell.distances()
-    if len(sys.argv) > 3:
-        rendertype = sys.argv[3]
-    R = Render(int(fn), post_cell)
+    R = Render(fnum, post_cell, args.renderer)
     backgroundcolor = (32, 32, 32, 128)  # 'blue'
-    if rendertype in ["volume", "line", "graph"]:
+    if args.view in ["volume", "line", "graph"]:
         backgroundcolor = (125, 125, 125, 255)
-    print(backgroundcolor, rendertype)
-    g, renderer = R.render(
-        rendertype=rendertype, mechanism=mechanism, backgroundcolor=backgroundcolor
+    g, viewer = R.render(
+        view=args.view, mechanism=args.mechanism, backgroundcolor=backgroundcolor
     )
-
-    if rendertype in ["mpl", "mayavi", "vispy"]:
+    if R.renderer in ["mpl"]:
         return None
-    else:
-        if not sys.flags.interactive:
+    elif R.renderer in ["vispy"]:  
+        # vispy and pyqtgraph use qt
+        viewer.close()
+    elif R.renderer in ["pyqtgraph"]:
+       if sys.flags.interactive == 0:
             pg.Qt.QtGui.QApplication.exec_()
+        
 
 
 if __name__ == "__main__":
