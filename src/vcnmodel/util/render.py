@@ -8,9 +8,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Union
 
-import pyqtgraph as pg
 from cnmodel import cells
 from cnmodel.decorator import Decorator
+
+import pyqtgraph as pg
 from neuronvis.hoc_viewer import HocViewer
 from pylibrary.tools import cprint as CP
 
@@ -53,7 +54,11 @@ states = {
         "center": (39.42, -35.72, -30.19),
         "fov": 45.0,
         "elevation": 85.5,
-        "azimuth": -119.75,
+        # "elevation": -6.5,
+        # "elevation": -17.5,
+        "azimuth": 131.5,
+        # "azimuth": -119.75,
+        # "azimuth": -102.25,
         "roll": 0.0,
     },
     10: {
@@ -169,6 +174,7 @@ class Render:
             viewer.setBackcolor(backgroundcolor)
         print('render: renderer: ', self.renderer, view)
         if self.renderer == 'pyqtgraph':
+            
             if view in ["line", "graph"]:
                 g = viewer.draw_graph()
                 g.set_group_colors(self.section_colors, mechanism=mechanism, colormap=colormap)
@@ -339,6 +345,7 @@ def main():
     else:
         raise ValueError("Need either -n cell number or -f filename")
         exit(1)
+
     post_cell = set_table_and_cells(
         filename=filename,
         dataTable="data_XM13A_nacncoop_normal",
