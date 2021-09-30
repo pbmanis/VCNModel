@@ -1,8 +1,0 @@
-#  Configuration for basic scaled inflation
-# Note that these are the variable names, not the command parser flags
-modelName='XM13_nacncoop'
-soma_autoinflate=true
-dendrite_autoinflate=true
-ASA_fromsoma=true
-dendrite_fromsoma=false
-noparallel=true
