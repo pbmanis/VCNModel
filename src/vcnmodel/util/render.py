@@ -105,6 +105,28 @@ states = {
         "roll": 0.0,
     },
 }
+sbem_sectypes = {
+    # new swc mapping
+    0: "Undefined",
+    1: "soma",
+    2: "Myelinated_Axon",
+    3: "Basal_Dendrite",
+    4: "Apical_Dendrite",
+    5: "Custom",
+    6: "Unspecified_Neurites",
+    7: "Glia_Processes",
+    8: "Blank",
+    9: "Blank",
+    10: "Axon_Hillock",
+    11: "Unmyelinated_Axon",
+    12: "Dendritic_Hub",
+    13: "Proximal_Dendrite",
+    14: "Distal_Dendrite",
+    15: "Axon_Initial_Segment",
+    16: "Axon_Heminode",
+    17: "Axon_Node",
+    18: "Dendritic_Swelling",
+}
 
 
 class Render:
