@@ -16,6 +16,14 @@ from neuronvis import swc_to_hoc, hocRender
 
 pp = pprint.PrettyPrinter(indent=4)
 
+"""
+This module takes an original HOC file and replaces the axon sections
+(including the AIS, hillock, and myelinated sections) with some variant of
+a "standardized" axon. 
+The modified version of the cell is written to a new file.
+
+"""
+
 def defemptylist():
     """
     For data classes, use this function to instantiate an empty list
