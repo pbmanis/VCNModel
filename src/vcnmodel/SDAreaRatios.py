@@ -13,11 +13,11 @@ config = toml.load(open("wheres_my_data.toml", "r"))
 
 AdjA = adjust_areas.AdjustAreas()
 
-gradeA = [2, 5, 6, 9, 10, 11, 13, 17, 18, 24, 29, 30]
+gradeA = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
 
 all_cell_nos = range(1, 32)
 allcells = [f"{c:02d}" for c in all_cell_nos]
-print(allcells)
+# print(allcells)
 
 
 def sum_area(areamap):
@@ -42,7 +42,7 @@ def area(fn):
         config['cellDataDirectory'],
         fn,
         "Morphology",
-        fn + "_full.hoc",
+        fn + "_Full.hoc",
     )
     post_cell = cells.Bushy.create(
         morphology=str(filename),
@@ -74,9 +74,9 @@ def area(fn):
         #     secareas["soma"] += one_sectype_area(post_cell.areaMap[am])
         # print('am: ', am)
         if am.startswith("Dendr") or am.endswith("Dendrite") or am.startswith("dend"):
-            print("adding dendr area: ", am, one_sectype_area(post_cell.areaMap[am]))
+            # print("adding dendr area: ", am, one_sectype_area(post_cell.areaMap[am]))
             secareas["dendrite"] += one_sectype_area(post_cell.areaMap[am])
-    print(f"{filename.name:s}   secareas: {str(secareas):s}")
+    # print(f"{filename.name:s}   secareas: {str(secareas):s}")
     return secareas
 
 
@@ -114,8 +114,8 @@ if __name__ == "__main__":
     dec = [0, 2, 2, 3, 2, 2, 2]  # define decimals for each column
 
     headers = "".join("{:^12s}  ".format(hs) for hs in hdrstr)
-    print(ar.keys())
-    print(headers)
+    # print(ar.keys())
+    # print(headers)
     for i, fn in enumerate(ar.keys()):
         # print(ar[fn]["soma"], ar[fn]["dendrite"])
         # print(ar[fn].keys())
@@ -132,7 +132,7 @@ if __name__ == "__main__":
             elif k == "":
                 continue
             else:
-                txt += f"{ar[fn][k]:>12.{dec[ik]:d}f}  "  # .format(ar[fn][k], dec[ik])
+                txt += f"{ar[fn][k]:>12.3f}  "  # .format(ar[fn][k], dec[ik])
         print(txt)
         if i + 1 == 24:
             print(f"{fn:^12s}.D01")

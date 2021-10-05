@@ -374,13 +374,13 @@ class AdjustAreas:
         if scale_factor == 1.0:
             return
         section_area = self.areafunc(section)  # starting value
-        print("section area to adust: ", section_area)
+        # print("section area to adust: ", section_area)
         target_area = section_area * scale_factor
-        print("target area: ", target_area)
+         # print("target area: ", target_area)
         n = 0
         while np.fabs(target_area - section_area) > eps:
             ratio = target_area / section_area
-            print(f"iter: {n:d},  Sectionarea: {section_area:.2f}, ratio: {ratio:.4f}")
+            # print(f"iter: {n:d},  Sectionarea: {section_area:.2f}, ratio: {ratio:.4f}")
             if ratio < 0.01 or ratio > 100.0:
                 cprint("r", f" Inflation failed: ratio = {ratio:.6f}")
                 cprint(
@@ -858,61 +858,80 @@ def rescale(cellno, args):
     """
     Perform and check a rescale
     """
+    if args.write:
+        print("Are you sure you want to overwrite the mesh-inflated files?")
+        answer = input("Are you sure [y,n]: ")
+        if input != 'y':
+            args.write=False
+    summary = {}
     for i, c in enumerate(cell_no):
         print("I, c: ", i, c)
         cell_name = f"VCN_c{c:02d}"
         cname, fn = make_cell_name(cell_name, args)
         Rescaled, Original = recon_hoc(cell_name, args)
+        print(dir(Original))
+        print(dir(Rescaled.cell))
+        exit()
         hoc_file = str(Path(fn.parent, fn.stem + "_MeshInflate").with_suffix(".hoc"))
         cprint('m', f"input file: {str(fn):s}")
         with open(fn, "r") as fh:
             lines = fh.readlines()
-        out_file = open(hoc_file, "w")
+        if args.write:
+            out_file = open(hoc_file, "w")
         # re_sects = re.compile(r"\nsections\[(?P<section>\d*)\]\s{")
         for lineno, line in enumerate(lines):
             if line.startswith("access sections["):  # stop at first access
                 break
-            out_file.write(line)
+            if args.write:
+                out_file.write(line)
 
-        print("Writing outuput to: ", hoc_file)
+        if args.write:
+            print("Writing outuput to: ", hoc_file)
         print("Original Soma Area: ", Original.somaarea)
         print("Adjusted Soma Area: ", Rescaled.cell.somaarea)
         # for j, rescaled_section in enumerate(Rescaled.HR.h.allsec()):
         #     rescaled_secname = f"{str(rescaled_section):s}: "
         #     original_section = Original.hr.h.sections[j]
-
+        summary[c] = []
         for sec in Rescaled.allsections:
             if lines[lineno].startswith("access"):
-                out_file.write(lines[lineno])
+                if args.write:
+                    out_file.write(lines[lineno])
                 lineno += 1
             if lines[lineno].endswith("append()\n"):
-                out_file.write(lines[lineno])
+                if args.write:
+                    out_file.write(lines[lineno])
                 lineno += 1
             if lines[lineno].startswith("connect"):
-                out_file.write(lines[lineno])
+                if args.write:
+                    out_file.write(lines[lineno])
                 lineno += 1
 
-            out_file.write(f"{sec.number:s} " + "{\n")
+            if args.write:
+                out_file.write(f"{sec.number:s} " + "{\n")
             lineno += 1
             # parse to get section number
 
             for p in sec.points:
                 swcid = ""
-                print(len(lines), lineno)
+                # print(len(lines), lineno)
                 swc = lines[lineno].rpartition("//")
                 # if swc[2] == "}\n":
                 #     break
                 if swc[0] != "":
                     swcid = swc[1] + swc[2].rstrip("\n")
 
-                out_file.write(
+                if args.write:
+                    out_file.write(
                     f"    pt3dadd({p.x:f}, {p.y:f}, {p.z:f}, {p.diam:f}) {swcid:s}"
                     + "\n"
                 )
                 lineno += 1
-            out_file.write("}\n\n")
+            if args.write:
+                out_file.write("}\n\n")
             lineno += 2
-        out_file.close()
+        if args.write:
+            out_file.close()
 
 
 def print_hoc_areas(cellname, nodend):
@@ -992,7 +1011,13 @@ if __name__ == "__main__":
         default=False,
         help="compare with mesh-inflated version",
     )
-
+    parser.add_argument(
+        "--write",
+        action="store_true",
+        dest="write",
+        default=False,
+        help="Write out the new mesh-inflated hoc file"
+    )
     args = parser.parse_args()
     # simple_test()
     # neuron_example()
