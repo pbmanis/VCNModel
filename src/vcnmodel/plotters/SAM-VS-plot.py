@@ -17,7 +17,7 @@ from pylibrary.plotting import styler as ST
 from pylibrary.tools import utility as PU
 from src.vcnmodel import cell_config as cell_config
 
-import src.vcnmodel.VS_data_8_16_2021 as VS_data
+import src.vcnmodel.VS_data as VS_data # VS_data_8_16_2021 as VS_data
 config = toml.load(open("wheres_my_data.toml", "r"))
 
 """
@@ -31,9 +31,9 @@ Reads the data from VS_data.py
 # datas = {'100': data100Hz, '400': data400Hz}  # just keep adding...
 panels = {100: ["A", "B"], 200: ["C","D"], 300: ['E', 'F'], 
           400: ['G', 'H'], 500: ['I', "J"], 750: ['K', 'L'], 1000: ["M", "N"]}
-# plotwhat = "VectorStrength"
-plotwhat = "phasesd"
-plotwhat = "phasesdtime"
+plotwhat = "VectorStrength"
+# plotwhat = "phasesd"
+# plotwhat = "phasesdtime"
 
 def reset_style():
     sns.set_style(rc={"pdf.fonttype": 42})
