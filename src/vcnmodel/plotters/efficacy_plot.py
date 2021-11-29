@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from lmfit import Model
-from matplotlib import pyplot as mpl
+import matplotlib.pyplot as mpl
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.plotting import styler as STY
 
@@ -34,7 +34,7 @@ All data are from 30 dB SPL stimuli
 
 The second set of runs were done on 8/2/2021, runANSingles, Full/NoDend, 1 sec, 5 reps, no depression 
 The table for the efficacy is printed out when the dataset is selected in DataTablesVCN,
-and the 'Singles' analysis is run. THe analisys displays the spikes, as well as printing the table in a format
+and the 'Singles' analysis is run. THe analysis displays the spikes, as well as printing the table in a format
 suitable for pasting into this file
 """
 
@@ -368,6 +368,66 @@ class EfficacyPlots(object):
         )
         mpl.show()
 
+    def fit_dataset(self, df_full, sel_cells = None, ax=None):
+        gmodel = Model(boltz)
+        gmodel.set_param_hint("A", value=1, min=0.0, max=1.0, vary=True)
+        gmodel.set_param_hint("vhalf", value=140.0, min=10.0, max=300.0)
+        gmodel.set_param_hint("k", value=20., min=0.01, max=200.0, vary=True)
+        gparams = gmodel.make_params()
+        # print("gparams: ", gparams.pretty_print())
+        if sel_cells is not None:
+            df = df_full[df_full["Cell"].isin(sel_cells)]
+
+        weights = np.ones(len(df.ASA))
+
+        # if self.draft:  # include brute force fit.
+        #     result_brute = gmodel.fit(
+        #     df.Eff, method="brute", params=gparams, x=df.ASA, weights=weights,
+        #     )
+        #     for p in result_brute.params:
+        #         result_brute.params[p].stderr = 0.0  # abs(res2.params[p].value * 0)
+        #
+        #     print("\nBrute fit: ")
+        #     print(result_brute.params.pretty_print())
+        #     print("-" * 80)
+        #     xfit = np.linspace(0.0, 300.0, 300)
+        #     bfit = gmodel.eval(params=result_brute.params, x=xfit)
+        #     ax.plot(xfit, bfit, "b-", label="Brute")
+            
+        methods = ["leastsq"]
+        # methods = ['leastsq', 'least_squares', 'differential_evolution', 'basin_hopping', 'ampgo', 'nelder', 'lbfgsb', 'powell', 'cg',
+        #      'cobyla', 'bfgs', #'trust-exact', 'trust-krylov', 'trust-constr',
+        #      #'dogleg',
+        #      'slsqp', 'shgo', 'dual_annealing']
+        # need jacobian: 'newton','tnc''trust-ncg'
+        resdict = {key: None for key in methods}
+        ix = np.argsort(df.Eff)
+        y = df.ASA[ix]
+        x = df.Eff[ix]
+        weights = np.ones(len(df.Eff))  # * np.random. *(df.Eff/np.max(df.Eff))**2
+        for meth in resdict.keys():
+            result_LM = gmodel.fit(
+                x,
+                method=meth,
+                params=gparams,  # gparams,
+                x=y,
+                weights=weights,
+                # maxfev=20000,  # fit_kws={'maxfev': 5000}
+                # jac="3-point",
+            )
+            print(f"\n{meth:s} fit: ")
+            print(result_LM.params.pretty_print())
+            print("-" * 80)
+            xfit = np.linspace(0.0, 300.0, 300)
+            lev_fit = gmodel.eval(params=result_LM.params, x=xfit)
+            # lmfit.report_fit(result_brute.params, min_correl=0.5)
+
+            for p in result_LM.params:
+                if result_LM.params[p].stderr == None:
+                    result_LM.params[p].stderr = 0.0  # abs(res2.params[p].value * 0)
+            resdict[meth] = result_LM
+        return result_LM, resdict, gmodel, xfit
+
     def plot_dataset(self, data, ax: object = None, title: str = None, legend:bool=True):
         spc = re.compile("[ ;,\t\f\v]+")  # format replacing all spaces with tabs
         dataiter = re.finditer(spc, data)
@@ -375,7 +435,7 @@ class EfficacyPlots(object):
 
         sio = io.StringIO(data)
         df = pd.read_table(sio, sep=",")
-        cell_names=[f"VCN_c{c:02d}" for c in df.Cell]
+        cell_names=[f"VCN\_c{c:02d}" for c in df.Cell]
         sns.scatterplot(
             x="ASA",
             y="Eff",
@@ -401,61 +461,10 @@ class EfficacyPlots(object):
                 labelspacing=0.2,
             )
         ax.set_xlim(0, 350.)
-        gmodel = Model(boltz)
-        gmodel.set_param_hint("A", value=1, min=0.0, max=1.0, vary=True)
-        gmodel.set_param_hint("vhalf", value=140.0, min=10.0, max=300.0)
-        gmodel.set_param_hint("k", value=20., min=0.01, max=200.0, vary=True)
-        gparams = gmodel.make_params()
-        # print("gparams: ", gparams.pretty_print())
-
-        weights = np.ones(len(df.ASA))
-
-        if self.draft:  # include brute force fit.
-            result_brute = gmodel.fit(
-            df.Eff, method="brute", params=gparams, x=df.ASA, weights=weights,
-            )
-            for p in result_brute.params:
-                result_brute.params[p].stderr = 0.0  # abs(res2.params[p].value * 0)
-
-            print("\nBrute fit: ")
-            print(result_brute.params.pretty_print())
-            print("-" * 80)
-            xfit = np.linspace(0.0, 300.0, 300)
-            bfit = gmodel.eval(params=result_brute.params, x=xfit)
-            ax.plot(xfit, bfit, "b-", label="Brute")
-            
-        methods = ["leastsq"]
-        # methods = ['leastsq', 'least_squares', 'differential_evolution', 'basin_hopping', 'ampgo', 'nelder', 'lbfgsb', 'powell', 'cg',
-        #      'cobyla', 'bfgs', #'trust-exact', 'trust-krylov', 'trust-constr',
-        #      #'dogleg',
-        #      'slsqp', 'shgo', 'dual_annealing']
-        # need jacobian: 'newton','tnc''trust-ncg'
-        resdict = {key: None for key in methods}
-        ix = np.argsort(df.Eff)
-        y = df.ASA[ix]
-        x = df.Eff[ix]
-        weights = np.ones(len(df.Eff))  # * np.random. *(df.Eff/np.max(df.Eff))**2
-        for meth in resdict.keys():
-            result_LM = gmodel.fit(
-                x,
-                method=meth,
-                params=gparams,  # gparams,
-                x=y,
-                weights=weights,
-                max_nfev=20000,  # fit_kws={'maxfev': 5000}
-                jac="3-point",
-            )
-            print(f"\n{meth:s} fit: ")
-            print(result_LM.params.pretty_print())
-            print("-" * 80)
-            xfit = np.linspace(0.0, 300.0, 300)
-            lev_fit = gmodel.eval(params=result_LM.params, x=xfit)
-            # lmfit.report_fit(result_brute.params, min_correl=0.5)
-
-            for p in result_LM.params:
-                if result_LM.params[p].stderr == None:
-                    result_LM.params[p].stderr = 0.0  # abs(res2.params[p].value * 0)
-            resdict[meth] = result_LM
+        result_LM1, resdict1, gmodel1, xfit2 = self.fit_dataset(df, sel_cells = [5, 30, 17])
+        result_LM2, resdict2, gmodel2, xfit1 = self.fit_dataset(df, sel_cells = [9,11, 13])
+        result_LM, resdict, gmodel, xfit = self.fit_dataset(df, sel_cells  = None)
+        
         # ci, trace = lmfit.conf_interval(mini, res2, sigmas=[2, 2, 2], trace=True)
         # lmfit.printfuncs.report_ci(ci)
         ax.text(
@@ -509,7 +518,7 @@ class EfficacyPlots(object):
 
         for m in resdict.keys():
             fit = gmodel.eval(params=resdict[m].params, x=xfit)
-            ax.plot(xfit, fit, "k-", label=meth)
+            ax.plot(xfit, fit, "k-", label=m)
         ax.set_xlabel(f"ASA ({uni:s})")
         ax.set_ylabel("Efficacy (Bushy spikes/input spikes)")
         ax.set_ylim(0, 1.0)
@@ -535,7 +544,7 @@ if __name__ == "__main__":
         figsize=(8, 4.5),
         label=True,
     )
-    EFP = EfficacyPlots(parent_plot=P)
+    EFP = EfficacyPlots(parent_figure=P)
     # EFP.plot_data("B")
-    EFP.plot_efficacy(dataset="Full", ax=P.axdict["B"])
+    EFP.plot_efficacy("Full", ax=P.axdict["B"])
     mpl.show()
