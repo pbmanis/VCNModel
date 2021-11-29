@@ -750,7 +750,8 @@ class ModelRun:
 
             if self.Params.axonExpt == "standardized":
                 self.Params.hocfile += "_standardized_axon"
-
+            if self.Params.axonExpt.startswith("AIS"):
+                self.Params.hocfile += "_" + self.Params.axonExpt
                 label += ", " + self.Params.axonExpt
 
             self.Params.hocfile += ".hoc"  # now we can add extension

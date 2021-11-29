@@ -390,8 +390,8 @@ def build_parser():
         "--axonexpt",
         dest="axonExpt",
         default='default',
-        choices=CmdChoices.axonExptChoices,
-        help="Choose dendrite experiment (default, standardized)",
+        # choices=CmdChoices.axonExptChoices,
+        help="Choose dendrite/axon experiment (default, standardized)",
     )
     parser.add_argument(
         "--datatable",
