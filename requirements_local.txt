@@ -7,7 +7,8 @@ flake8
 Pint==0.14
 isort==5.0.2
 mypy==0.782
-jupyterlab
+jupyterlab>=3.2.0
+nb_black
 plotnine>=0.7
 pypdf2
 pyperclip
@@ -22,7 +23,7 @@ Cython==0.29.17
 dill==0.3.1.1
 elephant==0.10.0
 lmfit==0.9.13
-matplotlib==3.3.4
+matplotlib>=3.5.0
 matplotlib-scalebar==0.5.1
 neo>=0.9.0
 neuron>=8.0
@@ -34,13 +35,14 @@ pyparsing==2.4.0
 quantities>=0.12.1
 resampy==0.2.1
 scipy==1.5.4
+pynwb>=2.0.0
 pyqt5==5.13.1
 pyqt5-sip==12.8.1 # 4.19.19
 pyqtgraph
 PyOpenGL==3.1.5
 PyOpenGL-accelerate==3.1.5
 openpyxl
-seaborn==0.10.1
+seaborn>=0.11.0
 Shapely==1.7.1
 six==1.12.0
 tifffile
