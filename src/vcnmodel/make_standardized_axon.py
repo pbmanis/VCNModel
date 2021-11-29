@@ -1,3 +1,4 @@
+import argparse
 from dataclasses import dataclass, field
 import datetime
 from typing import Union, Type
@@ -17,7 +18,7 @@ from neuronvis import swc_to_hoc, hocRender
 pp = pprint.PrettyPrinter(indent=4)
 
 """
-This module takes an original HOC file and replaces the axon sections
+This module provides tools that take an original HOC file and replaces the axon sections
 (including the AIS, hillock, and myelinated sections) with some variant of
 a "standardized" axon. 
 The modified version of the cell is written to a new file.
@@ -108,6 +109,24 @@ class StandardAxon:
     ais = [1.46, 0.80, 16.93, 19]  
     axn = [1.47, 1.88, 55.47, 55]  # length excludes one with a very short length
 
+@dataclass
+class ModifiableAxon:
+    """
+    Averaged axon, but NOT frozen so it can be modified.
+    format is a list of diam[0], diam[1], length, and # of sections
+    all measurements are in microns
+    The values in the table come from a run of get_axon_lengths on 7/19/2021,
+    from the excel table where the averages are computed leaving out the "axon"
+    for cell 21, for which only a short distance is visible.
+    Measurement data is in VCN-SBEM-Data/MorphologyData/VCN/Axon_Measurements
+    
+    """
+    #      dia1  dia2   len   # secs
+    hil = [2.58, 1.89,  2.90,  3]
+    ais = [1.46, 0.80, 16.93, 19]  
+    axn = [1.47, 1.88, 55.47, 55]  # length excludes one with a very short length
+
+
 """
 List of axons : includes all 10 gradeA Cells, plus axon
     reconstructions from other bushy cells
@@ -115,6 +134,7 @@ List of axons : includes all 10 gradeA Cells, plus axon
 gradeACells = [2, 5, 9, 10, 11, 13, 17, 18, 30]
 additional_axons = [12, 14, 15, 16, 19, 20, 21, 22, 23, 24, 27, 29]
 all_cells = gradeACells + additional_axons
+
 """
 Regular expression definitions for parts of HOC file
 We use these to find and change parts of the HOC file automatically
@@ -171,16 +191,14 @@ class MakeStandardAxon:
     Create a substitute standardized axon for a cell.
     To do this we:
         1. read the original hoc file
-        2. calculate the origin and direction of the assembly of
-
-            all parts of the axon, from hillock through the lat part.
+        2. [calculate the origin and direction of the assembly of
+            all parts of the axon, from hillock through the myleinated part.] # this is NOT done in the current version
+            and has no effect on the electrical behavior of the model.
         3. make a standardized axon consisting of 3 sections:
             a. which has the average axon parameters (diam, length) for the hillock, AIS and myelinated part
             b. which goes in the direction of the original axon, by rotating around the hillock origin
                 The standardized axon starts at the origin and is aligned along the X-axis (Y and Z are both zero).
-
                 The standardized axon is made up of pt3d elements of 1 um in length.
-
             c. which matches with the cell by translating the origin to the original hillock 0-end.
         4. We then remove all of the axon sections from the oritingal hoc text, and starting with the first
             section that would have been the hillock, add the 3 new sections.
@@ -196,8 +214,13 @@ class MakeStandardAxon:
             d. connect the prosethetic axon hillock end 0 to the soma section end 1
     The file is written back out to the appropriate Morhpology directory with the name
     VCN_cNN_Full_standardized_axon.hoc
+    Modifications can be made to the "standardized_axon". One that is implemented is to change
+    the length of the AIS.
     The comment at the top if the file is modified by insertion of a line:
     // Modified to use standardized axon
+    or 
+    // Modified to use standardized axon with AIS length = xx.x um
+    
     Check the newly created sections manually to be sure that the connect statements
     link to the right parts, and that everything is formatted correctly.
     """
@@ -246,26 +269,28 @@ class MakeStandardAxon:
             "Axon",
         ]
     
-    def do_axon(self, cell: str):
-        cname, fn = self.make_name(cell, add_standardized_axon=self.revised)
-        # cname = f"VCN_c{cell:02d}"
- #        cell_hoc = f"{cname:s}_Full_MeshInflate.hoc"
-        # fn = Path(self.baseDirectory, cname, self.morphDirectory, cname)
-        self.get_axon_measures(cname, fn)
+    def do_axon(self, cell: str, AIS_length:float = 0.):
+        cname, fn = self.make_name(cell, add_standardized_axon=self.revised, AIS_length=AIS_length)
+        self.get_axon_measures(cname, fn, AIS_length=AIS_length)
         
 
     def make_name(
-        self, cell: str, add_standardized_axon: bool = False
+        self, cell: str, add_standardized_axon: bool = False, AIS_length: float=0.,
     ) -> (str, Type[Path]):
         """
         make a full filename that points to the cell morphology for the "Full" file type
         and for the standardized axon if needed.
+        
+        The name is modified to add "standardized_axon" if this is true; if AIS_length
+        is not 0, then the AIS length of the standardized axon is modified.
         """
         cname = f"VCN_c{cell:02d}"
 
         cell_hoc = f"{cname:s}_Full_MeshInflate"
-        if add_standardized_axon:
+        if add_standardized_axon and AIS_length == 0.0:
             cell_hoc += "_standardized_axon"
+        if AIS_length > 0.0:
+            cell_hoc += f"_AIS={AIS_length:06.2f}"
         cell_hoc += ".hoc"
         fn = Path(self.baseDirectory, cname, self.morphDirectory, cell_hoc)
         return cname, fn
@@ -323,7 +348,7 @@ class MakeStandardAxon:
             coords.d.append(sec.diam3d(i))
         return coords
 
-    def get_axon_measures(self, cname: str, fn: Union[str, Path]) -> AxonMorph:
+    def get_axon_measures(self, cname: str, fn: Union[str, Path], AIS_length:float = 0.) -> AxonMorph:
         """
         Compute a number of measures of the axon sections from the
 
@@ -641,23 +666,33 @@ class MakeStandardAxon:
         alv = R.align_vectors(dp, nlr)
         print("compute_axon_vector:", "alv: ", alv)
 
-    def generate_standard_axon(self, translate: bool = True) -> str:
+    def generate_standard_axon(self, translate: bool = True, AIS_length:float=0.) -> str:
         """
         Default standarized axon for VCN bushy cells
         values are diam[0], diam[1], length, and nsegments
         See VCN-SBEM-Data/Hillock-AIS-threshold.pzfx for the values
         entered here.
+        
+        If the AIS length is > 0, then we replace the AIS with one
+        of the specified length in microns
         """
         # hil = [2.31, 1.87, 1.97, 3]
-        #         ais = [1.6, 0.82, 19.03, 19]
-        #         axn = [1.03, 1.49, 55.7, 55]
+        # ais = [1.6, 0.82, 19.03, 19]
+        # axn = [1.03, 1.49, 55.7, 55]
 
         p1 = self.populate_pt3d_list(StandardAxon.hil)
-        p2 = self.populate_pt3d_list(StandardAxon.ais)
+        print('gen std axon ais len: ', AIS_length)
+        if AIS_length == 0.:
+            p2 = self.populate_pt3d_list(StandardAxon.ais)
+        else:
+            ModifiableAxon.ais[2] = AIS_length
+        p2 = self.populate_pt3d_list(ModifiableAxon.ais)
+            
         p3 = self.populate_pt3d_list(StandardAxon.axn)
-
+        print(ModifiableAxon.ais)
         axon = self.concatenate([p1, p2, p3], translate=True)
         self.new_axon = axon
+        print("axon: ", axon)
         hoc_str = self.pt3d_to_hoc(
             axon,
             name=["hillock", "aix", "axon"],
@@ -788,11 +823,15 @@ class MakeStandardAxon:
         # print('new hocf: ', hocf[:600])
         self.hocf = hocf
 
-    def write_revised_hoc(self, cell: str) -> None:
-        cname, fn = self.make_name(cell, add_standardized_axon=True)
+    def write_revised_hoc(self, cell: str, AIS_length=0.) -> None:
+        cname, fn = self.make_name(cell, add_standardized_axon=True, AIS_length=AIS_length)
         new_comment = "//  Modified file: Uses a standardized bushy cell axon\n"
         new_comment += (
             "//  including Axon_Hillock, Axon_Initial_Segment and Myelinated_Axon\n"
+        )
+        if AIS_length > 0.:
+            new_comment += (
+            f"//    AIS length adjusted: {AIS_length:.2f} microns\n"
         )
         new_comment += (
             f"//     {datetime.datetime.now().isoformat(sep=' ', timespec='seconds'):s}"
@@ -806,11 +845,11 @@ def make_standard_axon(cell: str, write: bool = False) -> None:
     """
     Read and replace original axon with a "standard axon" (average)
     """
-    fig = mpl.figure(figsize=(12, 6))
-    ax1 = fig.add_subplot(121, projection="3d")
+    # fig = mpl.figure(figsize=(12, 6))
+    # ax1 = fig.add_subplot(121, projection="3d")
     PA = MakeStandardAxon(revised=False)
     PA.do_axon(cell)
-    PA.plot_3d(ax1, PA.all_coords)
+    # PA.plot_3d(ax1, PA.all_coords)
     hocstr = PA.generate_standard_axon()
     PA.change_hoc(cell, hocstr)
     if write:
@@ -819,11 +858,39 @@ def make_standard_axon(cell: str, write: bool = False) -> None:
         print(PA.hocf)
 
     # now display the new version
-    ax2 = fig.add_subplot(122, projection="3d")
+    # ax2 = fig.add_subplot(122, projection="3d")
     PB = MakeStandardAxon(revised=True)
     PB.do_axon(cell)
-    PB.plot_3d(ax2, PB.all_coords)
-    mpl.show()
+    # PB.plot_3d(ax2, PB.all_coords)
+    # mpl.show()
+
+def make_modified_axons(cell: str, write: bool = False, AIS_length:float = 0.) -> None:
+    """
+    Read and replace original axon with a "standard axon" (average)
+    but with a specified length for the AIS
+    """
+    # fig = mpl.figure(figsize=(12, 6))
+    # ax1 = fig.add_subplot(121, projection="3d")
+    PA = MakeStandardAxon(revised=False)
+    PA.do_axon(cell)
+    # PA.plot_3d(ax1, PA.all_coords) # original cell
+
+
+    # now create the new version
+    hocstr = PA.generate_standard_axon(AIS_length=AIS_length)
+    PA.change_hoc(cell, hocstr)
+    if write:
+        PA.write_revised_hoc(cell, AIS_length=AIS_length)
+    else:
+        pass
+        # print(PA.hocf)
+
+    # now display the new version
+    # ax2 = fig.add_subplot(122, projection="3d")
+    PB = MakeStandardAxon(revised=True)
+    PB.do_axon(cell)
+    # PB.plot_3d(ax2, PB.all_coords)
+    # mpl.show()
 
 def read_standard_axon(cell: str) -> None:
     fig = mpl.figure(figsize=(12, 6))
@@ -839,9 +906,15 @@ def read_standard_axon(cell: str) -> None:
 
 if __name__ == "__main__":
 
-    cell = 11
-    for cell in  gradeACells:
+    cell = 17
+    for cell in [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]:
+        make_standard_axon(cell, write=True)
+        for aislen in [10., 12., 14., 16., 18., 20., 22., 24., 26.]:
+            make_modified_axons(cell, write=True, AIS_length=aislen)
+    #
+    # make_standard_axon(cell, write=True)
+    # for cell in  gradeACells:
         # PA = MakeStandardAxon(revised=False)
         # PA.convert_swc_hoc(cell)
-        make_standard_axon(cell, write=True)
+        # make_standard_axon(cell, write=True)
         # read_standard_axon(cell)
