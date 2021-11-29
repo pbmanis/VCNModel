@@ -537,12 +537,23 @@ class DataTables:
                     },
                 ],
             },
+            # The figure names here are froman early organization, and do not have a 1:1
+            # correspondence to the figures in the paper. 
+            # Some figures are 
+            #
             {
                 "name": "Figures",
                 "type": "group",
                 "children": [
                     {"name": "Figures", "type": "list", 
-                    "values":  ["Fig M0: VC-KLTCalibration (Fig_M0_VC_Adjustment)",
+                    "values":  ["Fig 3 Supplemental1ABC_VC-KLTCalibration",
+                                "Fig 3 Supplemental1DE_RinTaum",
+                                "Fig 3 Supplemental2_CC",
+                                "Fig 3 Supplemental3_Zin",
+                                "Fig 3 Suppplemental4_PSTH",
+                                "Fig 4 Ephys-2 main",
+                                "Fig 4 Ephys-2 Supplement1",
+                                "Fig M0: VC-KLTCalibration (Fig_M0_VC_Adjustment)",
                                 "Fig M0 Supp: CombinedVCIV (Figure_M0-Combined_Supplemental)",
                                 "Fig M1: IV Figure (Fig_M1)",
                                 "Fig M1A Supp: IV Supplement (Fig_M1A_Supplemental)",

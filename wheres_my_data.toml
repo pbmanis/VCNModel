@@ -10,6 +10,7 @@
 
 baseDataDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
 cellDataDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
+revcorrDataDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Revcorr_Summaries"
 baseMorphologyDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/MorphologyData/VCN"
 codeDirectory="/Users/pbmanis/Desktop/Python/vcnmodel"
 pngDirectory="VCN-CellImages-1-2020/Bushy_Cells"  # png files, in baseDataDirectory

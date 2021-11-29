@@ -13,13 +13,6 @@ from pylibrary.plotting import plothelpers as PH
 from pylibrary.plotting import styler as STY
 
 matplotlib.rcParams["mathtext.fontset"] = "stixsans"
-# matplotlib.rcParams['font.family'] = 'sans-serif'
-# matplotlib.rcParams['font.sans-serif'] = ['stixsans'] #, 'Tahoma', 'DejaVu Sans',
-#                                #'Lucida Grande', 'Verdana']
-# matplotlib.rcParams["pdf.fonttype"] = 42
-# matplotlib.rcParams["text.usetex"] = False
-# sns.set_style(rc={"pdf.fonttype": 42})
-
 
 """
 Plot the efficacy data into an axis
@@ -284,7 +277,8 @@ class EfficacyPlots(object):
         self.parent_figure = parent_figure
         self.draft = draft
 
-    def plot_efficacy(self, datasetname:str, ax:object, loc:tuple=(0., 0., 0., 0.)):
+    def plot_efficacy(self, datasetname:str, ax:object, loc:tuple=(0., 0., 0., 0.), figuremode="full"):
+        self.figuremode = figuremode
         self.titles = ["Intact", "Intact", "No Dendrites", "No Dendrites"]
         dmap = {'Full': data_Full, "NoDend": data_NoDend}
         dataset = dmap[datasetname]
@@ -308,31 +302,11 @@ class EfficacyPlots(object):
                 units="in",
                 figsize=(5, 5),
                 label=True,
-                # verticalspacing=0.12,
-                # horizontalspacing=0.12,
-                # margins={
-                #     "bottommargin": 0.1,
-                #     "leftmargin": 0.1,
-                #     "rightmargin": 0.1,
-                #     "topmargin": 0.1,
-                # },
-                # parent=self.parent_plot,
             )
         else:
             self.P = self.parent_figure
-        self.plot_dataset(dataset,
-                ax=ax) # , title=self.titles[0]) # , legend=legend_on)
+        self.plot_dataset(dataset, ax=ax)
         return
-        # axn = [1, 3]
-        # for i, data in enumerate(datasets):
-        #     if i == 1:
-        #         legend_on = True
-        #     else:
-        #         legend_on = False
-        #         print(i, axn)
-        #     self.plot_dataset(data, plotno=i,
-        #     ax=self.P.axdict[self.axes_labels[axn[i]]], title=self.titles[axn[i]], legend=legend_on)
-        # return self.P
 
     def plot_ASA_SD(self):
         spc = re.compile("[ ;,\t\f\v]+")  # format replacing all spaces with tabs
@@ -370,9 +344,17 @@ class EfficacyPlots(object):
 
     def fit_dataset(self, df_full, sel_cells = None, ax=None):
         gmodel = Model(boltz)
-        gmodel.set_param_hint("A", value=1, min=0.0, max=1.0, vary=True)
-        gmodel.set_param_hint("vhalf", value=140.0, min=10.0, max=300.0)
-        gmodel.set_param_hint("k", value=20., min=0.01, max=200.0, vary=True)
+        if ic is None:
+            A_ic = 1
+            Vh_ic = 140.0
+            k_ic = 20
+        else:
+            A_ic = ic["A"]
+            Vh_ic = ic["Vh"]
+            k_ic = ic["k"]
+        gmodel.set_param_hint("A", value=A_ic, min=0.0, max=1.0, vary=True)
+        gmodel.set_param_hint("vhalf", value=Vh_ic, min=10.0, max=300.0)
+        gmodel.set_param_hint("k", value=k_ic, min=0.01, max=200.0, vary=True)
         gparams = gmodel.make_params()
         # print("gparams: ", gparams.pretty_print())
         if sel_cells is not None:
@@ -393,17 +375,15 @@ class EfficacyPlots(object):
         #     xfit = np.linspace(0.0, 300.0, 300)
         #     bfit = gmodel.eval(params=result_brute.params, x=xfit)
         #     ax.plot(xfit, bfit, "b-", label="Brute")
-            
-        methods = ["leastsq"]
+        # otherwise we can use another method...
         # methods = ['leastsq', 'least_squares', 'differential_evolution', 'basin_hopping', 'ampgo', 'nelder', 'lbfgsb', 'powell', 'cg',
         #      'cobyla', 'bfgs', #'trust-exact', 'trust-krylov', 'trust-constr',
         #      #'dogleg',
         #      'slsqp', 'shgo', 'dual_annealing']
         # need jacobian: 'newton','tnc''trust-ncg'
-        resdict = {key: None for key in methods}
-        ix = np.argsort(df.Eff)
-        y = df.ASA[ix]
-        x = df.Eff[ix]
+        # ix = np.argsort(df.Eff)
+        y = df.ASA # [ix]
+        x = df.Eff #[ix]
         weights = np.ones(len(df.Eff))  # * np.random. *(df.Eff/np.max(df.Eff))**2
         for meth in resdict.keys():
             result_LM = gmodel.fit(
@@ -467,30 +447,66 @@ class EfficacyPlots(object):
         
         # ci, trace = lmfit.conf_interval(mini, res2, sigmas=[2, 2, 2], trace=True)
         # lmfit.printfuncs.report_ci(ci)
-        ax.text(
-            1.1, 0.8,
-            f"Max Efficacy: {result_LM.params['A'].value:.2f} (1$\sigma$ = {result_LM.params['A'].stderr:.2f})",
-            fontsize=7,
-            verticalalignment="top", horizontalalignment="right",
-            transform=ax.transAxes,
-        )
+        return result_LM, xfit, yfit
+
+    def plot_fit(self, df, ax, y0, method='leastsq', cells = [],
+                 color='k-', ic=None):
+        result_LM, xfit, yfit = self.fit_dataset(df, method, ic=ic)
+        if len(cells) > 0:
+            tc = str(cells)
+            lab = f"{method:s}  {tc:s}"
+        else:
+            lab = method
+        ax.plot(xfit, yfit, color, label=lab)  # all cells
+
+        if self.figuremode == "full":
+            ax.text(
+                1.1, 0.8+y0,
+                f"Max Efficacy: {result_LM.params['A'].value:.2f} (1$\sigma$ = {result_LM.params['A'].stderr:.2f})",
+                fontsize=7,
+                verticalalignment="top", horizontalalignment="right",
+                transform=ax.transAxes,
+            )
+            uni = r"$\mu m^2$"
+            asalab = r"$ASA_{0.5}$"
+            ax.text(
+                1.1,
+                0.4+y0,
+                f"{asalab:s}: {result_LM.params['vhalf'].value:.1f} {uni:s} (1$\sigma$ = {result_LM.params['vhalf'].stderr:.1f})\n",
+                fontsize=7,
+                color=color[0],
+                verticalalignment="center", horizontalalignment="right",
+                transform=ax.transAxes,
+            )
+            ax.text(
+                1.1,
+                0.2+y0,
+                f"k: {result_LM.params['k'].value:.1f} (1$\sigma$ = {result_LM.params['k'].stderr:.1f})",
+                fontsize=7,
+                color=color[0],
+                verticalalignment="center", horizontalalignment="right",
+                transform=ax.transAxes,
+            )
+
+    def plot_dataset(self, data, ax: object = None, title: str = None, legend:bool=True):
+        spc = re.compile("[ ;,\t\f\v]+")  # format replacing all spaces with tabs
+        dataiter = re.finditer(spc, data)
+        data = re.sub(spc, ",", data)
+
+        sio = io.StringIO(data)
+        df = pd.read_table(sio, sep=",")
+        cell_names=[f"VCN\_c{c:02d}" for c in df.Cell]
         uni = r"$\mu m^2$"
-        asalab = r"$ASA_{0.5}$"
-        ax.text(
-            1.1,
-            0.4,
-            f"{asalab:s}: {result_LM.params['vhalf'].value:.1f} {uni:s} (1$\sigma$ = {result_LM.params['vhalf'].stderr:.1f})\n",
-            fontsize=7,
-            verticalalignment="center", horizontalalignment="right",
-            transform=ax.transAxes,
-        )
-        ax.text(
-            1.1,
-            0.35,
-            f"k: {result_LM.params['k'].value:.1f} (1$\sigma$ = {result_LM.params['k'].stderr:.1f})",
-            fontsize=7,
-            verticalalignment="center", horizontalalignment="right",
-            transform=ax.transAxes,
+
+        sns.scatterplot(
+            x="ASA",
+            y="Eff",
+            data=df,
+            ax=ax,
+            hue=cell_names,
+            size=cell_names,
+            sizes=(40,40),
+            legend="full",
         )
         # return
         #
@@ -520,13 +536,41 @@ class EfficacyPlots(object):
             fit = gmodel.eval(params=resdict[m].params, x=xfit)
             ax.plot(xfit, fit, "k-", label=m)
         ax.set_xlabel(f"ASA ({uni:s})")
+        label = [f"VCN\_c{c:02d}" for c in df.Cell]
+        method = "leastsq"
+
+        cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+        self.plot_fit(df, ax, y0=0, method=method, cells = cells, color='k-')
+
+        cells1 = [9,11,13]
+        df1 = df[df.Cell.isin(cells1)]
+        self.plot_fit(df1, ax, y0=0.05, method=method, cells = cells1, color='r-')
+
+        cells2 = [2,5,6,10,30]
+        df2 = df[df.Cell.isin(cells2)]
+        self.plot_fit(df2, ax, y0=0.1, method=method, cells = cells2, color='b-', ic={"A": 1.0, "Vh": 200., "k": 10})
+
+        ax.set_xlim(0, 350.)
+        ax.set_xlabel(f"Input ASA ({uni:s})")
+
         ax.set_ylabel("Efficacy (Bushy spikes/input spikes)")
         ax.set_ylim(0, 1.0)
         ax.set_title(title, fontsize=12, fontweight="bold")
         PH.nice_plot(ax, direction='outward', ticklength=2.)
         PH.talbotTicks(ax, density=(1.0, 1.0), insideMargin=0, tickPlacesAdd={'x': 0, 'y': 1}, floatAdd={'x': 0, 'y': 1},
                    axrange={'x': (0, 300.), 'y':(0, 1)}, pointSize=None)
-        
+        if legend:
+            ax.legend(
+                loc="upper left",
+                bbox_to_anchor=(0.0, 1.0),
+                ncol=1,
+                fontsize=6,
+                markerscale=0.5,
+                fancybox=False,
+                shadow=False,
+                facecolor="w",
+                labelspacing=0.2,
+            )
 
 if __name__ == "__main__":
     sizer = {
@@ -536,7 +580,7 @@ if __name__ == "__main__":
             "noaxes": True,
         },
         "B": {"pos": [4.0, 3.0, 0.5, 3.0], "labelpos": (-0.15, 1.02)},
-    }  # dict pos elements are [left, width, bottom, height] for the axes in the plot. gr = [(a, a+1, 0, 1) f
+    }
     P = PH.arbitrary_grid(
         sizer,
         order="columnsfirst",

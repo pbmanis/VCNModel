@@ -14,6 +14,9 @@ import seaborn as sns
 from cycler import cycler
 from matplotlib import image as mpimg
 from matplotlib import pyplot as mpl
+from matplotlib.lines import Line2D
+from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
+
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
 from rich.console import Console
@@ -23,7 +26,9 @@ import toml
 from src.vcnmodel.plotters import efficacy_plot as EF
 from src.vcnmodel.plotters import plot_z as PZ
 import src.vcnmodel.util.fixpicklemodule as FPM
-from src.vcnmodel.plotters import figure_data as FD # table of simulation runs for plotting
+from src.vcnmodel.plotters import (
+    figure_data as FD,
+)  # table of simulation runs for plotting
 
 config = toml.load(open("wheres_my_data.toml", "r"))
 cprint = CP.cprint
@@ -39,10 +44,15 @@ def grAList() -> list:
 syms = ["s", "o", "x", "s", "o", "x", "s", "o", "x"]
 colors = ["c", "k", "m", "r"]
 
-title_text = {"passive": "Passive", "normal": "Half-active", "active": "Active",
-            "pasdend": "Passive", "actdend": "Active"}
+title_text = {
+    "passive": "Passive",
+    "normal": "Half-active",
+    "active": "Active",
+    "pasdend": "Passive",
+    "actdend": "Active",
+}
 font_colors = {"passive": "c", "normal": "k", "active": "m"}
-spike_colors = font_colors
+spike_colors = {"passive": "c", "normal": "k", "active": "m"}
 
 print(FD)
 
@@ -67,6 +77,7 @@ class PData:
     dend_inflate: bool = True
     basepath: str = config["baseDataDirectory"]
     renderpath: str = str(Path(config["codeDirectory"], "Renderings"))
+    revcorrpath: str = config["revcorrDataDirectory"]
     thiscell: str = ""
 
 
@@ -122,27 +133,28 @@ class Figures(object):
         print("make_figure:", figure_name)
         # dispatch
         dispatch_table = {
-            "Fig M0: VC-KLTCalibration (Fig_M0_VC_Adjustment)": self.plot_VC_gKLT,
-            "Fig M0 Supp: CombinedVCIV (Figure_M0-Combined_Supplemental)": self.plot_combined_VC_IV,
+            # "Fig 3 Ephys-1 main": self.Figure3Main,
+            "Fig 3 Supplemental1ABC_VC-KLTCalibration": self.plot_VC_gKLT,
+            "Fig 3 Supplemental1DE_RinTaum": self.plot_combined_VC_IV,
+            "Fig 3 Supplemental2_CC": self.plot_IVS,
+            "Fig 3 Supplemental3_Zin": self.plot_ZinS,
+            "Fig 3 Suppplemental4_PSTH": self.plot_All_PSTH,
+            "Fig 4 Ephys-2 main": self.Figure4Main,
+            "Fig 4 Ephys-2 Supplement1": self.Figure4_Supplmental1,
             "Fig M1: IV Figure (Fig_M1)": self.plotIV,
             "Fig_IV/ All IVs (Fig_IV/IV_cell_VCN_c##)": self.allIVs,
-            "Fig M1A Supp: IV Supplement (Fig_M1A_Supplemental)": self.plot_IVS,
-            "Fig M1B Supp: Zin Supplement (Fig_M1B_Supplemental_Zin)": self.plot_ZinS,
             "Fig M2: CombinedEffRevCorr (Fig_M2)": self.plot_combined_Eff_Rev,
             "Fig M2B: Efficacy (Fig_M2_Efficacy_Revcorr)": self.plot_efficacy,
             "Fig M2 Supp: Efficacy Supplement (Fig_M2_Supplemental_[experiment])": self.plot_efficacy_supplement,
             "Fig M3: Revcorr Ex (Fig_M3_spont|dBSPL)": self.plot_revcorr,
-            "Fig_Revcorr/ All Revcorrs (Revcorr_VCN_c##)" : self.plot_all_revcorr,
+            "Fig_Revcorr/ All Revcorrs (Revcorr_VCN_c##)": self.plot_all_revcorr,
             "Fig M3 Supp1: Revcorr Supplement Spont (Fig_M3_supplemental_Full_Spont)": self.plot_revcorr_supplement_spont,
             "Fig M3 Supp3: Revcorr Supplement (Fig_M3_supplemental_Full_30dB)": self.plot_revcorr_supplement_30dB,
             "Fig M3 Supp2: Revcorr Supplement (Fig_M3_supplemental_Full_40dB)": self.plot_revcorr_supplement_40dB,
             "Fig M4: Revcorr Compare (Fig_M4_Revcorr_Compare)": self.plot_revcorr_compare,
             "Fig M5: PSTH-FSL (Fig_M5)": self.plot_PSTH,
-            "Fig M5 Suppl1: All PSTHs (All_PSTH/PSTH_VCN_c##)": self.plot_All_PSTH,
             "Fig M5 Supp: PSTH-FSL Supplement (Fig_M5_supplemental_Full_dBSPL)": self.plot_PSTH_supplement,
             "VS-SAM Tone (no figure file - analysis only)": self.plot_VS_SAM,
-
-
         }
         if figure_name in list(dispatch_table.keys()):
             fig = dispatch_table[figure_name]()
@@ -176,6 +188,7 @@ class Figures(object):
             "Saving to: ",
             str(Path(config["baseDataDirectory"], "Figures", fig.filename)),
         )
+        print("fig title: ", fig.title["title"])
         mpl.savefig(
             Path(config["baseDataDirectory"], "Figures", fig.filename),
             metadata={
@@ -200,7 +213,7 @@ class Figures(object):
         for cell in grAList():
             self.plotIV(cell)
 
-    def get_dendmode(self, dendmode:str=""):
+    def get_dendmode(self, dendmode: str = ""):
         if dendmode == "passive":
             dendm = "pasdend"
         elif dendmode == "active":
@@ -317,7 +330,7 @@ class Figures(object):
             if cell is None:
                 dfile = FD.figure_IV[iv]
             else:
-                dfile =FD.figure_AllIVs[cellN][iv]
+                dfile = FD.figure_AllIVs[cellN][iv]
             sfi = Path(cellpath, Path(dfile).name)
             if not sfi.is_dir():
                 print("Missing file: sfi 1: ", sfi)
@@ -344,8 +357,6 @@ class Figures(object):
             self.P.axarr[0, iax].set_title(
                 title_text[iv], color="k", fontweight="normal"
             )
-
-        from matplotlib.lines import Line2D
 
         ls = ["-", "-", "-", ""]
         mc = ["w", "w", "w", "r"]
@@ -438,13 +449,13 @@ class Figures(object):
             # cellpath = Path(self.config['cellDataDirectory'], f"VCN_c{iv:02d}", 'Simulations', 'IV')
             for iax, dendmode in enumerate(["passive", "normal", "active"]):
                 dendm = self.get_dendmode(dendmode)
-                
+
                 sfi = Path(
                     self.config["cellDataDirectory"],
                     f"VCN_c{iv:02d}",
                     "Simulations",
                     "IV",
-                   FD.figure_AllIVs[iv][dendm],
+                    FD.figure_AllIVs[iv][dendm],
                 )
                 if not sfi.is_dir():
                     print("sfi is not a dir")
@@ -547,7 +558,7 @@ class Figures(object):
         Also put the PNG for the cell on the left.
         """
         nivs = len(FD.figure_AllIVs)
-        cprint('c', "plot_IVS.")
+        cprint("c", "plot_IVS.")
         rows = nivs
         cols = 5
         height = 1.5 * nivs
@@ -577,10 +588,10 @@ class Figures(object):
         )
         cellpath = config["cellDataDirectory"]
         png_path = Path(config["baseDataDirectory"], config["pngDirectory"])
-        cprint('c', "prepping fo run")
+        cprint("c", "prepping fo run")
 
         for rax, iv in enumerate(FD.figure_AllIVs.keys()):
-            cprint('r', f"Doing Cell VCN_c{iv:02d} -----------------------------------")
+            cprint("r", f"Doing Cell VCN_c{iv:02d} -----------------------------------")
             celln = Path(png_path, f"VCN_c{iv:02d}.png")
             if celln.is_file():  # add images from png files
                 img = mpimg.imread(str(celln))
@@ -596,7 +607,7 @@ class Figures(object):
                     f"VCN_c{iv:02d}",
                     "Simulations",
                     "IV",
-                   FD.figure_AllIVs[iv][dendm],
+                    FD.figure_AllIVs[iv][dendm],
                 )
                 if not sfi.is_dir():
                     cprint("r", f"Unable to find dir: {str(sfi):s}")
@@ -630,10 +641,10 @@ class Figures(object):
             fig = FigInfo()
             fig.P = self.P
             fig.filename = f"Fig_M1A_Supplemental.pdf"
-            timestamp_str = datetime.datetime.now().strftime(
-                "%Y-%m-%d-%H:%M"
-            )
-            fig.title["title"] = f"SBEM Project Figure 1 Modeling (Supplemental A) ({timestamp_str:s})"
+            timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")
+            fig.title[
+                "title"
+            ] = f"SBEM Project Figure 1 Modeling (Supplemental A) ({timestamp_str:s})"
             return fig
         else:
             return self.P
@@ -824,8 +835,104 @@ class Figures(object):
         fig.title["title"] = "SBEM Project Figure 2 Modeling: Efficacy and Revcorr"
         return fig
 
-    def plot_efficacy_supplement(self):
-        cells = grAList()
+    def plot_stacked_traces(
+        self,
+        cells=None,
+        figure=None,
+        axes: Union[list, None] = None,
+        calxp: float = 800.0,
+        calv: float = 20.0,
+        maxstack: int = 9,
+    ):
+        if cells is None:
+            cells = grAList()
+        trace_ht = 80  # mV
+
+        simulation_experiment = "Full"
+        for ic, cellN in enumerate(cells):
+            # if ic > 0:  # for quick tests
+            #               continue
+            cellpath = Path(
+                self.config["cellDataDirectory"],
+                f"VCN_c{cellN:02d}",
+                "Simulations",
+                "AN",
+            )
+            sfiles = Path(
+                cellpath,
+                Path(FD.figure_efficacy_supplement[cellN][simulation_experiment]).name,
+            )
+            if not sfiles.is_dir():
+                return
+            fn = sorted(list(sfiles.glob("*")))
+            # print("files to plot: ", fn)
+            PD = PData()
+
+            nfn = len(fn)
+            ymax = 20.0
+            if simulation_experiment != "Full":
+                ymax = 40.0
+            yoffset = -90.0
+            ymin = maxstack * yoffset
+            ymax = 20.0
+            if simulation_experiment != "Full":
+                ymax = 40.0
+            for n in range(len(fn)):
+                if n == 0 and ic == 0:
+                    calxv = calxp
+                else:
+                    calxv = None
+                y0 = n * yoffset
+                self.parent.PLT.plot_traces(
+                    ax=axes[ic],
+                    fn=fn[n],
+                    PD=PD,
+                    protocol="runANSingles",
+                    ymin=ymin,
+                    ymax=ymax,
+                    xmin=400.0,
+                    xmax=900.0,
+                    yoffset=n * yoffset,
+                    iax=n,
+                    nax=len(fn),
+                    rep=0,
+                    figure=figure,
+                    longtitle=True,
+                    ivaxis=None,
+                    ivcolor="k",
+                    iv_spike_color="r",
+                    spike_marker_size=1.5,
+                    spike_marker_color="r",
+                    calx=calxv,
+                    caly=-110.0,
+                    calt=50.0,
+                    calv=20.0,
+                )
+                axes[ic].annotate(
+                    text=f"{n+1:d} ",
+                    xy=(400.0, y0-60.),  # ms
+                    fontsize=8,
+                    horizontalalignment="right",
+                    verticalalignment="center",
+                    # transform=axes[ic].transAxes,
+                )
+
+                if n == 0:
+                    axes[ic].set_title(
+                        f"VCN_c{cellN:02d}",
+                        loc="center",
+                        fontdict={
+                            "verticalalignment": "baseline",
+                            "fontsize": 9,
+                            "fontweight": "normal",
+                        },
+                    )
+        return
+
+    def plot_efficacy_supplement(self, cells=None, parent_figure=None, traces=True):
+        if cells is None:
+            cells = grAList()
+        print("Efficacy Supplement Plot")
         effp = []
         simulation_experiment = "Full"
         hspc = 0.04
@@ -841,17 +948,20 @@ class Figures(object):
         height = 0.38
         xp = lmar + np.arange(ncol) * (width + hspc)
         yp = bmar + np.arange(nrow) * (height + rowspc)
-        self.P = PH.regular_grid(  # dummy figure space
-            1,
-            1,
-            figsize=(8.0, 8.0),
-            order="rowsfirst",
-            units="in",
-            showgrid=False,
-            parent_figure=None,
-        )
-        EFP = EF.EfficacyPlots(parent_figure=self.P) # , cols=1, rows=1)
-        EFP.parent_figure.figure_handle.set_size_inches((8.0, 8.0))
+        if parent_figure is None:
+            self.P = PH.regular_grid(  # dummy figure space
+                1,
+                1,
+                figsize=(8.0, 8.0),
+                order="rowsfirst",
+                units="in",
+                showgrid=False,
+                parent_figure=None,
+            )
+            EFP.parent_figure.figure_handle.set_size_inches((8.0, 8.0))
+            EFP = EF.EfficacyPlots(parent_figure=self.P)  # , cols=1, rows=1)
+        else:
+            EFP = EF.EfficacyPlots(parent_figure=parent_figure)
 
         for ic, cellN in enumerate(cells):
             # if ic > 0:  # for quick tests
@@ -869,92 +979,271 @@ class Figures(object):
             if not sfiles.is_dir():
                 return
             fn = sorted(list(sfiles.glob("*")))
-            print("fn: ", fn)
             PD = PData()
 
             row_n = 1 - int(ic / 5)
             col_n = ic % 5
             calxp = 800.0
-            P_Eff = PH.regular_grid(
-                len(fn),
-                1,
-                order="rowsfirst",
-                # figsize=(8., 4.5),
-                showgrid=False,
-                verticalspacing=0.01,
-                # horizontalspacing=0.1,
-                margins={
-                    "bottommargin": yp[row_n],
-                    "leftmargin": xp[col_n],
-                    "width": width,
-                    "height": height,
-                },
-                labelposition=(-0.05, 1.06),
-                parent_figure=EFP.parent_figure,
-                # panel_labels=['A', 'B', 'C', 'D', 'E', 'F'],
-            )
-            effp.append(P_Eff)
-            nfn = len(fn)
-            ymax = 20.0
-            if simulation_experiment != "Full":
-                ymax = 40.0
-            for n in range(len(fn)):
-                if n == nfn - 1:
-                    calxv = calxp
-                else:
-                    calxv = None
-                self.parent.PLT.plot_traces(
-                    ax=P_Eff.axarr[n, 0],
-                    fn=fn[n],
-                    PD=PD,
-                    protocol="runANSingles",
-                    ymin=-90.0,
-                    ymax=ymax,
-                    xmin=400.0,
-                    xmax=900.0,
-                    iax=n,
-                    nax=len(fn),
-                    rep=0,
-                    figure=P_Eff.figure_handle,
-                    longtitle=True,
-                    ivaxis=None,
-                    ivcolor="k",
-                    iv_spike_color="r",
-                    spike_marker_size=1.5,
-                    spike_marker_color="c",
-                    calx=calxv,
-                    caly=-110.0,
-                    calt=50.0,
-                    calv=20.0,
+            if traces:
+                P_Eff = PH.regular_grid(
+                    len(fn),
+                    1,
+                    order="rowsfirst",
+                    # figsize=(8., 4.5),
+                    showgrid=False,
+                    verticalspacing=0.01,
+                    # horizontalspacing=0.1,
+                    margins={
+                        "bottommargin": yp[row_n],
+                        "leftmargin": xp[col_n],
+                        "width": width,
+                        "height": height,
+                    },
+                    labelposition=(-0.05, 1.06),
+                    parent_figure=EFP.parent_figure,
+                    # panel_labels=['A', 'B', 'C', 'D', 'E', 'F'],
                 )
-                P_Eff.axarr[n, 0].text(
-                    -0.02,
-                    0.5,
-                    f"{n+1:d}",
-                    fontsize=8,
-                    horizontalalignment="right",
-                    verticalalignment="center",
-                    transform=P_Eff.axarr[n, 0].transAxes,
-                )
-
-                if n == 0:
-                    P_Eff.axarr[n, 0].set_title(
-                        f"VCN_c{cellN:02d}",
-                        loc="center",
-                        fontdict={
-                            "verticalalignment": "baseline",
-                            "fontsize": 9,
-                            "fontweight": "normal",
-                        },
+                effp.append(P_Eff)
+                nfn = len(fn)
+                ymax = 20.0
+                if simulation_experiment != "Full":
+                    ymax = 40.0
+                yoffset = -60.0
+                ymin = nfn * -60.0
+                print("ymin, ymax: ", ymin, ymax)
+                for n in range(len(fn)):
+                    if n == nfn - 1:
+                        calxv = calxp
+                    else:
+                        calxv = None
+                    self.parent.PLT.plot_traces(
+                        ax=P_Eff.axarr[n, 0],
+                        fn=fn[n],
+                        PD=PD,
+                        protocol="runANSingles",
+                        ymin=ymin,
+                        ymax=ymax,
+                        xmin=400.0,
+                        xmax=900.0,
+                        yoffset=n * yoffset,
+                        iax=n,
+                        nax=len(fn),
+                        rep=0,
+                        figure=P_Eff.figure_handle,
+                        longtitle=True,
+                        ivaxis=None,
+                        ivcolor="k",
+                        iv_spike_color="r",
+                        spike_marker_size=1.5,
+                        spike_marker_color="r",
+                        calx=calxv,
+                        caly=-110.0,
+                        calt=50.0,
+                        calv=20.0,
                     )
+                    P_Eff.axarr[n, 0].text(
+                        -0.02,
+                        0.5,
+                        f"{n+1:d}",
+                        fontsize=8,
+                        horizontalalignment="right",
+                        verticalalignment="center",
+                        transform=P_Eff.axarr[n, 0].transAxes,
+                    )
+
+                    if n == 0:
+                        P_Eff.axarr[n, 0].set_title(
+                            f"VCN_c{cellN:02d}",
+                            loc="center",
+                            fontdict={
+                                "verticalalignment": "baseline",
+                                "fontsize": 9,
+                                "fontweight": "normal",
+                            },
+                        )
 
         save_file = f"Fig_M2_Supplemental_{simulation_experiment:s}.pdf"
         title = "SBEM Project Figure 2 Modeling : Efficacy, Supplemental"
         save_file = "Fig_M2_Efficacy_Supplement.pdf"
         fig = FigInfo()
-        fig.P = self.P
+        if traces:
+            fig.P = self.P
+        else:
+            fig.P = None
         fig.filename = save_file
         fig.title["title"] = title
+        return fig
+
+    def _load_rcdata(self, dBSPL):
+        rc_datafile = Path(
+            config["baseDataDirectory"],
+            config["revcorrDataDirectory"],
+            f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl",
+        )
+        with open(rc_datafile, "rb") as fh:
+            d = pickle.load(fh)
+        # print(d.keys())
+        return d
+
+    def Figure4_Supplmental1(self):
+        fig = self.Figure4Main(supplemental1=True)
+        return fig
+
+    def Figure4Main(self, supplemental1=False):
+        """
+        Generate Figure 4 for the paper. Combined bits from various other plots
+        and revcorrs/singles
+        """
+        if not supplemental1:
+            example_cells = [5, 9, 17, 30]
+        else:
+            example_cells = [2, 6, 10, 11, 13, 18]
+
+        start_letter = "A"
+        parent_figure = None
+
+        if not supplemental1:
+            sizer = {
+                "D": {"pos": [6.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
+                "E": {"pos": [9.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
+                "F": {"pos": [6.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
+                "G": {"pos": [9.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
+            }
+            figsize = (12,8)
+        else:
+            sizer = {}
+            figsize = (9, 8)
+        xw = 1.1
+        trace_axes = []
+        for j in range(len(example_cells)):
+            i = j + 1
+            xl = j * 1.25 + 0.75
+            axn = f"A{i:d}"
+            trace_axes.append(axn)
+            sizer[axn] = {
+                "pos": [xl, xw, 3.25, 4.25],
+                "labelpos": (-0.15, 1.02),
+                "noaxes": True,
+            }
+            sizer[f"B{i:d}"] = {
+                "pos": [xl, xw, 2.0, 1.0],
+                "labelpos": (-0.15, 1.02),
+                # "noaxes": True,
+            }
+            sizer[f"C{i:d}"] = {
+                "pos": [xl, xw, 0.5, 1.0],
+                "labelpos": (-0.15, 0.9),
+                "noaxes": True,
+            }
+        # dict pos elements are [left, width, bottom, height] for the axes in the plot. gr = [(a, a+1, 0, 1) for a in range(0, 8)] # just generate subplots - shape do not matter axmap = OrderedDict(zip(sizer.keys(), gr))
+        P = PH.arbitrary_grid(
+            sizer,
+            order="columnsfirst",
+            units="in",
+            figsize=figsize,
+            label=True,
+            showgrid=False,
+            parent_figure=parent_figure,
+        )
+        # Efficacy plot
+        if not supplemental1:
+            EFP = EF.EfficacyPlots(parent_figure=P)
+            EFP.plot_efficacy("Full", ax=P.axdict["D"], figuremode="clean")
+        # participation plots
+        synperum2 = 0.7686  # taken from cell_config.py, line 127 (11/15/2021)
+
+        def plot_participation(ax, n, a, b, dB=0, color=None):
+            ap = a[n][0].participation / a[n][0].npost_spikes
+            bp = b[n][0].participation / b[n][0].npost_spikes
+            ax.plot(
+                [a[n][0].sites / synperum2, a[n][0].sites / synperum2],
+                [ap, bp],
+                "-",
+                color=color,
+            )
+            ax.scatter(a[n][0].sites / synperum2, ap, marker="o", color=color)
+            ax.scatter(a[n][0].sites / synperum2, bp, marker="x", color=color)
+            ax.set_xlabel(r"Input ASA (${\mu m^2}$)")
+            ax.set_xlim(0, 300)
+            ax.set_ylim(0, 1.0)
+            ax.set_ylabel(f"Participation at 0 and {dB:2d} dBSPL")
+            PH.talbotTicks(ax, floatAdd={"x": 0, "y": 2})
+
+        def plot_diff_participation(ax, n, a, b, dB=0, color=None, legend=True):
+            ap = a[n][0].participation / a[n][0].npost_spikes
+            bp = b[n][0].participation / b[n][0].npost_spikes
+            ax.scatter(
+                a[n][0].sites / synperum2,
+                bp / ap,
+                marker="o",
+                color=color,
+                label=f"VCN_c{n:02d}",
+            )
+            ax.set_xlabel(r"Input ASA (${\mu m^2}$)")
+            ax.set_xlim(0, 300)
+            ax.set_ylim(0, 3)
+            ax.set_ylabel(f"Participation ratio {dB:2d}/{0:2d} dBSPL")
+            PH.talbotTicks(ax, floatAdd={"x": 0, "y": 2})
+            if legend:
+                ax.legend(fontsize=8, loc="upper right", ncol=2)
+
+        dB = 30
+        if not supplemental1:
+            ds = self._load_rcdata("Spont")
+            drc = self._load_rcdata(f"{dB:2d}dB")
+            palette = sns.color_palette(None, len(ds.keys()))
+            for i, c in enumerate(ds.keys()):
+                # plot_participation(P.axdictax[0], c, ds, drc, dB=dB, color=palette[i])
+                plot_diff_participation(
+                    P.axdict["E"], c, ds, drc, dB=dB, color=palette[i], legend=False
+                )
+
+        axl = [P.axdict[axi] for axi in trace_axes]
+        self.plot_stacked_traces(cells=example_cells, figure=P, axes=axl, maxstack=10)
+        if not supplemental1:
+            self.plot_revcorr_compare(
+                parent_figure=P,
+                axlist=[P.axdict["F"], P.axdict["G"]],
+                dBSPLs=["Spont", "30dB"],
+                legend=False,
+            )
+            synlabel_num = 5
+        else:
+            synlabel_num = 2
+        self.plot_revcorr_supplement(cells=example_cells, parent_figure=P, dBSPL="30dB", synlabel_num=synlabel_num)
+        # self.plot_efficacy_supplement(cells=example_cells, parent_figure=P, traces=False)
+
+        for j in range(len(example_cells)):
+            ax = P.axdict[f"B{j+1:d}"]
+            ax.set_ylim(0, 0.8)
+            ax.set_xlim(-5.0, 0.0)
+
+            if j > 0:
+                PH.noaxes(ax, whichaxes="y")
+            else:
+                ax.set_ylabel("Coinc. Rate (Hz)")
+            ax.xaxis.set_minor_locator(MultipleLocator(1))
+            ax.tick_params(which="major", length=4, direction="in")
+            ax.tick_params(which="minor", length=2, direction="in")
+        fig = FigInfo()
+        if parent_figure is not None:
+            fig.P = parent_figure
+        else:
+            fig.P = P
+        if not supplemental1:
+            fig.filename = "Figure4_Ephys2_main_v4.pdf"
+            fig.title[
+                "title"
+            ] = "SBEM Project Figure 4 Modeling: Singles, Efficacy and Revcorr"
+        else:
+            fig.filename = "Figure4-Supplemental1_Revcorr.pdf"
+            fig.title[
+                "title"
+            ] = "SBEM Project Figure 4 Modeling: other cells Singles and Revcorr"
+
+        title2 = {"title": f"", "x": 0.99, "y": 0.01}
+        fig.title2 = title2
+        print("returnin fig: ", fig)
         return fig
 
     def plot_all_revcorr(self):
@@ -964,34 +1253,34 @@ class Figures(object):
                 self.save_figure(fig)
         return None
 
-    def plot_revcorr(
+    def _get_revcorr(
         self,
-        cellN=None,
+        cell_number: int,
+        dBSPL="Spont",
         parent_figure: Union[object, None] = None,
-        loc: tuple = (0.0, 0.0, 0.0, 0.0),
-        start_letter="A",
-        colormap="tab10",
-    ):
-        if cellN == None:
-            cell_number = 17
-            example = FD.figure_revcorr_example[cell_number]
-        else:
-            cell_number = cellN
-            example = FD.figure_revcorr[cell_number]
-
-        dBSPL = "Spont"
-        recompute = False
+        recompute=False,
+    ) -> tuple:
+        """
+        Get the revcorr data associated with the cell number
+        and the stimulus level (dbSPL, as a string)
+        """
+        cprint("c", "Calling _get_revcorr")
+        cell_revcorr = FD.figure_revcorr[cell_number]
         run_calcs = False
-        rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
+        rc_datafile = Path(
+            PData().revcorrpath, f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl"
+        )
+        cprint("c", f"Rcdatafile: {str(rc_datafile):s}")
         if rc_datafile.is_file() and not recompute:
             with open(rc_datafile, "rb") as fh:
                 all_RCD_RCP = FPM.pickle_load(fh)
             RCD = all_RCD_RCP[cell_number][0]
             RCP = all_RCD_RCP[cell_number][1]
             PD = PData()
+            P = None
         else:
             print(
-                "You must run revcorr_supplement plot first, then the file we need will be present"
+                "You must run revcorr_supplement plot first, then the data file we need will be present"
             )
             run_calcs = True
             cellpath = Path(
@@ -1000,9 +1289,9 @@ class Figures(object):
                 "Simulations",
                 "AN",
             )
-            sfi = Path(cellpath, Path(example[dBSPL]).name)
+            sfi = Path(cellpath, Path(cell_revcorr[dBSPL]).name)
             if not sfi.is_dir():
-                return
+                return None, None, None, None
             fn = sorted(list(sfi.glob("*")))
             (P, PD, RCP, RCD) = self.parent.PLT.compute_revcorr(
                 P=None,  # no plotting (and return P is None)
@@ -1014,7 +1303,26 @@ class Figures(object):
                 thr=-20.0,
                 width=4.0,
             )
+        return P, PD, RCP, RCD
 
+    def plot_revcorr(
+        self,
+        cellN=None,
+        parent_figure: Union[object, None] = None,
+        loc: tuple = (0.0, 0.0, 0.0, 0.0),
+        start_letter="B",  # default if no parent figure
+        colormap="tab10",
+    ):
+        if cellN == None:
+            cell_number = 17
+            example = FD.figure_revcorr_example[cell_number]
+        else:
+            cell_number = cellN
+            example = FD.figure_revcorr[cell_number]
+
+        P, PD, RCP, RCD = self._get_revcorr(cell_number=cellN, dBSPL="Spont")
+        if PD is None:
+            return  # unable to get the revcorr
         str_a = string.ascii_uppercase
         p_labels = str_a[
             str_a.find(start_letter) : str_a.find(start_letter) + 4
@@ -1165,73 +1473,99 @@ class Figures(object):
         fig = self.plot_revcorr_supplement("40dB")
         return fig
 
-    def plot_revcorr_supplement(self, dBSPL: str):
+    def plot_revcorr_supplement(
+        self,
+        dBSPL: str,
+        cells=None,
+        parent_figure=None,
+        rate_ax: Union[list, None] = None,
+        vm_ax: Union[list, None] = None,
+        cumulative: Union[object, None] = None,
+        synlabel_num: int=0,
+        colormap: str="magma",  # default color map
+    ):
+        if cells is None:
+            cells = grAList()
+        ncells = len(cells)
 
-        P = PH.regular_grid(
-            rows=len(grAList()),
-            cols=4,
-            order="rowsfirst",
-            figsize=(8, 10),
-            # showgrid=True,
-            margins={
-                "bottommargin": 0.1,
-                "leftmargin": 0.125,
-                "rightmargin": 0.1,
-                "topmargin": 0.1,
-            },
-            verticalspacing=0.03,
-            horizontalspacing=0.08,
-        )
-        PH.cleanAxes(P.axarr.ravel())
-        ncells = len(grAList())
-        P.figure_handle.text(
-            0.175,
-            0.93,
-            f"Coinc. Rate (Hz)",
-            fontsize=10,
-            horizontalalignment="center",
-            verticalalignment="bottom",
-        )
-        P.figure_handle.text(
-            0.39,
-            0.93,
-            f"Membrane Potential",
-            fontsize=10,
-            horizontalalignment="center",
-            verticalalignment="bottom",
-        )
-        P.figure_handle.text(
-            0.61,
-            0.93,
-            f"Participation",
-            fontsize=10,
-            horizontalalignment="center",
-            verticalalignment="bottom",
-        )
-        P.figure_handle.text(
-            0.83,
-            0.93,
-            f"Cumulative Inputs to Spike",
-            fontsize=10,
-            horizontalalignment="center",
-            verticalalignment="bottom",
-        )
-
-        run_calcs = True
-        rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
-        if rc_datafile.is_file() and not run_calcs:
-            with open(rc_datafile, "rb") as fh:
-                all_RCD_RCP = FPM.pickle_load(fh)
-        else:
-            print(
-                "Must run revcorr_supplement plot first, then the file we need will be present"
+        if parent_figure is None:
+            P = PH.regular_grid(
+                rows=4,
+                cols=len(cells),
+                order="columnsfirst",
+                figsize=(8, 10),
+                # showgrid=True,
+                margins={
+                    "bottommargin": 0.1,
+                    "leftmargin": 0.125,
+                    "rightmargin": 0.1,
+                    "topmargin": 0.1,
+                },
+                verticalspacing=0.03,
+                horizontalspacing=0.08,
             )
-            run_calcs = True
-            all_RCD_RCP = {}  # all revcorr data
+            P.figure_handle.text(
+                0.175,
+                0.93,
+                f"Coinc. Rate (Hz)",
+                fontsize=10,
+                horizontalalignment="center",
+                verticalalignment="bottom",
+            )
+            P.figure_handle.text(
+                0.39,
+                0.93,
+                f"Membrane Potential",
+                fontsize=10,
+                horizontalalignment="center",
+                verticalalignment="bottom",
+            )
+            P.figure_handle.text(
+                0.61,
+                0.93,
+                f"Participation",
+                fontsize=10,
+                horizontalalignment="center",
+                verticalalignment="bottom",
+            )
+            P.figure_handle.text(
+                0.83,
+                0.93,
+                f"Cumulative Inputs to Spike",
+                fontsize=10,
+                horizontalalignment="center",
+                verticalalignment="bottom",
+            )
+            PH.cleanAxes(P.axarr.ravel())
 
+        else:
+            P = parent_figure
+
+        # run_calcs = True
+        # P, PD, RCP, RCD = self._get_revcorr(cell_number=cellN, dBSPL = "Spont")
+        # rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
+        # if rc_datafile.is_file() and not run_calcs:
+        #     with open(rc_datafile, "rb") as fh:
+        #         all_RCD_RCP = FPM.pickle_load(fh)
+        # else:
+        #     print(
+        #         "Must run revcorr_supplement plot first, then the file we need will be present"
+        #     )
+        #     run_calcs = False
+        all_RCD_RCP = {}  # all revcorr data
+        save_calcs = False
+        i_plot = 0
         for i, cell_number in enumerate(grAList()):
-            # if i > 1:
-            #                 continue
+
+            PR, PD, RCP, RCD = self._get_revcorr(cell_number=cell_number, dBSPL=dBSPL)
+            if PD is None:
+                cprint("r", "PD is none in plot_revcorr_supplement")
+                continue
+            # rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
+            # if rc_datafile.is_file() and not run_calcs:
+            #     with open(rc_datafile, "rb") as fh:
+            #         all_RCD_RCP = FPM.pickle_load(fh)
+            #
             dataset = FD.figure_revcorr[cell_number]
 
             cellpath = Path(
@@ -1246,50 +1580,61 @@ class Figures(object):
             print(sfi)
             fn = sorted(list(sfi.glob("*")))
             print("revcorr supplement fn: ", fn)
-            if run_calcs:
-                (P0, PD, RCP, RCD) = self.parent.PLT.compute_revcorr(
-                    P=None,
-                    gbc=str(cell_number),
-                    fn=fn[0],
-                    PD=PData(),
-                    protocol="runANPSTH",
-                    revcorrtype="RevcorrSPKS",
-                    thr=-20.0,
-                    width=4.0,
-                )
-            else:
-                PD = PData()
-                RCD = all_RCD_RCP[cell_number][0]
-                RCP = all_RCD_RCP[cell_number][1]
+
+            # PD = PData()
+            # RCD = all_RCD_RCP[cell_number][0]
+            # RCP = all_RCD_RCP[cell_number][1]
 
             if i == 0:
                 tcal = True  # point font for cal bar
             else:
                 tcal = False  # no cal bar
+            if synlabel_num == 0:
+                synlabel= True
+            else:
+                if cell_number == synlabel_num:
+                    synlabel = True
+                else:
+                    synlabel = False
 
             all_RCD_RCP[cell_number] = [RCD, RCP]
-            summarySiteTC = self.parent.PLT.plot_revcorr2(
-                P,
-                PD,
-                RCP,
-                RCD,
-                axarray=P.axarr[i, 0:2],
-                calbar_show=tcal,
-                calbar_fontsize=7,
-                yaxis_label=False,
-            )
+            if cell_number in cells:
+                if parent_figure is None:
+                    axlist = P.axarr[i_plot, 0:2]
+                else:
+                    axlist = [
+                        P.axdict[f"B{i_plot+1:d}"],
+                        P.axdict[f"C{i_plot+1:d}"],
+                        None,
+                    ]
+                summarySiteTC = self.parent.PLT.plot_revcorr2(
+                    P,
+                    PD,
+                    RCP,
+                    RCD,
+                    axarray=axlist,
+                    calbar_show=tcal,
+                    calbar_fontsize=7,
+                    yaxis_label=False,
+                    synlabel=synlabel,
+                    colormap=colormap,
+                )
 
-            print(f"  Mean pre: {RCD.mean_pre_intervals=}")
-            print(f"  Mean Post: {RCD.mean_post_intervals:.3f}")
-            P.axarr[i, 0].text(
-                -0.25,
-                0.5,
-                f"VCN_c{cell_number:02d}",
-                fontsize=9,
-                color="k",
-                transform=P.axarr[i, 0].transAxes,
-                horizontalalignment="right",
-            )
+                print(f"  Mean pre: {RCD.mean_pre_intervals=}")
+                print(f"  Mean Post: {RCD.mean_post_intervals:.3f}")
+                if parent_figure is None:
+                    P.axarr[i, 0].text(
+                        -0.25,
+                        0.5,
+                        f"VCN_c{cell_number:02d}",
+                        fontsize=9,
+                        color="k",
+                        transform=axlist.transAxes,
+                        horizontalalignment="right",
+                    )
+                else:
+                    pass
+                i_plot += 1
 
             maxp = np.max(RCD.pairwise)
             psh = RCD.pairwise.shape
@@ -1300,64 +1645,70 @@ class Figures(object):
                     pos[j, k, 0] = j + 1
                     pos[j, k, 1] = k + 1
 
-            sax = P.axarr[i, :]
-            if dBSPL == "Spont":
-                sax[0].set_ylim(0, 0.5)
-            else:
-                sax[0].set_ylim(0, 0.8)
-            PH.talbotTicks(  # revcorr
-                sax[0],
-                tickPlacesAdd={"x": 0, "y": 0},
-                floatAdd={"x": 1, "y": 1},
-                # pointSize=7,
-            )
-
-            PH.noaxes(P.axarr[i, 1])
-
-            sax[2].plot(
-                RCD.sites,
-                RCD.participation / RCD.nspikes,
-                "kx",
-                markersize=5,
-                clip_on=False,
-            )
-            sax[2].set_ylim((0, 1.0))
-            sax[2].set_xlim(0, 225)
-
-            if i == ncells - 1:
-                sax[2].set_xlabel("# Release Sites")
-            # sax[2].set_ylabel("Participation")
-            PH.talbotTicks(  # Participation
-                sax[2],
-                tickPlacesAdd={"x": 0, "y": 2},
-                floatAdd={"x": 0, "y": 2},
-                # pointSize=7,
-            )
-            sax[2].tick_params(direction="in", length=3.0, width=1.0)
-
-            sax[3].plot(
-                np.arange(len(RCD.ynspike)) + 1,
-                RCD.ynspike,
-                "k^-",
-                markersize=5,
-                clip_on=False,
-            )
-            sax[3].set_ylim(0, 1.05)
-            if i == ncells - 1:
-                sax[3].set_xlabel(
-                    f"# Inputs in [{RCD.pre_w[0]:.1f} to {RCD.pre_w[1]:.1f}] before spike"
+            if parent_figure is None:
+                sax = P.axarr[i, :]
+                if dBSPL == "Spont":
+                    sax[0].set_ylim(0, 0.5)
+                else:
+                    sax[0].set_ylim(0, 0.8)
+                PH.talbotTicks(  # revcorr
+                    sax[0],
+                    tickPlacesAdd={"x": 0, "y": 0},
+                    floatAdd={"x": 1, "y": 1},
+                    # pointSize=7,
                 )
-            PH.talbotTicks(  # cumulative inputs before spike
-                sax[3],
-                tickPlacesAdd={"x": 0, "y": 1},
-                floatAdd={"x": 0, "y": 2},
-                # pointSize=7,
-            )
-            sax[3].tick_params(direction="in", length=3.0, width=1.0)
+
+            if parent_figure is None:
+                PH.noaxes(P.axarr[i, 1])
+                s2 = sax[2]
+
+                s2.plot(
+                    RCD.sites,
+                    RCD.participation / RCD.nspikes,
+                    "kx",
+                    markersize=5,
+                    clip_on=False,
+                )
+                s2.set_ylim((0, 1.0))
+                s2.set_xlim(0, 225)
+
+                if i == ncells - 1:
+                    s2.set_xlabel("# Release Sites")
+                # sax[2].set_ylabel("Participation")
+                PH.talbotTicks(  # Participation
+                    s2,
+                    tickPlacesAdd={"x": 0, "y": 2},
+                    floatAdd={"x": 0, "y": 2},
+                    # pointSize=7,
+                )
+                s2.tick_params(direction="in", length=3.0, width=1.0)
+
+            if parent_figure is None:
+                s3 = sax[3]
+                s3.plot(
+                    np.arange(len(RCD.ynspike)) + 1,
+                    RCD.ynspike,
+                    "k^-",
+                    markersize=5,
+                    clip_on=False,
+                )
+                s3.set_ylim(0, 1.05)
+                if i == ncells - 1:
+                    s3.set_xlabel(
+                        f"# Inputs in [{RCD.pre_w[0]:.1f} to {RCD.pre_w[1]:.1f}] before spike"
+                    )
+                PH.talbotTicks(  # cumulative inputs before spike
+                    s3,
+                    tickPlacesAdd={"x": 0, "y": 1},
+                    floatAdd={"x": 0, "y": 2},
+                    # pointSize=7,
+                )
+                s3.tick_params(direction="in", length=3.0, width=1.0)
 
         # save the accumulated RCD data
-        with open(rc_datafile, "wb") as fh:
-            pickle.dump(all_RCD_RCP, fh)
+        if save_calcs:
+            with open(rc_datafile, "wb") as fh:
+                pickle.dump(all_RCD_RCP, fh)
 
         title = (
             "SBEM Project Supplemental Figure 3 Modeling : Reverse Correlation Summary",
@@ -1369,21 +1720,36 @@ class Figures(object):
         fig.title["title"] = title
         return fig
 
-    def plot_revcorr_compare(self):
-        dBSPLs = ["Spont", "30dB"] # , "40dB"]
-        P = PH.regular_grid(
-            1,
-            2,
-            figsize=(7, 4),
-            margins={
-                "bottommargin": 0.15,
-                "leftmargin": 0.15,
-                "rightmargin": 0.15,
-                "topmargin": 0.15,
-            },
-            verticalspacing=0.03,
-            horizontalspacing=0.1,
-        )
+    def plot_revcorr_compare(
+        self,
+        parent_figure=None,
+        axlist: Union[list, None] = None,
+        dBSPLs: list = ["Spont", "30dB"],
+        legend=True,
+    ):
+        if parent_figure is None:
+            P = PH.regular_grid(
+                1,
+                2,
+                figsize=(7, 4),
+                margins={
+                    "bottommargin": 0.15,
+                    "leftmargin": 0.15,
+                    "rightmargin": 0.15,
+                    "topmargin": 0.15,
+                },
+                verticalspacing=0.03,
+                horizontalspacing=0.1,
+            )
+            axes = P.axarray[0, :]
+        else:
+            if axlist is None:
+                raise ValueError(
+                    "plot_revcorr_compare: If plotting to a parent figure, axlist must be specified"
+                )
+            else:
+                axes = axlist
+
         for i, dBSPL in enumerate(dBSPLs):
             with open(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl", "rb") as fh:
                 try:
@@ -1397,7 +1763,7 @@ class Figures(object):
             for cell_number in R.keys():
                 RCD = R[cell_number][0]
                 RCP = R[cell_number][1]
-                P.axarr[0, i].plot(
+                axes[i].plot(
                     np.arange(len(RCD.ynspike)) + 1,
                     RCD.ynspike,
                     "^-",
@@ -1405,20 +1771,25 @@ class Figures(object):
                     clip_on=False,
                     label=f"VCN_c{cell_number:02d}",
                 )
-            P.axarr[0, i].set_xlim(0, 12)
-            P.axarr[0, i].set_ylim(0, 1.0)
-            P.axarr[0, i].set_xlabel("Number of inputs prior to spike")
-            P.axarr[0, i].set_ylabel("Cumulative Fraction of Spikes")
-            if i == 0:
-                P.axarr[0, i].legend()
-            P.axarr[0, i].set_title(dBSPL)
+            axes[i].set_xlim(0, 12)
+            axes[i].set_ylim(0, 1.0)
+            axes[i].set_xlabel("Number of inputs prior to spike")
+            axes[i].set_ylabel("Cumulative Fraction of Spikes")
+            if i == 0 and legend:
+                axes[i].legend()
+            axes[i].set_title(dBSPL)
 
-        save_file = f"Fig_M4_Revcorr_Compare.pdf"
-        fig = FigInfo()
-        fig.P = P
-        fig.filename = save_file
-        fig.title["title"] = "SBEM Project Figure 4 Modeling : Reverse Correlation Comparison"
-        return fig
+        if parent_figure is None:
+            save_file = f"Fig_M4_Revcorr_Compare.pdf"
+            fig = FigInfo()
+            fig.P = P
+            fig.filename = save_file
+            fig.title[
+                "title"
+            ] = "SBEM Project Figure 4 Modeling : Reverse Correlation Comparison"
+            return fig
+        else:
+            return None
 
     def plot_psth_psth(
         self,
@@ -1942,7 +2313,7 @@ class Figures(object):
             P.axarr[i, 0].text(
                 -0.60,
                 0.3,
-                "\nAxon: "+axon_name,
+                "\nAxon: " + axon_name,
                 fontsize=7,
                 color="k",
                 transform=P.axarr[i, 0].transAxes,
@@ -2011,7 +2382,7 @@ class Figures(object):
         VS_datasets.py
         """
         cprint("r", "Generate VS Data")
-        
+
         fout = "VS_data.py"  # we will generate this automatically
         with open(fout, "w") as fh:
             fh.write(f'"""\n')
@@ -2065,11 +2436,11 @@ class Figures(object):
         save_file = f"Fig_M0_VC_Adjustment.pdf"
         fig = FigInfo()
         fig.P = P
-        
+
         if cell_number == None:
             fig.filename = "Fig_M0.pdf"
         else:
             fig.filename = save_file
-        fig.title['title'] = "SBEM Project Figure Modeling Supplemental : VC"
+        fig.title["title"] = "SBEM Project Figure Modeling Supplemental : VC"
         fig.title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.05}
         return fig
