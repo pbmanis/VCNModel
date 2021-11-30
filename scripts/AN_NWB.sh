@@ -39,7 +39,7 @@ do
     echo $f
     echo $AXON
     python src/vcnmodel/model_run2.py VCN_c$f -D Full -P initAN --dendritemode normal $CONFIG $AXON $DATATABLE $CHECK $TEST
-    python src/vcnmodel/model_run2.py VCN_c$f -D Full $PROTO -r $REPS --dB 10 --Spirou all --dendritemode normal $CONFIG $AXON $DATATABLE $CHECK $TEST $SAVEALL
+    python src/vcnmodel/model_run2.py VCN_c$f -D Full $PROTO -r $REPS --dB 10 --saveall --Spirou all --dendritemode normal $CONFIG $AXON $DATATABLE $CHECK $TEST
     if [ $? -ne 0 ]; then
         exit 1
     fi

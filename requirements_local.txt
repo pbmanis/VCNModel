@@ -9,6 +9,8 @@ isort==5.0.2
 mypy==0.782
 jupyterlab>=3.2.0
 nb_black
+pandoc
+nbconvert
 plotnine>=0.7
 pypdf2
 pyperclip
