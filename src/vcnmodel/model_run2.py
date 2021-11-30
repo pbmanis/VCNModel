@@ -769,7 +769,11 @@ class ModelRun:
         # confirm hoc file exists
         if not hoc_filename.is_file():
             cprint("r", f"No Hoc file matching: {str(hoc_filename):s}")
-
+            exit()  # fatal error
+        else:
+            with(open(hoc_filename, 'r')) as fh:
+                self.Params.hocstring = fh.read() 
+        
         # instantiate cells
         if self.Params.cellType in ["Bushy", "bushy"]:
             print("Creating a bushy cell (run_model) ")
@@ -918,7 +922,7 @@ class ModelRun:
             if par_map is not None:
                 print("Listing par_map (run_model): ", par_map)
             self.post_cell.hr.h.topology()
-
+        
         self.post_cell.set_nseg(freq=self.Params.lambdaFreq)
 
         self.Params.setup = True
@@ -1670,7 +1674,7 @@ class ModelRun:
             detector="Kalluri",
             refract=0.0007,  # min refractory period, msec
         )
-        allDendriteVoltages = []
+        allDendriteVoltages = {}
         inputSpikeTimes = tresults[
             "ANSpikeTimes"
         ]  # [tresults[j]['ANSpikeTimes'] for i in range(len(preCell))]
@@ -1690,9 +1694,11 @@ class ModelRun:
             "stimTimebase": stimTimebase,
         }
         if self.Params.save_all_sections:  # just save soma sections
-            result["allDendriteVoltages"] = np.array(
-                tresults["allsecVec"]
-            )  # convert out of neuron
+            for sd in tresults["allsecVec"]:
+                print(str(sd))
+                result["allDendriteVoltages"][str(sd)] = np.array(tresults["allsecVec"][sd])
+                # tresults["allsecVec"]
+            # )  # convert out of neuron
         return celltime, result
 
     def an_run_init(self):
@@ -2449,6 +2455,7 @@ class ModelRun:
             dendsite = None
 
         self.allsecVec = OrderedDict()
+        cprint('m', f"save all sections flag: {str(self.Params.save_all_sections):s}")
         if self.Params.save_all_sections:
             for group in list(
                 self.post_cell.hr.sec_groups.keys()
@@ -2460,6 +2467,7 @@ class ModelRun:
                     self.allsecVec[sec.name()].record(
                         sec(0.5)._ref_v, sec=sec
                     )  # recording of voltage all set up here
+            cprint('r', f"save all sections: n = {len(self.allsecVec):d}")
         Vsoma.record(self.post_cell.soma(0.5)._ref_v, sec=self.post_cell.soma)
         rectime.record(self.post_cell.hr.h._ref_t)
         # print("restoring state from : ", self.Params.initStateFile)

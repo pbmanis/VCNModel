@@ -158,6 +158,7 @@ class Params:
 
     # cell specific parameters related to geometry
     fullhocfile: bool = False  # use the "full" hoc file (cellname_Full.hoc) (obselete)
+    hocstring: str=""  # a string containing the hoc file that was read and used at the time of the simulation
     dtIC: float = 0.025  # ok.
     dtVC: float = 0.005  # voltage clamp; need shorter steop size for transient measure
     celsius: float = 37  # set the temperature.
@@ -830,7 +831,7 @@ def getCommands(toml_dir='.'):
     for key, value in vargs.items():
         if key in parnames:
             # print('key: ', key)
-            # print(str(value))
+            # print(".  ", str(value))
             exec(f"params.{key:s} = {value!r}")
         elif key in runnames:
             exec(f"runinfo.{key:s} = {value!r}")
@@ -839,4 +840,5 @@ def getCommands(toml_dir='.'):
 
 
 if __name__ == "__main__":
-    getCommands()
+    a, p, r = getCommands()
+    print(p)
