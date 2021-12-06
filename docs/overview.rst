@@ -1,5 +1,6 @@
+********
 Overview
-========
+********
 
 `vnmodel` relies heavily on 3 other packages:
     * `cnmodel` (Manis and Campagnola, 2014), which provides the code that constructs

@@ -1,9 +1,13 @@
+********************
 Directory structures
---------------------
+********************
 
 The workflow to run the simulations requires a specific directory structure that is *outside* the main repository. The top-level file "wheres_my_data.toml" is used
 by the program to determine where to look for files.
 
+
+Code
+====
 
 The code directory is vcnmodel::
 
@@ -23,6 +27,9 @@ The code directory is vcnmodel::
                     simulators  (python routines that run simulations: obselete)
                     tests  (a test routine for cross-correlations)
                     util  (a variety of utility files, some of which are not used)
+
+Data
+====
 
 The data directory holds the swc and hoc files, and the result files::
 

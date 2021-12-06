@@ -1,7 +1,11 @@
+************
 Installation
-============
+************
 
 First, clone the vcnmodel repository from github.
+
+Script
+======
 
 In order to control the environment in which *vcnmodel* is run, an installation script is provided. 
 This script will run under Unix-based (Posix) systems; it may need to be modified as a batch
@@ -27,6 +31,9 @@ The install script also calls setup.py, which installs some console shortcuts::
        'hocswcmap = vcnmodel.util.hoc_swc_sectionmap:main',
        ],
 
+Environment
+===========
+
 The environment should be activated with: `source vcn_venv/bin/activate`. In zsh, I use a couple of aliases to simplify matters::
 
     # clean deactivation - no message if there is no deactivate
@@ -40,7 +47,10 @@ The environment should be activated with: `source vcn_venv/bin/activate`. In zsh
 
 In this case, typing "vcn" at the command line jumps into the directory, activates the environment, and it is ready to go.
 
-Next, the directory where the results will be stored needs to be set up and populated with the morphology files. The
+Paths
+=====
+
+Next, the path to the directory where the results will be stored needs to be set up and populated with the morphology files. The
 location of this directory is specified in the "wheres_my_data.toml" file at the top level of the repository. 
 
 6 December 2021 pbm.

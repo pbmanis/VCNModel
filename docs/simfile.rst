@@ -1,5 +1,6 @@
+*************************
 Simulation File Structure
-=========================
+*************************
 
 
 
@@ -13,7 +14,6 @@ This includes the full text of the "data\_table" that is used ton control cell d
 
 Analysis is handled through "DataTablesVCN.py", which has a graphical interface. This is described in more detail here.
 
-
 The simulation result files are Python pickle files that containe both simulation results and the
 control parameters. In theory, each result file contains sufficient information that the simulation
 could be run (from model_run2.py) without reference to any external files.
@@ -22,24 +22,24 @@ The top level dictionary contains the following entries:
 
     * "basename" - The full path and filename to the file itself. 
     * "Params"  - a dataclass containing the parameters that were passed to model_run2.py. The dataclass 
-        contains all
-        of the parameters that control a given simulation, including the *cnmodel* datatables (text tables). The Params
-        dataclass is defined in vcnmodel/model_params.py. Note that model_params also defines the runInfo class, and 
-        contains the command line parser, which fills the dataclass values directly as needed.
+      contains all
+      of the parameters that control a given simulation, including the *cnmodel* datatables (text tables). The Params
+      dataclass is defined in vcnmodel/model_params.py. Note that model_params also defines the runInfo class, and 
+      contains the command line parser, which fills the dataclass values directly as needed.
 
     * "runInfo" - a dataclass containing the parmeters for the specific run. This has a different set of details than
-        the Params dataclass.
+      the Params dataclass.
 
     * "Results" - a dictionary, keyed by trial, containing numpy arrays (vectors) of the simulation results. 
-       The simulation results for each run are in a dictionary with keys: 'spikeTimes', 'inputSpikeTimes', 
-       'time', 'somaVoltage', 'dendriteVoltage', 'allDendriteVoltages', 'stimWaveform', 'stimTimebase']. `allDendriteVoltages` 
-       is only included if Params.save_all_sections is True; Normally, only the `somaVoltage`
-       is saved. `spikeTimes` are the cell spike times, `inputSpikeTimes` is a
-       list for the spike times of each input (in order). `stimWaveform` and `StimTimebase` are the stimulus. 
+      The simulation results for each run are in a dictionary with keys: 'spikeTimes', 'inputSpikeTimes', 
+      'time', 'somaVoltage', 'dendriteVoltage', 'allDendriteVoltages', 'stimWaveform', 'stimTimebase']. `allDendriteVoltages` 
+      is only included if Params.save_all_sections is True; Normally, only the `somaVoltage`
+      is saved. `spikeTimes` are the cell spike times, `inputSpikeTimes` is a
+      list for the spike times of each input (in order). `stimWaveform` and `StimTimebase` are the stimulus. 
 
     * "modelPars" - a brief structure that holds information also found in Params and runInfo, for example:
     
-        {'species': 'mouse', 'cellClass': 'bushy', 'modelType': 'II', 'modelName': 'XM13A_nacncoop',
+      {'species': 'mouse', 'cellClass': 'bushy', 'modelType': 'II', 'modelName': 'XM13A_nacncoop',
         'soma': True, 'axon': False, 'dendrites': False, 'pumps': False,
         'hillock': False, 'initialsegment': False, 'myelinatedaxon': False,
         'unmyelinatedaxon': False, 'na': 'nacncoop', 'ttx': False,
@@ -51,12 +51,19 @@ The top level dictionary contains the following entries:
 
 
 
-Dataclasses Reference (examples)
---------------------------------
+Dataclasses 
+===========
+
+There are two data classes, defined in `model_params.py`, that control simulations and are saved with the
+simulation results. These are the `Params` and `runInfo` classes. Examples of the class member names and data
+that is stored in them are shown here.
+
+Parameters data class
+---------------------
 
 Params::
 
- setup : True
+   setup : True
    cellID : VCN_c17
    cell : VCN_c17
    AMPAScale : 1.0
@@ -160,6 +167,9 @@ Params::
       ('axonR', nan), ('branchLen', nan), ('branchR', nan), ('type', 'AN'),
       ('postlocations', {'soma': [461, 0.5, 1.0]})])]
 
+
+runInfo data class
+------------------
 
 runInfo::
 
