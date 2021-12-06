@@ -32,11 +32,17 @@ class VectorStrength():
     def vector_strength(self, spikes, freq=None):
         """
         Calculate vector strength and related parameters from a spike train, for the specified frequency
-        :param spikes: Spike train, in sec.
+        
+        Parameters
+        ----------
+        spikes : Spike train, in sec.
             If the data comes from repeated trials, the spike train needs to be flattened into a 1d array before 
             calling. 
-        :param freq: Stimulus frequency in Hz
-        :return: a dataclass of type VSResult:
+        freq : Stimulus frequency in Hz
+        
+        Returns
+        -------
+            A dataclass of type VSResult
         """
         assert freq is not None
         VSR = VSResult()

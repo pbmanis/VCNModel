@@ -49,6 +49,7 @@ Provides analysis and display for several formats of model_run results
 def clean_spiketimes(spikeTimes, mindT=0.7):
     """
     Clean up spike time array, removing all less than mindT
+    
     Parameters
     ----------
     spikeTimes : list or numpy array (1-D)
@@ -60,7 +61,7 @@ def clean_spiketimes(spikeTimes, mindT=0.7):
     
     Return
     ------
-    spikeTimes : list or numpy array (1-D_
+    spikeTimes : list or numpy array (1-D)
         A cleaned list of the spike times where the events are at least
         mindT appart.
         Note: If there is only 1 or 0 spikes in array, just return the array

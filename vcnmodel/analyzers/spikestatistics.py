@@ -320,9 +320,9 @@ def gamma_factor(source, target, delta, normalize=True, dt=None):
     (less than 1.0), otherwise it returns the number of coincidences.
     dt is the precision of the trains, by default it is defaultclock.dt
     
-    Reference:
-    R. Jolivet et al., 'A benchmark test for a quantitative assessment of simple neuron models',
-        Journal of Neuroscience Methods 169, no. 2 (2008): 417-424.
+    Reference
+    * R. Jolivet et al., 'A benchmark test for a quantitative assessment of simple neuron models',
+    Journal of Neuroscience Methods 169, no. 2 (2008): 417-424.
     """
 
     source = np.array(source)
