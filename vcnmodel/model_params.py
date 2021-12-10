@@ -1,3 +1,21 @@
+"""
+Define data structures used for:
+    
+    *Command line parsing
+    *Specifying model parameters (general)
+    *Specifying runInfo (run instance) parameters
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+"""
+
 import time
 from pathlib import Path
 import argparse
@@ -7,19 +25,7 @@ import numpy as np
 import json
 import toml
 
-"""
-Part of vcnmodel
 
-Define data structures used for:
-    Command line parsing
-    Specifying model parameters (general)
-    Specifying runInfo (run instance) parameters
-
-    Supported primarily by R01DC015901 (Spirou, Manis, Ellisman),
-    Early development: R01 DC004551 (Manis, until 2019)
-    Later development: R01 DC019053 (Manis, 2020-2025)
-
-"""
 
 display_orient_cells = {
     "VCN_c02": [140.0, 0.0, -144.0],

@@ -145,6 +145,13 @@ class CellConfig:
     
     If fraction of gmax is -1, then it is computed as the residual of the remaining gmax.
     (this allows you to split up a big ending that crosses anatomically defined boundaries)
+    
+    This module is part of *vcnmodel*
+    Support::
+        NIH grants:
+        DC R01DC015901 (Spirou, Manis, Ellisman),
+        DC R01 DC004551 (Manis, 2013-2019, Early development)
+        DC R01 DC019053 (Manis, 2020-2025, Later development)
     """
     def __init__(
         self,

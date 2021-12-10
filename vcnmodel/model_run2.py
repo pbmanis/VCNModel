@@ -37,228 +37,6 @@ from vcnmodel.generate_run import GenerateRun
 
 EPU = ephys.tools.Utility.Utility()
 matplotlib.use("Qt5Agg")
-"""
-model_run2.py
-
-Run a model based on a hoc cell structure, decorating the structure with ion channels and synapses.
-
-Requires:
-Python 3.7 (anaconda distribution or a local environment - preferred)
-    also runs with python3.8 or python3.9
-Neuron7.7 or 7.8 (neuron.yale.edu) Neuron7.8.2
-pyqtgraph (Campagnola, from github)
-neuronvis (Campagnola/Manis, from github)
-cnmodel (Campagnola/Manis, from github)
-vcnmodel parts:
-    generate_run
-    cellInitialization
-    analysis
-ephys (Manis, from github)
-pylibrary (Manis, from github)
-
-cochlea # Rudniki and Hemmert python implementation of Zilany model
-    A very slightly modified version that works with Python 3, "cochlea-1"
-    is in Manis' github repository.
-thorns  # required for cochlea
-
-See the requirements.txt file, or build an environment using make_local_env.sh.
-
-This program expects the following directory structure to hold simulation results
-and the morphology files:
-(example)
-VCN_SBEM_Data/ # top level for
-
-    VCN_Cells/   # top level for data
-        For each cell there is a separate directory:
-        cell_ID/    # VCN_c18, for example (first argument in call should be this directory name)
-            MorphologyFiles/  # location for swc and hoc files
-                VCN_c18_755V2.hoc (cell body scaled version)
-                VCN_c18_755.hoc  (unscaled version)
-                misc.swc  (various swc files that were translated to hoc files)
-            InitializationFiles/  # location for Init files
-                IV/  # initialization for just the IV with no synaptic input
-                    VCN_c18_755v2.ninit  # different base structures
-                    VCN_c18755.ninit
-                AN/  # initialization for synaptic inputs
-                    (ditto)  # different base structures of input arrangements
-            Simulations/
-                IV/  # results from IV simulations
-                AN/  # results from AN simulations
-    Figures/  # directory for figure outputs
-
-The VCN_Cells directory should be placed under another directory. The additional directory structure
-is defined in 'wheres_my_data.toml', which is used by cell_config.py to
-
-set directory locations and read the excel file with ASA information.
-
-(Usage uupdated 11/10/2020):
-
-usage: model_run2.py [-h] [--type {Bushy,TStellate,DStellate}]
-                     [--model {XM13,XM13_nacncoop,XM13A_nacncoop,XM13_nacn,XM13_nabu,
-                            RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}]
-                     [--modeltype {II,II-I,I-II,I-c,I-t,II-o}]
-                     [--dendritemode {normal,passive,active,allpassive}]
-                     [--hocfile HOCFILE]
-                     [-D {default,Full,NoDend,NoDistal,NoUninnervated}]
-                     [--datatable DATATABLE] [--sgcmodel {Zilany,cochlea}]
-                     [--protocol {initIV,Zin,runIV,initandrunIV,initVC,runVC,initAN,runANPSTH,runANIO,
-                            runANSingles,gifnoise}]
-                     [--style {cylinders,graph,volume,surface}]
-                     [--mechanism DISPLAYMECHANISM]
-                     [--displaymode {None,vm,sec-type,mechanism}]
-                     [--displayscale] [--inputpattern INPUTPATTERN]
-                     [--stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}]
-                     [--check] [--testsetup] [-C CONFIGFILE] [-d DB] [-f F0]
-                     [-r NREPS] [--seed SEED] [-S {LS,MS,HS,fromcell}]
-                     [--synapsetype {simple,multisite}] [--depression {0,1}]
-                     [--pip_start PIP_START] [--pip_duration PIP_DURATION]
-                     [--pip_offduration PIP_OFFDURATION] [--fmod FMOD]
-                     [--dmod DMOD] [--S2M SIGNALTOMASKER]
-                     [--cmmrmode {CM,CD,REF}]
-                     [--Spirou {all,max=mean,all=mean,removelargest,removetwolargest,largestonly,
-                            twolargest,threelargest,fourlargest}]
-                     [--soma_inflate SOMA_INFLATION] [--soma_autoinflate]
-                     [--dendrite_inflate DENDRITE_INFLATION]
-                     [--dendrite_autoinflate] [--dendrite_from_soma]
-                     [--ASA_from_soma] [--hold VSTIMHOLDING]
-                     [--tagstring TAGSTRING] [-a AMPASCALE] [--allmodes]
-                     [--sequence SEQUENCE] [--plot] [--workers NWORKERS]
-                     [--noparallel] [--auto] [--saveall] [--verbose]
-                     [--gifi GIF_I0] [--gifsigma GIF_SIGMA]
-                     [--giffmod GIF_FMOD] [--giftau GIF_TAU]
-                     [--gifdur GIF_DUR] [--gifskew GIF_SKEW]
-                     cell
-
-Simulate activity in a reconstructed model cell
-
-positional arguments:
-  cell                  Select the cell (no default)
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --type {Bushy,TStellate,DStellate}, -T {Bushy,TStellate,DStellate}
-                        Define the cell type (default: Bushy)
-  --model {XM13,XM13_nacncoop,XM13A_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr},
-                        -M {XM13,XM13_nacncoop,XM13A_nacncoop,XM13_nacn,XM13_nabu,RM03,
-                        mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}
-                        Define the model type (default: XM13)
-  --modeltype {II,II-I,I-II,I-c,I-t,II-o}
-                        Define the model type (default: XM13)
-  --dendritemode {normal,passive,active,allpassive}
-                        Choose dendrite table (normal, active, passive)
-  --hocfile HOCFILE     hoc file to use for simulation (default is the
-                        selected "cell".hoc)
-  -D {default,Full,NoDend,NoDistal,NoUninnervated}, --dendriteexpt {default,Full,FullSA,NoDend,AxonOnly,NoDistal,NoUninnervated}
-                        Choose dendrite experiment (default, Full, NoDend,
-                        NoDistal, NoUninnervated)
-  --datatable DATATABLE
-                        Specify the data table for this run
-  --sgcmodel {Zilany,cochlea}
-                        Define the SGC model type (default: Zilany)
-  --protocol {initIV,Zin,runIV,initandrunIV,initVC,runVC,initAN,runANPSTH,runANIO,runANSingles,gifnoise},
-                         -P {initIV,Zin,runIV,initandrunIV,initVC,runVC,initAN,runANPSTH,runANIO,runANSingles,gifnoise}
-                        Protocol to use for simulation (default: IV)
-  --style {cylinders,graph,volume,surface}
-                        Render cell with neuronvis with style:
-                        {str(CmdChoices.displayStyleChoices):s}
-  --mechanism DISPLAYMECHANISM
-                        Render channel mechanisms: ['klt', 'kht', 'ihvcn',
-                        'nacncoop', 'nacn', 'najsr']
-  --displaymode {None,vm,sec-type,mechanism}
-                        Render cell with neuronvis : set mode to one of
-                        ['None', 'vm', 'sec-type', 'mechanism']
-  --displayscale        use display scale and orientation from table for
-                        generating renderings
-  --inputpattern INPUTPATTERN, -i INPUTPATTERN
-                        cell input pattern to use (substitute) from
-                        cell_config.py
-  --stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}, -s {tonepip,noise,stationaryNoise,SAM,CMMR}
-                        Define the stimulus type (default: tonepip)
-  --check, -/           Only check command line for valid input; do not run
-                        model
-  --testsetup           Test all setup, but do not run simulations
-  -C CONFIGFILE, --configfile CONFIGFILE
-                        Read a formatted configuration file (JSON, TOML) for
-                        commands
-  -d DB, --dB DB        Set sound intensity dB SPL (default 30)
-  -f F0, --frequency F0
-                        Set tone frequency, Hz (default 4000)
-  -r NREPS, --reps NREPS
-                        # repetitions
-  --seed SEED           AN starting seed
-  -S {LS,MS,HS,fromcell}, --SRType {LS,MS,HS,fromcell}
-                        Specify SR type (from: ['LS', 'MS', 'HS', 'fromcell'])
-  --synapsetype {simple,multisite}
-                        Specify AN synapse type (from: ['simple',
-                        'multisite'])
-  --depression {0,1}    Specify AN depression flag for multisite synapses
-                        (from: [0, 1])
-  --pip_start PIP_START
-                        Set delay to onset of acoustic stimulus
-  --pip_duration PIP_DURATION
-                        Set duration of acoustic stimulus
-  --pip_offduration PIP_OFFDURATION
-                        Time to continue simulation AFTER sound ends
-  --fmod FMOD           Set SAM modulation frequency
-  --dmod DMOD           Set SAM modulation depth (in percent)
-  --S2M SIGNALTOMASKER  Signal to Masker ratio (dB)
-  --cmmrmode {CM,CD,REF}
-                        Specify mode (from: ['CM', 'CD', 'REF'])
-  --Spirou {all,max=mean,all=mean,removelargest,removetwolargest,largestonly,twolargest,threelargest,fourlargest}
-                        Specify Spirou experiment type....
-  --soma_inflate SOMA_INFLATION
-                        Specify factor by which to inflate soma AREA
-  --soma_autoinflate    Automatically inflate soma based on table
-  --dendrite_inflate DENDRITE_INFLATION
-                        Specify factor by which to inflate total dendritic
-                        AREA
-  --dendrite_autoinflate
-                        Automatically inflate dendrite area based on table
-  --dendrite_from_soma  Automatically inflate dendrite area based on soma
-                        inflation
-  --ASA_from_soma       Automatically inflate dendrite area based on soma
-                        inflation
-  --hold VSTIMHOLDING   Holding voltage in VClamp (mV) (default: -80 mV)
-  --tagstring TAGSTRING
-                        Add a tag string to the output filename to distinguish
-                        it
-  -a AMPASCALE, --AMPAScale AMPASCALE
-                        Set AMPAR conductance scale factor (default 1.0)
-  --allmodes            Force run of all modes (CMR, CMD, REF) for stimulus
-                        configuration.
-  --sequence SEQUENCE   Specify a sequence for the primary run parameters
-  --plot                Plot results as they are generated - requires user
-                        intervention...
-  --workers NWORKERS    Number of "workers" for parallel processing (default:
-                        4)
-  --noparallel          Use parallel or not (default: True)
-  --auto                Force auto initialization if reading the state fails
-                        in initialization
-  --saveall             Save data from all sections in model
-  --verbose             Print out extra stuff for debugging
-  --gifi GIF_I0         Set Noise for GIF current level (default 0 nA)
-  --gifsigma GIF_SIGMA  Set Noise for GIF variance (default 0.2 nA)
-  --giffmod GIF_FMOD    Set Noise for GIF fmod (default 0.2 Hz)
-  --giftau GIF_TAU      Set Noise for GIF tau (default 0.3 ms)
-  --gifdur GIF_DUR      Set Noise for GIF duration (default 10 s)
-  --gifskew GIF_SKEW    Set Noise for GIF to have skewed distribution (0 =
-                        normal)
-================================================================================
-Example:
-Set up initialization:
-python model_run.py VCN_c18 --hoc gbc18_w_axon_rescaled.hoc --protocol initIV --model XM13
-Then run model:
-python model_run.py VCN_c18 --hoc gbc18_w_axon_rescaled.hoc --protocol runIV --model XM13
-
-Where should we look for data?
-
-wheres_the_data.toml
-
-    Supported primarily by R01DC015901 (Spirou, Manis, Ellisman),
-    Early development: R01 DC004551 (Manis, until 2019)
-    Later development: R01 DC019053 (Manis, 2020-2025)
-
-"""
 
 
 def powerise10(x):
@@ -295,18 +73,230 @@ cprint = CP.cprint
 
 
 class ModelRun:
+    """
+    model_run2.py
+
+    Run a model based on a hoc cell structure, decorating the structure with ion channels and synapses.
+
+    Requires:
+
+    1. Python 3.7, 3.8 or 3.9 (anaconda distribution or a local environment - preferred).
+    2. Neuron7.7 - 8.0 (neuron.yale.edu)
+    3. pyqtgraph (Luke Campagnola, from github)
+    4. neuronvis (Campagnola/Manis, from github)
+    5. cnmodel (Campagnola/Manis, from github)
+    6. ephys (Manis, from github)
+    7. pylibrary (Manis, from github)
+    8. cochlea : Rudniki and Hemmert python implementation of Zilany model. A very slightly modified version that works with Python 3, "cochlea-1", is in Manis' github repository.
+    9. thorns  # required for cochlea
+
+    See the requirements.txt file, or preferably build an environment using make_local_env.sh.
+
+    Where should we look for data? The paths to the directories are defined in **wheres_the_data.toml**
+    
+    Supported primarily by R01DC015901 (Spirou, Manis, Ellisman). Other development was supported by 
+    R01 DC004551 (Manis, until 2019) and R01 DC019053 (Manis, 2020-2025)
+    
+    This program expects the following directory structure to hold simulation results
+    and the morphology files::
+
+        VCN_SBEM_Data/ # top level for
+           VCN_Cells/   # top level for data
+                For each cell there is a separate directory:
+                VCN_c18/    # Cell ID for example (first argument in call should be this directory name)
+                    MorphologyFiles/  # location for swc and hoc files
+                        VCN_c18.hoc (cell body scaled version)
+                        VCN_c18_unscaled.hoc  (unscaled version)
+                        VCN_c18.swc  (various swc files that were translated to hoc files)
+                    InitializationFiles/  # location for Init files
+                        IV/  # initialization for just the IV with no synaptic input
+                            VCN_c18....   # different base structures
+                        AN/  # initialization for synaptic inputs
+                            (ditto)  # different base structures of input arrangements
+                    Simulations/
+                        IV/  # results from IV simulations
+                        AN/  # results from AN simulations
+
+    The VCN_Cells directory should be placed in a folder outside of the program repository.
+    The additional directory structure
+    is defined in 'wheres_my_data.toml', which is used by cell_config.py to 
+    set directory locations and read the excel file with ASA information.
+
+    Usage (updated 11/10/2020)::
+
+         model_run2.py cell
+                        [-h]
+                        [--type {Bushy,TStellate,DStellate}]
+                        [--model {XM13,XM13_nacncoop,XM13A_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr}]
+                        [--modeltype {II,II-I,I-II,I-c,I-t,II-o}]
+                        [--dendritemode {normal,passive,active,allpassive}]
+                        [--hocfile HOCFILE]
+                        [-D {default,Full,NoDend,NoDistal,NoUninnervated}]
+                        [--datatable DATATABLE] [--sgcmodel {Zilany,cochlea}]
+                        [--protocol {initIV,Zin,runIV,initandrunIV,initVC,runVC,initAN,runANPSTH,runANIO,runANSingles,gifnoise}]
+                        [--style {cylinders,graph,volume,surface}]
+                        [--mechanism DISPLAYMECHANISM]
+                        [--displaymode {None,vm,sec-type,mechanism}]
+                        [--displayscale] [--inputpattern INPUTPATTERN]
+                        [--stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}]
+                        [--check] [--testsetup] [-C CONFIGFILE] [-d DB] [-f F0]
+                        [-r NREPS] [--seed SEED] [-S {LS,MS,HS,fromcell}]
+                        [--synapsetype {simple,multisite}] [--depression {0,1}]
+                        [--pip_start PIP_START] [--pip_duration PIP_DURATION]
+                        [--pip_offduration PIP_OFFDURATION] [--fmod FMOD]
+                        [--dmod DMOD] [--S2M SIGNALTOMASKER]
+                        [--cmmrmode {CM,CD,REF}]
+                        [--Spirou {all,max=mean,all=mean,removelargest,removetwolargest,largestonly,twolargest,threelargest,fourlargest}]
+                        [--soma_inflate SOMA_INFLATION] [--soma_autoinflate]
+                        [--dendrite_inflate DENDRITE_INFLATION]
+                        [--dendrite_autoinflate] [--dendrite_from_soma]
+                        [--ASA_from_soma] [--hold VSTIMHOLDING]
+                        [--tagstring TAGSTRING] [-a AMPASCALE] [--allmodes]
+                        [--sequence SEQUENCE] [--plot] [--workers NWORKERS]
+                        [--noparallel] [--auto] [--saveall] [--verbose]
+                        [--gifi GIF_I0] [--gifsigma GIF_SIGMA]
+                        [--giffmod GIF_FMOD] [--giftau GIF_TAU]
+                        [--gifdur GIF_DUR] [--gifskew GIF_SKEW]
+
+    Optional arguments::
+    
+        -h, --help            show this help message and exit
+        -T, --type {Bushy,TStellate,DStellate}
+                              Define the cell type (default: Bushy)
+         -M --model] {XM13,XM13_nacncoop,XM13A_nacncoop,XM13_nacn,XM13_nabu,RM03,mGBC,XM13PasDend,Calyx,MNTB,L23Pyr},
+                              Define the model type (default: XM13)
+        --modeltype {II,II-I,I-II,I-c,I-t,II-o}
+                              Define the model type (default: XM13)
+        --dendritemode {normal,passive,active,allpassive}
+                              Choose dendrite table (normal, active, passive)
+        --hocfile HOCFILE     hoc file to use for simulation (default is the
+                              selected "cell".hoc)
+        -D {default,Full,NoDend,NoDistal,NoUninnervated}, --dendriteexpt {default,Full,FullSA,NoDend,AxonOnly,NoDistal,NoUninnervated}
+                              Choose dendrite experiment (default, Full, NoDend,
+                              NoDistal, NoUninnervated)
+        --datatable DATATABLE
+                              Specify the data table for this run
+        --sgcmodel {Zilany,cochlea}
+                              Define the SGC model type (default: Zilany)
+        -P --protocol {initIV,Zin,runIV,initandrunIV,initVC,runVC,initAN,runANPSTH,runANIO,runANSingles,gifnoise},
+                              Protocol to use for simulation (default: IV)
+        --style {cylinders,graph,volume,surface}
+                              Render cell with neuronvis with style:
+                              {str(CmdChoices.displayStyleChoices):s}
+        --mechanism DISPLAYMECHANISM
+                              Render channel mechanisms: ['klt', 'kht', 'ihvcn',
+                              'nacncoop', 'nacn', 'najsr']
+        --displaymode {None,vm,sec-type,mechanism}
+                              Render cell with neuronvis : set mode to one of
+                              ['None', 'vm', 'sec-type', 'mechanism']
+        --displayscale        use display scale and orientation from table for
+                              generating renderings
+        --inputpattern INPUTPATTERN, -i INPUTPATTERN
+                              cell input pattern to use (substitute) from
+                              cell_config.py
+        -s --stimulus {tonepip,noise,stationaryNoise,SAM,CMMR}
+                              Define the stimulus type (default: tonepip)
+        --check, -/           Only check command line for valid input; do not run
+                              model
+        --testsetup           Test all setup, but do not run simulations
+        -C CONFIGFILE, --configfile CONFIGFILE
+                              Read a formatted configuration file (JSON, TOML) for
+                              commands
+        -d DB, --dB DB        Set sound intensity dB SPL (default 30)
+        -f F0, --frequency F0
+                              Set tone frequency, Hz (default 4000)
+        -r NREPS, --reps NREPS
+                              # repetitions
+        --seed SEED           AN starting seed
+        -S {LS,MS,HS,fromcell}, --SRType {LS,MS,HS,fromcell}
+                              Specify SR type (from: ['LS', 'MS', 'HS', 'fromcell'])
+        --synapsetype {simple,multisite}
+                              Specify AN synapse type (from: ['simple',
+                              'multisite'])
+        --depression {0,1}    Specify AN depression flag for multisite synapses
+                              (from: [0, 1])
+        --pip_start PIP_START
+                              Set delay to onset of acoustic stimulus
+        --pip_duration PIP_DURATION
+                              Set duration of acoustic stimulus
+        --pip_offduration PIP_OFFDURATION
+                              Time to continue simulation AFTER sound ends
+        --fmod FMOD           Set SAM modulation frequency
+        --dmod DMOD           Set SAM modulation depth (in percent)
+        --S2M SIGNALTOMASKER  Signal to Masker ratio (dB)
+        --cmmrmode {CM,CD,REF}
+                              Specify mode (from: ['CM', 'CD', 'REF'])
+        --Spirou {all,max=mean,all=mean,removelargest,removetwolargest,largestonly,twolargest,threelargest,fourlargest}
+                              Specify Spirou experiment type....
+        --soma_inflate SOMA_INFLATION
+                              Specify factor by which to inflate soma AREA
+        --soma_autoinflate    Automatically inflate soma based on table
+        --dendrite_inflate DENDRITE_INFLATION
+                              Specify factor by which to inflate total dendritic
+                              AREA
+        --dendrite_autoinflate
+                              Automatically inflate dendrite area based on table
+        --dendrite_from_soma  Automatically inflate dendrite area based on soma
+                              inflation
+        --ASA_from_soma       Automatically inflate dendrite area based on soma
+                              inflation
+        --hold VSTIMHOLDING   Holding voltage in VClamp (mV) (default: -80 mV)
+        --tagstring TAGSTRING
+                              Add a tag string to the output filename to distinguish
+                              it
+        -a AMPASCALE, --AMPAScale AMPASCALE
+                              Set AMPAR conductance scale factor (default 1.0)
+        --allmodes            Force run of all modes (CMR, CMD, REF) for stimulus
+                              configuration.
+        --sequence SEQUENCE   Specify a sequence for the primary run parameters
+        --plot                Plot results as they are generated - requires user
+                              intervention...
+        --workers NWORKERS    Number of "workers" for parallel processing (default:
+                              4)
+        --noparallel          Use parallel or not (default: True)
+        --auto                Force auto initialization if reading the state fails
+                              in initialization
+        --saveall             Save data from all sections in model
+        --verbose             Print out extra stuff for debugging
+        --gifi GIF_I0         Set Noise for GIF current level (default 0 nA)
+        --gifsigma GIF_SIGMA  Set Noise for GIF variance (default 0.2 nA)
+        --giffmod GIF_FMOD    Set Noise for GIF fmod (default 0.2 Hz)
+        --giftau GIF_TAU      Set Noise for GIF tau (default 0.3 ms)
+        --gifdur GIF_DUR      Set Noise for GIF duration (default 10 s)
+        --gifskew GIF_SKEW    Set Noise for GIF to have skewed distribution (0 =
+                              normal)
+    
+    Example::
+
+        Set up initialization:
+        python model_run.py VCN_c18 --hoc gbc18_w_axon_rescaled.hoc --protocol initIV --model XM13
+        Then run model:
+        python model_run.py VCN_c18 --hoc gbc18_w_axon_rescaled.hoc --protocol runIV --model XM13
+
+
+    This module is part of *vcnmodel*.
+
+    Support::
+
+        NIH grants:
+        DC R01DC015901 (Spirou, Manis, Ellisman),
+        DC R01 DC004551 (Manis, 2013-2019, Early development)
+        DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+    """
+    
     def __init__(self, params: dataclass = None, runinfo: dataclass = None, args=None):
         """
-        The two dataclass parameters are defined in model_params.py
+        The two dataclass parameters are defined in model_params.py, and must be passed here
+        
         Parameters
         ----------
-        params: dataclass
+        params: a dataclass
             The parameter class that holds variables that control simulation
-                parameters
+                parameters. Defined in model_params.py
         runinfo: dataclass
             The run information dataclass that holds variables governing the
-
-                runs
+                runs. Defined in model_params.py
         args: argparser object
             The command line arguments
 
@@ -1711,9 +1701,12 @@ class ModelRun:
         Establish AN inputs to soma, and run the model.
         Requires a synapseConfig list of dicts from cell_config.make_dict()
         each list element represents an AN fiber (SGC cell) with:
-            (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high],
-                    type (e or i), segment and segment location)
-                    Note if segment is None, then the synapse is assigned to the soma.
+            * (N sites, delay (ms)
+            * spont rate group [1=low, 2=high, 3=high],
+            * type (e or i)
+            * segment and segment location
+        
+        Note if segment is None, then the synapse is assigned to the soma.
 
         Parameters
         ----------
@@ -1935,9 +1928,13 @@ class ModelRun:
     def an_run_singles(self, exclude=False, verify=False):
         """
         Establish AN inputs to soma, and run the model.
-        synapseConfig: list of tuples
-            each tuple represents an AN fiber (SGC cell) with:
-            (N sites, delay (ms), and spont rate group [1=low, 2=high, 3=high])
+        synapseConfig is list of tuples gathered from the configuration file. 
+        Each tuple represents an AN fiber (SGC cell) with:
+        
+            * N sites
+            * delay (ms)
+            * spont rate group [1=low, 2=high, 3=high])
+        
         This routine is special - it runs nReps for each synapse, turning off all of the other synapses
         by setting the synaptic conductance to 0 (to avoid upsetting initialization)
         if the "Exclude" flag is set, it turns OFF each synapse, leaving the others running.
@@ -2354,7 +2351,6 @@ class ModelRun:
 
         Parameters
         ----------
-
         j : int
             The input that will be active in this run
 
@@ -2589,17 +2585,22 @@ class ModelRun:
             )  # dendriticElectrodeSection,
         # dendriticSectionDistance = 100.0  # microns.
 
-    def analysis_filewriter(self, filebase, result, tag=""):
+    def analysis_filewriter(self, filebase:str, result:dict, tag:str=""):
         """
         Write the analysis information to a pickled file
 
-        Parameters:
+        Parameters
+        ----------
         filebase : string (no default)
             base filename - *not used* (value replaced bye cellID)
         result : dict (no default)
             dict hlding results. Must be pickleable
         tag : string (default: '')
             tag to insert in filename string
+        
+        Returns
+        -------
+        Nothing
         """
         k = list(result.keys())
         # result will be a dict; each key is a repetition/run.
@@ -2652,7 +2653,20 @@ class ModelRun:
         print(f"**** Model output written to: ****\n   {str(fout):s}")
         self.ANFilename = str(fout)  # save most rexent value
 
-    def get_hoc_file(self, hf):
+    def get_hoc_file(self, hf:object):
+        """
+        Gets a section list from a previously loaded hoc file (morphology)
+        and generates a list of section name (str)/reference (NEURON object) pairs
+        
+        Parameters
+        ----------
+        hf : object
+            a NEURON object containing the geometry of the cell
+        
+        Returns
+        -------
+        Nothing
+        """
         if hf.file_loaded is False:
             raise ValueError("No hoc file has been loaded")
         self.section_list = hf.get_section_prefixes()

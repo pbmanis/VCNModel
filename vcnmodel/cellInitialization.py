@@ -1,9 +1,30 @@
 #!/usr/bin/python
+
+"""
+This module handles various aspects of cell initialization.
+This includes:
+
+    * Initializing the model (get_initial_condition_state).
+    * Saving the initialized model.
+    * Restoring the initialized model from disk.
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+"""
+
 from __future__ import print_function
 import numpy as np
 import cnmodel.util as CU
 from pathlib import Path
 from pylibrary.tools.cprint import cprint
+
 
 
 def init_model(

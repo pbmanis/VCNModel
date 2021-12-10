@@ -40,10 +40,22 @@ class GenerateRun:
     channelDecorator, which is also used to set the current range level for IV's.
     Code for reading externally generated spike trains from a file is also included.
     Methods:
-        doRun(filename) will execute the run. The resulting plot will have the filename text at the top.
-        doRun calls 3 private methods, _prepareRun, _initializeRun, and _executeRun, which respectively,
-        set up the stimuli, initialize the state of the model, and then run the model, generating a plot
-    February 2014, Paul B. Manis UNC Chapel Hill
+        
+        * doRun(filename) will execute the run. The resulting plot will have the filename text at the top.
+        * doRun calls 3 private methods, _prepareRun, _initializeRun, and _executeRun, which respectively,
+        * set up the stimuli, initialize the state of the model, and then run the model, generating a plot.
+    
+    February 2014, Paul B. Manis UNC Chapel Hill.
+    
+    This module is part of *vcnmodel*.
+
+    Support::
+
+        NIH grants:
+        DC R01DC015901 (Spirou, Manis, Ellisman),
+        DC R01 DC004551 (Manis, 2013-2019, Early development)
+        DC R01 DC019053 (Manis, 2020-2025, Later development)
+
     """
     def __init__(
         self, Params, RunInfo, cell, idnum=0, starttime=None, useSavedState=True,

@@ -26,6 +26,7 @@ Used in Spirou, Kersting, Ellisman and Manis (in preparation).
    directories
    simfile
    scripts
+   datatable
    figures
 
 .. toctree::
