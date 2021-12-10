@@ -2329,7 +2329,7 @@ class Figures(object):
         return fig
 
     def plot_VS_SAM(self):
-        self.generate_VS_data()
+        self.generate_VS_data_file()
         pass
 
     def analyze_VS_data(self, VS_data, cell_number, fout, firstline=False):
@@ -2342,7 +2342,7 @@ class Figures(object):
         P = None
         self.parent.cellID = cell_number
         for i, filename in enumerate(VS_data.samdata[cell_number]):
-            print(filename)
+            print(f"Cell: {cell_number:d}  Filename: {filename:s}")
             cellpath = Path(
                 config["cellDataDirectory"],
                 f"VCN_c{cell_number:02d}",
@@ -2350,7 +2350,7 @@ class Figures(object):
                 "AN",
             )
             sfi = Path(cellpath, filename + ".pkl")
-            print("Opening pkl file: ", str(sfi))
+            print(f"Opening pkl file: {str(sfi):s}")
             with open(sfi, "rb") as fh:
                 d = FPM.pickle_load(fh)
 
@@ -2363,42 +2363,56 @@ class Figures(object):
                 fth.write(self.parent.PLT.VS_line)
                 fth.write("\n")
 
-        print("anvs done for cell: ", cell_number)
+        print("Analyze VS data completed for cell: ", cell_number)
 
     #
-    def generate_VS_data(self, testmode=True):
+    def generate_VS_data_file(self, testmode=False, dB=15, append=True):
         """
         Write the VS_data file from the selected datasets.
-        The datasets are in VS_datasets.py
+        The datasets are in VS_datasets_nndB.py
         """
-        if "vcnmodel.VS_datasets" not in list(dir()):
-            from vcnmodel import VS_datasets as VS_datasets
-        print(dir())
+
+        if dB == 30:
+            if f"vcnmodel.VS_datasets_{db:d}dB" not in list(dir()):
+                from vcnmodel import VS_datasets_30dB as VS_datasets
+            # print(dir())
+            # importlib.reload(VS_datasets)
+        if dB == 15:
+            if f"vcnmodel.VS_datasets_{dB:d}dB" not in list(dir()):
+                from vcnmodel import VS_datasets_15dB as VS_datasets
         importlib.reload(VS_datasets)
+        print("VS_datasets: ", VS_datasets)
+        print(f"Data set keys found: {str(list(VS_datasets.samdata.keys())):s}")
+
         config = toml.load(open("wheres_my_data.toml", "r"))
 
         """
         Generate the table in VS_data.py by analyzing the data from 
         VS_datasets.py
         """
-        cprint("r", "Generate VS Data")
+        cprint("r", f"Generate VS Data for {dB:d} dB")
 
-        fout = "VS_data.py"  # we will generate this automatically
-        with open(fout, "w") as fh:
-            fh.write(f'"""\n')
-            fh.write(
-                "    Vector strength for models with SAM tones, different input configurations.\n"
-            )
-            fh.write("    17 Aug 2021 version.\n")
-            fh.write(
-                "    Results are printout from DataTablesVCN after selecting the data runs.\n"
-            )
-            fh.write(
-                "NOTE: This table is automatically written by figures.py and should not be\n"
-            )
-            fh.write("      directly edited.")
-            fh.write(f'    pbm\n"""\n')
-            fh.write('\ndata = """')
+        fout = f"VS_data_{dB:d}dB.py"  # we will generate this automatically
+        if not append:
+            with open(fout, "w") as fh:
+                fh.write(f'"""\n')
+                fh.write(
+                    "    Vector strength for models with SAM tones, different input configurations.\n"
+                )
+                fh.write("    17 Aug 2021 version.\n")
+                fh.write(
+                    "    Results are printout from DataTablesVCN after selecting the data runs.\n"
+                )
+                fh.write(
+                    "NOTE: This table is automatically written by figures.py and should not be\n"
+                )
+                fh.write("      directly edited.")
+                fh.write(f"To Regenerate:\n  After running the simulations, use 'Print File Info' for each cell, and copy the text into a 'VS_datasets_xxdB.py' file")
+                fh.write(f"  Then select 'VS-SAMTone-no figure' in DataTables, and 'Create Figure.")
+                fh.write(f"  No figure will be generated, but the VS_data_xxdB.py file will be created.")
+                fh.write(f"  The VS_data file has all of the vector-strength information, and is read by the plotting programs.")
+                fh.write(f'    pbm\n"""\n')
+                fh.write('\ndata = """')
 
         fl = True
         for i, celln in enumerate(grAList()):

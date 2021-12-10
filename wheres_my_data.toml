@@ -7,11 +7,12 @@
 # Read this file as:
 # import toml
 # config = toml.load(open("wheres_my_data.toml", "r"))
+# Dec 2020: Move simulation result storage off to RAID disk for space reasons.
 
-baseDataDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
-cellDataDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
-revcorrDataDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Revcorr_Summaries"
-baseMorphologyDirectory = "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/MorphologyData/VCN"
+baseDataDirectory = "/Volumes/Pegasus_002/VCN-SBEM-Data" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
+cellDataDirectory = "/Volumes/Pegasus_002/VCN-SBEM-Data/VCN_Cells" #"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
+revcorrDataDirectory = "/Volumes/Pegasus_002/VCN-SBEM-Data//VCN_Revcorr_Summaries" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Revcorr_Summaries"
+baseMorphologyDirectory = "/Volumes/Pegasus_002/VCN-SBEM-Data/MorphologyData/VCN" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/MorphologyData/VCN"
 codeDirectory="/Users/pbmanis/Desktop/Python/vcnmodel"
 pngDirectory="VCN-CellImages-1-2020/Bushy_Cells"  # png files, in baseDataDirectory
 impedanceDirectory="Impedance_Calculations"  # Zin calculations in cellDataDirectory

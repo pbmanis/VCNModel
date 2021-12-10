@@ -597,10 +597,16 @@ class PlotSims:
         return par, stitle, ivdatafile, filemode, d
 
     @winprint
-    def print_file_info(self, selected):
+    def print_file_info(self, selected, mode="list"):
+        if mode not in ["list", "dict"]:
+            raise ValueError()
         self.textappend("For copy into figure_data.py: ")
-        br = "{}"
-        self.textappend(f"{int(self.parent.cellID):d}: {br[0]:s}")
+        if mode == "dict":
+            br = "{}"
+            self.textappend(f"{int(self.parent.cellID):d}: {br[0]:s}")
+        if mode == "list":
+            br = "[]"
+            self.textappend(f"    {int(self.parent.cellID):d}: {br[0]:s}")
         for sel in selected:
             data = self.parent.table_manager.get_table_data(sel)
             fn = Path(data.files[0])
@@ -608,8 +614,14 @@ class PlotSims:
             fkey = data.dendriteExpt
             # fkey = data.dendriteMode
             # self.textappend(f"    '{data.dendriteMode:s}': '{fnr:s}' {br[1]:s},")
-            self.textappend(f'    "{fkey:s}": "{fnr:s}",')
-        self.textappend(f"{br[1]:s},")
+            if mode == "dict":
+                self.textappend(f'    "{fkey:s}": "{fnr:s}",')
+            if mode == "list":
+                self.textappend(f'        "{fnr:s}",')
+        if mode == "dict":
+            self.textappend(f"{br[1]:s},")
+        if mode == "list":
+            self.textappend(f"    {br[1]:s},")
 
     def _data_flip(self, data_res, d=None):
         """
