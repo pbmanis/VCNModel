@@ -17,6 +17,8 @@ pyperclip
 pytest==4.5.0
 rich
 psutil
+docutils<0.18
+sphinx>=4.0
 
 
 

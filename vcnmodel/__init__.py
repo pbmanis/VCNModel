@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 AUDIT_TESTS=False
-import DataTablesVCN
-import adjust_areas
+# import DataTablesVCN
+# import adjust_areas
 
 # import vcnmodel.model_run
 # import vcnmodel.model_params

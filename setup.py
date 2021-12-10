@@ -1,5 +1,18 @@
 from setuptools import setup, find_packages
 
+"""
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Paul B. Manis, 2014-2022
+"""
+
 version = '0.9.1'
 
 setup(name='vcnmodel',
