@@ -96,6 +96,7 @@ all_modules = [
     vcnmodel.analyzers.spikestatistics,
     vcnmodel.analyzers.analysis,
     vcnmodel.analyzers.sttc,
+    vcnmodel.analyzers.sac,
     vcnmodel.util.fixpicklemodule,
     vcnmodel.util.readmodel,
     ephys.ephysanalysis.SpikeAnalysis,
@@ -298,10 +299,10 @@ class DataTablesVCN:
             "Cells": [cellvalues, self.cellID],
             "Start Date": [run_dates, self.start_date],
             "End Date": [run_dates, self.end_date],
-            "Mode": [modetypes, self.modetype],
-            "Experiment": [experimenttypes, self.experimenttype],
-            "Analysis": [analysistypes, self.analysistype],
-            "Dendrites": [dendriteChoices, self.dendriteChoices],
+            # "Mode": [modetypes, self.modetype],
+            # "Experiment": [experimenttypes, self.experimenttype],
+            # "Analysis": [analysistypes, self.analysistype],
+            # "Dendrites": [dendriteChoices, self.dendriteChoices],
         }
         self.filters = {
             "Use Filter": False,
@@ -360,36 +361,36 @@ class DataTablesVCN:
                         "values": run_dates,
                         "value": run_dates[0],
                     },
-                     {
-                        "name": "ModelType",
-                        "type": "list",
-                        "values": modeltypes,
-                        "value": modeltypes[0],
-                    },
-                    {
-                        "name": "Mode",
-                        "type": "list",
-                        "values": modetypes,
-                        "value": modetypes[0],
-                    },
-                    {
-                        "name": "Experiment",
-                        "type": "list",
-                        "values": experimenttypes,
-                        "value": experimenttypes[0],
-                    },
-                    {
-                        "name": "Analysis",
-                        "type": "list",
-                        "values": analysistypes,
-                        "value": analysistypes[0],
-                    },
-                    {
-                        "name": "Dendrites",
-                        "type": "list",
-                        "values": dendriteChoices,
-                        "value": dendriteChoices[0],
-                    },
+                     # {
+                    #     "name": "ModelType",
+                    #     "type": "list",
+                    #     "values": modeltypes,
+                    #     "value": modeltypes[0],
+                    # },
+                    # {
+                    #     "name": "Mode",
+                    #     "type": "list",
+                    #     "values": modetypes,
+                    #     "value": modetypes[0],
+                    # },
+                    # {
+                    #     "name": "Experiment",
+                    #     "type": "list",
+                    #     "values": experimenttypes,
+                    #     "value": experimenttypes[0],
+                    # },
+                    # {
+                    #     "name": "Analysis",
+                    #     "type": "list",
+                    #     "values": analysistypes,
+                    #     "value": analysistypes[0],
+                    # },
+                    # {
+                    #     "name": "Dendrites",
+                    #     "type": "list",
+                    #     "values": dendriteChoices,
+                    #     "value": dendriteChoices[0],
+                    # },
                 ],
             },
             {
@@ -416,11 +417,12 @@ class DataTablesVCN:
                         "type": "action",
                         # "default": False,
                     },
+                    {"name": "PSTH", "type": "action"},
                     {"name": "Trace Viewer", "type": "action",},
                     {"name": "RevcorrSPKS", "type": "action"},
-                    {"name": "RevcorrSimple", "type": "action"},
+                    # {"name": "RevcorrSimple", "type": "action"},
                     {"name": "RevcorrSTTC", "type": "action"},
-                    {"name": "PSTH", "type": "action"},
+                    {"name": "SAC", "type": "action"}
                 ],
             },
             {
@@ -732,8 +734,9 @@ class DataTablesVCN:
                     "Singles": self.analyze_singles,
                     # 'CMMR_Summary': self.analyze_cmmr_summary,
                     "RevcorrSPKS": self.analyze_revcorr,
-                    "RevcorrSimple": self.analyze_revcorr,
+                    # "RevcorrSimple": self.analyze_revcorr,
                     "RevcorrSTTC": self.analyze_revcorr,
+                    "SAC": self.analyze_SAC,
                     "Trace Viewer": self.trace_viewer,
                 }
                 analyze_map[path[1]](path[1])  # call the analysis function
@@ -901,20 +904,32 @@ class DataTablesVCN:
             fn = Path(fn)
         return fn
 
-    # Here we provide a few management routines for
-    # specific actions. These mostly call routins in 
-    # plot_sims.py
+    def _get_row_selection(self):
+        """
+        Find the selected rows in the table, and if
+        there is a valid selection, return the index to the first
+        row and the data from that row
+        """
+        self.selected_index_rows = self.table.selectionModel().selectedRows()
+        if self.selected_index_rows is None:
+            return None, None
+        else:
+            index_row = self.selected_index_rows[0]
+            selected = self.table_manager.get_table_data(index_row)  # table_data[index_row]
+            if selected is None:
+                return None, None
+            else:
+                return index_row, selected
+
+    # Next we provide dispatches for a few specific actions.
+    # These are mostly routines in plot_sims.py
     
     def analyze_singles(self, ana_name=None):
         """
         Analyze data this is formatted from the 'singles' runs in model_run2
         These are runs in which each input is evaluated independently
         """
-        self.selected_index_rows = self.table.selectionModel().selectedRows()
-        if self.selected_index_rows is None:
-            return
-        index_row = self.selected_index_rows[0]
-        selected = self.table_manager.get_table_data(index_row)  # table_data[index_row]
+        index_row, selected = self._get_row_selection()
         if selected is None:
             return
         self.PLT.analyze_singles(index_row, selected)
@@ -923,11 +938,7 @@ class DataTablesVCN:
         """
         Invoke the trace viewer (experimental)
         """
-        self.selected_index_rows = self.table.selectionModel().selectedRows()
-        if self.selected_index_rows is None:
-            return
-        index_row = self.selected_index_rows[0]
-        selected = self.table_manager.get_table_data(index_row)  # table_data[index_row]
+        index_row, selected = self._get_row_selection()
         if selected is None:
             return
         nfiles = len(selected.files)
@@ -943,8 +954,8 @@ class DataTablesVCN:
         """
         Plot traces from the selected run
         """
-        self.selected_index_rows = self.table.selectionModel().selectedRows()
-        if self.selected_index_rows is None:
+        index_row, selected = self._get_row_selection()
+        if selected is None:
             return
         self.plot_traces(
             rows=len(self.selected_index_rows),
@@ -960,9 +971,9 @@ class DataTablesVCN:
         """
         Plot traces from an IV run
         """
-        if self.selected_index_rows is None:
+        index_row, selected = self._get_row_selection()
+        if selected is None:
             return
-        self.selected_index_rows = self.table.selectionModel().selectedRows()
         self.plot_traces(
             rows=1,
             cols=len(self.selected_index_rows),
@@ -990,10 +1001,9 @@ class DataTablesVCN:
         """
         Analyze and plot voltage-clamp runs
         """
-        self.selected_index_rows = self.table.selectionModel().selectedRows()
-        if self.selected_index_rows is None:
+        index_row, selected = self._get_row_selection()
+        if selected is None:
             return
-            
         self.PLT.plot_VC(self.selected_index_rows)
 
 
@@ -1001,15 +1011,11 @@ class DataTablesVCN:
         """
         Plot data as PSTH, including inputs, vector strength if SAM used, etc. 
         """
-        self.selected_index_rows = self.table.selectionModel().selectedRows()
-        if self.selected_index_rows is None:
+        index_row, selected = self._get_row_selection()
+        if selected is None:
             return
         P = self.PLT.setup_PSTH()
         PD = plot_sims.PData()
-        index_row = self.selected_index_rows[0]
-        selected = self.table_manager.get_table_data(index_row)  # table_data[index_row]
-        if selected is None:
-            return
         sfi = Path(selected.simulation_path, selected.files[0])
         self.PLT.plot_AN_response(P, sfi, PD, selected.runProtocol)
         P.figure_handle.show()
@@ -1018,15 +1024,19 @@ class DataTablesVCN:
         """
         Analyze the reverse correlation between cell spikes and each input spike train.
         """
-        revcorrtype = ana_name
-        self.selected_index_rows = self.table.selectionModel().selectedRows()
-        if self.selected_index_rows is None:
-            return
-        index_row = self.selected_index_rows[0]
-        selected = self.table_manager.get_table_data(index_row)  # table_data[index_row]
+        index_row, selected = self._get_row_selection()
         if selected is None:
             return
+        revcorrtype = ana_name
         self.PLT.plot_revcorr_figure(selected, revcorrtype)
+
+    def analyze_SAC(self, ana_name=None):
+        index_row, selected = self._get_row_selection()
+        print("selected: ", selected)
+        if selected is None:
+            return
+        print("Calling plot_SAC")
+        self.PLT.plot_SAC(selected)
 
     def analyze_from_table(self, i):
         """
@@ -1044,7 +1054,7 @@ class DataTablesVCN:
 def main():
     # Entry point.
     # Why do I do this ? 
-    # It keeps sphinxdoc from running the code... in case we do that in the future.
+    # It keeps sphinxdoc from running the code...
     D = DataTablesVCN()  # must retain a pointer to the class, else we die!
     if (sys.flags.interactive != 1) or not hasattr(QtCore, "PYQT_VERSION"):
         QtGui.QApplication.instance().exec_()

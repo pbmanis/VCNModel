@@ -46,6 +46,7 @@ from src.vcnmodel import cell_config as cell_config
 from vcnmodel.analyzers import analysis as SPKANA
 from vcnmodel.analyzers import spikestatistics as SPKS
 from vcnmodel.analyzers import sttc as STTC
+from vcnmodel.analyzers import sac as SAC
 import vcnmodel.analyzers.reverseCorrelation as REVCORR
 import vcnmodel.util.fixpicklemodule as FPM
 from vcnmodel.analyzers import vector_strength as VS
@@ -210,6 +211,16 @@ class SpikeData:
     waveform: np.array = None  # the waveform of this postspike, clipped
     prespikes: np.array = None  # time indices to pre spikes
 
+@dataclass
+class SACPars:
+    twin: float = 5.0
+    binw: float = 0.05
+    delay: float = 0.0
+    dur: float = 1000.0
+    ddur: float = 10.0
+    ntestrep: int = 20
+    baseper: float = 4 / 3.0
+    stimdur: float = 1000
 
 def def_empty_np():
     return np.array(0)
@@ -2755,6 +2766,143 @@ class PlotSims:
 
         return d
 
+
+    @TraceCalls()
+    def plot_SAC(self, selected):
+        print("sac called")
+        nfiles = len(selected.files)
+        P = PH.regular_grid(
+            2,
+            1,  # left side raster plot; right SAC
+            order="rowsfirst",
+            figsize=(6.0, 8.0),
+            showgrid=False,
+            verticalspacing=0.01,
+            horizontalspacing=0.01,
+            margins={
+                "bottommargin": 0.1,
+                "leftmargin": 0.07,
+                "rightmargin": 0.05,
+                "topmargin": 0.15,
+            },
+            labelposition=(0.0, 0.0),
+            parent_figure=None,
+            panel_labels=None,
+        )
+        print("SAC!")
+        PD = PData()
+        protocol = selected.runProtocol
+        changetimestamp = get_changetimestamp()
+        sfi = sorted(selected.files)
+        plot_win = [0.1, 1.0]
+        plot_dur = np.fabs(np.diff(plot_win))
+ 
+        for i in range(nfiles):
+            fn = selected.files[i]
+            gbc = f"VCN_c{int(self.parent.cellID):02d}"
+            print(f"Getting data for gbc: {gbc:s}")
+            SC, syninfo = self.get_synaptic_info(gbc)
+            x = self.get_data_file(fn, changetimestamp, PD)
+            mtime = Path(fn).stat().st_mtime
+            timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
+                "%Y-%m-%d-%H:%M"
+            )
+            if x is None:
+                print("No simulation found that matched conditions")
+                print(fn)
+                return
+            # unpack x
+            par, stitle, ivdatafile, filemode, d = x
+            res = self.get_data(fn, PD, changetimestamp, protocol)
+            if res is None:
+                return None
+            (d, AR, SP, RMA, RCP, RCD) = res
+            PD.thiscell = gbc
+            si = d["Params"]
+            ri = d["runInfo"]
+            RCP.si = si
+            RCP.ri = ri
+            (
+                totaldur,
+                soundtype,
+                pip_start,
+                pip_duration,
+                F0,
+                dB,
+                fmod,
+                dmod,
+            ) = self.get_stim_info(si, ri)
+            
+            AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
+            
+            all_bu_st = []
+            all_bu_st_trials = []
+            ntr = len(AR.MC.traces)  # number of trials
+            
+            print('NTR: ', ntr)
+            for i in range(ntr):  # for all trials in the measure.
+                vtrial = AR.MC.traces[i] * 1e3  # convert to mV
+                time_base = AR.MC.time_base / 1000.0  # convert to seconds
+                dt = si.dtIC / 1000.0  # convert from msec to seconds
+                trd = d["Results"][i]
+                idx = (int(plot_win[0] / dt), int(plot_win[1] / dt))
+                waveform = trd["stimWaveform"].tolist()
+                stb = trd["stimTimebase"]  # convert to seconds
+                if i == 0:
+                    n_inputs = len(trd["inputSpikeTimes"])
+                # print('max trd spike: ', np.max(trd['spikeTimes']))
+                if len(trd["spikeTimes"]) == 0:
+                    trd["spikeTimes"] = np.array([np.nan])
+                    sf = 1.0
+                elif np.nanmax(trd["spikeTimes"]) > 2.0:  # probably in miec...
+                    sf = 1e-3  # so scale to seconds
+                else:
+                    sf = 1.0
+                sptimes = np.array(trd["spikeTimes"]) * sf  # convert to seconds
+
+                # print(f"{stb=}")
+                stim_dt = stb[1] - stb[0]
+                # print(f"{stim_dt=}")
+                idxs = (int(plot_win[0] / stim_dt), int(plot_win[1] / stim_dt))
+                if not isinstance(trd["spikeTimes"], list) and not isinstance(
+                    trd["spikeTimes"], np.ndarray
+                ):
+                    cprint("r", "spiketimes is not list")
+                    cprint("r", f"    {type(trd['spikeTimes'])=}")
+                    return
+                all_bu_st.extend(sptimes)
+                all_bu_st_trials.append(sptimes)
+                ispt = [
+                    i
+                    for i in range(len(sptimes))
+                    if sptimes[i] >= plot_win[0] and sptimes[i] < plot_win[1]
+                ]
+                P.axdict["B"].plot(
+                    np.array(sptimes[ispt]) - plot_win[0],
+                    i * np.ones(len(ispt)),
+                    "|",
+                    markersize=1.5,
+                    color="b",
+                )
+            P.axdict["B"].set_xlim(0, plot_dur)
+        sac = SAC.SAC()
+        # pars = SACPars()
+        # print("pars: ", pars)
+        pars =  {'twin': 5.0, 'binw': 0.05, 'delay': 0.0, 'dur': 1000.0, 'ddur': 10.0, 'ntestrep': 20, 'baseper': 1.3333333333333333, 'stimdur': 1000}
+        print('all trials: ', len(all_bu_st_trials))
+        print('size: ', np.array(all_bu_st_trials).shape)
+        yh, bins = sac.SAC_with_histo(np.array(all_bu_st_trials), pars, engine="cython")
+        P.axdict["A"].hist(
+                x=yh,
+                bins=bins,
+                density=False,
+                histtype="stepfilled",
+                facecolor="k",
+                edgecolor="k",
+            )
+        mpl.show()
+        
+        
     @TraceCalls()
     def psth_vs(self):
         """
