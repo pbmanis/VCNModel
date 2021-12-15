@@ -149,9 +149,10 @@ class STTC():
         return (ta, tiles)
     
     def proportion(self, st, tile):
-        ist = [int(sti/self.sample_rate) for sti in st]
-        print(len(tile), self.sample_rate)
-        p = np.sum(tile[ist])/len(st)
+        ist = [int(np.floor(sti/self.sample_rate)) for sti in st]
+        # ist = [x for x in ist if x < len(tile)]
+        print(len(tile), self.sample_rate, np.max(ist))
+        p = np.sum(tile[ist[:-1]])/len(st)
         return p
 
     def tests(self, distribution='exp', pdelete=0., independent=True, dither=0., tilewindow=1.0, nspikes=100):
