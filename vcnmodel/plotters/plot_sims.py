@@ -749,7 +749,8 @@ class PlotSims:
     @time_func
     @TraceCalls()
     def analyze_data(
-        self, ivdatafile: Union[Path, str], filemode: str, protocol: str
+        self, ivdatafile: Union[Path, str], filemode: str, protocol: str,
+        spike_shape=False
         ) -> tuple:
         """
         Provides basic spike detection, spike shape analysis, and
@@ -791,7 +792,8 @@ class PlotSims:
 
         SP.set_detector("Kalluri")  # spike detector: argrelmax, threshold, Kalluri
         SP.analyzeSpikes()
-        SP.analyzeSpikeShape()
+        if spike_shape:
+            SP.analyzeSpikeShape()
         RMA = None
         if protocol == "IV":
             SP.fitOne(function="fitOneOriginal")
@@ -2797,11 +2799,11 @@ class PlotSims:
 
     @TraceCalls()
     def plot_SAC(self, selected):
-        print("sac called")
+        print("SAC analysis and plotting starting")
         nfiles = len(selected.files)
         P = PH.regular_grid(
-            2,
-            1,  # left side raster plot; right SAC
+            3,
+            1,  # top: SAC, middle: raster, bottom: waveform
             order="rowsfirst",
             figsize=(6.0, 8.0),
             showgrid=False,
@@ -2823,9 +2825,9 @@ class PlotSims:
         sfi = sorted(selected.files)
         plot_win = [0.1, 1.0]
         plot_dur = np.fabs(np.diff(plot_win))
- 
-        for i in range(nfiles):
-            fn = selected.files[i]
+        time_scale = 1.0
+        for j in range(nfiles):
+            fn = selected.files[j]
             gbc = f"VCN_c{int(self.parent.cellID):02d}"
             print(f"Getting data for gbc: {gbc:s}")
             SC, syninfo = self.get_synaptic_info(gbc)
@@ -2833,16 +2835,7 @@ class PlotSims:
             timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
                 "%Y-%m-%d-%H:%M"
             )
-            # x = self.get_data_file(fn, changetimestamp, PD)
-            # if x is None:
-            #     print("No simulation found that matched conditions")
-            #     print(fn)
-            #     return
-            # # unpack x
-            # par, stitle, ivdatafile, filemode, d = x
-            print('self.get_data -->')
             res = self.get_data(fn, PD, changetimestamp, protocol)
-            print("<-- self.get_data")
             if res is None:
                 return None
             (d, AR, SP, RMA, RCP, RCD) = res
@@ -2862,39 +2855,25 @@ class PlotSims:
                 dmod,
             ) = self.get_stim_info(si, ri)
             
-            # print('self.analyze_data ->')
-            # AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
-            # print('<-- self.analyze_data')
-            
             all_bu_st = []
             all_bu_st_trials = []
             ntr = len(AR.MC.traces)  # number of trials
             
-            print('NTR: ', ntr)
+            print('N trials: ', ntr)
             for i in range(ntr):  # for all trials in the measure.
-                vtrial = AR.MC.traces[i] * 1e3  # convert to mV
                 time_base = AR.MC.time_base / 1000.0  # convert to seconds
-                dt = si.dtIC / 1000.0  # convert from msec to seconds
                 trd = d["Results"][i]
+                dt = si.dtIC / 1000.0  # convert from msec to seconds
                 idx = (int(plot_win[0] / dt), int(plot_win[1] / dt))
-                waveform = trd["stimWaveform"].tolist()
+                if i == 0:
+                    waveform = trd["stimWaveform"]
                 stb = trd["stimTimebase"]  # convert to seconds
+                stim_dt = stb[1] - stb[0]
                 if i == 0:
                     n_inputs = len(trd["inputSpikeTimes"])
-                # print('max trd spike: ', np.max(trd['spikeTimes']))
-                if len(trd["spikeTimes"]) == 0:
-                    trd["spikeTimes"] = np.array([np.nan])
-                    sf = 1.0
-                elif np.nanmax(trd["spikeTimes"]) > 2.0:  # probably in miec...
-                    sf = 1e-3  # so scale to seconds
-                else:
-                    sf = 1.0
-                sptimes = np.array(trd["spikeTimes"]) * sf  # convert to seconds
-
-                # print(f"{stb=}")
-                stim_dt = stb[1] - stb[0]
-                # print(f"{stim_dt=}")
-                idxs = (int(plot_win[0] / stim_dt), int(plot_win[1] / stim_dt))
+                if np.nanmax(trd["spikeTimes"]) > 2.0:  # probably in msec
+                    time_scale = 1e-3  # so scale to seconds
+                sptimes = np.array(trd["spikeTimes"]) * time_scale  # convert to seconds
                 if not isinstance(trd["spikeTimes"], list) and not isinstance(
                     trd["spikeTimes"], np.ndarray
                 ):
@@ -2903,31 +2882,45 @@ class PlotSims:
                     return
                 all_bu_st.extend(sptimes)
                 all_bu_st_trials.append(sptimes)
-                ispt = [
+                ispt = [  # plot spike times in the SAC analysis window
                     i
                     for i in range(len(sptimes))
-                    if sptimes[i] >= plot_win[0] and sptimes[i] < plot_win[1]
+                    if sptimes[i] >= pip_start and sptimes[i] < pip_duration-pip_start
                 ]
                 P.axdict["B"].plot(
-                    np.array(sptimes[ispt]) - plot_win[0],
+                    np.array(sptimes[ispt]),
                     i * np.ones(len(ispt)),
                     "|",
                     markersize=1.5,
                     color="b",
                 )
-            P.axdict["B"].set_xlim(0, plot_dur)
-        sac = SAC.SAC()
-        # pars = SACPars()
-        # print("pars: ", pars)
-        pars =  {'twin': 0.010, 'binw': si.dtIC/1000., 'delay': 0.0, 'dur': 1.0, 'ddur': 0.010, 'nrep': len(all_bu_st_trials),
-            'baseper': 1e-3*1.3333333333333333, 'stimdur': 1.0}
-        yh, bins = sac.SAC_with_histo(all_bu_st_trials, pars, engine="numba")
-        P.axdict["A"].plot(
-                bins[:-1],
-                yh,
-                'k-')
-        P.axdict["A"].set_xlim(-0.02, 0.02)
+            w_tb = np.linspace(0., stim_dt*len(waveform), num=len(waveform))
+            
+            i_wpt = np.where((w_tb> pip_start) & (w_tb <= pip_duration))[0]
+            P.axdict["C"].plot(w_tb[i_wpt], waveform[i_wpt])
+            pars =  {'twin': 0.050, 'binw': 2*dt, 'delay': pip_start+0.2*pip_duration, 'dur': 0.8*pip_duration, 'ddur': 0.050, 'nrep': len(all_bu_st_trials),
+                'baseper': 1e-3*1.3333333333333333, 'stimdur': pip_duration*0.8}
+            sac = SAC.SAC()
+            # sac.SPars(
+            #     twin=0.05,
+            #     binw = 2*dt,
+            #     delay = pip_start+0.2*pip_duration,
+            #     dur = 0.8*pip_duration,
+            #     ddur = 0.050,
+            #     nrep = len(all_bu_st_trials),
+            #     stimdur = pip_duration*0.8,
+            # )
+            print("pars: ", pars)
+            yh, bins = sac.SAC_with_histo(all_bu_st_trials, pars=pars, engine="cython", dither=dt/2.0)
+            P.axdict["A"].plot(
+                    bins[:-1],
+                    yh,
+                    'k-')
+        P.axdict["C"].set_xlim(pip_start, pip_duration-pip_start)
+        P.axdict["B"].set_xlim(pip_start, pip_duration-pip_start)
+        P.axdict["A"].set_xlim(-0.05, 0.05)
         P.axdict["A"].set_ylim(0, 10)
+        P.axdict["B"].get_shared_x_axes().join(P.axdict["B"], P.axdict["C"])
         mpl.show()
         
         
