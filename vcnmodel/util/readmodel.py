@@ -4,6 +4,7 @@ import pickle
 import matplotlib
 from dataclasses import dataclass
 import dataclasses
+from typing import Union
 import datetime
 
 from ephys.ephysanalysis import MakeClamps
@@ -13,7 +14,7 @@ class ReadModel():
     def __init__(self):
        self.MC = MakeClamps.MakeClamps()
     
-    def read_pfile(self, filename:str, filemode:str='vcnmodel.v0', vscale:float=1e-3, iscale:float=1e-9, plot=False):
+    def read_pfile(self, datasource:Union[str, Path, dict, None]=None, filemode:str='vcnmodel.v0', vscale:float=1e-3, iscale:float=1e-9, plot=False):
         """
         Read a pickled file; optionally plot the data
         Puts the data into a Clamps structure.
@@ -81,8 +82,15 @@ class ReadModel():
         subdictionaries of Params (filemode is 'vcnmodel.v0')
         ... and undone later, so that all are top-level (filemode is 'vcnmodel.v1')
         """
-        with open(filename, 'rb') as fh:
-            df = FPM.pickle_load(fh)
+        if isinstance(datasource, (str, Path)):
+            with open(datasource, 'rb') as fh:
+                df = FPM.pickle_load(fh)
+                filename = datasource
+        else:
+            df = datasource
+            print(df.Params)
+            raise ValueError()
+            
         if filemode in ['vcnmodel.v0']:
             print(f"Reading model file in version v0:, with {len(df['Results']):4d} trials")
         elif filemode in ['vcnmodel.v1']:
