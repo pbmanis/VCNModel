@@ -2,64 +2,66 @@
 import functools
 import time
 from dataclasses import dataclass
-
+from typing import Union
 import numpy as np
 import pyqtgraph as pg
 import pyximport
-from numba import njit
+from numba import njit, jit
 from numba.typed import List
 from pylibrary.plotting import pyqtgraph_plothelpers as pgh
 
 pyximport.install()
 from vcnmodel.analyzers import sac_cython
 
-# Shuffled autocorrelation function
-# Based on Louage et al., 2004
-# X is an array of N responses x length(t) points in time. The times are in
-# msec. Since the number of spikes in X may vary from trial to trial,
-# X is assumed to be a cell array of spike times.
-# The autocorrelation is calculated for every event in X that is not within
-# is not within a single spike train.
-# twin is the time window for the autocorrelation to be calculated (in
-# msec)
-# binw is the bin width for the histogram, in msec.
-# delay is the delay to the start of measurement in X; in msec.
-# dur is the duration of the measurement window in X; in msec.
-# (these last two parameters allow you to pass a response and only analyze
-# the portion that is relevant).
-#
-# y is the output autocorrelation function. It consists of a list of
-# the correlation intervals, not corrected at all.
-#
-# yh is the histogram bin amplitudes, with bin width hx.
-# This histogram is normalized.
-# mr is the mean rate
-#
-# 10/5/04 Paul B. Manis, Ph.D.
-# 10/5/04 some fixes for an spike trains.
-# Note: calling the routine with letters as the first argument will
-# generate the specific plots
-# Replicates Figure 2 of Louage et al. J. Neurophysiol. 2004.
+"""
+Shuffled autocorrelation function
+Based on Louage et al., 2004
+X is an array of N responses x length(t) points in time. The times are in
+msec. Since the number of spikes in X may vary from trial to trial,
+X is assumed to be a cell array of spike times.
+The autocorrelation is calculated for every event in X that is not within
+is not within a single spike train.
+twin is the time window for the autocorrelation to be calculated (in
+msec)
+binw is the bin width for the histogram, in msec.
+delay is the delay to the start of measurement in X; in msec.
+dur is the duration of the measurement window in X; in msec.
+(these last two parameters allow you to pass a response and only analyze
+the portion that is relevant).
 
-# Python version, adapted from Matlab version, 6/16/2015 pbm.
+y is the output autocorrelation function. It consists of a list of
+the correlation intervals, not corrected at all.
 
-# Updated 12/13/2021, using numba and cython.
-# as cython is faster, we stick with that.
-# see sac_cython for implementations of sac and xac in cython.
-# SAC tested against original python and numba - all produce
-# the same result. (No numba version for xac was coded).
+yh is the histogram bin amplitudes, with bin width hx.
+This histogram is normalized.
+mr is the mean rate
+
+10/5/04 Paul B. Manis, Ph.D.
+10/5/04 some fixes for an spike trains.
+Note: calling the routine with letters as the first argument will
+generate the specific plots
+Replicates Figure 2 of Louage et al. J. Neurophysiol. 2004.
+
+Python version, adapted from Matlab version, 6/16/2015 pbm.
+
+Updated 12/13/2021, using numba and cython.
+as cython is faster, we stick with that.
+see sac_cython for implementations of sac and xac in cython.
+SAC tested against original python and numba - all produce
+the same result. (No numba version for xac was coded).
+"""
 
 
 @dataclass
 class SACPars:
-    twin: float = 5.0
-    binw: float = 0.05
+    twin: float = 0.005
+    binw: float = 0.00005
     delay: float = 0.0
-    dur: float = 1000.0
-    ddur: float = 10.0
-    ntestrep: int = 20
+    dur: float = 1.0
+    ddur: float = 0.010
+    nrep: int = 20
     baseper: float = 4 / 3.0
-    stimdur: float = 1000
+    stimdur: float = 1.0
 
 
 def time_func(func):
@@ -83,21 +85,19 @@ def time_func(func):
 
 
 @time_func
-@njit(parallel=False, cache=True)
-def nb_SAC_Calc(X, twin, binw, delay, dur):
-    N = len(X)
+@jit(nopython=False, parallel=False, cache=True)
+def nb_SAC_Calc(X, event_lengths, twin, binw, delay, dur):
+    N = X.shape[0]
     maxn = 10000000  # pre-allocation for spike trains
 
     yc = np.nan * np.zeros(maxn)
-    spcount = np.zeros(N)
     ns = 0
     for n in range(N):  # for each trial
-        n_index = [np.where((X[n] >= delay) & (X[n] < (delay + dur)))][0][0]
-        spcount[n] = len(n_index)
+        n_index = [np.where((X[n, :event_lengths[n]] >= delay) & (X[n, :event_lengths[n]] < (delay + dur)))][0]
         for m in range(N):  # against each other trial, except:
             if m == n:
                 continue  # skip identical trains
-            m_index = [np.where((X[m] >= delay) & (X[m] < (delay + dur)))][0][0]
+            m_index = [np.where((X[m, :event_lengths[m]] >= delay) & (X[m, :event_lengths[m]] < (delay + dur)))][0][0]
             for mi in m_index:  # cross correlate all spikes in Yi
                 xd = X[n][n_index] - X[m][mi]  # distance in time between the two spikes
                 xd = xd[
@@ -107,26 +107,22 @@ def nb_SAC_Calc(X, twin, binw, delay, dur):
                 yc[ns : ns + nd] = xd
                 ns += nd
     y = yc[~np.isnan(yc)]  # clean it up.
-    return y, spcount
+    return y, ns
 
 
 @time_func
 @njit(parallel=False, cache=True)
-def nb_XAC_Calc(X, Y, twin, binw, delay, dur):
+def nb_XAC_Calc(X, Y, event_lengths_x, event_lengths_y, twin, binw, delay, dur):
     M = len(X)
     N = len(Y)
     maxn = 10000000  # pre-allocation for spike trains
 
     yc = np.nan * np.zeros(maxn)
-    spike_count_x = np.zeros(M)
-    spike_count_y = np.zeros(N)
     ns = 0
     for n in range(N):  # for each trial
-        n_index = [np.where((X[i] >= delay) & (X[i] < (delay + dur)))][0][0]
-        spike_count_x[n] = len(n_index)
+        n_index = [np.where((X[i, :event_lengths_x[n]] >= delay) & (X[i:event_lengths_x[n]] < (delay + dur)))][0][0]
         for m in range(M):  # against each other trial, except:
-            m_index = [np.where((X[m] >= delay) & (X[m] < (delay + dur)))][0][0]
-            spike_count_y[m] = len(m_index)
+            m_index = [np.where((Y[m:event_lengths_y[m]] >= delay) & (Y[m:event_lengths_y[m]] < (delay + dur)))][0][0]
             for mi in m_index:  # cross correlate all spikes in the windows
                 xd = X[n][n_index] - X[m][mi]
                 # all differences from i'th spike in m'th trial to spikes in nth trial
@@ -137,7 +133,7 @@ def nb_XAC_Calc(X, Y, twin, binw, delay, dur):
                 yc[ns : (ns + nd)] = xd  # store
                 ns += nd  # keep track of storage location
     y = yc[~np.isnan(yc)]  # clean it up.
-    return y, spike_count_x, spike_count_y
+    return y, ns
 
 
 class SAC(object):
@@ -154,49 +150,49 @@ class SAC(object):
         """
 
         self.SPars = SACPars(
-            twin=5.0,
-            binw=0.05,
+            twin=0.005,
+            binw=0.00005,
             delay=0.0,
-            dur=1000.0,
-            ntestrep=20,
-            ddur=10.0,
-            baseper=4.0 / 3.0,
+            dur=1.0,
+            nrep=20,
+            ddur=0.010,
+            baseper=0.001*(4.0 / 3.0),
         )
 
-        X = [None] * self.SPars.ntestrep
+        X = [None] * self.SPars.nrep
 
         if test == "A":
-            for i in range(self.SPars.ntestrep):
+            for i in range(self.SPars.nrep):
                 X[i] = np.arange(
                     self.SPars.baseper, self.SPars.stimdur, self.SPars.baseper
                 )  # all identical
 
         elif test == "B":
-            for i in range(self.SPars.ntestrep):
+            for i in range(self.SPars.nrep):
                 X[i] = np.arange(
                     self.SPars.baseper, self.SPars.stimdur, self.SPars.baseper
                 )  # all identical
-                X[i] = X[i] + np.random.normal(0.0, 0.08, len(X[i]))
+                X[i] = X[i] + np.random.normal(0.0, 0.00008, len(X[i]))
 
         elif test == "C":
-            for i in range(self.SPars.ntestrep):
+            for i in range(self.SPars.nrep):
                 X[i] = np.arange(
                     self.SPars.baseper, self.SPars.stimdur, self.SPars.baseper
                 )  # all identical
-                X[i] = X[i] + np.random.normal(0.0, 0.08, len(X[i]))
+                X[i] = X[i] + np.random.normal(0.0, 0.00008, len(X[i]))
                 n = len(X[i])
                 sig = self.SPars.stimdur * np.sort(np.random.rand(int(n / 4)))
                 X[i] = np.sort(np.append(X[i], sig))
 
         elif test == "D":
-            for i in range(self.SPars.ntestrep):
+            for i in range(self.SPars.nrep):
                 X[i] = np.arange(
                     self.SPars.baseper, self.SPars.stimdur, self.SPars.baseper
                 )  # all identical
-                X[i] = X[i] + np.random.normal(0.0, 0.170, len(X[i]))
+                X[i] = X[i] + np.random.normal(0.0, 0.000170, len(X[i]))
 
         elif test == "E":
-            for i in range(self.SPars.ntestrep):
+            for i in range(self.SPars.nrep):
                 bx = np.random.permutation(
                     np.arange(
                         self.SPars.baseper, self.SPars.stimdur, self.SPars.baseper
@@ -204,20 +200,20 @@ class SAC(object):
                 )
                 bx = bx[: int(len(bx) / 2)]
                 X[i] = sorted(bx)  # elimnate half by random selection
-                X[i] = X[i] + np.random.normal(0.0, 0.170, len(X[i]))
+                X[i] = X[i] + np.random.normal(0.0, 0.000170, len(X[i]))
 
         elif test == "F":
-            X = [None] * self.SPars.ntestrep
-            for i in range(self.SPars.ntestrep):
+            X = [None] * self.SPars.nrep
+            for i in range(self.SPars.nrep):
                 X[i] = self.SPars.stimdur * np.sort(
                     np.random.rand(120)
                 )  # corresponds to about 120 s/s
-            self.SPars.ddur = 100.0
+            self.SPars.ddur = 0.100
 
         elif test == "G":
-            self.SPars.binw = 0.15
+            self.SPars.binw = 0.00015
             sig = self.SPars.stimdur * np.sort(np.random.rand(120))
-            for i in range(self.SPars.ntestrep):
+            for i in range(self.SPars.nrep):
                 X[i] = sig  # same signal every time
             self.SPars.ddur = 100
 
@@ -225,27 +221,22 @@ class SAC(object):
 
     @time_func
     def SAC_Calc(
-        self, X: np.ndarray, twin: float, binw: float, delay: float, dur: float
+        self, X: np.ndarray, event_lengths: np.ndarray, twin: float, binw: float, delay: float, dur: float
     ):
-        N = len(X)
+        N = X.shape[0]
         maxn = 10000000  # pre-allocation for spike trains
 
         yc = np.nan * np.zeros(maxn)
         n = 1
         # window data
-        Y = [[]] * N
-        spcount = np.zeros(N)
-        for i in range(N):
-            Y[i] = X[i][np.where((X[i] >= delay) & (X[i] < (delay + dur)))]
-            spcount[i] = len(Y[i])
         ns = 0
         for n in range(N):  # for each trial
             for m in range(N):  # against each other trial, except:
                 if m == n:
                     continue  # skip identical trains
-                for i in range(len(Y[m])):  # cross correlate against all spikes in Yi
+                for i in range(event_lengths[m]):  # cross correlate against all spikes in Yi
                     xd = (
-                        Y[n] - Y[m][i]
+                        X[n][:event_lengths[n]] - X[m][i]
                     )  # all differences from i'th spike in m'th trial to spikes in nth trial
                     xd = xd[
                         np.where(
@@ -255,27 +246,28 @@ class SAC(object):
                     yc[ns : (ns + len(xd))] = xd  # store
                     ns += len(xd)  # keep track of storage location
         y = yc[~np.isnan(yc)]  # clean it up.
-        return y, spcount
+        return y, ns
 
     @time_func
     def c_SAC_Calc(
-        self, X: np.ndarray, twin: float, binw: float, delay: float, dur: float
+        self, X: Union[list, np.ndarray], event_lengths:np.array, twin: float, binw: float, delay: float, dur: float
     ):
         y = np.full(10000000, np.nan)  # need to size array
-        spcount = np.zeros(np.array(X).shape[0], dtype=np.int)
         ns = 0
+        event_lengths = np.array(event_lengths).squeeze()  # make sure is a 1-D np array
+
         sac_cython.sac_cython(
-            np.array(X),  # data array (input)
+            X,  # data array (input)
+            event_lengths,
             self.SPars.twin,  # time win single float input
             self.SPars.binw,
             self.SPars.delay,
             self.SPars.dur,
             y,  # result SAC (output)
-            spcount,  # spike count, int, output
             ns,
         )
         y = y[~np.isnan(y)]
-        return y, spcount
+        return y, ns
 
     def SAC(self, X, pars, engine="cython"):
         """
@@ -302,32 +294,45 @@ class SAC(object):
                 "SAC: parameters must be dict or dataclass of type SACPars"
             )
 
+        # reformat X into a regular array with NaNs following the end of valid spikes
+        # we also make an array that has the number of events in each
+        # first dimension of the spike array (e.g., per trace). 
+        # This greatly simplifies implementations in numba/cython
+        event_lengths = np.array([len(x) for x in X])
+        XC = np.nan*np.zeros((len(X), int(np.max(event_lengths))))
+        for i in range(len(X)):
+            okev = np.array(X[i][np.argwhere((X[i]>=self.SPars.delay) & (X[i] < self.SPars.delay+self.SPars.dur))]).flatten()
+            XC[i,:len(okev)] = okev
+            event_lengths[i] = len(okev)
+
         if engine in ["python", "Python"]:
-            y, spcount = self.SAC_Calc(
-                X,
+            y, ns = self.SAC_Calc(
+                XC,
+                event_lengths=event_lengths,
                 twin=self.SPars.twin,
                 binw=self.SPars.binw,
                 delay=self.SPars.delay,
                 dur=self.SPars.dur,
             )
         elif engine == "numba":
-            y, spcount = nb_SAC_Calc(
-                np.array(X),
+            y, ns = nb_SAC_Calc(
+                XC,
+                event_lengths=event_lengths,
                 twin=self.SPars.twin,
                 binw=self.SPars.binw,
                 delay=self.SPars.delay,
                 dur=self.SPars.dur,
             )
         elif engine == "cython":
-            y, spcount = self.c_SAC_Calc(
-                X,
+            y, ns = self.c_SAC_Calc(
+                XC,
+                event_lengths=event_lengths,
                 twin=self.SPars.twin,
                 binw=self.SPars.binw,
                 delay=self.SPars.delay,
                 dur=self.SPars.dur,
             )
-
-        return y, spcount
+        return y, event_lengths
 
     def SAC_with_histo(self, X, pars, engine="cython"):
         y, spcount = self.SAC(X, pars=pars, engine=engine)
@@ -335,23 +340,24 @@ class SAC(object):
         return yh, bins
 
     def SAC_make_histogram(self, y, spcount):
-        # now calculate the normalized histogram.
-        # normalization is N*(N-1)*r^2*deltat*D
-        # where N is the number of presentations (lx), r is the rate (sp/sec),
-        # deltat is the bin width for the histogram (sec), and D is the duration of
-        # the trace.
-        # normalization goes to 1 as the time gets larger...
-        #
-        rate = np.sum(spcount) / (self.SPars.ntestrep * self.SPars.dur / 1000.0)
-        #        print'Mean firing rate: %8.1f' % rate
-        N = len(X)
+        """
+        Calculate the normalized histogram.
+        normalization is N*(N-1)*r^2*deltat*D
+        where N is the number of presentations (lx), r is the rate (sp/sec),
+        deltat is the bin width for the histogram (sec), and D is the duration of
+        the trace.
+        normalization goes to 1 as the time gets larger...
+        """
+        rate = np.sum(spcount) / (self.SPars.nrep * self.SPars.dur)
+        # print('Mean firing rate: %8.1f' % rate)
+        N = len(spcount)
         nfac = (
             N
             * (N - 1)
             * rate
             * rate
-            * (self.SPars.binw / 1000.0)
-            * (self.SPars.dur / 1000.0)
+            * self.SPars.binw
+            * self.SPars.dur
         )  # correction factor
         yh, bins = np.histogram(
             y,
@@ -501,16 +507,16 @@ class SAC(object):
         # the trace.
         # normalization goes to 1 as the time gets larger...
         #
-        rate_x = np.sum(spike_count_x) / (self.SPars.ntestrep * self.SPars.dur / 1000.0)
-        rate_y = np.sum(spike_count_y) / (self.SPars.ntestrep * self.SPars.dur / 1000.0)
+        rate_x = np.sum(spike_count_x) / (self.SPars.nrep * self.SPars.dur)
+        rate_y = np.sum(spike_count_y) / (self.SPars.nrep * self.SPars.dur)
         #        print'Mean firing rate: %8.1f' % rate
         nfac = (
             N
             * M
             * rate_x
             * rate_y
-            * (self.SPars.binw / 1000.0)
-            * (self.SPars.dur / 1000.0)
+            * (self.SPars.binw)
+            * (self.SPars.dur)
         )  # correction factor
 
         yh, bins = np.histogram(
@@ -536,6 +542,9 @@ if __name__ == "__main__":
 
     """
     Test the SAC method, regenerating Figure 2 of Louage et al. J. Neurophys, 2004
+    We also test all versions of the SAC calculation (different computation engines)
+    with timings, and assert that they give identical results for
+    all versions.
     """
     sac = SAC()
     tests = ["A", "B", "C", "D", "E", "F", "G"]
@@ -550,17 +559,19 @@ if __name__ == "__main__":
         win.resize(600, 125 * len(tests))
     for i, t in enumerate(tests):
         X = sac.makeTests(t)
+
         yhp, binsp = sac.SAC_with_histo(X, sac.SPars, engine="python")
         yhn, binsn = sac.SAC_with_histo(X, sac.SPars, engine="numba")
-        yh, bins = sac.SAC_with_histo(X, sac.SPars, engine="cython")
-        assert np.array_equal(yh, yhn)
-        assert np.array_equal(yh, yhp)
+        yhc, binsc = sac.SAC_with_histo(X, sac.SPars, engine="cython")
+        assert np.array_equal(yhc, yhn)
+        assert np.array_equal(yhc, yhp)
         assert np.array_equal(yhp, yhn)  # make sure all results are the same
+
         SAC_with_histo = pg.PlotCurveItem(
-            binsn, yhn, stepMode=True, fillLevel=0, brush=(255, 0, 255, 255), pen=None
+            binsc, yhc, stepMode=True, fillLevel=0, brush=(255, 0, 255, 255), pen=None
         )
         layout.getPlot((i, 1)).addItem(SAC_with_histo)
-        layout.getPlot((i, 1)).setXRange(-5.0, 5.0)
+        layout.getPlot((i, 1)).setXRange(-0.005, 0.005)
         layout.getPlot((i, 1)).setYRange(0, ymax[t])
         size = 4
         Y = [[]] * len(X)
@@ -576,8 +587,8 @@ if __name__ == "__main__":
         )
         layout.getPlot((i, 0)).addItem(raster)
         if t not in ["F", "G"]:
-            layout.getPlot((i, 0)).setXRange(0.0, 10.0)
+            layout.getPlot((i, 0)).setXRange(0.0, 0.010)
         else:
-            layout.getPlot((i, 0)).setXRange(0.0, 100.0)
+            layout.getPlot((i, 0)).setXRange(0.0, 1.0)
 
     pgh.show()

@@ -506,43 +506,20 @@ class PlotSims:
             self.parent.textbox.append(text)
             self.parent.textbox.setTextColor(self.parent.QColor("white"))
 
-    @TraceCalls()
-    def get_data_file(
-        self, fn: Union[str, Path], changetimestamp: object, PD: dataclass
-    ) -> Union[None, tuple]:
+    def _convert_params(self, d, filemode):
         """
-        Get a data file, and also parse information from the file
-        for display
+        Capture the parameters in different versions of the files,
+        and return as a simple dictionary.
+        
+        Parameters
+        ----------
+        d : dict from the top level of the file
+            Must have 'runInfo' and/or 'Params' as entries
+        
+        filemode : str (no default)
+            A string corresponding to the file mode for the file
+            Must be either "vcnmodel.v0" or "vcnmodel.v1"
         """
-        fnp = Path(fn)
-        fns = str(fn)
-        ivdatafile = None
-        if self.firstline:
-            if not fnp.is_file():
-                cprint("r", f"   File: {str(fnp):s} NOT FOUND")
-                self.textappend(f"   File: {str(fnp):s} NOT FOUND", color="red")
-                return None
-            else:
-                self.textappend(f"   File: {str(fnp):s} OK")
-            # print(f"   File {str(fnp):s} found.")
-        mtime = fnp.stat().st_mtime
-        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
-            "%Y-%m-%d-%H:%M"
-        )
-        if self.firstline:
-            self.textappend(
-                f"pgbcivr2: Checking file: {fnp.name:s} [{timestamp_str:s}]"
-            )
-        # print(mtime, changetimestamp)
-        if mtime > changetimestamp:
-            filemode = "vcnmodel.v1"
-        else:
-            filemode = "vcnmodel.v0"
-        if self.firstline:
-            self.textappend(f"pgbcivr2: file mode: {filemode:s}")
-        with (open(fnp, "rb")) as fh:
-            d = FPM.pickle_load(fh)
-        self.textappend(f"   ...File read, mode={filemode:s}")
         if filemode in ["vcnmodel.v0"]:
             # print(d['runInfo'].keys())
             par = d["runInfo"]
@@ -564,7 +541,24 @@ class PlotSims:
                     raise ValueError("File missing Params; need to re-run")
             if isinstance(par, vcnmodel.model_params.Params):
                 par = dataclasses.asdict(par)
-        ivdatafile = Path(fn)
+        else:
+            raise ValueError("File mode must be either vcnmodel.v0 or vcnmodel.v1")
+
+        return par
+
+    def _get_scaling(self, fn, PD, par):
+        """
+        Get the dendrite/soma scaling information from this data file
+        and return a string. Also prints out the scaling information as we go.
+        
+        Parameters
+        ----------
+        PD : Parameter Dataclass (no default)
+        par : parameter list.
+        Returns
+        -------
+        string with the type of scaling applied to the data.
+        """
         stitle = "Bare Scaling"
         if PD.soma_inflate and PD.dend_inflate:
             if par.soma_inflation > 0.0 and par.dendrite_inflation > 0.0:
@@ -581,7 +575,7 @@ class PlotSims:
                 ivdatafile = Path(fn)
                 stitle = "Dend only scaled"
                 print(stitle)
-        elif not par.soma_autoinflate and not par.dendrite_autoinflate:
+        elif not PD.soma_autoinflate and not PD.dendrite_autoinflate:
             print("\nConditions x: soma= ", PD.soma_inflate, "  dend=", PD.dend_inflate)
             ivdatafile = Path(fn)
             stitle = "No scaling (S, D)"
@@ -592,7 +586,56 @@ class PlotSims:
                 f"Bare file: no identified soma/dendrite inflation conditions", "red"
             )
             stitle = "Bare Scaling"
-        print("ivdatafile: ", ivdatafile)
+        return "      " + stitle
+    
+    @TraceCalls()
+    def get_data_file(
+        self, fn: Union[str, Path], changetimestamp: object, PD: dataclass
+    ) -> Union[None, tuple]:
+        """
+        Get a data file, and also parse information from the file
+        for display,
+    
+        Parameters
+        ----------
+        fn : str or Path
+            the file to read
+        changetimestamp : object
+            the timestamp associated with this file.
+        PD : dataclass
+            
+        """
+        fnp = Path(fn)
+        fns = str(fn)
+        ivdatafile = Path(fn)
+        if self.firstline:
+            if not fnp.is_file():
+                cprint("r", f"   File: {str(fnp):s} NOT FOUND")
+                self.textappend(f"   File: {str(fnp):s} NOT FOUND", color="red")
+                return None
+            else:
+                self.textappend(f"   File: {str(fnp):s} OK")
+        mtime = fnp.stat().st_mtime
+        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
+            "%Y-%m-%d-%H:%M"
+        )
+        if self.firstline:
+            self.textappend(
+                f"pgbcivr2: Checking file: {fnp.name:s} [{timestamp_str:s}]"
+            )
+        if mtime > changetimestamp:
+            filemode = "vcnmodel.v1"
+        else:
+            filemode = "vcnmodel.v0"
+        if self.firstline:
+            self.textappend(f"pgbcivr2: file mode: {filemode:s}")
+        with (open(fnp, "rb")) as fh:
+            d = FPM.pickle_load(fh)
+        self.textappend(f"   ...File read, mode={filemode:s}")
+        par = self._convert_params(d, filemode)
+        stitle = self._get_scaling(fn, PD, par)
+        
+        print("Read file: ", ivdatafile)
         if ivdatafile is None or not ivdatafile.is_file():
             if self.firstline:
                 self.textappend(f"no file matching conditions : {str(ivdatafile):s}")
@@ -602,47 +645,78 @@ class PlotSims:
             self.textappend(f"\npgbcivr2: datafile to read: {str(ivdatafile):s}")
         if isinstance(d["Results"], dict):
             if "time" in list(d["Results"].keys()):
-                d["Results"] = self._data_flip(d["Results"], d)
-        # print(d['Params'])
-        cprint("m", "getdatafile returns!")
+                d["Results"] = self._data_flip(d["Results"])
         return par, stitle, ivdatafile, filemode, d
+    
+    @TraceCalls()
+    def get_data(
+        self, fn: Union[Path, str], PD: dataclass, changetimestamp, protocol
+    ) -> Union[None, tuple]:
 
-    @winprint
-    def print_file_info(self, selected, mode="list"):
-        if mode not in ["list", "dict"]:
-            raise ValueError()
-        self.textappend("For copy into figure_data.py: ")
-        if mode == "dict":
-            br = "{}"
-            self.textappend(f"{int(self.parent.cellID):d}: {br[0]:s}")
-        if mode == "list":
-            br = "[]"
-            self.textappend(f"    {int(self.parent.cellID):d}: {br[0]:s}")
-        for sel in selected:
-            data = self.parent.table_manager.get_table_data(sel)
-            fn = Path(data.files[0])
-            fnr = str(fn.parts[-2])
-            fkey = data.dendriteExpt
-            # fkey = data.dendriteMode
-            # self.textappend(f"    '{data.dendriteMode:s}': '{fnr:s}' {br[1]:s},")
-            if mode == "dict":
-                self.textappend(f'    "{fkey:s}": "{fnr:s}",')
-            if mode == "list":
-                self.textappend(f'        "{fnr:s}",')
-        if mode == "dict":
-            self.textappend(f"{br[1]:s},")
-        if mode == "list":
-            self.textappend(f"    {br[1]:s},")
+        X = self.get_data_file(fn, changetimestamp, PD)
+        if X is None:
+            print("No simulation found that matched conditions")
+            print("Looking for file: ", fn)
+            return None
+        # unpack x
+        par, stitle, ivdatafile, filemode, d = X
+        if "time" in list(d["Results"].keys()):
+            d["Results"] = self._data_flip(d["Results"])
 
-    def _data_flip(self, data_res, d=None):
+        # 2. find spikes
+        AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
+        # set up analysis parameters and result storage
+        RCP = RevCorrPars()
+        RCD = RevCorrData()
+
+        RCD.npost = 0  # number of postsynaptic spikes
+        RCD.npre = 0  # number of presynaptic spikes
+
+        trials = range(len(d["Results"]))
+        RCP.ntrials = len(trials)
+        for i, tr in enumerate(trials):
+            trd = d["Results"][tr]  # trial data
+            ti = trd["time"]
+            for n in range(len(trd["inputSpikeTimes"])):  # for each sgc
+                RCD.npre += len(trd["inputSpikeTimes"][n])
+            RCD.npost += len(trd["spikeTimes"])
+            RCD.st = SP.spikeIndices
+            RCD.npost += len(RCD.st[tr])
+
+        RCD.ti = ti
+        print(f"Detected {RCD.npost:d} Post spikes")
+        print(f"Detected {RCD.npre:d} Presynaptic spikes")
+        print("# trials: ", RCP.ntrials)
+
+        # clip trace to avoid end effects
+        RCP.max_time = (
+            np.max(ti) - RCP.min_time
+        )  # this window needs to be at least as long as maxwin
+        RCD.tx = np.arange(RCP.minwin, 0, RCP.binw)
+        return (d, AR, SP, RMA, RCP, RCD)
+
+    def _data_flip(self, d):
         """
         Convert from old data file format to new
+        
+        Parameters
+        ----------
+        d : dict from the top of the data file,
+            or from results (d['Results'])
+        
+        Returns
+        -------
+        d['Results'] with the data format adjusted.
         """
         # flip order to put trials first (this was an old format)
-        if d is None:
-            trials = range(len(data_res["somaVoltage"]))
+        if 'runInfo' in list(d.keys()):  # marker for top level
+            data_res = d['Results']
         else:
-            trials = range(d["runInfo"].nReps)
+            data_res = d
+        # if d is None:
+        #     trials = range(len(data_res["somaVoltage"]))
+        # else:
+        #     trials = range(d["runInfo"].nReps)
 
         for tr in trials:
             sv = data_res["somaVoltage"][tr]
@@ -675,29 +749,34 @@ class PlotSims:
     @time_func
     @TraceCalls()
     def analyze_data(
-        self, ivdatafile: Union[Path, str], filemode, protocol: str
-    ) -> tuple:
+        self, ivdatafile: Union[Path, str], filemode: str, protocol: str
+        ) -> tuple:
         """
-        Provide basic spike detection, shape analysis, and
-        IV analysis if appropriate
+        Provides basic spike detection, spike shape analysis, and
+        IV analysis if appropriate.
         We use ephys.acq4read.read_pfile to read the pickled data
         file into acq4 format, then we can use the ephys
         analysis tools to analyze the data
+        
+        Parameters
+        ----------
+        ivdatafile : path or str path to file
+        filemode : str file mode (.v0 or .v1)
+        protocol : str 
+            name of the protocol
+        
+        Returns
+        -------
+        AR : Acq4 Read object
+        SP : Spike analysis object
+        RMA : Analysis summary object
         """
         AR.read_pfile(ivdatafile, filemode=filemode)
 
-        # AR.traces = AR.traces*1000.
-        # print(AR.traces.shape)
-        # f, ax = mpl.subplots(1,1)
-        # for i in range(AR.traces.shape[0]):
-        #     mpl.plot(AR.traces[i])
-        # mpl.show()
         bridge_offset = 0.0
         threshold = -0.035  # V
         tgap = 0.0  # gap before fittoign taum
         RM.setup(AR.MC, SP, bridge_offset=bridge_offset)
-        # print(AR.time_base[:100])
-        # print(AR.traces[0][:100])
         SP.setup(
             clamps=AR.MC,
             threshold=threshold,  # in units of V
@@ -710,7 +789,6 @@ class PlotSims:
             data_volt_units="V",
         )
 
-        # print('running Kalluri spike detector', threshold)
         SP.set_detector("Kalluri")  # spike detector: argrelmax, threshold, Kalluri
         SP.analyzeSpikes()
         SP.analyzeSpikeShape()
@@ -753,17 +831,12 @@ class PlotSims:
         )
 
         PD = PData()
-        # print('self.selected_index_rows: ', self.parent.selected_index_rows)
         for iax, index_row in enumerate(self.parent.selected_index_rows):
-            # print('index_row: ', index_row)
             selected = self.parent.table_manager.get_table_data(
                 index_row
-            )  # table_data[index_row]
+            )
             if selected is None:
                 return
-            # print('sim path, files: ')
-            # print(selected.simulation_path)
-            # print(selected.files)
             sfi = Path(selected.simulation_path, selected.files[0])
             if stack:
                 self.plot_traces(
@@ -787,9 +860,32 @@ class PlotSims:
                     iax=iax,
                     figure=self.P.figure_handle,
                 )
-        print("done")
         self.P.figure_handle.show()
-        cprint("y", "really done")
+
+    @winprint
+    def print_file_info(self, selected, mode="list"):
+        if mode not in ["list", "dict"]:
+            raise ValueError()
+        self.textappend("For copy into figure_data.py: ")
+        if mode == "dict":
+            br = "{}"
+            self.textappend(f"{int(self.parent.cellID):d}: {br[0]:s}")
+        if mode == "list":
+            br = "[]"
+            self.textappend(f"    {int(self.parent.cellID):d}: {br[0]:s}")
+        for sel in selected:
+            data = self.parent.table_manager.get_table_data(sel)
+            fn = Path(data.files[0])
+            fnr = str(fn.parts[-2])
+            fkey = data.dendriteExpt
+            if mode == "dict":
+                self.textappend(f'    "{fkey:s}": "{fnr:s}",')
+            if mode == "list":
+                self.textappend(f'        "{fnr:s}",')
+        if mode == "dict":
+            self.textappend(f"{br[1]:s},")
+        if mode == "list":
+            self.textappend(f"    {br[1]:s},")
 
     @winprint
     @TraceCalls()
@@ -824,23 +920,11 @@ class PlotSims:
         calt2=10.0,
         calv2=10.0,
     ) -> tuple:
-        # print('protocol: ', protocol)
-        # print('sfi: ', fn)
-        # print('figure: ', figure)
         changetimestamp = get_changetimestamp()
-        x = self.get_data_file(fn, changetimestamp, PD)
-        if x is None:
-            raise ValueError("Data file not found")
-            return (None, None, None)
         mtime = Path(fn).stat().st_mtime
         timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
             "%Y-%m-%d-%H:%M"
         )
-        if x is None:
-            cprint("r", "No simulation found that matched conditions")
-            print("File requested: ", fn)
-            return (None, None, None)
-        # unpack x
         inx = str(fn).find("_Syn")
         synno = None
         if inx > 0:
@@ -849,10 +933,10 @@ class PlotSims:
             protocol = "IV"
         elif protocol in ["VC", "runVC"]:
             protocol = "VC"
-        par, stitle, ivdatafile, filemode, d = x
+        
+        d, AR, SP, RMA, RCP, RCD = self.get_data(fn, PD, changetimestamp, protocol)
         si = d["Params"]
         ri = d["runInfo"]
-        AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
         if figure is None:  # no figure... just analysis...
             return AR, SP, RMA
 
@@ -863,7 +947,6 @@ class PlotSims:
             deadtime = ri["stimDelay"]
         else:
             deadtime = ri.stimDelay
-        # print('Deadtime: ', deadtime)
         trstep = 25.0 / ntr
         inpstep = 2.0 / ntr
         sz = 50.0 / ntr
@@ -942,8 +1025,6 @@ class PlotSims:
                     spkt = d["Results"][icurr]["inputSpikeTimes"]
                 elif "inputSpikeTimes" in list(d["Results"].keys()):
                     spkt = d["Results"]["inputSpikeTimes"][trial]
-                # print('input spike trains: ', len(spkt))
-                # print('spkt: ', spkt)
                 tr_y = trial * (trstep + len(spkt) * inpstep)
                 if synno is None:
                     for ian in range(len(spkt)):
@@ -971,11 +1052,9 @@ class PlotSims:
                 if xmax is None:
                     xmax = np.max(AR.MC.time_base)
                 ax.set_xlim(xmin, xmax)
-        # print("nout spikes: ", noutspikes)
-        ftname = str(ivdatafile.name)
+        ftname = str(Path(fn).name)
         ip = ftname.find("_II_") + 4
         ftname = ftname[:ip] + "...\n" + ftname[ip:]
-        # cprint('r', RMA)
         toptitle = ""
         if longtitle:
             toptitle = f"{ftname:s}"
@@ -1114,11 +1193,6 @@ class PlotSims:
         cprint("y", toptitle)
         cprint("m", figure)
         cprint("m", ax)
-        # if nax == 0:
-        #     if figure is not None:
-        #         figure.suptitle(toptitle, y=0.95, fontsize=9, verticalalignment="top")
-        #     else:
-        #         ax.set_title(toptitle, y=1.0, fontsize=8, verticalalignment="top")
         return (synno, noutspikes, ninspikes)
 
     @TraceCalls()
@@ -1158,7 +1232,6 @@ class PlotSims:
         titlemap = {"normal": "Half-active", "passive": "Passive", "active": "Active"}
 
         for i in range(n_columns):
-
             PD = PData()
             trace_ax = P.axarr[i * 3, 0]
             cmd_ax = P.axarr[i * 3 + 1, 0]
@@ -1221,7 +1294,6 @@ class PlotSims:
             figsize = parent_figure.figsize
         else:
             figsize = [8.0, 5.0]
-        # bmar = 4
         cwid = (figsize[0] - (left + right) - hspc * (n_columns - 1)) / n_columns
         for i, col in enumerate(range(n_columns)):
             panel_letter = string.ascii_uppercase[i]
@@ -1258,7 +1330,7 @@ class PlotSims:
         self, ax: object, fn: Union[Path, str], PD: dataclass, protocol: str,
     ) -> tuple:
         changetimestamp = get_changetimestamp()
-        x = self.get_data_file(fn, changetimestamp, PD)
+        # x = self.get_data_file(fn, changetimestamp, PD)
         mtime = Path(fn).stat().st_mtime
         timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
             "%Y-%m-%d-%H:%M"
@@ -1275,8 +1347,11 @@ class PlotSims:
         if protocol in ["VC", "runVC"]:
             protocol = "VC"
         self.textappend(f"Protocol: {protocol:s}")
-        par, stitle, ivdatafile, filemode, d = x
-        AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
+        res = self.get_data(fn, PD, changetimestamp, protocol)
+        if res is None:
+            return None
+        (d, AR, SP, RMA, RCP, RCD) = res
+        # AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
         tss = [0, 0]
         sr = AR.MC.sample_rate[0]
         tss[0] = int(
@@ -1793,7 +1868,6 @@ class PlotSims:
                     )
 
                 secax.plot(RCD.ti_avg, RCD.sv_avg, color="k", linewidth=0.75, zorder=2)
-
                 secax.plot([0.0, 0.0], [-120.0, 10.0], "r", linewidth=0.5)
                 if calbar_show:
                     PH.calbar(
@@ -1815,14 +1889,12 @@ class PlotSims:
                         verticalalignment="center",
                     )
                 PH.referenceline(secax, -60.0)
-
                 PH.noaxes(secax)
         print(f"Total spikes: {RCD.nsp_avg:d}")
 
         # finally, put up a legend that shows which inputs map to what colors
         # # the colors are in the legend
         PH.nice_plot(ax, position=-0.05)
-        # ax.tick_params(direction="in", length=3.0, width=1.0)
 
         if synlabel is None or synlabel is True:
             self.axins = PH.make_colorbar(ax, bbox=[0.05, 0.8, 0.8, 0.2], 
@@ -1864,53 +1936,6 @@ class PlotSims:
             gbc_string = gbc
         syninfo = SC.VCN_Inputs[gbc_string]
         return (SC, syninfo)
-
-    @TraceCalls()
-    def get_data(
-        self, fn: Union[Path, str], PD: dataclass, changetimestamp, protocol
-    ) -> Union[None, tuple]:
-
-        X = self.get_data_file(fn, changetimestamp, PD)
-        if X is None:
-            print("No simulation found that matched conditions")
-            print("Looking for file: ", fn)
-            return None
-        # unpack x
-        par, stitle, ivdatafile, filemode, d = X
-        if "time" in list(d["Results"].keys()):
-            d["Results"] = self._data_flip(d["Results"])
-
-        # 2. find spikes
-        AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
-        # set up analysis parameters and result storage
-        RCP = RevCorrPars()
-        RCD = RevCorrData()
-
-        RCD.npost = 0  # number of postsynaptic spikes
-        RCD.npre = 0  # number of presynaptic spikes
-
-        trials = range(len(d["Results"]))
-        RCP.ntrials = len(trials)
-        for i, tr in enumerate(trials):
-            trd = d["Results"][tr]  # trial data
-            ti = trd["time"]
-            for n in range(len(trd["inputSpikeTimes"])):  # for each sgc
-                RCD.npre += len(trd["inputSpikeTimes"][n])
-            RCD.npost += len(trd["spikeTimes"])
-            RCD.st = SP.spikeIndices
-            RCD.npost += len(RCD.st[tr])
-
-        RCD.ti = ti
-        print(f"Detected {RCD.npost:d} Post spikes")
-        print(f"Detected {RCD.npre:d} Presynaptic spikes")
-        print("# trials: ", RCP.ntrials)
-
-        # clip trace to avoid end effects
-        RCP.max_time = (
-            np.max(ti) - RCP.min_time
-        )  # this window needs to be at least as long as maxwin
-        RCD.tx = np.arange(RCP.minwin, 0, RCP.binw)
-        return (d, AR, SP, RMA, RCP, RCD)
 
     @time_func
     def compare_revcorrs(self):
@@ -2210,6 +2235,9 @@ class PlotSims:
                     refcorr = sttccorr.calc_ccf_sttc(
                         corrwindow=[RCP.minwin, RCP.maxwin], binwidth=RCP.binw
                     )
+                    print(len(refcorr))
+                    print(len(RCD.STTC[isite]))
+                    print(RCD.STTC[isite])
                     RCD.STTC[isite] = RCD.STTC[isite] + refcorr
 
                 tct = SPKS.total_correlation(anx, stx, width=-RCP.minwin, T=None)
@@ -2777,8 +2805,8 @@ class PlotSims:
             order="rowsfirst",
             figsize=(6.0, 8.0),
             showgrid=False,
-            verticalspacing=0.01,
-            horizontalspacing=0.01,
+            verticalspacing=0.1,
+            horizontalspacing=0.1,
             margins={
                 "bottommargin": 0.1,
                 "leftmargin": 0.07,
@@ -2789,7 +2817,6 @@ class PlotSims:
             parent_figure=None,
             panel_labels=None,
         )
-        print("SAC!")
         PD = PData()
         protocol = selected.runProtocol
         changetimestamp = get_changetimestamp()
@@ -2802,18 +2829,20 @@ class PlotSims:
             gbc = f"VCN_c{int(self.parent.cellID):02d}"
             print(f"Getting data for gbc: {gbc:s}")
             SC, syninfo = self.get_synaptic_info(gbc)
-            x = self.get_data_file(fn, changetimestamp, PD)
             mtime = Path(fn).stat().st_mtime
             timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
                 "%Y-%m-%d-%H:%M"
             )
-            if x is None:
-                print("No simulation found that matched conditions")
-                print(fn)
-                return
-            # unpack x
-            par, stitle, ivdatafile, filemode, d = x
+            # x = self.get_data_file(fn, changetimestamp, PD)
+            # if x is None:
+            #     print("No simulation found that matched conditions")
+            #     print(fn)
+            #     return
+            # # unpack x
+            # par, stitle, ivdatafile, filemode, d = x
+            print('self.get_data -->')
             res = self.get_data(fn, PD, changetimestamp, protocol)
+            print("<-- self.get_data")
             if res is None:
                 return None
             (d, AR, SP, RMA, RCP, RCD) = res
@@ -2833,7 +2862,9 @@ class PlotSims:
                 dmod,
             ) = self.get_stim_info(si, ri)
             
-            AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
+            # print('self.analyze_data ->')
+            # AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
+            # print('<-- self.analyze_data')
             
             all_bu_st = []
             all_bu_st_trials = []
@@ -2888,18 +2919,15 @@ class PlotSims:
         sac = SAC.SAC()
         # pars = SACPars()
         # print("pars: ", pars)
-        pars =  {'twin': 5.0, 'binw': 0.05, 'delay': 0.0, 'dur': 1000.0, 'ddur': 10.0, 'ntestrep': 20, 'baseper': 1.3333333333333333, 'stimdur': 1000}
-        print('all trials: ', len(all_bu_st_trials))
-        print('size: ', np.array(all_bu_st_trials).shape)
-        yh, bins = sac.SAC_with_histo(np.array(all_bu_st_trials), pars, engine="cython")
-        P.axdict["A"].hist(
-                x=yh,
-                bins=bins,
-                density=False,
-                histtype="stepfilled",
-                facecolor="k",
-                edgecolor="k",
-            )
+        pars =  {'twin': 0.010, 'binw': si.dtIC/1000., 'delay': 0.0, 'dur': 1.0, 'ddur': 0.010, 'nrep': len(all_bu_st_trials),
+            'baseper': 1e-3*1.3333333333333333, 'stimdur': 1.0}
+        yh, bins = sac.SAC_with_histo(all_bu_st_trials, pars, engine="numba")
+        P.axdict["A"].plot(
+                bins[:-1],
+                yh,
+                'k-')
+        P.axdict["A"].set_xlim(-0.02, 0.02)
+        P.axdict["A"].set_ylim(0, 10)
         mpl.show()
         
         
@@ -3128,24 +3156,17 @@ class PlotSims:
         else:
             plotflag = True
         changetimestamp = get_changetimestamp()
-        x = self.get_data_file(fn, changetimestamp, PD)
         mtime = Path(fn).stat().st_mtime
         timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
             "%Y-%m-%d-%H:%M"
         )
-        if x is None:
-            print("No simulation found that matched conditions")
-            print(fn)
-            return
-        # unpack x
-        par, stitle, ivdatafile, filemode, d = x
-        AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
+        d, AR, SP, RMA, RCP, RCD = self.get_data(fn, PD, changetimestamp, protocol)
+        
         ntr = len(AR.MC.traces)  # number of trials
         v0 = -160.0
         trstep = 25.0 / ntr
         inpstep = 5.0 / ntr
         sz = 50.0 / ntr
-        # print(dir(AR))
         si = d["Params"]
         ri = d["runInfo"]
         (
@@ -3195,7 +3216,6 @@ class PlotSims:
             stb = trd["stimTimebase"]  # convert to seconds
             if i == 0:
                 n_inputs = len(trd["inputSpikeTimes"])
-            # print('max trd spike: ', np.max(trd['spikeTimes']))
             if len(trd["spikeTimes"]) == 0:
                 trd["spikeTimes"] = np.array([np.nan])
                 sf = 1.0
@@ -3205,9 +3225,7 @@ class PlotSims:
                 sf = 1.0
             sptimes = np.array(trd["spikeTimes"]) * sf  # convert to seconds
 
-            # print(f"{stb=}")
             stim_dt = stb[1] - stb[0]
-            # print(f"{stim_dt=}")
             idxs = (int(plot_win[0] / stim_dt), int(plot_win[1] / stim_dt))
             if not isinstance(trd["spikeTimes"], list) and not isinstance(
                 trd["spikeTimes"], np.ndarray
