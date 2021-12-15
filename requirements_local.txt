@@ -57,8 +57,7 @@ xlrd>=1.0.0
 imreg_dft>=2.0
 
 # required for mayavi in neuronvis
-# required for mayavi in neuronvis
-vtk==9.0.1
+vtk>=9.0.1
 
 
 xlrd>=1.0.0
