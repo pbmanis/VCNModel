@@ -42,7 +42,7 @@ from pylibrary.tools import cprint as CP
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 
 import vcnmodel.model_params
-from src.vcnmodel import cell_config as cell_config
+from vcnmodel import cell_config as cell_config
 from vcnmodel.analyzers import analysis as SPKANA
 from vcnmodel.analyzers import spikestatistics as SPKS
 from vcnmodel.analyzers import sttc as STTC
@@ -222,6 +222,11 @@ class SACPars:
     baseper: float = 4 / 3.0
     stimdur: float = 1000
 
+@dataclass
+class Inflate:
+    soma_inflation: float=0.
+    dendrite_inflation: float = 0.
+        
 def def_empty_np():
     return np.array(0)
 
@@ -545,8 +550,9 @@ class PlotSims:
             raise ValueError("File mode must be either vcnmodel.v0 or vcnmodel.v1")
 
         return par
+    
 
-    def _get_scaling(self, fn, PD, par):
+    def _get_scaling(self, fn, PD, par_in):
         """
         Get the dendrite/soma scaling information from this data file
         and return a string. Also prints out the scaling information as we go.
@@ -560,6 +566,10 @@ class PlotSims:
         string with the type of scaling applied to the data.
         """
         stitle = "Bare Scaling"
+        if isinstance(par_in, dict):
+            par = Inflate(par_in['soma_inflation'],
+                          par_in['dendrite_inflation'],
+                          )
         if PD.soma_inflate and PD.dend_inflate:
             if par.soma_inflation > 0.0 and par.dendrite_inflation > 0.0:
                 ivdatafile = Path(fn)
@@ -2800,7 +2810,12 @@ class PlotSims:
     @TraceCalls()
     def plot_SAC(self, selected):
         print("SAC analysis and plotting starting")
-        nfiles = len(selected.files)
+
+        if self.parent.selected_index_rows is None:
+            return
+
+        selrows = self.parent.table.selectionModel().selectedRows()
+
         P = PH.regular_grid(
             3,
             1,  # top: SAC, middle: raster, bottom: waveform
@@ -2826,8 +2841,15 @@ class PlotSims:
         plot_win = [0.1, 1.0]
         plot_dur = np.fabs(np.diff(plot_win))
         time_scale = 1.0
-        for j in range(nfiles):
-            fn = selected.files[j]
+
+        for j, index_row in enumerate(selrows):
+            selected = self.parent.table_manager.get_table_data(
+                index_row
+            )
+            if selected is None:
+                return
+            nfiles = len(selected.files)
+            fn = selected.files[0]
             gbc = f"VCN_c{int(self.parent.cellID):02d}"
             print(f"Getting data for gbc: {gbc:s}")
             SC, syninfo = self.get_synaptic_info(gbc)
@@ -2858,8 +2880,6 @@ class PlotSims:
             all_bu_st = []
             all_bu_st_trials = []
             ntr = len(AR.MC.traces)  # number of trials
-            
-            print('N trials: ', ntr)
             for i in range(ntr):  # for all trials in the measure.
                 time_base = AR.MC.time_base / 1000.0  # convert to seconds
                 trd = d["Results"][i]
@@ -2894,32 +2914,33 @@ class PlotSims:
                     markersize=1.5,
                     color="b",
                 )
-            w_tb = np.linspace(0., stim_dt*len(waveform), num=len(waveform))
+                w_tb = np.linspace(0., stim_dt*len(waveform), num=len(waveform))
             
-            i_wpt = np.where((w_tb> pip_start) & (w_tb <= pip_duration))[0]
-            P.axdict["C"].plot(w_tb[i_wpt], waveform[i_wpt])
+                i_wpt = np.where((w_tb> pip_start) & (w_tb <= pip_duration))[0]
+                P.axdict["C"].plot(w_tb[i_wpt], waveform[i_wpt], linewidth=0.33)
             pars =  {'twin': 0.050, 'binw': 2*dt, 'delay': pip_start+0.2*pip_duration, 'dur': 0.8*pip_duration, 'ddur': 0.050, 'nrep': len(all_bu_st_trials),
                 'baseper': 1e-3*1.3333333333333333, 'stimdur': pip_duration*0.8}
             sac = SAC.SAC()
-            # sac.SPars(
-            #     twin=0.05,
-            #     binw = 2*dt,
-            #     delay = pip_start+0.2*pip_duration,
-            #     dur = 0.8*pip_duration,
-            #     ddur = 0.050,
-            #     nrep = len(all_bu_st_trials),
-            #     stimdur = pip_duration*0.8,
-            # )
-            print("pars: ", pars)
             yh, bins = sac.SAC_with_histo(all_bu_st_trials, pars=pars, engine="cython", dither=dt/2.0)
+            # Fs: float = 100e3  # cochlea/zilany model rate
+            # F0: float = 16000.0  # stimulus frequency
+            # dB: float = 30.0  # in SPL
+            # RF: float = 2.5e-3  # rise-fall time
+            # fmod: float = 20  # hz, modulation if SAM
+            # dmod: float = 0.0  # percent if SAM
+            sac_label = f"Expt: {ri.Spirou:s} {ri.dB:3.0f} dBSPL Fmod={ri.fmod:5.1}fHz Dmod={ri.dmod:5.1f}\%"
             P.axdict["A"].plot(
                     bins[:-1],
                     yh,
-                    'k-')
+                 #   'k-',
+                    label=sac_label
+                    )
         P.axdict["C"].set_xlim(pip_start, pip_duration-pip_start)
         P.axdict["B"].set_xlim(pip_start, pip_duration-pip_start)
         P.axdict["A"].set_xlim(-0.05, 0.05)
         P.axdict["A"].set_ylim(0, 10)
+        P.axdict["A"].legend(fontsize=7)
+        
         P.axdict["B"].get_shared_x_axes().join(P.axdict["B"], P.axdict["C"])
         mpl.show()
         
@@ -3317,7 +3338,7 @@ class PlotSims:
         cprint("r", f"{soundtype=}")
         
         if (
-            soundtype in ["tonepip", "SAM"] and plotflag
+            soundtype in ["tonepip", "SAM", "noise", "stationaryNoise"] and plotflag
         ):  # use panel F for FSL/SSL distributions
             # the histograms of the data
             psth_binw = 0.2e-3
