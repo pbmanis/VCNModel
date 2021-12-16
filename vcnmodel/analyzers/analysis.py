@@ -18,7 +18,7 @@ from pylibrary.plotting import pyqtgraph_plothelpers as pgh
 from pylibrary.tools import utility as pu  # access to spike finder routine
 from pyqtgraph.Qt import QtGui
 
-from src.vcnmodel import cell_config as CFG
+from vcnmodel import cell_config as CFG
 from vcnmodel.analyzers import analyze_run as analyze_run
 from vcnmodel.analyzers import analyze_run as ar
 

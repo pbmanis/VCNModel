@@ -9,8 +9,8 @@ from matplotlib import pyplot as mpl
 from neuron import h
 from pylibrary.tools import cprint as CP
 
-from src.vcnmodel import cell_config as cell_config
-from src.vcnmodel import h_reader
+from vcnmodel import cell_config as cell_config
+from vcnmodel import h_reader
 
 import toml
 

@@ -5,7 +5,7 @@ import pprint
 import numpy as np
 from cnmodel import cells
 from vcnmodel.adjust_areas import AdjustAreas
-from src.vcnmodel import cell_config as cell_config
+from vcnmodel import cell_config as cell_config
 
 pp = pprint.PrettyPrinter(indent=4)
 

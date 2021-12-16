@@ -12,7 +12,7 @@ import numpy as np
 from neuron import h
 from cnmodel import cells
 from vcnmodel.adjust_areas import AdjustAreas
-from src.vcnmodel import cell_config as cell_config
+from vcnmodel import cell_config as cell_config
 from neuronvis import swc_to_hoc, hocRender
 
 pp = pprint.PrettyPrinter(indent=4)
