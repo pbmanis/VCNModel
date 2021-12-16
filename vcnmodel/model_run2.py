@@ -31,8 +31,8 @@ from pylibrary.tools import cprint as CP
 from pyqtgraph import multiprocess as MP
 
 import vcnmodel.model_params
-from src.vcnmodel import cell_config as cell_config
-from src.vcnmodel import cellInitialization as cellInit
+from vcnmodel import cell_config as cell_config
+from vcnmodel import cellInitialization as cellInit
 from vcnmodel.generate_run import GenerateRun
 
 EPU = ephys.tools.Utility.Utility()
@@ -2382,7 +2382,7 @@ class ModelRun:
         # make independent inputs for each synapse
         ANSpikeTimes = []
         an0_time = time.time()
-        nrn_run_time = 0.0
+        nrn_run_time = 0.
         #
         # Generate stimuli - they are always the same for every synaptic input, so just generate once
         #
@@ -2399,6 +2399,19 @@ class ModelRun:
                 ramp_duration=self.RunInfo.RF,
                 pip_duration=self.RunInfo.pip_duration,
                 pip_start=pips,
+            )
+        if self.RunInfo.soundtype in ["stationaryNoise", "noise"]:
+            if self.RunInfo.soundtype == "noise":   # non-stationary noise generator seed changes on per-run basis
+                self.RunInfo.noise_seed = self.RunInfo.noise_seed + j
+            print(f" **** Noise type: {self.RunInfo.soundtype:s}  seed={self.RunInfo.noise_seed}")
+            stim = sound.NoisePip(
+                rate=self.RunInfo.Fs,
+                duration=self.RunInfo.run_duration,
+                dbspl=self.RunInfo.dB,
+                pip_duration=self.RunInfo.pip_duration,
+                pip_start=pips,
+                ramp_duration=self.RunInfo.RF,
+                seed=self.RunInfo.noise_seed,
             )
         elif self.RunInfo.soundtype == "SAM":
             stim = sound.SAMTone(
@@ -2451,7 +2464,7 @@ class ModelRun:
             dendsite = None
 
         self.allsecVec = OrderedDict()
-        cprint('m', f"save all sections flag: {str(self.Params.save_all_sections):s}")
+        # cprint('m', f"save all sections flag: {str(self.Params.save_all_sections):s}")
         if self.Params.save_all_sections:
             for group in list(
                 self.post_cell.hr.sec_groups.keys()

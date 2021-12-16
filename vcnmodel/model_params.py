@@ -188,7 +188,7 @@ class Params:
 
     lastfile: Union[Path, str, None] = None
 
-    seed: int = 100  # always the same start - avoids lots of recomutation
+    seed: int = 100  # always the same start - avoids lots of recomputation
     # in production, vary this or set to None for random values
     all_modes: bool = False
 
@@ -283,6 +283,7 @@ class RunInfo:
     initialization_time: float = 50.0  # nominal time to let system settle, in msec
     run_duration: float = 0.35  # in sec
     soundtype: str = "SAM"  # or 'tonepip'
+    noise_seed: int = 9  # noise generator seed value
     pip_duration: float = 0.1  # duration in seconds for tone pip
     pip_start: list = field(default_factory=defstarts)  # start (delay to start of pip)
     pip_offduration: float = 0.05  # time after pip ends to keep running
@@ -527,6 +528,9 @@ def build_parser():
     )
     parser.add_argument(
         "--seed", type=int, default=1, dest="seed", help="AN starting seed"
+    )
+    parser.add_argument(
+        "--noise_seed", type=int, default=1, dest="noise_seed", help="Noise generator starting seed"
     )
     parser.add_argument(
         "-S",
