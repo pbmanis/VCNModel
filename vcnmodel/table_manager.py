@@ -14,7 +14,7 @@ import cnmodel
 import numpy as np
 from pylibrary.tools import cprint as CP
 import pylibrary.tools
-import vcnmodel.util.fixpicklemodule as FPM
+# import vcnmodel.util.fixpicklemodule as FPM
 
 
 """
@@ -137,7 +137,7 @@ class TableManager:
 
     def textclear(self):
         if self.parent is None:
-            print("parent is None")
+            print("Parent module is not set (None)")
             raise ValueError()
         else:
             self.parent.textbox.clear()
@@ -176,24 +176,22 @@ class TableManager:
         Contents of the index file.
         """
 
-        cprint('b', indexdir)
+        # cprint('b', indexdir)
         indexfile = self.force_suffix(indexdir)
-        cprint("c", f"Checking for index file: {str(indexfile):s}")
+        # print("indexfile: ", indexfile)
+        # cprint("c", f"Checking for index file: {str(indexfile):s}")
         if indexfile.is_file() and not force:
-            cprint("g", f"    Found index file, reading")
-            print('          indexfile: ', indexfile)
+            # cprint("g", f"    Found index file, reading")
+            # print('          indexfile: ', indexfile)
             with open(indexfile, "rb") as fh:
-                # d = FPM.pickle_load(fh, fix_imports=True) # , encoding="latin1")
-                d = pickle.load(fh, fix_imports=True) # , encoding="latin1")
+                d = FPM.pickle_load(fh) # , fix_imports=True) # , encoding="latin1")
+                # print("fh: ", fh)
+                # d = pickle.load(fh, fix_imports=True) # , encoding="latin1")
             return d
         if force or not indexfile.is_file():
-            cprint("c", f"Building a new .pkl index file for {str(indexdir):s}")
-            # print(indexfile)
-  #           print(indexfile.is_file())
+            # cprint("c", f"Building a NEW .pkl index file for {str(indexdir):s}")
             dpath = Path(indexfile.parent, indexfile.stem)
-            # cprint("c", dpath)
             runs = list(dpath.glob("*.p"))
-            # print('runsa: ', runs)
             if len(runs) == 0:
                 return None
             for r in runs:
@@ -202,7 +200,7 @@ class TableManager:
                     return None
                 else:
                     pars, runinfo, indexfile = p
-            cprint('m', f"to build indexdir: {str(indexdir):s}")
+            cprint('m', f"     ... to build indexdir: {str(indexdir):s}")
             indexdata = self.write_indexfile(pars, runinfo, indexdir)
             return indexdata
 
@@ -285,7 +283,7 @@ class TableManager:
                 self.selvals["Run Type"][1],
             )
         )        
-        cprint('r', f"simulation path: {str(Index_data.simulation_path):s}")
+        # cprint('r', f"simulation path: {str(Index_data.simulation_path):s}")
         if Index_data.filetype == "F":
             runtime = self.get_sim_runtime(Path(Index_data.simulation_path, fn))
         elif Index_data.filetype == "D":
@@ -425,7 +423,8 @@ class TableManager:
         """
         indexfilename = self.force_suffix(indexfilename)
         with open(indexfilename, "rb") as fh:
-            indexdata = pickle.load(fh, fix_imports=True) # FPM.pickle_load(fh) # , encoding="latin1")
+            # indexdata = pickle.load(fh, fix_imports=True) #
+            indexdata = FPM.pickle_load(fh) # , encoding="latin1")
         return indexdata
 
     def remove_table_entry(self, indexrow):
@@ -551,9 +550,9 @@ class TableManager:
         indexable_dirs = sorted([r for r in rundirs if r.is_dir()])
         indexfiles = []
         if len(indexable_dirs) > 0:
-            cprint("c", "Indexable Directories: ")
+            # cprint("c", "Indexable Directories: ")
             for d in indexable_dirs:
-                cprint("c", f"     {str(d):s}")
+                # cprint("c", f"     {str(d):s}")
                 self.find_build_indexfiles(
                     d, force=force
                 )  # get the indexed data and update as necessary.
@@ -570,7 +569,9 @@ class TableManager:
                     x = indxs[i].dataTable
                 except:
                     indxs[i]
-
+        else:
+            cprint("c", "No Indexable Directories were found.")
+            
         runfiles = list(thispath.glob("*.p"))
         dfiles = sorted(list(runfiles))  # regular data files
         valid_dfiles = []

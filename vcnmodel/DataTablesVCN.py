@@ -13,8 +13,8 @@ from pylibrary.plotting import plothelpers as PH
 from pyqtgraph.parametertree import Parameter, ParameterTree
 import pyqtgraph.dockarea as PGD
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
-from src.vcnmodel import table_manager as table_manager
-from src.vcnmodel import cell_config
+from vcnmodel import table_manager as table_manager
+from vcnmodel import cell_config
 from vcnmodel.plotters import plot_sims
 from vcnmodel.plotters import figures
 from vcnmodel.plotters import figure_data
@@ -1032,10 +1032,8 @@ class DataTablesVCN:
 
     def analyze_SAC(self, ana_name=None):
         index_row, selected = self._get_row_selection()
-        print("selected: ", selected)
         if selected is None:
             return
-        print("Calling plot_SAC")
         self.PLT.plot_SAC(selected)
 
     def analyze_from_table(self, i):
