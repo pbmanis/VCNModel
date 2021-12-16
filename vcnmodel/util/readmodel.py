@@ -31,26 +31,6 @@ class ReadModel():
         """
         
 
-        # r = df['Results'][0]
-        #
-        # if plot:
-        #     P = PH.Plotter((1, 1), figsize=(6, 4))
-        #     cell_ax = list(P.axdict.keys())[0]
-        #     for trial in range(len(df['Results'])):
-        #         ds = df['Results'][trial]
-        #         k0 = list(df['Results'][trial].keys())[0]
-        #         dx = ds[k0]['monitor']
-        #         P.axdict[cell_ax].plot(dx['time'], dx['postsynapticV'], linewidth=1.0)
-        #         P.axdict[cell_ax].set_xlim(0., 150.)
-        #         P.axdict[cell_ax].set_ylim(-200., 50.)
-        #     PH.calbar(P.axdict[cell_ax], calbar=[120., -95., 25., 20.], axesoff=True, orient='left',
-        #             unitNames={'x': 'ms', 'y': 'mV'}, font='Arial', fontsize=8)
-        #
-        #     # mpl.savefig(outfile)
-        #     mpl.show()
-        # print(list(df.keys()))
-        # print('\nbasename: ', df['basename'])
-        # print('\nruninfo: ', df['runInfo'])
         """
         The runInfo dictionary holds somethign like this:
         runinfo:  {'folder': PosixPath('VCN_Cells/VCN_c08/Simulations/IV'), 'fileName': 'Normal', 'runName': 'Run', 
@@ -97,13 +77,9 @@ class ReadModel():
             print(f"Reading model file in version v1:, with {len(df['Results']):4d} trials")
         else:
             raise ValueError(f'Unknown file mode: {filemode:s}')
-        # print('\nrpfile v0:  File keys: ', df.keys())
-        #
-        # print('\nrpfile v0:  basename: ', df['basename'])
         mtime = Path(filename).stat().st_mtime
         timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d-%H:%M')
         if filemode == 'vcnmodel.v0':
-            # print(df['Params'].keys())
             try:
                 dinfo = df['Params']['runInfo']
             except:
@@ -118,10 +94,6 @@ class ReadModel():
             delay = dinfo['stimDelay']
             mode = dinfo['postMode'].upper()
             ntr = len(df['Results'])
-            # print(df.keys())
-            # print('runinfo: ', df['runInfo'])
-            # print('Params: ', df['Params'].keys())
-            # print('dinfo: ', dinfo)
             if 'dt' in df['Params'].keys():
                 self.rate = df['Params']['dt']
             else:
@@ -139,13 +111,10 @@ class ReadModel():
             x = dir(dinfo)
             if 'stimVC' not in x:  # create fields for missing values from older versions of files.
                 dinfo.stimVC = None
-            # print('rpfile v0: dinfo: ', dinfo)
             mode = dinfo.postMode.upper()
             dur = dinfo.stimDur
             delay = dinfo.stimDelay
             mode = dinfo.postMode
-            print("Keys found in file: ", df.keys())
-            print('Mode: ', mode)
             try:
                 self.rate = df['Params'].dt  # old version, now separated IC and VC
             except:
@@ -201,8 +170,6 @@ class ReadModel():
 
         V = np.array(V)
         I = np.array(I)
-        # print('V shape: ', V.shape, 'I shape: ', I.shape, ' timebase: ', timebase.shape, V.shape[1]*self.rate, np.max(timebase))
-        # exit()
 
         if run_protocol in ['runVC', 'initVC', 'testVC']:
             self.MC.set_clamps(dmode=mode, time=timebase, data=I, cmddata=V, tstart_tdur=[delay, dur])
