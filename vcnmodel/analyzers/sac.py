@@ -366,7 +366,6 @@ class SAC(object):
         normalization goes to 1 as the time gets larger...
         """
         rate = np.mean(spcount) / self.SPars.dur
-        # print('Mean firing rate: %8.1f' % rate)
         N = len(spcount)  # number of presentations
         nfac = (
             N
@@ -376,8 +375,6 @@ class SAC(object):
             * self.SPars.binw
             * self.SPars.dur
         )  # correction factor
-        print("rate, binw, dur, N, nfac: ", rate, self.SPars.binw, self.SPars.dur, N, nfac, spcount, np.sum(spcount))
-        print("num: ", 2 * int(self.SPars.ddur / self.SPars.binw))
         yh, bins = np.histogram(
             y,
             bins=np.linspace(
