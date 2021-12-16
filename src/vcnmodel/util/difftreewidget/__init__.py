@@ -1,2 +1,0 @@
-from .DiffTreeWidget import DiffTreeWidget
-
