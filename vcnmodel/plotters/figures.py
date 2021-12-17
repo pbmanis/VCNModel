@@ -2390,7 +2390,7 @@ class Figures(object):
         Generate the table in VS_data.py by analyzing the data from 
         VS_datasets.py
         """
-        cprint("r", f"Generate VS Data for {dB:d} dB")
+        cprint("g", f"Generate VS Data for {dB:d} dB")
 
         fout = f"VS_data_{dB:d}dB.py"  # we will generate this automatically
         if not append:
@@ -2401,18 +2401,21 @@ class Figures(object):
                 )
                 fh.write("    17 Aug 2021 version.\n")
                 fh.write(
-                    "    Results are printout from DataTablesVCN after selecting the data runs.\n"
+                    "    Results are a printout from DataTablesVCN after selecting the data runs.\n"
                 )
                 fh.write(
                     "NOTE: This table is automatically written by figures.py and should not be\n"
                 )
                 fh.write("      directly edited.")
-                fh.write(f"To Regenerate:\n  After running the simulations, use 'Print File Info' for each cell, and copy the text into a 'VS_datasets_xxdB.py' file")
-                fh.write(f"  Then select 'VS-SAMTone-no figure' in DataTables, and 'Create Figure.")
-                fh.write(f"  No figure will be generated, but the VS_data_xxdB.py file will be created.")
-                fh.write(f"  The VS_data file has all of the vector-strength information, and is read by the plotting programs.")
-                fh.write(f'    pbm\n"""\n')
-                fh.write('\ndata = """')
+                fh.write(f"To Regenerate:\n  After running the simulations, use 'Print File Info' for each cell, ")
+                fh.write(f"  selecting the relevant simulations, and copy the text in the 'Reports' box in DataTablesVCN")
+                fh.write(f"  into a 'VS_datasets_xxdB.py' file, where xx is the sound pressure level.\n")
+                fh.write(f"Then select 'VS-SAMTone-no figure' in DataTables, and 'Create Figure.")
+                fh.write(f"  No figure will be generated, but the VS_data_xxdB.py file will be created.\n")
+                fh.write(f"The VS_data file holds all of the vector-strength information, in a text format, ")
+                fh.write(f"  and is read by the plotting programs.\n")
+                fh.write(f'--pbm 2014-2021\n"""\n')  # end of the comment
+                fh.write('\ndata = """')  # start of the data
 
         fl = True
         for i, celln in enumerate(grAList()):
@@ -2421,8 +2424,8 @@ class Figures(object):
             self.analyze_VS_data(VS_datasets, celln, fout, firstline=fl)
             fl = False
         with open(fout, "a") as fh:
-            fh.write(f'"""\n')
-        print("VS_Finis")
+            fh.write(f'"""\n')  # close the data text.
+        cprint("g", "The VS_data file {str(fout):s} has been generated.")
 
     def plot_VC_gKLT(self, parent_figure=None, loc: Union[None, tuple] = None):
         cell_number = 17
