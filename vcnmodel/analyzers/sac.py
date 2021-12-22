@@ -54,16 +54,24 @@ the same result. (No numba version for xac was coded).
 
 @dataclass
 class SACPars:
-    twin: float = 0.005
-    binw: float = 0.00005
-    delay: float = 0.0
-    dur: float = 1.0
-    ddur: float = 0.010
-    nrep: int = 20
-    baseper: float = 4 / 3.0
-    stimdur: float = 1.0
+    twin: float = 0.005  # time window for sac calculation
+    binw: float = 0.00005  # sac calculation bin width
+    delay: float = 0.0  # delay into spike train to start calculation
+    dur: float = 1.0  # duration of calulcation window in spike train
+    ddur: float = 0.010  # display duration
+    maxn: int = 20000000  # number of potential points in the SAC
+    nrep: int = 20  # number of repetitions for test cases
+    baseper: float = 4 / 3.0  # baseperiod for test cases
+    stimdur: float = 1.0   # stimulus duration for test cases
 
 
+@dataclass
+class SACResult:
+    SAC_peak : float = np.nan  # max of sac
+    SAC_minimum: float = np.nan  # min of sac
+    SAC_HW: float = np.nan  # half-width of SAC peak around 0 time
+    n_spikes : int = 0  # number of spikes
+    
 def time_func(func):
     """
     A decorator to show execution time of functions.
@@ -86,13 +94,12 @@ def time_func(func):
 
 @time_func
 @jit(nopython=False, parallel=False, cache=True)
-def nb_SAC_Calc(X, event_lengths, twin, binw):
-    N = X.shape[0]
-    maxn = 10000000  # pre-allocation for spike trains
+def nb_SAC_Calc(X, event_lengths, twin, binw, maxn):
     yc = np.nan * np.zeros(maxn)
     ns = 0
+    N = len(X)
     for n in range(N):  # for each trial
-        for m in range(n+1, N):  # against each other trial, except:
+        for m in range(1, N):  # against each other trial, except:
             if m == n:
                 continue  # skip identical trains
             for mi in range(event_lengths[m]):  # cross correlate all spikes in Yi
@@ -109,12 +116,12 @@ def nb_SAC_Calc(X, event_lengths, twin, binw):
 
 @time_func
 @njit(parallel=False, cache=True)
-def nb_XAC_Calc(X, Y, event_lengths_x, event_lengths_y, twin, binw):
+def nb_XAC_Calc(X, Y, event_lengths_x, event_lengths_y, twin, binw,
+        maxn):
     M = len(X)
     N = len(Y)
-    maxn = 10000000  # pre-allocation for spike trains
 
-    yc = np.nan * np.zeros(maxn)
+    yc = np.nan * np.zeros(maxn)  # preallocate for spike trains
     ns = 0
     for n in range(N):  # for each trial
         for m in range(M):  # against each other trial, except:
@@ -130,6 +137,30 @@ def nb_XAC_Calc(X, Y, event_lengths_x, event_lengths_y, twin, binw):
     y = yc[~np.isnan(yc)]  # clean it up.
     return y, ns
 
+
+@time_func
+def c_SAC_Calc(
+    X: Union[list, np.ndarray], event_lengths:np.array, twin: float, binw: float,
+        maxn: int,
+):
+    """
+    Interface to cython version of SAC calculation.
+    """
+    y = np.full(maxn, np.nan)  # need to size array
+    ns = 0
+    event_lengths = np.array(event_lengths).squeeze()  # make sure is a 1-D np array
+
+    sac_cython.sac_cython(
+        X,  # data array (input)
+        event_lengths,
+        twin,  # time win single float input
+        binw,
+        y,  # result SAC (output)
+        ns,
+    )
+    y = y[~np.isnan(y)]
+    return y, ns
+        
 
 class SAC(object):
     def __init__(self):
@@ -218,14 +249,13 @@ class SAC(object):
         return X
 
     @time_func
-    def SAC_Calc(
-        self, X: np.ndarray, event_lengths: np.ndarray, twin: float, binw: float
-    ):
+    def py_SAC_Calc(
+        self, X: np.ndarray, event_lengths: np.ndarray, twin: float, binw: float,
+        maxn:int):
         """
         Python version of SAC calculation (for reference; this is slow)
         """
         N = X.shape[0]
-        maxn = 10000000  # pre-allocation for spike trains
 
         yc = np.nan * np.zeros(maxn)
         n = 1
@@ -234,7 +264,7 @@ class SAC(object):
         # window data
         ns = 0
         for n in range(N):  # for each trial
-            for m in range(n+1, N):  # against each other trial, except:
+            for m in range(1, N):  # against each other trial, except:
                 if m == n:
                     continue  # skip identical trains
                 for i in range(event_lengths[m]):  # cross correlate against all spikes in Yi
@@ -247,33 +277,14 @@ class SAC(object):
                         )
                     ]  # limit window
                     yc[ns : (ns + len(xd))] = xd  # store
+                    
                     ns += len(xd)  # keep track of storage location
         y = yc[~np.isnan(yc)]  # clean it up.
         return y, ns
 
-    @time_func
-    def c_SAC_Calc(
-        self, X: Union[list, np.ndarray], event_lengths:np.array, twin: float, binw: float
-    ):
-        """
-        Interface to cython version of SAC calculation.
-        """
-        y = np.full(50000000, np.nan)  # need to size array
-        ns = 0
-        event_lengths = np.array(event_lengths).squeeze()  # make sure is a 1-D np array
 
-        sac_cython.sac_cython(
-            X,  # data array (input)
-            event_lengths,
-            self.SPars.twin,  # time win single float input
-            self.SPars.binw,
-            y,  # result SAC (output)
-            ns,
-        )
-        y = y[~np.isnan(y)]
-        return y, ns
 
-    def SAC(self, X, pars, engine="cython"):
+    def SAC(self, X, pars, engine:str="cython", maxn:int=20000000):
         """
         Compute the SAC on X, given the parameter set
 
@@ -284,13 +295,14 @@ class SAC(object):
 
         """
         # now the SAC calculations.
-        if isinstance(pars, dict):
+        if isinstance(pars, dict):  # if dict, create dataclass version
             self.SPars = SACPars(
                 twin=pars["twin"],
                 binw=pars["binw"],
                 delay=pars["delay"],
                 dur=pars["dur"],
                 ddur=pars["ddur"],
+                maxn=pars["maxn"],
                 
             )
         elif isinstance(pars, SACPars):
@@ -317,15 +329,13 @@ class SAC(object):
             okev = np.array(X[i][np.argwhere((X[i]>=self.SPars.delay) & (X[i] < (self.SPars.delay+self.SPars.dur)))]).flatten()
             XC[i,:len(okev)] = okev
             event_lengths[i] = len(okev)
-        # print(self.SPars)
-        # print(event_lengths)
-        # print(XC)
-        if engine in ["python", "Python"]:
-            y, ns = self.SAC_Calc(
+        if engine in [ "python", "Python"]:
+            y, ns = self.py_SAC_Calc(
                 XC,
                 event_lengths=event_lengths,
                 twin=self.SPars.twin,
                 binw=self.SPars.binw,
+                maxn=self.SPars.maxn,
             )
         elif engine == "numba":
             y, ns = nb_SAC_Calc(
@@ -333,23 +343,33 @@ class SAC(object):
                 event_lengths=event_lengths,
                 twin=self.SPars.twin,
                 binw=self.SPars.binw,
+                maxn=self.SPars.maxn,
             )
         elif engine == "cython":
-            y, ns = self.c_SAC_Calc(
+            y, ns = c_SAC_Calc(
                 XC,
                 event_lengths=event_lengths,
                 twin=self.SPars.twin,
                 binw=self.SPars.binw,
+                maxn=self.SPars.maxn,
             )
-        return y, event_lengths
+        else:
+            raise ValueError(f"SAC engine specification was invalid: got {engine:s} but only 'python', 'numba' and 'cython' adre permitted")
 
-    def SAC_with_histo(self, X, pars, engine="cython", binsize=0.0, dither=0.0):
+        SACR = SACResult()
+        SACR.SAC_peak = np.max(y)  # max of sac
+        SACR.SAC_minimum = np.min(y) # min of sac
+        SACR.SAC_HW = 0. # half-width of SAC peak around 0 time
+        SACR.n_spikes = event_lengths  # number of spikes
+        return y, event_lengths, SACR
+
+    def SAC_with_histo(self, X, pars, engine="cython", binsize=0.0, dither=0.0, maxn=20000000):
         if binsize > 0.0:  # digitize spike times to 25 usec bins
             t = np.arange(0., pars["dur"], binsize)
             X = t[np.digitize(X, t)]
         if dither > 0.0:
             X = [x + np.random.uniform(-dither, dither, size=len(x)) for x in X]
-        y, spcount = self.SAC(X, pars=pars, engine=engine)
+        y, spcount, SAC_R = self.SAC(X, pars=pars, engine=engine, maxn=maxn)
         yh, bins = self.SAC_make_histogram(y, spcount)
         return yh, bins
 
@@ -466,13 +486,13 @@ class SAC(object):
         binw: float,
         delay: float,
         dur: float,
+        maxn: int=20000000,
     ):
 
         N = len(Y)
         M = len(X)
 
         # pre-allocation for spike trains diffs to avoid extending array repeatedly
-        maxn = 10000000
 
         yc = np.nan * np.zeros(maxn)
         n = 1
@@ -569,6 +589,7 @@ if __name__ == "__main__":
     layout = pgh.LayoutMaker(
         cols=2, rows=len(tests), win=win, labelEdges=True, ticks="talbot"
     )
+    maxn = 25000000
     if len(tests) <= 2:
         win.resize(600, 300)
     else:
@@ -576,15 +597,15 @@ if __name__ == "__main__":
     for i, t in enumerate(tests):
         X = sac.makeTests(t)
 
-        yhp, binsp = sac.SAC_with_histo(X, sac.SPars, engine="python", dither=0.)
-        yhn, binsn = sac.SAC_with_histo(X, sac.SPars, engine="numba", dither=0.)
-        yhc, binsc = sac.SAC_with_histo(X, sac.SPars, engine="cython", dither=0.)
+        yhp, binsp = sac.SAC_with_histo(X, sac.SPars, engine="python", dither=0., maxn=maxn)
+        yhn, binsn = sac.SAC_with_histo(X, sac.SPars, engine="numba", dither=0., maxn=maxn)
+        yhc, binsc = sac.SAC_with_histo(X, sac.SPars, engine="cython", dither=0., maxn=maxn)
         assert np.array_equal(yhc, yhn)
-        assert np.array_equal(yhc, yhp)
+        assert np.array_equal(yhp, yhc)
         assert np.array_equal(yhp, yhn)  # make sure all results are the same
 
         SAC_with_histo = pg.PlotCurveItem(
-            binsp, yhp, stepMode=True, fillLevel=0, brush=(255, 0, 255, 255), pen=None
+            binsc, yhc, stepMode=True, fillLevel=0, brush=(255, 0, 255, 255), pen=None
         )
         layout.getPlot((i, 1)).addItem(SAC_with_histo)
         layout.getPlot((i, 1)).setXRange(-0.005, 0.005)
