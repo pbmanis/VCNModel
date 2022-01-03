@@ -24,7 +24,7 @@ sphinx>=4.0
 
 # cnmodel (and vcnmodel) requirements
 Cython==0.29.17
-dill==0.3.1.1
+dill==0.3.4
 elephant==0.10.0
 lmfit==0.9.13
 matplotlib>=3.5.0
