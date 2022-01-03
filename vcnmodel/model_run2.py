@@ -2386,9 +2386,7 @@ class ModelRun:
         #
         # Generate stimuli - they are always the same for every synaptic input, so just generate once
         #
-        if isinstance(self.RunInfo.pip_start, list):
-            pips = self.RunInfo.pip_start
-        else:
+        if isinstance(self.RunInfo.pip_start, float):
             pips = [self.RunInfo.pip_start]
         if self.RunInfo.soundtype == "tonepip":
             stim = sound.TonePip(
@@ -2424,6 +2422,25 @@ class ModelRun:
                 dmod=self.RunInfo.dmod,
                 pip_duration=self.RunInfo.pip_duration,
                 pip_start=pips,
+            )
+        elif self.RunInfo.soundtype in ["regularClicks", "poissonClicks"]:
+            if self.RunInfo.soundtype == "poissonClicks":
+                eventintervals = np.random.exponential(
+                    1.0 / self.RunInfo.clickRate, int(self.RunInfo.clickTrainDuration*self.RunInfo.clickRate)
+                )
+                events = np.cumsum(eventintervals)
+                events = events[events < self.RunInfo.clickTrainDuration]
+            else:
+                events = np.linspace(self.RunInfo.clickStart, 
+                                             self.RunInfo.clickTrainDuration, 
+                                             int(self.RunInfo.clickTrainDuration*self.RunInfo.clickRate)
+                                             )
+            stim = sound.ClickTrain(
+                rate=self.RunInfo.Fs,
+                duration=self.RunInfo.clickTrainDuration,
+                dbspl=self.RunInfo.dB,
+                click_duration=self.RunInfo.clickDuration,
+                click_starts=events,
             )
         else:
             raise ValueError(

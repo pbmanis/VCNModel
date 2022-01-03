@@ -105,7 +105,7 @@ class CmdChoices:
         "runANThreshold",
         "gifnoise",
     ]
-    soundChoices = ["tonepip", "noise", "stationaryNoise", "SAM", "CMMR"]
+    soundChoices = ["tonepip", "noise", "stationaryNoise", "regularClicks", "poissonClicks" "SAM", "CMMR"]
     speciesChoices = ["mouse", "guineapig"]
     SpirouChoices = [
         "all",
@@ -282,12 +282,17 @@ class RunInfo:
     # sound parameters
     initialization_time: float = 50.0  # nominal time to let system settle, in msec
     run_duration: float = 0.35  # in sec
-    soundtype: str = "SAM"  # or 'tonepip'
+    soundtype: str = "SAM"  # or 'tonepip' or any of the soundChoices
     noise_seed: int = 9  # noise generator seed value
     pip_duration: float = 0.1  # duration in seconds for tone pip
     pip_start: list = field(default_factory=defstarts)  # start (delay to start of pip)
     pip_offduration: float = 0.05  # time after pip ends to keep running
-
+    
+    clickStart: float=0.1
+    clickDuration: float=1e-4
+    clickTrainDuration: float=0.8
+    clickRate: float=20.  # Hz  for regular clicks, or mean poisson rate
+    
     Fs: float = 100e3  # cochlea/zilany model rate
     F0: float = 16000.0  # stimulus frequency
     dB: float = 30.0  # in SPL
@@ -476,6 +481,35 @@ def build_parser():
         choices=CmdChoices.soundChoices,
         help="Define the stimulus type (default: tonepip)",
     )
+    parser.add_argument(
+        "--clickTrainDuration",
+        type=float,
+        default=1.0,
+        dest="clickTrainDuration",
+        help="Set the duration of a click train",
+    )
+    parser.add_argument(
+        "--clickDuration",
+        type=float,
+        default=1.0e-4,
+        dest="clickDuration",
+        help="Set the duration of a single click",
+    )
+    parser.add_argument(
+        "--clickRate",
+        type=float,
+        default=20.,
+        dest="clickRate",
+        help="Set the click rate in a train",
+    )
+    parser.add_argument(
+        "--clickStart",
+        type=float,
+        default=0.1,
+        dest="clickStart",
+        help="Set the start time for a click train",
+    )
+    
     parser.add_argument(
         "--check",
         "-/",
