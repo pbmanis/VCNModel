@@ -8,7 +8,7 @@ From stack overflow:
 https://stackoverflow.com/questions/2121874/python-pickling-after-changing-a-modules-directory
 
 """
-class RenameUnpickler(dill.Unpickler):
+class RenameUnpickler(pickle.Unpickler):
     def find_class(self, module, name):
         renamed_module = module
         #  Previously had modules one deeper (src/vcnmodel); now just at top
