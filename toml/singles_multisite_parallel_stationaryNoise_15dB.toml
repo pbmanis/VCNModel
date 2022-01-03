@@ -1,0 +1,21 @@
+# Configuration for basic scaled inflation
+# Note that these are the variable names, not the command parser flags
+# 6/30/2020, updated 7/20/2021
+modelName='XM13A_nacncoop'  # decoration data table in
+save_all_sections=false # 
+SGCmodelType='cochlea'  # which sgc model to run
+SRType='HS'
+ANSynapseType='multisite'
+dB=15.0
+F0=16000.0
+pip_duration=1.0
+pip_start=0.2  # give model lots of time to settle down
+pip_offduration=0.1
+soundtype="stationaryNoise"  # or "tonepip" or "noise", "stationaryNoise" or "SAM"
+# fmod=100.0  # fmod and dmod are not applied to tonepip
+# dmod=100.0
+seed=9
+noise_seed=191
+Parallel=true
+nWorkers=16
+
