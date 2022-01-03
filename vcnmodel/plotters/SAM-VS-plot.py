@@ -39,8 +39,8 @@ Reads the data from VS_data_xxdB.py
 """
 
 # datas = {'100': data100Hz, '400': data400Hz}  # just keep adding...
-panels = {100: ["A", "B"], 200: ["C","D"], 300: ['E', 'F'], 
-          400: ['G', 'H'], 500: ['I', "J"], 750: ['K', 'L'], 1000: ["M", "N"]}
+panels = {50: ["A", "B"], 100: ["C","D"], 200: ['E', 'F'], 
+        300: ['G', 'H'], 400: ['I', "J"], 500: ['K', 'L'], 750: ["M", "N"], 1000:["O", "P"]}
 
 
 # plotwhat = "phasesd"
@@ -199,6 +199,7 @@ class Plot_Strength_Groups():
         self.ax1 = P.axdict[panels[0]]
         self.ax2 = P.axdict[panels[1]]
         self.legend = legend
+        print("what: ", plotwhat)
         self.make_plots()
 
     def _scalefun(self, x):
@@ -353,18 +354,18 @@ def plot_freq_manipulation(plotwhat, df=None, P=None, panels=None, legend=None):
 def convert_data(data):
     sio = io.StringIO(data.data)
     df = pd.read_table(sio, sep=",")
-    def _label(d):
 
-        if d['Cell'] in [5, 10, 2, 6, 30]:
+    def _label(d):
+        if d in [5, 10, 2, 6, 30]:
             return('subthreshold')
-        elif d['Cell'] in [9, 13, 18]:
+        elif d in [9, 13, 18]:
             return('one')
-        elif d['Cell'] in [11,17]:
+        elif d in [11,17]:
             return 'two'
         else:
-            raise ValueError('Failed to map cell number to strength')
-        
-    df['strength'] = df.apply(_label, axis=1)
+            raise ValueError(f"Failed to map cell number {str(d):s} {str(type(d)):s} to strength")
+    print(df['Cell'].values)
+    df['strength'] = [_label(int(x)) for i, x in enumerate(df['Cell']) if x != "Cell"]
     df = df.sort_values(["Cell", "frequency", "Configuration"], ascending = (True, True, True))
     df = df.reset_index()
     return df
