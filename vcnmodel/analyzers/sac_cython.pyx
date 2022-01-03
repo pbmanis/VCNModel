@@ -19,7 +19,7 @@ def sac_cython(
         t0 = -twin - (binw / 2.0)
         t1 = twin + (binw / 2.0)
         for m in range(N):  # for each trial
-            for n in range(1, N):  # against each other trial, except:
+            for n in range(N):  # against each other trial, except:
                 if m == n:
                     continue  # skip identical trains
                 for i in range(int(event_lengths[n])):  # cross correlate all spikes in Ym

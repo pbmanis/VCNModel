@@ -58,8 +58,8 @@ class SACPars:
     binw: float = 0.00005  # sac calculation bin width
     delay: float = 0.0  # delay into spike train to start calculation
     dur: float = 1.0  # duration of calulcation window in spike train
-    ddur: float = 0.010  # display duration
-    maxn: int = 20000000  # number of potential points in the SAC
+    displayDuration: float = 0.010  # display duration
+    maxn: int = 100000000  # number of potential points in the SAC
     nrep: int = 20  # number of repetitions for test cases
     baseper: float = 4 / 3.0  # baseperiod for test cases
     stimdur: float = 1.0   # stimulus duration for test cases
@@ -181,7 +181,7 @@ class SAC(object):
             delay=0.0,
             dur=1.0,
             nrep=20,
-            ddur=0.050,
+            displayDuration=0.050,
             baseper=0.001*(4.0 / 3.0),
         )
 
@@ -234,14 +234,14 @@ class SAC(object):
                 X[i] = self.SPars.stimdur * np.sort(
                     np.random.rand(120)
                 )  # corresponds to about 120 s/s
-            self.SPars.ddur = 0.100
+            self.SPars.displayDuration = 0.100
 
         elif test == "G":
             self.SPars.binw = 0.00015
             sig = self.SPars.stimdur * np.sort(np.random.rand(120))
             for i in range(self.SPars.nrep):
                 X[i] = sig  # same signal every time
-            self.SPars.ddur = 100
+            self.SPars.displayDuration = 100
 
         # if digitize:  # digitize spike times to 25 usec bins
         #     t = np.arange(0., self.SPars.dur, 50e-6)
@@ -276,7 +276,13 @@ class SAC(object):
                             (xd >= t0) & (xd < t1)
                         )
                     ]  # limit window
-                    yc[ns : (ns + len(xd))] = xd  # store
+                    try:
+                        yc[ns : (ns + len(xd))] = xd  # store
+                    except:
+                        print("py_SAC_Calc: extending yc array")
+                        yc.append(np.nan*np.zeros(maxn))  # double array size
+                        yc[ns : (ns + len(xd))] = xd  # store
+                        # print('len yc ns, lenxd : ', len(yc), ns, len(xd))
                     
                     ns += len(xd)  # keep track of storage location
         y = yc[~np.isnan(yc)]  # clean it up.
@@ -284,7 +290,7 @@ class SAC(object):
 
 
 
-    def SAC(self, X, pars, engine:str="cython", maxn:int=20000000):
+    def SAC(self, X, pars, engine:str="cython"):
         """
         Compute the SAC on X, given the parameter set
 
@@ -301,7 +307,7 @@ class SAC(object):
                 binw=pars["binw"],
                 delay=pars["delay"],
                 dur=pars["dur"],
-                ddur=pars["ddur"],
+                displayDuration=pars["displayDuration"],
                 maxn=pars["maxn"],
                 
             )
@@ -357,19 +363,25 @@ class SAC(object):
             raise ValueError(f"SAC engine specification was invalid: got {engine:s} but only 'python', 'numba' and 'cython' adre permitted")
 
         SACR = SACResult()
-        SACR.SAC_peak = np.max(y)  # max of sac
-        SACR.SAC_minimum = np.min(y) # min of sac
-        SACR.SAC_HW = 0. # half-width of SAC peak around 0 time
-        SACR.n_spikes = event_lengths  # number of spikes
+        if not np.isnan(np.sum(y)) and np.sum(y) > 0.0:
+            SACR.SAC_peak = np.max(y)  # max of sac
+            SACR.SAC_minimum = np.min(y) # min of sac
+            SACR.SAC_HW = 0. # half-width of SAC peak around 0 time
+            SACR.n_spikes = event_lengths  # number of spikes
+        else:
+            SACR.SAC_peak = np.nan
+            SACR.SAC_minimum = np.nan
+            SACR.n_spikes = 0
+            
         return y, event_lengths, SACR
 
-    def SAC_with_histo(self, X, pars, engine="cython", binsize=0.0, dither=0.0, maxn=20000000):
+    def SAC_with_histo(self, X, pars, engine="cython", binsize=0.0, dither=0.0):
         if binsize > 0.0:  # digitize spike times to 25 usec bins
             t = np.arange(0., pars["dur"], binsize)
             X = t[np.digitize(X, t)]
         if dither > 0.0:
             X = [x + np.random.uniform(-dither, dither, size=len(x)) for x in X]
-        y, spcount, SAC_R = self.SAC(X, pars=pars, engine=engine, maxn=maxn)
+        y, spcount, SAC_R = self.SAC(X, pars=pars, engine=engine)
         yh, bins = self.SAC_make_histogram(y, spcount)
         return yh, bins
 
@@ -398,9 +410,9 @@ class SAC(object):
         yh, bins = np.histogram(
             y,
             bins=np.linspace(
-                -self.SPars.ddur,
-                self.SPars.ddur,
-                num=2 * int(self.SPars.ddur / self.SPars.binw),
+                -self.SPars.displayDuration,
+                self.SPars.displayDuration,
+                num=2 * int(self.SPars.displayDuration / self.SPars.binw),
             ),
             density=False,
         )
@@ -558,9 +570,9 @@ class SAC(object):
         yh, bins = np.histogram(
             y,
             bins=np.linspace(
-                -self.SPars.ddur,
-                self.SPars.ddur,
-                num=2 * int(self.SPars.ddur / self.SPars.binw),
+                -self.SPars.displayDuration,
+                self.SPars.displayDuration,
+                num=2 * int(self.SPars.displayDuration / self.SPars.binw),
             ),
             density=False,
         )
@@ -596,18 +608,24 @@ if __name__ == "__main__":
         win.resize(600, 125 * len(tests))
     for i, t in enumerate(tests):
         X = sac.makeTests(t)
+        
+        yhp, binsp = sac.SAC_with_histo(X, sac.SPars, engine="python", dither=0.)
+        yhn, binsn = sac.SAC_with_histo(X, sac.SPars, engine="numba", dither=0.)
+        yhc, binsc = sac.SAC_with_histo(X, sac.SPars, engine="cython", dither=0.)
+        # assert np.array_equal(yhc, yhn)
+        # assert np.array_equal(yhp, yhc)
+        # assert np.array_equal(yhp, yhn)  # make sure all results are the same
 
-        yhp, binsp = sac.SAC_with_histo(X, sac.SPars, engine="python", dither=0., maxn=maxn)
-        yhn, binsn = sac.SAC_with_histo(X, sac.SPars, engine="numba", dither=0., maxn=maxn)
-        yhc, binsc = sac.SAC_with_histo(X, sac.SPars, engine="cython", dither=0., maxn=maxn)
-        assert np.array_equal(yhc, yhn)
-        assert np.array_equal(yhp, yhc)
-        assert np.array_equal(yhp, yhn)  # make sure all results are the same
-
-        SAC_with_histo = pg.PlotCurveItem(
-            binsc, yhc, stepMode=True, fillLevel=0, brush=(255, 0, 255, 255), pen=None
+        SAC_with_histo = pg.PlotDataItem(
+            binsp, yhp, stepMode=True, fillLevel=0, brush=(128, 128, 128, 255), pen=None
+        )
+        sacn = pg.PlotDataItem(binsn, yhn, stepMode=True, brush=None, pen=pg.mkPen("m")
+        )
+        sacc = pg.PlotDataItem(binsc, yhc, stepMode=True, brush=None, pen=pg.mkPen("r")
         )
         layout.getPlot((i, 1)).addItem(SAC_with_histo)
+        layout.getPlot((i, 1)).addItem(sacn)
+        layout.getPlot((i, 1)).addItem(sacc)
         layout.getPlot((i, 1)).setXRange(-0.005, 0.005)
         layout.getPlot((i, 1)).setYRange(0, ymax[t])
         size = 4

@@ -2332,7 +2332,7 @@ class Figures(object):
         self.generate_VS_data_file()
         pass
 
-    def analyze_VS_data(self, VS_data, cell_number, fout, firstline=False):
+    def analyze_VS_data(self, VS_data, cell_number, fout, firstline=False, sac_flag=False):
         """
         Generate tables of vs measures for all cells
         across the frequencies listed
@@ -2354,10 +2354,10 @@ class Figures(object):
             with open(sfi, "rb") as fh:
                 d = FPM.pickle_load(fh)
 
-            self.parent.PLT.plot_AN_response(P, d.files[0], PD, "runANPSTH")
+            self.parent.PLT.plot_AN_response(P, d.files[0], PD, "runANPSTH", sac_flag=sac_flag)
             with open(fout, "a") as fth:
                 if firstline:
-                    fth.write(self.parent.PLT.VS_colnames)
+                    fth.write(self.parent.PLT.VS_colnames, sac_flag=sac_flag)
                     fth.write("\n")
                     firstline = False
                 fth.write(self.parent.PLT.VS_line)
@@ -2366,19 +2366,17 @@ class Figures(object):
         print("Analyze VS data completed for cell: ", cell_number)
 
     #
-    def generate_VS_data_file(self, testmode=False, dB=15, append=True):
+    def generate_VS_data_file(self, testmode=False, dB=30, append=True):
         """
         Write the VS_data file from the selected datasets.
         The datasets are in VS_datasets_nndB.py
         """
 
         if dB == 30:
-            if f"vcnmodel.VS_datasets_{db:d}dB" not in list(dir()):
-                from vcnmodel import VS_datasets_30dB as VS_datasets
-            # print(dir())
-            # importlib.reload(VS_datasets)
+            if f"VS_datasets_{dB:d}dB" not in list(dir()):
+                import VS_datasets_30dB as VS_datasets
         if dB == 15:
-            if f"vcnmodel.VS_datasets_{dB:d}dB" not in list(dir()):
+            if f"VS_datasets_{dB:d}dB" not in list(dir()):
                 from vcnmodel import VS_datasets_15dB as VS_datasets
         importlib.reload(VS_datasets)
         print("VS_datasets: ", VS_datasets)
@@ -2421,7 +2419,7 @@ class Figures(object):
         for i, celln in enumerate(grAList()):
             if testmode and i != 1:
                 continue
-            self.analyze_VS_data(VS_datasets, celln, fout, firstline=fl)
+            self.analyze_VS_data(VS_datasets, celln, fout, firstline=fl, sac_flag=True)
             fl = False
         with open(fout, "a") as fh:
             fh.write(f'"""\n')  # close the data text.
