@@ -165,6 +165,10 @@ run_dates = [
     "2021-10-01",
     "2021-11-01",
     "2021-12-01",
+    "2021-12-14",
+    "2022-01-01",
+    "2022-02-01",
+    "2022-03-01",
     
 ]
 # Modes for synapse model runs - not all are used.
@@ -226,6 +230,7 @@ class DataTablesVCN:
         }
         self.basepath = None
         self.setPaths()
+
         self.app = pg.mkQApp()
         self.app.setStyle("fusion")
 
@@ -495,6 +500,8 @@ class DataTablesVCN:
                             "SAM",
                             "CMMR",
                             "stationaryNoise",
+                            "clickTrain Regular"
+                            "clickTrain Poisson"
                         ],
                         "value": "None",
                     },
@@ -839,6 +846,8 @@ class DataTablesVCN:
 
                     self.Dock_Table.raiseDock()
                     self.FIGS = figures.Figures(parent=self)
+                    self.PLT.textappend('Reload OK', color="g")
+                    
                     
                 elif path[1] == "View IndexFile":
                     selected = self.table.selectionModel().selectedRows()

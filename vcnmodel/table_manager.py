@@ -183,10 +183,18 @@ class TableManager:
         if indexfile.is_file() and not force:
             # cprint("g", f"    Found index file, reading")
             # print('          indexfile: ', indexfile)
-            with open(indexfile, "rb") as fh:
-                d = FPM.pickle_load(fh) # , fix_imports=True) # , encoding="latin1")
+            try:
+                with open(indexfile, "rb") as fh:
+                    d = pickle.load(fh, fix_imports=True) # , encoding="latin1")
+            except:
+                try:
+                    import vcnmodel.util.fixpicklemodule as FPM
+                    with open(indexfile, "rb") as fh:
+                            d = FPM.pickle_load(fh) # , fix_imports=True) # , encoding="latin1")
+                except:
+                    raise ValueError(f"Unable to read index file: {str(fh):s}")
+                        
                 # print("fh: ", fh)
-                # d = pickle.load(fh, fix_imports=True) # , encoding="latin1")
             return d
         if force or not indexfile.is_file():
             # cprint("c", f"Building a NEW .pkl index file for {str(indexdir):s}")
@@ -212,14 +220,16 @@ class TableManager:
         self.textappend(f"Reading pfile: {str(datafile.name):s}", color='white')
         try:
             with open(datafile, "rb") as fh:
-                d = pickle.load(fh, fix_imports=True, encoding="latin1")
-        except (ModuleNotFoundError, IOError, pickle.UnpicklingError):
-            self.textappend('SKIPPING: File is too old; re-run for new structure', color="red")
-            self.textappend(f"File: {str(fh):s}", color="red")
-            return None
-        # except ModuleNotFoundError:
-        #     raise IOError('SKIPPING: File has old structure; re-run for new structure')
-        #     return None
+                    d = pickle.load(fh, fix_imports=True, encoding="latin1")
+        except:
+            import vcnmodel.util.fixpicklemodule as FPM
+            try:
+                with open(datafile, "rb") as fh:
+                    d = FPM.pickle_load(fh) # , fix_imports=True) # , encoding="latin1")
+            except(ModuleNotFoundError, IOError, pickle.UnpicklingError):
+                self.textappend('SKIPPING: File is too old; re-run for new structure', color="red")
+                self.textappend(f"File: {str(datafile):s}", color="red")
+                return None
             
         if 'runInfo' not in list(d.keys()):
             self.textappend('SKIPPING: File is too old (missing "runinfo"); re-run for new structure', color="red")
@@ -241,8 +251,18 @@ class TableManager:
         Here the initial value is a string, which we convert to a datetime
       
         """
-        with open(filename, "rb") as fh:
-            d = pickle.load(fh, fix_imports=True) # d = FPM.pickle_load(fh)
+        try:
+            with open(filename, "rb") as fh:
+                d = FPM.pickle_load(fh, fix_imports=True, encoding="latin1")
+        except:
+            import vcnmodel.util.fixpicklemodule as FPM
+            try:
+                with open(filename, "rb") as fh:
+                    d = FPM.pickle_load(fh)
+            except(ModuleNotFoundError, IOError, pickle.UnpicklingError):
+                self.textappend('SKIPPING: File is too old; re-run for new structure', color="red")
+                self.textappend(f"File: {str(filename):s}", color="red")
+                return None
         if d['runInfo'] is None:
             cprint('r', f"runinfo is None? file = {str(filename):s}")
             return None
@@ -423,8 +443,14 @@ class TableManager:
         """
         indexfilename = self.force_suffix(indexfilename)
         with open(indexfilename, "rb") as fh:
-            # indexdata = pickle.load(fh, fix_imports=True) #
-            indexdata = FPM.pickle_load(fh) # , encoding="latin1")
+            try:
+                indexdata = pickle.load(fh, fix_imports=True) #
+            except:
+                try:
+                    import vcnmodel.util.fixpicklemodule as FPM
+                    indexdata = FPM.pickle_load(fh) # , encoding="latin1")
+                except:
+                    raise ValueError(f"Unable to read index file: {str(fh):s}")
         return indexdata
 
     def remove_table_entry(self, indexrow):
@@ -507,6 +533,7 @@ class TableManager:
         else:
             ed = 30000000
         sel_runs = []
+
         for d in rundirs:
             if mode == "D":
                 dname = d.stem
@@ -518,7 +545,7 @@ class TableManager:
                 fdate = d.datestr[-19:-9].replace('-', "")
             else:
                 raise ValueError("table manager select_dates: bad mode in call: ", mode)
-            if fdate[:4] not in ["2020", "2021"]:
+            if fdate[:4] not in ["2020", "2021", "2022"]:
                 continue 
             idate = int(fdate)
             if idate >= sd and idate <= ed:
@@ -544,6 +571,7 @@ class TableManager:
         )
         # cprint('c', thispath)
         rundirs = list(thispath.glob("*"))
+        
         rundirs = self.select_dates(rundirs)
         indxs = []
         # first build elements with directories
@@ -652,6 +680,7 @@ class TableManager:
             ],
         )
         self.update_table(self.data)
+        cprint("g", "Finished updating index files")
         
     def update_table(self, data, QtCore=None):
         self.table.setData(data)
