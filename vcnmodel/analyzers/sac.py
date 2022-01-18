@@ -4,6 +4,7 @@ import time
 from dataclasses import dataclass
 from typing import Union
 import numpy as np
+import scipy
 import pyqtgraph as pg
 import pyximport
 from numba import njit, jit
@@ -92,7 +93,7 @@ def time_func(func):
     return wrapper_timer
 
 
-@time_func
+# @time_func
 @jit(nopython=False, parallel=False, cache=True)
 def nb_SAC_Calc(X, event_lengths, twin, binw, maxn):
     yc = np.nan * np.zeros(maxn)
@@ -114,7 +115,7 @@ def nb_SAC_Calc(X, event_lengths, twin, binw, maxn):
     return y, ns
 
 
-@time_func
+# @time_func
 @njit(parallel=False, cache=True)
 def nb_XAC_Calc(X, Y, event_lengths_x, event_lengths_y, twin, binw,
         maxn):
@@ -138,7 +139,7 @@ def nb_XAC_Calc(X, Y, event_lengths_x, event_lengths_y, twin, binw,
     return y, ns
 
 
-@time_func
+# @time_func
 def c_SAC_Calc(
     X: Union[list, np.ndarray], event_lengths:np.array, twin: float, binw: float,
         maxn: int,
@@ -416,9 +417,47 @@ class SAC(object):
             ),
             density=False,
         )
+        bins = (bins[1:] + bins[:-1])/2.0
         yh = yh / nfac  # to convert to rate, spikes/second
         return yh, bins
 
+    def SAC_measures(self, yh, bins, twin=0.003):
+        """
+        Measure the central peak CI and half-width
+        from the SAC histogram
+        
+        Parameters
+        ----------
+        yh : the histogram (get from SAC_with_histo or SAC_make_histogramt)
+        bins: the bins for the histogram (used for time window)
+        twin : time window (in seconds) on either side of the central peak. 
+            Pass the stimulus period for regular (SAM or phase-locked) stimuli
+        
+        Returns
+        -------
+        CI : peak value of CI
+        HW : half-widths of the CI (and side lobes if present)
+            This array has 4 elements for each peak:
+                the width (in samples)
+                the height (true value)
+                left intersection point of horizontal line at half height (in samples)
+                right intersection pont of horizontal ine at half height (in samples)
+        FW : Full-width of CI, (and side lobes if present)
+            same as HW, except for full height
+        """
+        if np.isnan(np.sum(yh)):
+            return np.nan, [np.nan], [np.nan], [np.nan]# cannot compute, no spikes.
+        win_data = np.where((-twin <= bins) & (bins <= twin))[0]
+        win_data = yh[win_data]
+        CI = np.max(win_data)
+        peaks, _ = scipy.signal.find_peaks(win_data)
+        center = [int((len(win_data)-1)/2)]  # only analyze the center peak
+        half_widths = scipy.signal.peak_widths(win_data, center, rel_height=0.5)
+        full_widths = scipy.signal.peak_widths(win_data, center, rel_height=1.0)
+        return CI, peaks, half_widths, full_widths
+        
+        
+        
     def XAC(self, X, Y, pars, engine="python"):
         """
         Cross correlation SAC

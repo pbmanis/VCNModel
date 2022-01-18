@@ -562,6 +562,8 @@ class DataTablesVCN:
                                 "Fig 3 Suppplemental4_PSTH",
                                 "Fig 4 Ephys-2 main",
                                 "Fig 4 Ephys-2 Supplement1",
+                                "Fig 7 Ephys-3 main",
+                                "Fig 7 Ephys-3 supplement1",
                                 "Fig M0: VC-KLTCalibration (Fig_M0_VC_Adjustment)",
                                 "Fig M0 Supp: CombinedVCIV (Figure_M0-Combined_Supplemental)",
                                 "Fig M1: IV Figure (Fig_M1)",

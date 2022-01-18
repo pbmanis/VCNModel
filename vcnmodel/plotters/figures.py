@@ -1,6 +1,7 @@
 import datetime
 import importlib
 import pickle
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
 import string
@@ -26,6 +27,7 @@ import toml
 from vcnmodel.plotters import efficacy_plot as EF
 from vcnmodel.plotters import plot_z as PZ
 import vcnmodel.util.fixpicklemodule as FPM
+from vcnmodel.analyzers import sac as SAC
 from vcnmodel.plotters import (
     figure_data as FD,
 )  # table of simulation runs for plotting
@@ -52,7 +54,7 @@ title_text = {
     "actdend": "Active",
 }
 font_colors = {"passive": "c", "normal": "k", "active": "m"}
-spike_colors = {"passive": "c", "normal": "k", "active": "m"}
+spike_colors = {"passive": "r", "normal": "r", "active": "r"}
 
 print(FD)
 
@@ -141,6 +143,7 @@ class Figures(object):
             "Fig 3 Suppplemental4_PSTH": self.plot_All_PSTH,
             "Fig 4 Ephys-2 main": self.Figure4Main,
             "Fig 4 Ephys-2 Supplement1": self.Figure4_Supplmental1,
+            "Fig 7 Ephys-3 main": self.Figure7Main,
             "Fig M1: IV Figure (Fig_M1)": self.plotIV,
             "Fig_IV/ All IVs (Fig_IV/IV_cell_VCN_c##)": self.allIVs,
             "Fig M2: CombinedEffRevCorr (Fig_M2)": self.plot_combined_Eff_Rev,
@@ -640,7 +643,7 @@ class Figures(object):
         if parent_figure is None:
             fig = FigInfo()
             fig.P = self.P
-            fig.filename = f"Fig_M1A_Supplemental.pdf"
+            fig.filename = f"Fig_3_Supplemental2_CC.pdf"
             timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")
             fig.title[
                 "title"
@@ -1791,13 +1794,230 @@ class Figures(object):
         else:
             return None
 
+    def Figure7Main(self, parent_figure=None):
+        sizer = OrderedDict(  # define figure layout
+            [
+                ("A", {"pos": [0.08, 0.4, 0.87, 0.10]}),
+                ("B", {"pos": [0.08, 0.4, 0.73, 0.10]}),
+                ("C", {"pos": [0.08, 0.4, 0.59, 0.10]}),
+                ("D", {"pos": [0.08, 0.4, 0.45, 0.10]}),
+                ("E", {"pos": [0.08, 0.4, 0.31, 0.10]}),
+                ("F", {"pos": [0.08, 0.4, 0.17, 0.10]}),
+                ("G", {"pos": [0.08, 0.4, 0.05, 0.08]}),
+                
+                ("H", {"pos": [0.57, 0.4, 0.87, 0.10]}),
+                ("I", {"pos": [0.57, 0.4, 0.73, 0.10]}),
+                ("J", {"pos": [0.57, 0.4, 0.59, 0.10]}),
+                ("K", {"pos": [0.57, 0.4, 0.45, 0.10]}),
+                ("L", {"pos": [0.57, 0.4, 0.31, 0.10]}),
+                ("M", {"pos": [0.57, 0.4, 0.17, 0.10]}),
+                ("N", {"pos": [0.57, 0.4, 0.05, 0.08]}),
+            ]
+        )  # dict elements are [left, width, bottom, height] for the axes in the plot.
+
+        P = PH.arbitrary_grid(
+            sizer,
+            order="columnsfirst",
+            label=True,
+            figsize=(6.0, 8.0),
+            # labelposition=(-0.05, 1.02),
+        )
+        # Column 1: AM
+        P.axdict["A"].set_ylabel("mV", fontsize=8)
+
+        P.axdict["B"].set_title("Bushy Spike Raster", fontsize=9)
+        P.axdict["B"].set_ylabel("Trial")
+
+        P.axdict["C"].set_title("Bushy PSTH", fontsize=9, verticalalignment="top", y=0.95)
+        P.axdict["C"].set_ylabel("Spikes/second", fontsize=9)
+
+        P.axdict["D"].set_title("ANF Spike Raster", fontsize=9)
+        P.axdict["D"].set_ylabel("Trial")
+
+        P.axdict["E"].set_title("ANF PSTH", fontsize=9, verticalalignment="top", y=0.95)
+        P.axdict["E"].set_ylabel("Spikes/second", fontsize=9)
+
+        P.axdict["F"].set_title("Phase", fontsize=9)
+        P.axdict["F"].set_ylabel("Spike Count", fontsize=9)
+        P.axdict["F"].set_title("Angle (radians)", fontsize=9)
+
+        P.axdict["G"].set_title("Stimulus", fontsize=9)
+        P.axdict["G"].set_ylabel("Amplitude (Pa)", fontsize=8)
+        P.axdict["G"].set_xlabel("T (s)", fontsize=9)
+
+        # column 2 Click train
+        P.axdict["H"].set_ylabel("mV", fontsize=8)
+
+        P.axdict["I"].set_title("Bushy Spike Raster", fontsize=9)
+        P.axdict["I"].set_ylabel("Trial")
+
+        P.axdict["J"].set_title("Bushy PSTH", fontsize=9, verticalalignment="top", y=0.95)
+        P.axdict["J"].set_ylabel("Spikes/second", fontsize=9)
+
+        P.axdict["K"].set_title("ANF Spike Raster", fontsize=9)
+        P.axdict["K"].set_ylabel("Trial")
+
+        P.axdict["L"].set_title("ANF PSTH", fontsize=9, verticalalignment="top", y=0.95)
+        P.axdict["L"].set_ylabel("Spikes/second", fontsize=9)
+
+        P.axdict["M"].set_title("SAC", fontsize=9)
+        P.axdict["M"].set_ylabel("CI", fontsize=9)
+        P.axdict["M"].set_title("Time (ms)", fontsize=9)
+
+        P.axdict["N"].set_title("Stimulus", fontsize=9)
+        P.axdict["N"].set_ylabel("Amplitude (Pa)", fontsize=8)
+        P.axdict["N"].set_xlabel("T (s)", fontsize=9)
+
+        
+        for axl in [
+            "B",
+            "C",
+            "D",
+            "E",
+            "G",
+        ]:
+            P.axdict[axl].sharex(P.axdict["A"])
+        
+
+        for axl in [
+            "I",
+            "J",
+            "K",
+            "L",
+            "N",
+        ]:
+            P.axdict[axl].sharex(P.axdict["H"])
+        
+        cell_number = 11
+        self.Figure7_one_column("SAM", cell_number, FD.figure_SAM_SAC, P, ["A", "B", "C", "D", "E", "F", "G"])
+        self.Figure7_one_column("SAC", cell_number, FD.figure_SAM_SAC, P, ["H", "I", "J", "K", "L", "M", "N"])
+        
+        fig = FigInfo()
+        if parent_figure is not None:
+            fig.P = parent_figure
+        else:
+            fig.P = P
+        fig.filename = "Figure7_Ephys3_main_v1.pdf"
+        fig.title[
+            "title"
+        ] = "SBEM Project Figure 7 Modeling: SAM, SAC"
+        title2 = {"title": f"", "x": 0.99, "y": 0.01}
+        fig.title2 = title2
+        print("returnin fig: ", fig)
+        return fig
+    
+        
+    def Figure7_one_column(self, mode, cell_number, dataset, P, pan):
+    
+        PD = PData()
+        cellpath = Path(
+            self.config["cellDataDirectory"],
+            f"VCN_c{cell_number:02d}",
+            "Simulations",
+            "AN",
+        )
+        
+        sfi = Path(cellpath, Path(dataset[mode][0]).name)
+        if not sfi.is_dir():
+            print("file not found: ", str(sfi))
+            return
+
+        fn = sorted(list(sfi.glob("*")))[0]
+        changetimestamp = get_changetimestamp()
+        X = self.parent.PLT.get_data_file(fn, changetimestamp, PD)
+        mtime = Path(fn).stat().st_mtime
+        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
+            "%Y-%m-%d-%H:%M"
+        )
+        if X is None:
+            print("No simulation found that matched conditions")
+            print(fn)
+            return
+        # unpack x
+        par, stitle, ivdatafile, filemode, d = X
+        axon_name = par["axonExpt"]
+        protocol = "runANPSTH"
+        AR, SP, RMA = self.parent.PLT.analyze_data(ivdatafile, filemode, protocol)
+        i = 0
+        plot_win = (0.4, 0.550)
+        psth_binw = 0.0005
+        i = 0  # Voltage for first trial
+        self.plot_voltage(ax=P.axdict[pan[0]], ntrace=i, d=d, AR=AR, time_win=plot_win)
+        self.plot_stim_waveform(ax=P.axdict[pan[6]], ntrace=i, d=d, AR=AR, stim_win=plot_win)
+        all_bu_st = self.get_bu_spikearray(AR, d)
+        self.plot_spiketrain_raster(all_bu_st, ax=P.axdict[pan[1]], plot_win=plot_win)
+        self.plot_psth_psth(ax=P.axdict[pan[2]], data=all_bu_st, ri=d['runInfo'], 
+            psth_binw=psth_binw, ntr=len(all_bu_st), psth_win=plot_win)
+        P.axdict[pan[3]].set_xlabel("Time (s)")
+        
+
+        an_st_by_input, all_an_st, an_st_grand = self.get_an_spikearray(AR, d)
+        ninputs=len(an_st_by_input)
+        self.plot_psth_psth(
+            ax=P.axdict[pan[4]],
+            data=all_an_st,
+            ri=d['runInfo'],
+            psth_binw=psth_binw,
+            psth_win=plot_win,
+            ntr=len(all_an_st),
+            ninputs=ninputs,
+        )
+        P.axdict[pan[4]].set_xlabel("Time (sec)")
+        P.axdict[pan[4]].set_title("AN")
+        ri = d['runInfo']
+        si = d['Params']
+        (
+            totaldur,
+            soundtype,
+            pip_start,
+            pip_duration,
+            F0,
+            dB,
+            fmod,
+            dmod,
+        ) = self.parent.PLT.get_stim_info(si, ri)
+        pip_duration = ri.pip_duration
+        print("Soundtype: ", soundtype)
+        if soundtype.endswith("Clicks"):
+            spars = SAC.SACPars()
+            spars.binw = 3 * si.dtIC * 1e-3
+            spars.maxn = 100000000
+            if soundtype.endswith("Clicks"):
+                spars.delay = ri.clickStart + 0.2 * ri.clickTrainDuration
+                spars.dur = 0.8 * ri.clickTrainDuration
+                spars.displayDuration = 2e-3  # 2.0/ri.clickRate
+                spars.twin = 10.0 / ri.clickRate
+            else:
+                spars.delay = ri.pip_start + 0.2 * ri.pip_duration
+                spars.dur = 0.8 * ri.pip_duration
+                spars.displayDuration = 2.0 / ri.fmod
+                spars.twin = 10.0 / ri.fmod
+            S = SAC.SAC()
+            sac_engine = 'cython'
+            bu_sac, bu_sacbins = S.SAC_with_histo(
+                all_bu_st,
+                pars = spars,
+                engine=sac_engine,
+                dither=1e-3 * si.dtIC / 2.0,
+            )
+            print(bu_sacbins)
+            print(bu_sac)
+            P.axdict[pan[5]].plot(
+                bu_sacbins,
+                bu_sac,
+                #   'k-',
+                # label=sac_label,
+            )
+        else:
+            pass
+
+
     def plot_psth_psth(
         self,
         ax: object,
         data: object,
         ri: dict,
-        time_base: np.ndarray,
-        psth_binw: float = 0.5,
+        psth_binw: float = 0.0005,
         psth_win: Union[list, np.array] = [0.0, 1.0],
         ntr: int = 1,
         ninputs: int = 1,
@@ -1963,6 +2183,196 @@ class Figures(object):
         fig.title2 = title2
         return fig
 
+
+    def plot_voltage(
+        self,
+        ax: object,
+        d: object=None,
+        ntrace: int=0,
+        AR: object=None,
+        time_win: tuple = (0, 0.25),
+        cal_x_axis: bool = False,
+        ):
+        """
+        Plot the voltage of a trace into an axis, with the spikes marked
+        """
+        vtrial = AR.MC.traces[ntrace] * 1e3
+        time_base = AR.MC.time_base / 1000.0  # convert to seconds
+        dt = d["Params"].dtIC / 1000.0  # convert from msec to seconds
+        trd = d["Results"][ntrace]
+        tb_beg = int(time_win[0] / dt)
+        tb_end = int(time_win[1] / dt)
+        
+        # cprint('r', f"i is 0, psth: {psth_win=}")
+        ax.plot((time_base - time_win[0]), vtrial, "k-", linewidth=0.5)
+        spiketimes = np.array(trd["spikeTimes"])
+        # trim spike mark array so we don't get spots at the edge of the plot
+        spikeindex = [
+            int(t / dt)
+            for t in spiketimes
+            if (t >= time_win[0] and t < (time_win[1]))
+        ]
+        ax.plot(
+            (time_base[spikeindex] - time_win[0]),
+            vtrial[spikeindex],
+            "ro",
+            markersize=1.5,
+        )
+        PH.referenceline(ax, -60.0)
+        if cal_x_axis:
+            ax.text(
+                0.0,
+                -60.0,
+                "-60 mV",
+                fontsize=7,
+                horizontalalignment="right",
+                verticalalignment="center",
+            )
+        ax.set_xlim(0.0, time_win[1] - time_win[0])
+        if cal_x_axis:
+            PH.noaxes(ax)
+            PH.calbar(
+                ax,
+                calbar=[0.180, -20, 0.020, 10.0],
+                scale=[1, 1.0],
+                axesoff=True,
+                orient="right",
+                unitNames={"x": "ms", "y": "mV"},
+                fontsize=8,
+                weight="normal",
+                color="k",
+                font="Arial",
+            )
+
+    def plot_stim_waveform(self, 
+            ax,
+            ntrace:int=0,
+            d:object=None,
+            AR:object=None,
+            si:object=None,
+            stim_win: tuple = (0, 0.25),
+            ):
+        # stimulus waveform
+        trd = d["Results"][ntrace]
+        waveform = trd["stimWaveform"].tolist()
+        stb = trd["stimTimebase"]
+        stimdt = np.mean(np.diff(stb))
+        sttb_beg = int(stim_win[0] / stimdt)
+        sttb_end = int(stim_win[1] / stimdt)
+        
+        ax.plot(
+            (stb[sttb_beg:sttb_end] - stim_win[0]),
+            np.array(waveform)[sttb_beg:sttb_end] * 1e3,
+            "k-",
+            linewidth=0.5,
+        )  # stimulus underneath
+        ax.set_xlim(0, stim_win[1]-stim_win[0])
+        PH.talbotTicks(
+            ax,
+            axes="xy",
+            density=(1.0, 0.5),
+            insideMargin=0.02,
+            # pointSize=ticklabelsize,
+            tickPlacesAdd={"x": 2, "y": 1},
+            floatAdd={"x": 2, "y": 1},
+        )
+        ax.set_ylabel("mPa")
+    
+    def plot_spiketrain_raster(self, spike_times, ax=None, plot_win:tuple=(0, 0.25)):
+        # print(len(spike_times))
+        # print(plot_win)
+        for i in range(len(spike_times)):
+            ispt = [
+                j
+                for j in range(len(spike_times[i]))
+                if spike_times[i][j] >= plot_win[0] and spike_times[i][j] < plot_win[1]
+            ]
+            ax.plot(
+                np.array(spike_times[i])[ispt] - plot_win[0],
+                i * np.ones(len(ispt)),
+                "|",
+                markersize=1.5,
+                color="b",
+            )
+    
+    def plot_stacked_spiketrain_rasters(self, trd, ax=None):
+        for k in range(n_inputs):  # raster of input spikes
+            if np.max(trd["inputSpikeTimes"][k]) > 2.0:  # probably in miec...
+                tk = np.array(trd["inputSpikeTimes"][k]) * 1e-3
+            else:
+                tk = np.array(trd["inputSpikeTimes"][k])
+
+            y = (i + 0.1 + k * 0.05) * np.ones(len(tk))
+            in_spt = [
+                i
+                for i in range(tk.shape[0])
+                if (tk[i] >= plot_win[0]) and (tk[i] < plot_win[1])
+            ]
+            y = (i + 0.1 + k * 0.05) * np.ones(len(in_spt))
+            if i % 10 == 0 and plotflag:
+                ax.plot(
+                    tk[in_spt] - plot_win[0],
+                    y,
+                    "|",
+                    markersize=2.5,
+                    color="k",
+                    linewidth=0.5,
+                    )
+
+    def get_bu_spikearray(self, AR, d):
+        """
+        Get the arrays of auditory nerve inputs, sorted by input, all, and grand...
+
+        Parameters
+        ----------
+        AR : object
+         acq4 read object
+        d : object
+         data object from runmodel
+        """
+        all_bu_st = []
+        si = d['Params']
+        ntr = len(AR.MC.traces)
+        for i in range(ntr):  # for all trials in the measure.
+            trd = d["Results"][i]
+            if not isinstance(trd["spikeTimes"], list):
+                cprint("r", "spiketimes is not a list")
+                return
+            all_bu_st.append(trd["spikeTimes"])
+            
+        return all_bu_st
+
+    def get_an_spikearray(self, AR, d):
+        """
+        Get the arrays of auditory nerve inputs, sorted by input, all, and grand...
+        
+        Parameters
+        ----------
+        AR : object
+            acq4 read object
+        d : object
+            data object from runmodel
+        """
+        # Collapse the input data
+        si = d['Params']
+        ntr = len(AR.MC.traces)
+        all_an_st = []  # collapsed in trial order only
+        an_st_grand = [[] for x in range(ntr)]  # accumulate across trials
+
+        for i in range(ntr):  # for all trials in the measure.
+            trd = d["Results"][i]  # trial i data
+            ninputs = len(trd["inputSpikeTimes"])  # get AN spike time array (by input)
+            if i == 0:
+                an_st_by_input = [[] for x in range(ninputs)]
+            for k in range(ninputs):  # raster of input spikes
+                tk = trd["inputSpikeTimes"][k]
+                all_an_st.extend(np.array(tk) * 1e-3)  # strictly for the psth
+                an_st_by_input[k].append(
+                    tk * 1e-3
+                )  # index by input, then trials for that input
+                an_st_grand[i].extend(tk * 1e-3)
+        return an_st_by_input, all_an_st, an_st_grand
+
     def plot_one_PSTH(
         self,
         cell_number: int,
@@ -1993,17 +2403,17 @@ class Figures(object):
 
         fn = sorted(list(sfi.glob("*")))[0]
         changetimestamp = get_changetimestamp()
-        x = self.parent.PLT.get_data_file(fn, changetimestamp, PD)
+        X = self.parent.PLT.get_data_file(fn, changetimestamp, PD)
         mtime = Path(fn).stat().st_mtime
         timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
             "%Y-%m-%d-%H:%M"
         )
-        if x is None:
+        if X is None:
             print("No simulation found that matched conditions")
             print(fn)
             return
         # unpack x
-        par, stitle, ivdatafile, filemode, d = x
+        par, stitle, ivdatafile, filemode, d = X
         axon_name = par["axonExpt"]
         protocol = "runANPSTH"
         AR, SP, RMA = self.parent.PLT.analyze_data(ivdatafile, filemode, protocol)
@@ -2027,7 +2437,6 @@ class Figures(object):
         ) = self.parent.PLT.get_stim_info(si, ri)
 
         ntr = len(AR.MC.traces)
-        all_bu_st = []
 
         for i in range(ntr):  # for all trials in the measure.
             vtrial = AR.MC.traces[i] * 1e3
@@ -2036,85 +2445,13 @@ class Figures(object):
             trd = d["Results"][i]
             tb_beg = int(psth_win[0] / dt)
             tb_end = int(psth_win[1] / dt)
-            # cprint('r', f"{psth_win=}")
-            # cprint('r', f"{tb_beg=}, {tb_end=}")
-            ninputs = len(trd["inputSpikeTimes"])
-            if i == 0:
-                all_an_st = [[] for x in range(ninputs)]  # by input, then trial
-                an_st = [[] for x in range(ntr)]  # by trial, collapsed across inputs
-
-            waveform = trd["stimWaveform"].tolist()
-            stb = trd["stimTimebase"]
-            stimdt = np.mean(np.diff(stb))
-            sttb_beg = int(psth_win[0] / stimdt)
-            sttb_end = int(psth_win[1] / stimdt)
-            if not isinstance(trd["spikeTimes"], list):
-                cprint("r", "spiketimes is not a list")
-                return
-            all_bu_st.append(trd["spikeTimes"])
-
             if i == 0:  # Voltage for first trial
-                # cprint('r', f"i is 0, psth: {psth_win=}")
-                tr_ax.plot((time_base - psth_win[0]) * 1e3, vtrial, "k-", linewidth=0.5)
-                spiketimes = np.array(trd["spikeTimes"])
-                # trim spike mark array so we don't get spots at the edge of the plot
-                spikeindex = [
-                    int(t / dt)
-                    for t in spiketimes
-                    if (t >= psth_win[0] and t < (psth_win[1]))
-                ]
-                tr_ax.plot(
-                    (time_base[spikeindex] - psth_win[0]) * 1e3,
-                    vtrial[spikeindex],
-                    "ro",
-                    markersize=1.5,
-                )
-                PH.referenceline(tr_ax, -60.0)
-                if label_x_axis:
-                    tr_ax.text(
-                        0.0,
-                        -60.0,
-                        "-60 mV",
-                        fontsize=7,
-                        horizontalalignment="right",
-                        verticalalignment="center",
-                    )
-                tr_ax.set_xlim(0.0, psth_dur * 1e3)
-                PH.noaxes(tr_ax)
-                if label_x_axis:
-                    PH.calbar(
-                        tr_ax,
-                        calbar=[180.0, -20, 20.0, 10.0],
-                        scale=[1, 1.0],
-                        axesoff=True,
-                        orient="right",
-                        unitNames={"x": "ms", "y": "mV"},
-                        fontsize=8,
-                        weight="normal",
-                        color="k",
-                        font="Arial",
-                    )
-
+                self.plot_voltage(ax=tr_ax, ntrace=i, d=d, AR=AR, time_win=plot_win)
             if i == 0 and waveform is not None and st_ax is not None:
-                # stimulus waveform
-                st_ax.plot(
-                    (stb[sttb_beg:sttb_end] - psth_win[0]),
-                    np.array(waveform)[sttb_beg:sttb_end] * 1e3,
-                    "k-",
-                    linewidth=0.5,
-                )  # stimulus underneath
-                st_ax.set_xlim(0, psth_dur)
-                PH.talbotTicks(
-                    st_ax,
-                    axes="xy",
-                    density=(1.0, 0.5),
-                    insideMargin=0.02,
-                    # pointSize=ticklabelsize,
-                    tickPlacesAdd={"x": 2, "y": 1},
-                    floatAdd={"x": 2, "y": 1},
-                )
-                st_ax.set_ylabel("mPa")
+                self.plot_stim_waveform(ax=st_ax, ntrace=i, d=d, AR=AR, stim_win=plot_win)
 
+        all_bu_st = self.get_bu_spikearray(AR, d)
+        
         psth_binw = 0.5e-3
         ninputs = 1
 
@@ -2123,7 +2460,6 @@ class Figures(object):
                 ax=bupsth_ax,
                 data=all_bu_st,
                 ri=ri,
-                time_base=time_base,
                 psth_binw=psth_binw,
                 psth_win=psth_win,
                 ntr=ntr,
@@ -2131,31 +2467,15 @@ class Figures(object):
             )
             if label_x_axis:
                 bupsth_ax.set_xlabel("Time (s)")
-        # Collapse the input data
-        an_st_by_input = [[] for x in range(ninputs)]
-        all_an_st = []  # collapsed in trial order only
-        an_st_grand = [[] for x in range(ntr)]  # accumulate across trials
 
-        for i in range(ntr):  # for all trials in the measure.
-            trd = d["Results"][i]  # trial i data
-            ninputs = len(trd["inputSpikeTimes"])  # get AN spike time array (by input)
-            if i == 0:
-                an_st_by_input = [[] for x in range(ninputs)]
-            for k in range(ninputs):  # raster of input spikes
-                tk = trd["inputSpikeTimes"][k]
-                all_an_st.extend(np.array(tk) * 1e-3)  # strictly for the psth
-                an_st_by_input[k].append(
-                    tk * 1e-3
-                )  # index by input, then trials for that input
-                an_st_grand[i].extend(tk * 1e-3)
-
+        an_st_by_input, all_an_st, an_st_grand = self.get_an_spikearray(AR, d)
+        
         if anpsth_ax is not None:
             print("anpsth to plotpsth")
             self.plot_psth_psth(
                 ax=anpsth_ax,
                 data=all_an_st,
                 ri=ri,
-                time_base=time_base,
                 psth_binw=psth_binw,
                 psth_win=psth_win,
                 ntr=ntr,

@@ -275,6 +275,68 @@ figure_psth = {
     
 }
 
+figure_SAC = {
+    2: [
+        "runANPSTH-all-2022-01-02.19-56-54",
+        "runANPSTH-largestonly-2022-01-02.20-02-29",
+        "runANPSTH-removelargest-2022-01-02.20-08-14",
+    ],
+    5: [
+        "runANPSTH-all-2022-01-02.20-14-23",
+        "runANPSTH-largestonly-2022-01-02.20-21-12",
+        "runANPSTH-removelargest-2022-01-02.20-27-52",
+    ],
+    6: [
+        "runANPSTH-all-2022-01-02.20-34-56",
+        "runANPSTH-largestonly-2022-01-02.20-39-59",
+        "runANPSTH-removelargest-2022-01-02.20-45-00",
+    ],
+    9: [
+         "runANPSTH-all-2022-01-02.20-50-30",
+         "runANPSTH-largestonly-2022-01-02.20-56-36",
+         "runANPSTH-removelargest-2022-01-02.21-02-45",
+     ],
+     10: [
+         "runANPSTH-all-2022-01-02.21-09-25",
+         "runANPSTH-largestonly-2022-01-02.21-16-25",
+         "runANPSTH-removelargest-2022-01-02.21-23-22",
+     ],
+     11: [
+         "runANPSTH-all-2022-01-02.21-30-35",
+         "runANPSTH-largestonly-2022-01-02.21-35-34",
+         "runANPSTH-removelargest-2022-01-02.21-40-28",
+     ],
+     13: [
+         "runANPSTH-all-2022-01-02.21-45-49",
+         "runANPSTH-largestonly-2022-01-02.21-51-00",
+         "runANPSTH-removelargest-2022-01-02.21-56-14",
+     ],
+     17: [
+         "runANPSTH-all-2022-01-02.22-02-02",
+         "runANPSTH-largestonly-2022-01-02.22-09-30",
+         "runANPSTH-removelargest-2022-01-02.22-16-35",
+     ],
+     18: [
+         "runANPSTH-all-2022-01-02.22-24-05",
+         "runANPSTH-largestonly-2022-01-02.22-30-05",
+         "runANPSTH-removelargest-2022-01-02.22-36-07",
+     ],
+     30: [
+         "runANPSTH-all-2022-01-02.22-42-35",
+         "runANPSTH-largestonly-2022-01-02.22-48-47",
+         "runANPSTH-removelargest-2022-01-02.22-54-58",
+     ],
+}
+
+figure_SAM_SAC = {
+    "SAM": [
+        "runANPSTH-all-2021-12-05.21-59-17",
+    ],
+    "SAC": [
+        "runANPSTH-all-2022-01-02.21-30-35",
+    ],
+}
+
 all_figures = [
     figure_psth,
     figure_VClamp,
@@ -283,6 +345,8 @@ all_figures = [
     figure_efficacy_supplement,
     figure_IV,
     figure_AllIVs,
+    figure_SAC,
+    figure_SAM_SAC,
 ]
 
 

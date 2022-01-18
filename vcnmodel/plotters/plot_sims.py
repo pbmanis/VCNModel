@@ -395,12 +395,13 @@ class TraceCalls(object):
     """
 
     def __init__(
-        self, stream=sys.stdout, indent_step=2, show_args=False, show_ret=False
-    ):
+        self, stream=sys.stdout, indent_step=2, show_args=False, show_ret=False,
+                show=True):
         self.stream = stream
         self.indent_step = indent_step
         self.show_ret = show_ret
         self.show_args = show_args
+        self.show = show
 
         # This is a class attribute since we want to share the indentation
         # level between different traced functions, in case they call
@@ -416,19 +417,21 @@ class TraceCalls(object):
                     [repr(a) for a in args]
                     + ["%s=%s" % (a, repr(b)) for a, b in kwargs.items()]
                 )
-                self.stream.write("-->%s%s(%s)\n" % (indent, fn.__name__, argstr))
+                if self.show:
+                    self.stream.write("-->%s%s(%s)\n" % (indent, fn.__name__, argstr))
             else:
                 # self.stream.write('-->%s%s\n' % (indent, fn.__name__))
                 text = Text.assemble(
                     (f"* {indent:s}-->{fn.__name__:s}\n", "bold yellow")
                 )
-                console.print(text)
+                if self.show:
+                    console.print(text)
 
             TraceCalls.cur_indent += self.indent_step
             ret = fn(*args, **kwargs)
             TraceCalls.cur_indent -= self.indent_step
 
-            if self.show_ret:
+            if self.show_ret and self.show:
                 self.stream.write("%s returns--> %s\n" % (indent, ret))
             return ret
 
@@ -599,9 +602,9 @@ class PlotSims:
             stitle = "Bare Scaling"
         return "      " + stitle
 
-    @TraceCalls()
+    @TraceCalls(show=False)
     def get_data_file(
-        self, fn: Union[str, Path], changetimestamp: object, PD: dataclass
+        self, fn: Union[str, Path], changetimestamp: object, PD: dataclass, verbose=False
     ) -> Union[None, tuple]:
         """
         Get a data file, and also parse information from the file
@@ -625,12 +628,13 @@ class PlotSims:
                 self.textappend(f"   File: {str(fnp):s} NOT FOUND", color="red")
                 return None
             else:
-                self.textappend(f"   File: {str(fnp):s} OK")
+                if verbose:
+                    self.textappend(f"   File: {str(fnp):s} OK")
         mtime = fnp.stat().st_mtime
         timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
             "%Y-%m-%d-%H:%M"
         )
-        if self.firstline:
+        if verbose and self.firstline:
             self.textappend(
                 f"pgbcivr2: Checking file: {fnp.name:s} [{timestamp_str:s}]"
             )
@@ -638,28 +642,30 @@ class PlotSims:
             filemode = "vcnmodel.v1"
         else:
             filemode = "vcnmodel.v0"
-        if self.firstline:
+        if self.firstline and verbose:
             self.textappend(f"pgbcivr2: file mode: {filemode:s}")
         with (open(fnp, "rb")) as fh:
             d = FPM.pickle_load(fh)
-        self.textappend(f"   ...File read, mode={filemode:s}")
+        if verbose:
+            self.textappend(f"   ...File read, mode={filemode:s}")
         par = self._convert_params(d, filemode)
         stitle = self._get_scaling(fn, PD, par)
 
-        print("Read file: ", ivdatafile)
+        if verbose:
+            print("Read file: ", ivdatafile)
         if ivdatafile is None or not ivdatafile.is_file():
-            if self.firstline:
+            if self.firstline and verbose:
                 self.textappend(f"no file matching conditions : {str(ivdatafile):s}")
             return None
 
-        if self.firstline:
+        if self.firstline and verbose:
             self.textappend(f"\npgbcivr2: datafile to read: {str(ivdatafile):s}")
         if isinstance(d["Results"], dict):
             if "time" in list(d["Results"].keys()):
                 d["Results"] = self._data_flip(d["Results"])
         return par, stitle, ivdatafile, filemode, d
 
-    @TraceCalls()
+    @TraceCalls(show=False)
     def get_data(
         self, fn: Union[Path, str], PD: dataclass, changetimestamp, protocol
     ) -> Union[None, tuple]:
@@ -685,23 +691,27 @@ class PlotSims:
 
         trials = range(len(d["Results"]))
         RCP.ntrials = len(trials)
-        for i, tr in enumerate(trials):
-            trd = d["Results"][tr]  # trial data
-            ti = trd["time"]
-            for n in range(len(trd["inputSpikeTimes"])):  # for each sgc
-                RCD.npre += len(trd["inputSpikeTimes"][n])
-            RCD.npost += len(trd["spikeTimes"])
-            RCD.st = SP.spikeIndices
-            RCD.npost += len(RCD.st[tr])
 
-        RCD.ti = ti
-        print(f"Detected {RCD.npost:d} Post spikes")
-        print(f"Detected {RCD.npre:d} Presynaptic spikes")
-        print("# trials: ", RCP.ntrials)
+        for i, tr in enumerate(list(d["Results"].keys())):
+            trd = d["Results"][tr]  # trial data
+            time_base = AR.MC.time_base / 1000.0  # convert to seconds
+            if 'inputSpikeTimes' in list(trd.keys()):
+                for n in range(len(trd["inputSpikeTimes"])):  # for each sgc
+                    RCD.npre += len(trd["inputSpikeTimes"][n])
+                RCD.npost += len(trd["spikeTimes"])
+                RCD.npost += len(RCD.st[tr])
+            else:
+                RCD.npost += sum(SP.spikes[i])
+            RCD.st = SP.spikeIndices
+
+        RCD.ti = time_base
+        # print(f"Detected {RCD.npost:d} Post spikes")
+        # print(f"Detected {RCD.npre:d} Presynaptic spikes")
+        # print("# trials: ", RCP.ntrials)
 
         # clip trace to avoid end effects
         RCP.max_time = (
-            np.max(ti) - RCP.min_time
+            np.max(RCD.ti) - RCP.min_time
         )  # this window needs to be at least as long as maxwin
         RCD.tx = np.arange(RCP.minwin, 0, RCP.binw)
         return (d, AR, SP, RMA, RCP, RCD)
@@ -758,7 +768,7 @@ class PlotSims:
         return data_res
 
     @time_func
-    @TraceCalls()
+    @TraceCalls(show=False)
     def analyze_data(
         self,
         ivdatafile: Union[Path, str],
@@ -809,6 +819,8 @@ class PlotSims:
         if spike_shape:
             SP.analyzeSpikeShape()
         RMA = None
+        print(SP.analysis_summary)
+        SP.analysis_summary['pulseDuration'] = 0.1
         if protocol == "IV":
             SP.fitOne(function="fitOneOriginal")
             RM.analyze(
@@ -2794,7 +2806,7 @@ class PlotSims:
                 amax = area
             sites[isite] = int(np.around(area * SC.synperum2))
 
-        self.VS_colnames = f"Cell,Configuration,carrierfreq,frequency,dmod,dB,VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,AN_VS,AN_phase,AN_phasesd,SAC_AN,SAC_Bu,maxArea,ninputs"
+        self.VS_colnames = f"Cell,Configuration,carrierfreq,frequency,dmod,dB,VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,AN_VS,AN_phase,AN_phasesd,SAC_AN,SAC_Bu,SAC_AN_HW,SAC_Bu_HW,maxArea,ninputs"
         line = f"{int(self.parent.cellID):d},{experiment:s},"
         line += f"{d.carrier_frequency:.1f},{freq:06.1f},{dmod:.1f},{dB:.1f},"
         line += f"{d.vs:.4f},"
@@ -2806,8 +2818,10 @@ class PlotSims:
         line += f"{d.an_vs:.4f},"
         line += f"{d.an_circ_phaseMean:.4f},"
         line += f"{d.an_circ_phaseSD:.4f},"
-        line += f"{d.sac_an_max:.4f},"
-        line += f"{d.sac_bu_max:.4f}"
+        line += f"{d.sac_an_CI:.4f},"
+        line += f"{d.sac_bu_CI:.4f},"
+        line += f"{d.sac_an_hw:.6f},"
+        line += f"{d.sac_bu_hw:.6f},"
         line += f"{amax:.4f},"
         line += f"{d.n_inputs:d}"
         self.VS_line = line
@@ -2820,8 +2834,9 @@ class PlotSims:
 
         return d
 
+    @winprint_continuous
     @TraceCalls()
-    def plot_SAC(self, selected):
+    def plot_SAC(self, selected=None):
         print("SAC analysis and plotting starting")
 
         if self.parent.selected_index_rows is None:
@@ -2854,7 +2869,6 @@ class PlotSims:
         plot_win = [0.1, 1.0]
         plot_dur = np.fabs(np.diff(plot_win))
         time_scale = 1.0
-
         for j, index_row in enumerate(selrows):
             selected = self.parent.table_manager.get_table_data(index_row)
             if selected is None:
@@ -2862,12 +2876,19 @@ class PlotSims:
             nfiles = len(selected.files)
             fn = selected.files[0]
             gbc = f"VCN_c{int(self.parent.cellID):02d}"
+    #         self.do_one_SAC(fn, gbc, PD, protocol)
+    #
+    # def do_one_SAC(self, fn, gbc, PD, protocol):
+        
             print(f"Getting data for gbc: {gbc:s}")
             SC, syninfo = self.get_synaptic_info(gbc)
             mtime = Path(fn).stat().st_mtime
             timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
                 "%Y-%m-%d-%H:%M"
             )
+
+            changetimestamp = get_changetimestamp()
+            
             res = self.get_data(fn, PD, changetimestamp, protocol)
             if res is None:
                 return None
@@ -2887,7 +2908,12 @@ class PlotSims:
                 fmod,
                 dmod,
             ) = self.get_stim_info(si, ri)
-
+            sim_dir = Path(fn).parts[-2]
+            tstring = f"{gbc:s}_{str(sim_dir):s}_{soundtype:s}"
+            mpl.get_current_fig_manager().canvas.set_window_title(tstring)
+            fstring = f"{gbc:s}_{soundtype:s}_{ri.dB} dBSPL"
+            P.figure_handle.suptitle(fstring, fontsize=13, fontweight="bold")
+            
             all_bu_st = []
             all_bu_st_trials = []
             ntr = len(AR.MC.traces)  # number of trials
@@ -2902,8 +2928,11 @@ class PlotSims:
                 stim_dt = stb[1] - stb[0]
                 if i == 0:
                     n_inputs = len(trd["inputSpikeTimes"])
-                if np.nanmax(trd["spikeTimes"]) > 2.0:  # probably in msec
-                    time_scale = 1e-3  # so scale to seconds
+                try:
+                    if len(trd["spikeTimes"]) > 0 and np.nanmax(trd["spikeTimes"]) > 2.0:  # probably in msec
+                        time_scale = 1e-3  # so scale to seconds
+                except:
+                    raise ValueError(trd["spikeTimes"])
                 sptimes = np.array(trd["spikeTimes"]) * time_scale  # convert to seconds
                 if not isinstance(trd["spikeTimes"], list) and not isinstance(
                     trd["spikeTimes"], np.ndarray
@@ -2930,8 +2959,9 @@ class PlotSims:
                 i_wpt = np.where((w_tb > pip_start) & (w_tb <= pip_duration))[0]
                 P.axdict["C"].plot(w_tb[i_wpt], waveform[i_wpt], linewidth=0.33)
             if ri.soundtype.endswith("Clicks"):
+                print("Clickpars")
                 pars = {
-                    "twin": 0.050,
+                    "twin": 0.002,
                     "binw": 3 * dt,
                     "delay": ri.clickStart + 0.2 * ri.clickTrainDuration,
                     "dur": 0.8 * ri.clickTrainDuration,
@@ -2943,6 +2973,7 @@ class PlotSims:
                 }
 
             else:
+                print("Sam Pars")
                 pars = {
                     "twin": 0.020,
                     "binw": 3 * dt,
@@ -2954,30 +2985,43 @@ class PlotSims:
                     "stimdur": pip_duration * 0.8,
                     "maxn": 100000000,
                 }
+            print(ri.soundtype)
             sac = SAC.SAC()
             yh, bins = sac.SAC_with_histo(
                 all_bu_st_trials, pars=pars, engine="cython", dither=dt / 2.0
             )
+            sac_bu_CI, peaks, HW, FW = sac.SAC_measures(yh, bins)
+            sac_bu_hw = HW[0][0]*pars["binw"]
+            print("BU SAC Report: \n  ")
+            print(f"    HW:    {sac_bu_hw:.6f}  CI: {sac_bu_CI:.2f}  Left IPS: {HW[2][0]:.2f}  Right IPS: {HW[3][0]:.2f}")
             # Fs: float = 100e3  # cochlea/zilany model rate
             # F0: float = 16000.0  # stimulus frequency
             # dB: float = 30.0  # in SPL
             # RF: float = 2.5e-3  # rise-fall time
             # fmod: float = 20  # hz, modulation if SAM
             # dmod: float = 0.0  # percent if SAM
-            sac_label = f"Expt: {ri.Spirou:s} {ri.dB:3.0f} dBSPL Fmod={ri.fmod:5.1}fHz Dmod={ri.dmod:5.1f}\%"
+            if ri.soundtype.endswith("Clicks"):
+                sac_label = f"Expt: {ri.Spirou:14s} {ri.dB:3.0f} dBSPL  HW={1e3*sac_bu_hw:.3f} ms  CI={sac_bu_CI:6.2f}"
+            else:
+                sac_label = f"Expt: {ri.Spirou:14s} {ri.dB:3.0f} dBSPL Fmod={ri.fmod:5.1}fHz Dmod={ri.dmod:5.1f}\%"
+            
+            return 
             P.axdict["A"].plot(
-                bins[:-1],
+                bins,
                 yh,
                 #   'k-',
                 label=sac_label,
             )
+            self.textappend(sac_label)
+        
         P.axdict["C"].set_xlim(pip_start, pip_duration - pip_start)
         P.axdict["B"].set_xlim(pip_start, pip_duration - pip_start)
-        P.axdict["A"].set_xlim(-0.05, 0.05)
-        P.axdict["A"].set_ylim(0, 10)
-        P.axdict["A"].legend(fontsize=7)
+        P.axdict["A"].set_xlim(-pars['twin'], pars['twin'])
+        P.axdict["A"].set_ylim(0, sac_bu_CI*1.05)
+        P.axdict["A"].legend(prop={"family": "monospace"}, fontsize=7)
 
         P.axdict["B"].get_shared_x_axes().join(P.axdict["B"], P.axdict["C"])
+        
         mpl.show()
 
     @TraceCalls()
@@ -3029,7 +3073,8 @@ class PlotSims:
     ):
         """
         Correctly plot PSTH with spike rate in spikes/second
-        values are in seconds (times, binwidths)"""
+        All values are in seconds (times, binwidths)
+        """
         num_trials = run_info.nReps
         bins = np.arange(0.0, max_time - zero_time, bin_width)
         spf = []
@@ -3334,6 +3379,7 @@ class PlotSims:
                     color="b",
                 )
                 P.axdict[bu_raster_panel].set_xlim(0, plot_dur)
+                
                 for k in range(n_inputs):  # raster of input spikes
                     if np.max(trd["inputSpikeTimes"][k]) > 2.0:  # probably in miec...
                         tk = np.array(trd["inputSpikeTimes"][k]) * 1e-3
@@ -3498,14 +3544,15 @@ class PlotSims:
                         engine=sac_engine,
                         dither=1e-3 * si.dtIC / 2.0,
                     )
-                    if not np.isnan(np.sum(bu_sac)):
-                        vs.sac_bu_max = np.max(bu_sac)
-                    else:
-                        vs.sac_bu_max = 0.0
+                    vs.sac_bu_CI, peaks, HW, FW = S.SAC_measures(bu_sac, bu_sacbins)
+                    vs.sac_bu_hw = HW[0][0]*spars.binw
+                    print("BU SAC Report: \n  ")
+                    print(f"    HW:    {vs.sac_bu_hw:.6f}  CI: {vs.sac_bu_CI:.2f}  Left IPS: {HW[2][0]:.2f}  Right IPS: {HW[3][0]:.2f}")
                 else:
                     bu_sac = None
-                    vs.sac_bu_max = 0.0
                     bu_sacbins = None
+                    vs.sac_bu_CI = 0.0
+                    vs.sac_bu_hw = 0.0
                 print(
                     "CN Vector Strength at %.1f: %7.3f, dispersion=%.2f (us) Rayleigh: %7.3f  p = %.3e  n_spikes = %d"
                     % (
@@ -3537,7 +3584,8 @@ class PlotSims:
                         spars.displayDuration = 2.0 / ri.fmod
 
                     an_sac = [None] * n_inputs
-                    vs.sac_an_max = 0.0
+                    an_hw = [None] * n_inputs
+                    an_fw = [None] * n_inputs
                     for i_an in range(n_inputs):
                         an_sac[i_an], an_sacbins = S.SAC_with_histo(
                             an_st_by_input[i_an],
@@ -3545,11 +3593,21 @@ class PlotSims:
                             engine=sac_engine,
                             dither=1e-3 * si.dtIC / 2.0,
                         )
-                        vs.sac_an_max = np.max([np.max(an_sac[i_an]), vs.sac_an_max])
+                        an_CI_windowed, peaks, an_hw[i_an], an_fw[i_an] = S.SAC_measures(an_sac[i_an], an_sacbins)
+                    an_hw = np.array(an_hw).T[0]  # reorganize the data
+                    vs.sac_an_hw = np.mean(an_hw[0,:])*spars.binw
+                    CI = np.mean(an_hw[1,:])
+                    vs.sac_an_CI = CI
+                    lips = np.mean(an_hw[2,:])
+                    rips = np.mean(an_hw[3,:])
+                    print("AN SAC Report: ")
+                    print(f"    HW:    {vs.sac_an_hw:.6f}  CI: {vs.sac_an_CI:.2f}  Left IPS: {lips:.2f}  Right IPS: {rips:.2f}")
                 else:
                     an_sac = None
                     an_sacbins = None
-                    vs.sac_an_max = 0.0
+                    vs.sac_an_CI = 0.0
+                    vs.sac_an_hw = 0.0
+                
                 print(" Sound type: ", soundtype)
                 print(
                     "AN Vector Strength at %.1f: %7.3f, d=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d"
@@ -3563,11 +3621,14 @@ class PlotSims:
                     )
                 )
                 if sac_flag:
+                    print(vs.sac_bu_CI)
+                    print(np.min(bu_sac))
+                    print(vs.sac_bu_hw)
                     print(
-                        f"BU SAC: {np.max(bu_sac):.3f}, {np.min(bu_sac):.3f}, {np.mean(bu_sac)}"
+                        f"BU SAC: CI = {vs.sac_bu_CI:7.3f}, min = {np.min(bu_sac):7.3f}, hw = {1e3*vs.sac_bu_hw:7.3f} ms"
                     )
                     print(
-                        f"AN SAC: {np.max(an_sac):.3f}, {np.min(an_sac):.3f}, {np.mean(an_sac)}"
+                        f"AN SAC: CI = {vs.sac_an_CI:7.3f}, min = {np.min(an_sac):7.3f}, hw = {1e3*vs.sac_an_hw:7.3f} ms"
                     )
                 vs.an_vs = vs_an.vs  # copy
                 vs.an_circ_phaseMean = vs_an.circ_phaseMean
@@ -3610,11 +3671,17 @@ class PlotSims:
                     )
                     if sac_flag:
                         for i_an in range(n_inputs):
-                            P.axdict[sac_panel].plot(
-                                an_sacbins[:-1], an_sac[i_an], "r-", label="AN"
+                            if i_an == 0:
+                                P.axdict[sac_panel].plot(
+                                an_sacbins, an_sac[i_an], "r-", label="AN"
                             )
+                            else:
+                                P.axdict[sac_panel].plot(
+                                an_sacbins, an_sac[i_an], "r-",
+                            )
+                                
                         P.axdict[sac_panel].plot(
-                            bu_sacbins[:-1], bu_sac, "b-", label="BU"
+                            bu_sacbins, bu_sac, "b-", label="BU"
                         )
                         if soundtype in ["SAM"]:
                             P.axdict[sac_panel].set_xlim(
@@ -3630,10 +3697,10 @@ class PlotSims:
                                 (-spars.displayDuration, spars.displayDuratoin)
                             )
                         P.axdict[sac_panel].set_ylim(
-                            (0.0, np.max([vs.sac_an_max, vs.sac_bu_max]) * 1.05)
+                            (0.0, np.max([vs.sac_an_CI, vs.sac_bu_CI]) * 1.05)
                         )
                         P.axdict[sac_panel].set_title(
-                            f"SAC: AN = {np.max(an_sac):.3f}  BU = {np.max(bu_sac):.3f})",
+                            f"SAC\nCI: AN={vs.sac_an_CI:.3f}  BU={vs.sac_bu_CI:.3f}\nHW: AN={1e3*vs.sac_an_hw:.3f}  BU={1e3*vs.sac_bu_hw:.3f} ms",
                             fontsize=8,
                             horizontalalignment="center",
                         )
