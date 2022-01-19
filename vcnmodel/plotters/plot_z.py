@@ -159,7 +159,7 @@ class PlotZ:
             g_axon = (1./d2['zin'])
             rho_axon = g_ds/g_axon
             
-            P.axarr[0, 3].plot(d1['f'], rho_axon, marker=self.syms[i], markersize=3, label=f"VCN_{fin:02d}")
+            P.axarr[0, 3].plot(d1['f'], rho_axon, marker=self.syms[i], markersize=1.5, label=f"VCN_{fin:02d}")
             P.axarr[0, 3].set_xlabel("Frequency (Hz)")
             P.axarr[0, 3].set_ylabel(r"$\rho_{axon}$")
             P.axarr[0, 3].set_ylim((0, rho_scale))
@@ -202,7 +202,7 @@ class PlotZ:
             print(f"File read: {str(filename):s}")
             # print("dkeys: ", d.keys())  # col = pg.intColor(i, hues=len(f))
             ax[0, col].plot(
-                d["f"], d["zin"], marker=self.syms[i], markersize=3, label=label[:7]
+                d["f"], d["zin"], marker=self.syms[i], markersize=1.5, label=label[:7]
             )
             ax[0, col].set_ylim(0, 100.0)
             ax[0, col].set_ylabel(r"R (M$\Omega$)")

@@ -182,6 +182,8 @@ SpirouChoices = [
     "fourlargest",
 ]
 
+# note that we use data classes to store related sets of
+# variables and results.
 
 @dataclass
 class PData:
@@ -215,6 +217,9 @@ class SpikeData:
 
 @dataclass
 class SACPars:
+    """
+    Shuffled autocorrelation parameters - copied from sac.py
+    """
     twin: float = 5.0
     binw: float = 0.05
     delay: float = 0.0
@@ -3070,6 +3075,8 @@ class PlotSims:
         bin_width: float = 1e-3,
         ax: Union[object, None] = None,
         scale: float = 1.0,
+        bin_fill = True,
+        edge_color = "k",
     ):
         """
         Correctly plot PSTH with spike rate in spikes/second
@@ -3086,6 +3093,10 @@ class PlotSims:
         spike_times_flat = np.array(spf, dtype=object).ravel() - zero_time
         # h, b = np.histogram(spike_times_flat, bins=bins)
         bins = np.arange(0.0, max_time - zero_time, bin_width)
+        if bin_fill:
+            face_color='k'
+        else:
+            face_color = 'None'
         if (not np.isnan(np.sum(spike_times_flat))) and (len(spike_times_flat) > 0) and (ax is not None):
             ax.hist(
                 x=spike_times_flat,
@@ -3093,8 +3104,8 @@ class PlotSims:
                 density=False,
                 # weights=scale * np.ones_like(spike_times_flat),
                 histtype="stepfilled",
-                facecolor="k",
-                edgecolor="k",
+                facecolor=face_color,
+                edgecolor=edge_color,
             )
         else:
             if ax is not None:

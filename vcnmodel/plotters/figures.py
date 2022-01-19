@@ -30,7 +30,7 @@ import vcnmodel.util.fixpicklemodule as FPM
 from vcnmodel.analyzers import sac as SAC
 from vcnmodel.plotters import (
     figure_data as FD,
-)  # table of simulation runs for plotting
+)  # table of simulation runs used for plotting figures
 
 config = toml.load(open("wheres_my_data.toml", "r"))
 cprint = CP.cprint
@@ -60,7 +60,7 @@ print(FD)
 
 
 def get_changetimestamp():
-    # trip filemode based on date of simulatoin
+    # trip filemode based on date of simulation
     changedate = "2020-04-29-12:00"
     dts = datetime.datetime.strptime(changedate, "%Y-%m-%d-%H:%M")
     changetimestamp = datetime.datetime.timestamp(dts)
@@ -101,8 +101,7 @@ class FigInfo:
 
 class Figures(object):
     """
-    Entry point.
-    This generates final figures for the SBEM manuscript by reaching back to the 
+    This class generates final figures for the SBEM manuscript by reaching back to the 
     original simulation data, including, in some cases, refitting.
     Both primary "examplar" figures, and supplemental figures, are generated.
     The figures are made consistent by using both sns.set_style and 
@@ -111,8 +110,9 @@ class Figures(object):
     
     This is ugly code, but it gets the job done.
     Note that some plots are modifications of what is present in plot_sims,
-    and also that plot_sims is used here. 
-    This is part of the DataTables interactive analysis tool for the simulations
+    and also that plot_sims is used here, through self.parent.PLT.
+    
+    This is part of the DataTablesVCN interactive analysis tool for the simulations
     in the SBEM project.
     Supported primarily by R01DC015901 (Spirou, Manis, Ellisman),
     Early development: R01 DC004551 (Manis, until 2019)
@@ -132,7 +132,7 @@ class Figures(object):
 
     def make_figure(self, figure_name: Union[str, None] = None):
         self.reset_style()
-        print("make_figure:", figure_name)
+        print("Making_figure:", figure_name)
         # dispatch
         dispatch_table = {
             # "Fig 3 Ephys-1 main": self.Figure3Main,
@@ -165,8 +165,21 @@ class Figures(object):
                 self.save_figure(fig)
 
     def save_figure(self, fig):
-        # P, save_file, title, title2={"title": None, 'x': 0.0, 'y': 0.0}):
-
+        """
+        Save a figure to a disk file.
+        This routine adds metadata to the figure, along with 
+        a title if specified.
+        
+        Parameters
+        ----------
+        fig : figinfo dataclass object. This should be created and
+            populated by the calling routine.
+        
+        Returns
+        -------
+        Nothing
+        """
+        
         fig.P.figure_handle.text(
             0.98,
             0.98,
@@ -203,6 +216,10 @@ class Figures(object):
         fig.P.figure_handle.show()
 
     def force_log_ticks(self, ax):
+        """
+        Set up log spacing ticks for the specified axis
+        """
+        
         locmaj = matplotlib.ticker.LogLocator(base=10.0, subs=(1.0,), numticks=100)
         ax.xaxis.set_major_locator(locmaj)
 
@@ -213,10 +230,16 @@ class Figures(object):
         ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
 
     def allIVs(self):
+        """
+        Plot an IV for every cell in the grade A cell list
+        """
         for cell in grAList():
             self.plotIV(cell)
 
     def get_dendmode(self, dendmode: str = ""):
+        """
+        Provide a remapping for the dendrite mode names
+        """
         if dendmode == "passive":
             dendm = "pasdend"
         elif dendmode == "active":
@@ -228,6 +251,21 @@ class Figures(object):
         return dendm
 
     def plotIV(self, cell=None, parent_figure=None, loc: Union[None, tuple] = None):
+        """
+        Plot the traces and current-voltage relationship for the specified cell.
+        
+        Parameters
+        ----------
+        cell : int (default None)
+            Specify the cell number to plot.
+            If no cell number is specified, this will plot the "default" cell specified
+            in figure_data.py, figure_IV dictionary.
+        parent_figure : figure object. 
+            Sets up the arrangement/order of panel labels based on whether this is being plotted
+            as a "sub" figure of a parent figure or not. 
+        loc: location of the "sub" figure relative to the parent figure. ranges 0-1 in each axis
+        
+        """
         if cell is None:
             cellN = FD.figure_IV["Cell"]
             d1 = FD.figure_IV["normal"]
@@ -269,6 +307,8 @@ class Figures(object):
         PD = PData()
         ymin = -125.0
         ymax = 20.0
+        # We generate subplot setups here by defining
+        # multiple grids in the figure.
         self.P = PH.regular_grid(
             rows,
             cols,
@@ -594,13 +634,18 @@ class Figures(object):
         cprint("c", "prepping fo run")
 
         for rax, iv in enumerate(FD.figure_AllIVs.keys()):
+            # if iv not in [9, 10]:
+           #      continue
             cprint("r", f"Doing Cell VCN_c{iv:02d} -----------------------------------")
             celln = Path(png_path, f"VCN_c{iv:02d}.png")
             if celln.is_file():  # add images from png files
                 img = mpimg.imread(str(celln))
                 self.P.axarr[rax, 0].imshow(img, aspect="equal")
                 ylim = self.P.axarr[rax, 0].get_ylim()
-                self.P.axarr[rax, 0].set_xlim(900, 1500)
+                if iv != 10:
+                    self.P.axarr[rax, 0].set_xlim(900, 1500)
+                else:
+                    self.P.axarr[rax, 0].set_xlim(-1200, 1500)
                 PH.noaxes(self.P.axarr[rax, 0])
             # plot 3 dendrite decorations
             for iax, dendmode in enumerate(["passive", "normal", "active"]):
@@ -659,6 +704,9 @@ class Figures(object):
         PZ.PlotZ()
 
     def make_eff_fig(self):
+        """
+        Set up plotter grid for efficacy figure. 
+        """
         row1y = 5.5
         row1h = 3.0
         row2y = 3.0
@@ -2000,17 +2048,84 @@ class Figures(object):
                 engine=sac_engine,
                 dither=1e-3 * si.dtIC / 2.0,
             )
-            print(bu_sacbins)
-            print(bu_sac)
             P.axdict[pan[5]].plot(
                 bu_sacbins,
                 bu_sac,
-                #   'k-',
+                'k-',
+                # label=sac_label,
+            )
+            an_sac, an_sacbins = S.SAC_with_histo(
+                an_st_grand,
+                pars = spars,
+                engine=sac_engine,
+                dither=1e-3 * si.dtIC / 2.0,
+            )
+            P.axdict[pan[5]].plot(
+                an_sacbins,
+                an_sac,
+                'r-',
                 # label=sac_label,
             )
         else:
-            pass
-
+            phasewin = [
+                pip_start + 0.25 * pip_duration,
+                pip_start + pip_duration,
+            ]
+            y = []
+            for z in all_bu_st:
+                y.extend(z)
+            x = np.array(y)
+            v = np.where((phasewin[0] <= x) & (x < phasewin[1]))[0]
+            bu_spikesinwin = x[v]
+            vs_bu = self.parent.PLT.VS.vector_strength(bu_spikesinwin, fmod)
+            vs_an = self.parent.PLT.VS.vector_strength(all_an_st, fmod)
+            # set bin width based on sampling rate.
+            per = 1.0 / fmod  # period, in seconds
+            est_binw1 = per / 30.0  # try this
+            dt = 1e-3 * si.dtIC
+            nints = np.floor(est_binw1 / dt)
+            if nints == 0:
+                nints = 1
+            if nints < est_binw1 / dt:
+                est_binw = nints * dt
+            else:
+                est_binw = est_binw1
+            # print('est_binw: ', est_binw, est_binw1, dt, nints, per)
+            self.parent.PLT.plot_psth(
+                vs_bu.circ_phase,
+                run_info=ri,
+                max_time=2 * np.pi,
+                bin_width=est_binw,
+                ax=P.axdict[pan[5]],
+            )
+            self.parent.PLT.plot_psth(
+                vs_an.circ_phase,
+                run_info=ri,
+                max_time=2 * np.pi,
+                bin_width=est_binw,
+                ax=P.axdict[pan[5]],
+                bin_fill = False,
+                edge_color = "r",
+            )
+            self.parent.PLT.plot_psth(
+                vs_bu.circ_phase,
+                run_info=ri,
+                max_time=2 * np.pi,
+                bin_width=est_binw,
+                ax=P.axdict[pan[5]],
+            )
+            # P.axdict["E"].hist(
+            #     vs["ph"],
+            #     bins=2 * np.pi * np.arange(30) / 30.0,
+            #     facecolor="k",
+            #     edgecolor="k",
+            # )
+            P.axdict[pan[5]].set_xlim((0.0, 2 * np.pi))
+            P.axdict[pan[5]].set_title(
+                f"VS: AN = {vs_an.vs:.3f} BU = {vs_bu.vs:.3f}",
+                fontsize=8,
+                horizontalalignment="center",
+            )
 
     def plot_psth_psth(
         self,
