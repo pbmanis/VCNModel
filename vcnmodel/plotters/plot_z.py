@@ -2,6 +2,7 @@ import pickle
 from pathlib import Path
 
 import matplotlib
+from matplotlib import rc
 import numpy as np
 import pyqtgraph as pg
 import seaborn as sns
@@ -10,14 +11,12 @@ from pylibrary.plotting import plothelpers as PH
 
 import toml
 
-matplotlib.rcParams["mathtext.fontset"] = "stixsans"
-# matplotlib.rcParams['font.family'] = 'sans-serif'
-# matplotlib.rcParams['font.sans-serif'] = ['stixsans'] #, 'Tahoma', 'DejaVu Sans',
-#                                #'Lucida Grande', 'Verdana']
-matplotlib.rcParams["pdf.fonttype"] = 42
-matplotlib.rcParams["text.usetex"] = False
-sns.set_style(rc={"pdf.fonttype": 42})
+rc("text", usetex=True)
+rc("text.latex", preamble=r"\usepackage{xcolor}")
+rc("mathtext", fontset="stixsans")
 
+sns.set_style(rc={"pdf.fonttype": 42})
+mpl.style.use("~/.matplotlib/figures.mplstyle")
 config = toml.load(open("wheres_my_data.toml", "r"))
 
 """
@@ -40,7 +39,6 @@ class PlotZ:
         for fin in self.fi:
             fin_r = self.checkfi(fin)
             self.filenames.append(fin_r)
-
         # cols = ['w', 'm', 'c', 'y', 'g', 'r', 'b', pg.mkPen()]
         self.syms = ["s", "o", "x", "s", "o", "x", "s", "o", "x", "s"]
 
@@ -117,12 +115,12 @@ class PlotZ:
         """
         # style = STY.styler('JNeurosci', "single")
         P = PH.regular_grid(
-            3,
-            4,
+            rows=3,
+            cols=3,
             order="rowsfirst",
-            figsize=(10, 8),
-            verticalspacing=0.08,
-            horizontalspacing=0.08,
+            figsize=(8, 8),
+            verticalspacing=0.1,
+            horizontalspacing=0.1,
             margins={
                 "bottommargin": 0.1,
                 "leftmargin": 0.08,
@@ -130,7 +128,9 @@ class PlotZ:
                 "topmargin": 0.12,
             },
             panel_labels=["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"],
-            labelposition=(-0.05, 1.05),
+            labelposition=(-0.08, 1.1),
+            fontsize={"tick": 8, "label": 10, "panel": 13},
+            fontweight={"tick": "normal", "label": 'normal', "panel": "bold"},
         )
         axonly_scale = 5500.
         rho_scale=150.
@@ -140,6 +140,7 @@ class PlotZ:
             for fin in self.fi:
                 f.append(self.checkfi(fin, cellmode=cond, decorate="normal"))
             self.plot_col(col=i, f=f, P=P, axonly_scale=axonly_scale)
+
         for i, fin in enumerate(self.fi):
             with open(
                 Path(
@@ -158,14 +159,14 @@ class PlotZ:
             g_ds = (1./d1['zin'])  # g_dend _ g soma / g-axon
             g_axon = (1./d2['zin'])
             rho_axon = g_ds/g_axon
-            
-            P.axarr[0, 3].plot(d1['f'], rho_axon, marker=self.syms[i], markersize=1.5, label=f"VCN_{fin:02d}")
-            P.axarr[0, 3].set_xlabel("Frequency (Hz)")
-            P.axarr[0, 3].set_ylabel(r"$\rho_{axon}$")
-            P.axarr[0, 3].set_ylim((0, rho_scale))
-            
 
-        save_file = "Fig_M1B_Supplemental_Zin.pdf"
+            P.axarr[1, 2].plot(d1['f'], rho_axon, marker=self.syms[i], markersize=1.5, label=f"BC{fin:02d}")
+        P.axarr[1, 2].set_xlabel("Frequency (Hz)")
+        rholabel = r"$\rho_{axon}$"
+        P.axarr[1, 2].set_ylabel(rholabel)
+        P.axarr[1, 2].set_ylim((0, rho_scale))
+
+        save_file = "Figure3-Supplemental3_Zin.pdf"
         P.figure_handle.text(
             0.99,
             0.99,
@@ -179,19 +180,20 @@ class PlotZ:
             metadata={
                 "Creator": "Paul Manis",
                 "Author": "Paul Manis",
-                "Title": "SBEM Project Figure1B Modeling (Supplemental)",
+                "Title": "SBEM Project Figure3 Modeling (Supplemental Zin)",
             },
         )
         mpl.show()
 
     def plot_col(self, col, f, P, axonly_scale=3000.):
+        import matplotlib.scale as MPLS
+        import matplotlib.ticker
+        
         ax = P.axarr
-        for i, a in enumerate(ax.ravel()):
-            if i < 6:
-                a.set_xscale("log")
+
         for i, filename in enumerate(f):
             # print("col: ", col, i, "file: ", filename)
-            label = filename[:]  # .replace('_', '\_')
+            label = f"BC{int(filename[5:7]):d}"
             with open(
                 Path(
                     config["cellDataDirectory"], config["impedanceDirectory"], filename
@@ -202,35 +204,37 @@ class PlotZ:
             print(f"File read: {str(filename):s}")
             # print("dkeys: ", d.keys())  # col = pg.intColor(i, hues=len(f))
             ax[0, col].plot(
-                d["f"], d["zin"], marker=self.syms[i], markersize=1.5, label=label[:7]
+                d["f"], d["zin"], marker=self.syms[i], markersize=1., label=label[:7]
             )
+
             ax[0, col].set_ylim(0, 100.0)
             ax[0, col].set_ylabel(r"R (M$\Omega$)")
             ax[0, col].set_xlabel("Frequency (Hz)")
-
+            # ax[0, col].set_xscale("log")
             if col == 0:
-                ax[0, col].set_title("Full Dendrite", {"y": 1.15, "fontweight": "bold"})
+                ax[0, col].set_title("Full Dendrite", {"y": 1.2, "fontweight": "bold"})
             if col == 1:
-                ax[0, col].set_title("No Dendrite", {"y": 1.15, "fontweight": "bold"})
+                ax[0, col].set_title("No Dendrite", {"y": 1.2, "fontweight": "bold"})
             if col == 2:
-                ax[0, col].set_title("Axon Only", {"y": 1.15, "fontweight": "bold"})
+                ax[0, col].set_title("Axon Only", {"y": 1.2, "fontweight": "bold"})
                 ax[0, col].set_ylim(0, axonly_scale)
-            ax[1, col].plot(
-                d["f"],
-                d["phase"],
-                marker=self.syms[i],
-                markersize=3,
-                # label=filename
-            )
-            ax[1, col].set_ylim(-1.1*np.pi/2., 1.1*np.pi/2)
-            ax[1, col].set_ylabel(r"$\phi$ (radians)")
-            ax[1, col].set_xlabel("Frequency (Hz)")
+            if col != 2:  # we plot rho instead here.
+                ax[1, col].plot(
+                    d["f"],
+                    d["phase"],
+                    marker=self.syms[i],
+                    markersize=1.0,
+                    # label=filename
+                )
+                ax[1, col].set_ylim(-1.1*np.pi/2., 1.1*np.pi/2)
+                ax[1, col].set_ylabel(r"$\phi$ (radians)")
+                ax[1, col].set_xlabel("Frequency (Hz)")
 
             zr = d["zin"] * np.sqrt(1.0 / (1 + (np.tan(d["phase"]) ** 2.0)))
             zi = np.tan(d["phase"]) * zr
 
             ax[2, col].plot(
-                zr, -zi, marker=self.syms[i], markersize=3,
+                zr, -zi, marker=self.syms[i], markersize=1,
             )
             if col < 2:
                 ax[2, col].set_ylim(-10.0, 60.0)
@@ -249,12 +253,32 @@ class PlotZ:
                 frameon=False,
                 fancybox=False,
                 bbox_to_anchor=[
-                    axbox.x0 + 0.7 * axbox.width,
+                    axbox.x0 + 0.8 * axbox.width,
                     axbox.y0 + 0.27 * axbox.height,
                 ],
                 bbox_transform=P.figure_handle.transFigure,
             )
 
-
+        for row in [0,1]:
+            ax[row, col].tick_params('x', which='minor', direction='in', length=2.5, width=0.5)
+            
+            ax[row, col].set_xscale("log")
+            ax[row, col].set_xlim(1, 10000.)
+            xmajor = matplotlib.ticker.LogLocator(base=10, numticks=5)
+            ticks = matplotlib.ticker.FixedLocator([1, 10, 100, 1000, 10000])
+            ax[row, col].xaxis.set_major_locator(ticks)
+            xminor = matplotlib.ticker.LogLocator(base=10, subs = np.arange(0, 10) * 0.1, numticks = 10)
+            ax[row, col].xaxis.set_minor_locator(xminor)
+            ticks = matplotlib.ticker.FixedLocator([1, 10, 100, 1000, 10000])
+            ax[row, col].set_xticklabels(["1", "10", "100", "1000", "10000"])
+        # MPLS.LogScale(ax[0, col], subs=[2,3,4,5,6,7,8,9])
+ #        MPLS.LogScale(ax[1, col], subs=[2,3,4,5,6,7,8,9])
+        for row in [0, 1, 2]:
+            # for tick in ax[row, col].get_xticklabels():
+#                 tick.set_fontname("Arial")
+#             for tick in ax[row, col].get_yticklabels():
+#                 tick.set_fontname("Arial")
+            ax[row, col].tick_params('both', which='major', labelsize=8)
+    
 if __name__ == "__main__":
     Z = PlotZ()

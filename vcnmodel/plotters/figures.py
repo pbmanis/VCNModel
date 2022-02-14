@@ -16,7 +16,7 @@ from cycler import cycler
 from matplotlib import image as mpimg
 from matplotlib import pyplot as mpl
 from matplotlib.lines import Line2D
-from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
+from matplotlib.ticker import MultipleLocator, AutoMinorLocator
 
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
@@ -179,7 +179,7 @@ class Figures(object):
         -------
         Nothing
         """
-        
+
         fig.P.figure_handle.text(
             0.98,
             0.98,
@@ -219,7 +219,7 @@ class Figures(object):
         """
         Set up log spacing ticks for the specified axis
         """
-        
+
         locmaj = matplotlib.ticker.LogLocator(base=10.0, subs=(1.0,), numticks=100)
         ax.xaxis.set_major_locator(locmaj)
 
@@ -250,7 +250,13 @@ class Figures(object):
             raise ValueError(f"figures.py: dendmode not recognized: {dendmode:s}")
         return dendm
 
-    def plotIV(self, cell=None, parent_figure=None, loc: Union[None, tuple] = None):
+    def plotIV(
+        self,
+        cell=None,
+        parent_figure=None,
+        loc: Union[None, tuple] = None,
+        toponly: bool = False,
+    ):
         """
         Plot the traces and current-voltage relationship for the specified cell.
         
@@ -264,6 +270,8 @@ class Figures(object):
             Sets up the arrangement/order of panel labels based on whether this is being plotted
             as a "sub" figure of a parent figure or not. 
         loc: location of the "sub" figure relative to the parent figure. ranges 0-1 in each axis
+        
+        toponly: just for replotting the raw traces.
         
         """
         if cell is None:
@@ -319,10 +327,10 @@ class Figures(object):
             verticalspacing=0.25,
             horizontalspacing=0.35,
             margins={
-                "bottommargin": 2.25 + bmar,
+                "bottommargin": 2.00 + bmar,
                 "leftmargin": 0.5,
                 "rightmargin": 0.5,
-                "topmargin": 0.5 + tmar,
+                "topmargin": 0.25 + tmar,
             },
             labelposition=(-0.05, 1.05),
             parent_figure=parent_figure,
@@ -337,12 +345,12 @@ class Figures(object):
             showgrid=False,
             figsize=fsize,
             verticalspacing=0.25,
-            horizontalspacing=0.65,
+            horizontalspacing=0.15,
             margins={
                 "bottommargin": 0.5 + bmar,
-                "leftmargin": 0.5,
-                "rightmargin": 0.5,
-                "topmargin": 2.0 + tmar,
+                "leftmargin": 0.2,
+                "rightmargin": 0.2,
+                "topmargin": 1.8 + tmar,
             },
             labelposition=(-0.05, 1.05),
             parent_figure=self.P,
@@ -362,13 +370,14 @@ class Figures(object):
                 "bottommargin": 0.5 + bmar,
                 "leftmargin": 2.35,
                 "rightmargin": 4.15,
-                "topmargin": 2.0 + tmar,
+                "topmargin": 1.8 + tmar,
             },
             labelposition=(-0.25, 1.05),
             parent_figure=self.P,
             panel_labels=p3panels,
         )
-
+        ivaxis = self.P2.axarr[0, 0]
+        print("ivaxis: ", ivaxis)
         for iax, iv in enumerate(["pasdend", "normal", "actdend"]):
             if cell is None:
                 dfile = FD.figure_IV[iv]
@@ -392,14 +401,14 @@ class Figures(object):
                 ymax=ymax,
                 iax=iax,
                 figure=self.P.figure_handle,
-                ivaxis=self.P2.axarr[0, 0],  # accumulate IV's in bottom left plot
+                ivaxis=ivaxis,  # accumulate IV's in bottom left plot
                 ivcolor=colors[iax],
                 calx=120.0,
                 caly=-10.0,
             )
-            self.P.axarr[0, iax].set_title(
-                title_text[iv], color="k", fontweight="normal"
-            )
+            # self.P.axarr[0, iax].set_title(
+        #      title_text[iv], color="k", fontweight="normal"
+        #  )
 
         ls = ["-", "-", "-", ""]
         mc = ["w", "w", "w", "r"]
@@ -416,152 +425,153 @@ class Figures(object):
             )
             for ic, c in enumerate(colors)
         ]
-        labels = ["Passive", "Half-active", "Active", "Spk Thresh"]
-        self.P2.axarr[0, 0].legend(
-            lines, labels, bbox_to_anchor=(0.32, 0.35), fontsize=7
-        )
         # self.P2.axarr[0, 0].line.set_label(iv)
         # self.P2.axarr[0,0].legend(["passive", "normal", "active", "spike thresholds"])
 
-        res_label = r"$\mathregular{R_{in} (M\Omega)}$"
-        tau_label = r"$\mathregular{\tau_{m} (ms)}$"
-        phase_label = r"$\mathregular{\phi (radians)}$"
-
-        # plot overlays of all cell z/phase
-        for iax, mode in enumerate(["Z_passive", "Z_normal", "Z_active"]):
-            if mode not in FD.figure_IV.keys():
-                continue
-            # cprint('r', f"doing iv: {str(mode):s}")
-            sfi = Path(
-                config["cellDataDirectory"],
-                config["impedanceDirectory"],
-                FD.figure_IV[mode],
+        if not toponly:
+            labels = ["Passive", "Half-active", "Active", "Spk Thresh"]
+            self.P2.axarr[0, 0].legend(
+                lines, labels, bbox_to_anchor=(0.32, 0.35), fontsize=7
             )
-            if not sfi.is_file():
-                cprint("r", f"File not found!!!!!!\n->>> {str(sfi):s}")
-                return None
-                continue
-            # cprint('c', f"sfi Z: {str(sfi):s}")
-            # ax = self.P2.axarr[0, 1]
-            ax = self.P3.axdict[phaseplot1]
-            label = sfi.name  # .replace("_", "\_")
-            with open(sfi, "rb") as fh:
-                d = FPM.pickle_load(fh)
-            pz = ax.plot(
-                d["f"],
-                d["zin"],
-                color=colors[iax],
-                marker=syms[iax],
-                markersize=3,
-                label=label[:8],
-            )
-            ax.set_ylim(0, 60.0)
-            ax.set_xlim(1.0, 10000.0)
-            ax.set_ylabel(res_label)
-            PH.noaxeslabels(ax, whichaxes="x")
-            # ax.set_xlabel("Frequency (Hz)", fontsize=7)
-            ax.set_xscale("log")
-            self.force_log_ticks(ax)
+            res_label = r"$\mathregular{R_{in} (M\Omega)}$"
+            tau_label = r"$\mathregular{\tau_{m} (ms)}$"
+            phase_label = r"$\mathregular{\phi (radians)}$"
 
-            # secax = PLS.create_inset_axes([0.0, 0.0, 1, 0.5], ax, label=str(ax))
-            secax = self.P3.axdict[phaseplot2]
-            secax.set_xscale("log")
-            secax.set_xlim(1.0, 10000.0)
-            self.force_log_ticks(secax)
-            pp = secax.plot(
-                d["f"],
-                d["phase"],
-                color=colors[iax],
-                marker=syms[iax],
-                markersize=3,
-                # label=filename
-            )
-            secax.set_ylim(-0.6, 0.2)
-            secax.set_ylabel(phase_label)
-            secax.set_xlabel("Frequency (Hz)")
-            PH.nice_plot(secax)
-
-        # PH.show_figure_grid(self.P.figure_handle)
-
-        # get Rin and RMA from all the examples and make a summary distribution plot
-        rins = {}
-        taus = {}
-
-        k = 0
-        for rax, iv in enumerate(FD.figure_AllIVs.keys()):
-            # cellpath = Path(self.config['cellDataDirectory'], f"VCN_c{iv:02d}", 'Simulations', 'IV')
-            for iax, dendmode in enumerate(["passive", "normal", "active"]):
-                dendm = self.get_dendmode(dendmode)
-
-                sfi = Path(
-                    self.config["cellDataDirectory"],
-                    f"VCN_c{iv:02d}",
-                    "Simulations",
-                    "IV",
-                    FD.figure_AllIVs[iv][dendm],
-                )
-                if not sfi.is_dir():
-                    print("sfi is not a dir")
+            # plot overlays of all cell z/phase
+            for iax, mode in enumerate(["Z_passive", "Z_normal", "Z_active"]):
+                if mode not in FD.figure_IV.keys():
                     continue
-                fn = list(sfi.glob("*"))
-                sfi = Path(sfi, fn[0])
-                AR, SP, RMA = self.parent.PLT.plot_traces(
-                    None,  # self.P.axarr[rax, iax+1],
-                    sfi,
-                    PD,
-                    protocol="IV",
-                    ymin=ymin,
-                    ymax=ymax,
-                    iax=iax,
-                    figure=None,
+                # cprint('r', f"doing iv: {str(mode):s}")
+                sfi = Path(
+                    config["cellDataDirectory"],
+                    config["impedanceDirectory"],
+                    FD.figure_IV[mode],
                 )
-                rins[k] = {"Cell": iv, "Rin": RMA["Rin"], "dendrites": dendmode}
-                taus[k] = {"Cell": iv, "taum": RMA["taum"], "dendrites": dendmode}
-                k += 1
+                if not sfi.is_file():
+                    cprint("r", f"File not found!!!!!!\n->>> {str(sfi):s}")
+                    return None
+                    continue
+                # cprint('c', f"sfi Z: {str(sfi):s}")
+                # ax = self.P2.axarr[0, 1]
+                ax = self.P3.axdict[phaseplot1]
+                label = sfi.name  # .replace("_", "\_")
+                with open(sfi, "rb") as fh:
+                    d = FPM.pickle_load(fh)
+                pz = ax.plot(
+                    d["f"],
+                    d["zin"],
+                    color=colors[iax],
+                    marker=syms[iax],
+                    markersize=3,
+                    label=label[:8],
+                )
+                ax.set_ylim(0, 60.0)
+                ax.set_xlim(1.0, 10000.0)
+                ax.set_ylabel(res_label)
+                PH.noaxeslabels(ax, whichaxes="x")
+                # ax.set_xlabel("Frequency (Hz)", fontsize=7)
+                ax.set_xscale("log")
+                self.force_log_ticks(ax)
 
-        df_rin = pd.DataFrame.from_dict(rins, orient="index")  # , orient='index')
-        df_tau = pd.DataFrame.from_dict(taus, orient="index")
+                # secax = PLS.create_inset_axes([0.0, 0.0, 1, 0.5], ax, label=str(ax))
+                secax = self.P3.axdict[phaseplot2]
+                secax.set_xscale("log")
+                secax.set_xlim(1.0, 10000.0)
+                self.force_log_ticks(secax)
+                pp = secax.plot(
+                    d["f"],
+                    d["phase"],
+                    color=colors[iax],
+                    marker=syms[iax],
+                    markersize=3,
+                    # label=filename
+                )
+                secax.set_ylim(-0.6, 0.2)
+                secax.set_ylabel(phase_label)
+                secax.set_xlabel("Frequency (Hz)")
+                PH.nice_plot(secax)
 
-        sns.boxplot(
-            data=df_rin,
-            x="dendrites",
-            y="Rin",
-            ax=self.P2.axdict[rinplot],
-            saturation=0.3,
-            palette=colors,
-        )
-        sns.stripplot(
-            data=df_rin,
-            x="dendrites",
-            y="Rin",
-            ax=self.P2.axdict[rinplot],
-            color="0.6",
-            size=4.0,
-            edgecolor="k",
-        )
-        self.P2.axdict[rinplot].set_ylim(0, 30.0)
-        self.P2.axdict[rinplot].set_ylabel(res_label)
-        self.P2.axdict[rinplot].set_xlabel("Dendrite Decoration")
-        sns.boxplot(
-            data=df_tau,
-            x="dendrites",
-            y="taum",
-            ax=self.P2.axdict[tauplot],
-            saturation=0.3,
-            palette=colors,
-        )
-        sns.stripplot(
-            data=df_tau,
-            x="dendrites",
-            y="taum",
-            ax=self.P2.axdict[tauplot],
-            color="0.6",
-            size=4.0,
-            edgecolor="k",
-        )
-        self.P2.axdict[tauplot].set_ylim(0, 2.5)
-        self.P2.axdict[tauplot].set_ylabel(tau_label)
-        self.P2.axdict[tauplot].set_xlabel("Dendrite Decoration")
+            # PH.show_figure_grid(self.P.figure_handle)
+
+            # get Rin and RMA from all the examples and make a summary distribution plot
+            rins = {}
+            taus = {}
+
+            k = 0
+            for rax, iv in enumerate(FD.figure_AllIVs.keys()):
+                # cellpath = Path(self.config['cellDataDirectory'], f"VCN_c{iv:02d}", 'Simulations', 'IV')
+                for iax, dendmode in enumerate(["passive", "normal", "active"]):
+                    dendm = self.get_dendmode(dendmode)
+
+                    sfi = Path(
+                        self.config["cellDataDirectory"],
+                        f"VCN_c{iv:02d}",
+                        "Simulations",
+                        "IV",
+                        FD.figure_AllIVs[iv][dendm],
+                    )
+                    if not sfi.is_dir():
+                        print("sfi is not a dir")
+                        continue
+                    fn = list(sfi.glob("*"))
+                    sfi = Path(sfi, fn[0])
+                    AR, SP, RMA = self.parent.PLT.plot_traces(
+                        None,  # self.P.axarr[rax, iax+1],
+                        sfi,
+                        PD,
+                        protocol="IV",
+                        ymin=ymin,
+                        ymax=ymax,
+                        iax=iax,
+                        figure=None,
+                    )
+                    rins[k] = {"Cell": iv, "Rin": RMA["Rin"], "dendrites": dendmode}
+                    taus[k] = {"Cell": iv, "taum": RMA["taum"], "dendrites": dendmode}
+                    k += 1
+
+            df_rin = pd.DataFrame.from_dict(rins, orient="index")  # , orient='index')
+            df_tau = pd.DataFrame.from_dict(taus, orient="index")
+
+            sns.boxplot(
+                data=df_rin,
+                x="dendrites",
+                y="Rin",
+                ax=self.P2.axdict[rinplot],
+                saturation=0.3,
+                palette=colors,
+            )
+            sns.stripplot(
+                data=df_rin,
+                x="dendrites",
+                y="Rin",
+                ax=self.P2.axdict[rinplot],
+                color="0.6",
+                size=4.0,
+                edgecolor="k",
+            )
+            self.P2.axdict[rinplot].set_ylim(0, 30.0)
+            self.P2.axdict[rinplot].set_ylabel(res_label)
+            self.P2.axdict[rinplot].set_xlabel("Dendrite Decoration")
+            sns.boxplot(
+                data=df_tau,
+                x="dendrites",
+                y="taum",
+                ax=self.P2.axdict[tauplot],
+                saturation=0.3,
+                palette=colors,
+            )
+            sns.stripplot(
+                data=df_tau,
+                x="dendrites",
+                y="taum",
+                ax=self.P2.axdict[tauplot],
+                color="0.6",
+                size=4.0,
+                edgecolor="k",
+            )
+            self.P2.axdict[tauplot].set_ylim(0, 2.5)
+            self.P2.axdict[tauplot].set_ylabel(tau_label)
+            self.P2.axdict[tauplot].set_xlabel("Dendrite Decoration")
 
         fig = FigInfo()
         fig.P = self.P
@@ -635,7 +645,7 @@ class Figures(object):
 
         for rax, iv in enumerate(FD.figure_AllIVs.keys()):
             # if iv not in [9, 10]:
-           #      continue
+            #      continue
             cprint("r", f"Doing Cell VCN_c{iv:02d} -----------------------------------")
             celln = Path(png_path, f"VCN_c{iv:02d}.png")
             if celln.is_file():  # add images from png files
@@ -961,7 +971,7 @@ class Figures(object):
                 )
                 axes[ic].annotate(
                     text=f"{n+1:d} ",
-                    xy=(400.0, y0-60.),  # ms
+                    xy=(400.0, y0 - 60.0),  # ms
                     fontsize=8,
                     horizontalalignment="right",
                     verticalalignment="center",
@@ -1160,7 +1170,7 @@ class Figures(object):
                 "F": {"pos": [6.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
                 "G": {"pos": [9.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
             }
-            figsize = (12,8)
+            figsize = (12, 8)
         else:
             sizer = {}
             figsize = (9, 8)
@@ -1261,7 +1271,12 @@ class Figures(object):
             synlabel_num = 5
         else:
             synlabel_num = 2
-        self.plot_revcorr_supplement(cells=example_cells, parent_figure=P, dBSPL="30dB", synlabel_num=synlabel_num)
+        self.plot_revcorr_supplement(
+            cells=example_cells,
+            parent_figure=P,
+            dBSPL="30dB",
+            synlabel_num=synlabel_num,
+        )
         # self.plot_efficacy_supplement(cells=example_cells, parent_figure=P, traces=False)
 
         for j in range(len(example_cells)):
@@ -1532,8 +1547,8 @@ class Figures(object):
         rate_ax: Union[list, None] = None,
         vm_ax: Union[list, None] = None,
         cumulative: Union[object, None] = None,
-        synlabel_num: int=0,
-        colormap: str="magma",  # default color map
+        synlabel_num: int = 0,
+        colormap: str = "magma",  # default color map
     ):
         if cells is None:
             cells = grAList()
@@ -1641,7 +1656,7 @@ class Figures(object):
             else:
                 tcal = False  # no cal bar
             if synlabel_num == 0:
-                synlabel= True
+                synlabel = True
             else:
                 if cell_number == synlabel_num:
                     synlabel = True
@@ -1845,21 +1860,20 @@ class Figures(object):
     def Figure7Main(self, parent_figure=None):
         sizer = OrderedDict(  # define figure layout
             [
-                ("A", {"pos": [0.08, 0.4, 0.87, 0.10]}),
-                ("B", {"pos": [0.08, 0.4, 0.73, 0.10]}),
-                ("C", {"pos": [0.08, 0.4, 0.59, 0.10]}),
-                ("D", {"pos": [0.08, 0.4, 0.45, 0.10]}),
-                ("E", {"pos": [0.08, 0.4, 0.31, 0.10]}),
-                ("F", {"pos": [0.08, 0.4, 0.17, 0.10]}),
-                ("G", {"pos": [0.08, 0.4, 0.05, 0.08]}),
-                
-                ("H", {"pos": [0.57, 0.4, 0.87, 0.10]}),
-                ("I", {"pos": [0.57, 0.4, 0.73, 0.10]}),
-                ("J", {"pos": [0.57, 0.4, 0.59, 0.10]}),
-                ("K", {"pos": [0.57, 0.4, 0.45, 0.10]}),
-                ("L", {"pos": [0.57, 0.4, 0.31, 0.10]}),
-                ("M", {"pos": [0.57, 0.4, 0.17, 0.10]}),
-                ("N", {"pos": [0.57, 0.4, 0.05, 0.08]}),
+                ("A", {"pos": [0.08, 0.4, 0.87, 0.09]}),
+                ("B", {"pos": [0.08, 0.4, 0.73, 0.09]}),
+                ("C", {"pos": [0.08, 0.4, 0.59, 0.09]}),
+                ("D", {"pos": [0.08, 0.4, 0.45, 0.09]}),
+                ("E", {"pos": [0.08, 0.4, 0.31, 0.09]}),
+                ("F", {"pos": [0.08, 0.4, 0.17, 0.09]}),
+                ("G", {"pos": [0.08, 0.4, 0.05, 0.07]}),
+                ("H", {"pos": [0.57, 0.4, 0.87, 0.09]}),
+                ("I", {"pos": [0.57, 0.4, 0.73, 0.09]}),
+                ("J", {"pos": [0.57, 0.4, 0.59, 0.09]}),
+                ("K", {"pos": [0.57, 0.4, 0.45, 0.09]}),
+                ("L", {"pos": [0.57, 0.4, 0.31, 0.09]}),
+                ("M", {"pos": [0.57, 0.4, 0.17, 0.09]}),
+                ("N", {"pos": [0.57, 0.4, 0.05, 0.07]}),
             ]
         )  # dict elements are [left, width, bottom, height] for the axes in the plot.
 
@@ -1876,7 +1890,9 @@ class Figures(object):
         P.axdict["B"].set_title("Bushy Spike Raster", fontsize=9)
         P.axdict["B"].set_ylabel("Trial")
 
-        P.axdict["C"].set_title("Bushy PSTH", fontsize=9, verticalalignment="top", y=0.95)
+        P.axdict["C"].set_title(
+            "Bushy PSTH", fontsize=9, verticalalignment="top", y=0.95
+        )
         P.axdict["C"].set_ylabel("Spikes/second", fontsize=9)
 
         P.axdict["D"].set_title("ANF Spike Raster", fontsize=9)
@@ -1899,7 +1915,9 @@ class Figures(object):
         P.axdict["I"].set_title("Bushy Spike Raster", fontsize=9)
         P.axdict["I"].set_ylabel("Trial")
 
-        P.axdict["J"].set_title("Bushy PSTH", fontsize=9, verticalalignment="top", y=0.95)
+        P.axdict["J"].set_title(
+            "Bushy PSTH", fontsize=9, verticalalignment="top", y=0.95
+        )
         P.axdict["J"].set_ylabel("Spikes/second", fontsize=9)
 
         P.axdict["K"].set_title("ANF Spike Raster", fontsize=9)
@@ -1916,7 +1934,6 @@ class Figures(object):
         P.axdict["N"].set_ylabel("Amplitude (Pa)", fontsize=8)
         P.axdict["N"].set_xlabel("T (s)", fontsize=9)
 
-        
         for axl in [
             "B",
             "C",
@@ -1925,7 +1942,6 @@ class Figures(object):
             "G",
         ]:
             P.axdict[axl].sharex(P.axdict["A"])
-        
 
         for axl in [
             "I",
@@ -1935,28 +1951,37 @@ class Figures(object):
             "N",
         ]:
             P.axdict[axl].sharex(P.axdict["H"])
-        
+
         cell_number = 11
-        self.Figure7_one_column("SAM", cell_number, FD.figure_SAM_SAC, P, ["A", "B", "C", "D", "E", "F", "G"])
-        self.Figure7_one_column("SAC", cell_number, FD.figure_SAM_SAC, P, ["H", "I", "J", "K", "L", "M", "N"])
-        
+        self.Figure7_one_column(
+            "SAM",
+            cell_number,
+            FD.figure_SAM_SAC,
+            P,
+            ["A", "B", "C", "D", "E", "F", "G"],
+        )
+        self.Figure7_one_column(
+            "SAC",
+            cell_number,
+            FD.figure_SAM_SAC,
+            P,
+            ["H", "I", "J", "K", "L", "M", "N"],
+        )
+
         fig = FigInfo()
         if parent_figure is not None:
             fig.P = parent_figure
         else:
             fig.P = P
         fig.filename = "Figure7_Ephys3_main_v1.pdf"
-        fig.title[
-            "title"
-        ] = "SBEM Project Figure 7 Modeling: SAM, SAC"
+        fig.title["title"] = "SBEM Project Figure 7 Modeling: SAM, SAC"
         title2 = {"title": f"", "x": 0.99, "y": 0.01}
         fig.title2 = title2
         print("returnin fig: ", fig)
         return fig
-    
-        
+
     def Figure7_one_column(self, mode, cell_number, dataset, P, pan):
-    
+
         PD = PData()
         cellpath = Path(
             self.config["cellDataDirectory"],
@@ -1964,7 +1989,7 @@ class Figures(object):
             "Simulations",
             "AN",
         )
-        
+
         sfi = Path(cellpath, Path(dataset[mode][0]).name)
         if not sfi.is_dir():
             print("file not found: ", str(sfi))
@@ -1991,20 +2016,32 @@ class Figures(object):
         psth_binw = 0.0005
         i = 0  # Voltage for first trial
         self.plot_voltage(ax=P.axdict[pan[0]], ntrace=i, d=d, AR=AR, time_win=plot_win)
-        self.plot_stim_waveform(ax=P.axdict[pan[6]], ntrace=i, d=d, AR=AR, stim_win=plot_win)
+        self.plot_stim_waveform(
+            ax=P.axdict[pan[6]], ntrace=i, d=d, AR=AR, stim_win=plot_win
+        )
         all_bu_st = self.get_bu_spikearray(AR, d)
         self.plot_spiketrain_raster(all_bu_st, ax=P.axdict[pan[1]], plot_win=plot_win)
-        self.plot_psth_psth(ax=P.axdict[pan[2]], data=all_bu_st, ri=d['runInfo'], 
-            psth_binw=psth_binw, ntr=len(all_bu_st), psth_win=plot_win)
-        P.axdict[pan[3]].set_xlabel("Time (s)")
-        
+        self.plot_psth_psth(
+            ax=P.axdict[pan[2]],
+            data=all_bu_st,
+            ri=d["runInfo"],
+            psth_binw=psth_binw,
+            ntr=len(all_bu_st),
+            psth_win=plot_win,
+        )
 
         an_st_by_input, all_an_st, an_st_grand = self.get_an_spikearray(AR, d)
-        ninputs=len(an_st_by_input)
+        ninputs = len(an_st_by_input)
+
+        self.plot_stacked_spiketrain_rasters(
+            an_st_by_input, ax=P.axdict[pan[3]], si=d["Params"], plot_win=plot_win
+        )
+        P.axdict[pan[3]].set_xlabel("Time (s)")
+
         self.plot_psth_psth(
             ax=P.axdict[pan[4]],
             data=all_an_st,
-            ri=d['runInfo'],
+            ri=d["runInfo"],
             psth_binw=psth_binw,
             psth_win=plot_win,
             ntr=len(all_an_st),
@@ -2012,8 +2049,8 @@ class Figures(object):
         )
         P.axdict[pan[4]].set_xlabel("Time (sec)")
         P.axdict[pan[4]].set_title("AN")
-        ri = d['runInfo']
-        si = d['Params']
+        ri = d["runInfo"]
+        si = d["Params"]
         (
             totaldur,
             soundtype,
@@ -2041,29 +2078,23 @@ class Figures(object):
                 spars.displayDuration = 2.0 / ri.fmod
                 spars.twin = 10.0 / ri.fmod
             S = SAC.SAC()
-            sac_engine = 'cython'
+            sac_engine = "cython"
             bu_sac, bu_sacbins = S.SAC_with_histo(
-                all_bu_st,
-                pars = spars,
-                engine=sac_engine,
-                dither=1e-3 * si.dtIC / 2.0,
+                all_bu_st, pars=spars, engine=sac_engine, dither=1e-3 * si.dtIC / 2.0,
             )
             P.axdict[pan[5]].plot(
                 bu_sacbins,
                 bu_sac,
-                'k-',
+                "k-",
                 # label=sac_label,
             )
             an_sac, an_sacbins = S.SAC_with_histo(
-                an_st_grand,
-                pars = spars,
-                engine=sac_engine,
-                dither=1e-3 * si.dtIC / 2.0,
+                an_st_grand, pars=spars, engine=sac_engine, dither=1e-3 * si.dtIC / 2.0,
             )
             P.axdict[pan[5]].plot(
                 an_sacbins,
                 an_sac,
-                'r-',
+                "r-",
                 # label=sac_label,
             )
         else:
@@ -2104,8 +2135,9 @@ class Figures(object):
                 max_time=2 * np.pi,
                 bin_width=est_binw,
                 ax=P.axdict[pan[5]],
-                bin_fill = False,
-                edge_color = "r",
+                bin_fill=False,
+                edge_color="r",
+                alpha=0.5,
             )
             self.parent.PLT.plot_psth(
                 vs_bu.circ_phase,
@@ -2113,6 +2145,7 @@ class Figures(object):
                 max_time=2 * np.pi,
                 bin_width=est_binw,
                 ax=P.axdict[pan[5]],
+                alpha=0.5,
             )
             # P.axdict["E"].hist(
             #     vs["ph"],
@@ -2298,16 +2331,15 @@ class Figures(object):
         fig.title2 = title2
         return fig
 
-
     def plot_voltage(
         self,
         ax: object,
-        d: object=None,
-        ntrace: int=0,
-        AR: object=None,
+        d: object = None,
+        ntrace: int = 0,
+        AR: object = None,
         time_win: tuple = (0, 0.25),
         cal_x_axis: bool = False,
-        ):
+    ):
         """
         Plot the voltage of a trace into an axis, with the spikes marked
         """
@@ -2317,15 +2349,13 @@ class Figures(object):
         trd = d["Results"][ntrace]
         tb_beg = int(time_win[0] / dt)
         tb_end = int(time_win[1] / dt)
-        
+
         # cprint('r', f"i is 0, psth: {psth_win=}")
         ax.plot((time_base - time_win[0]), vtrial, "k-", linewidth=0.5)
         spiketimes = np.array(trd["spikeTimes"])
         # trim spike mark array so we don't get spots at the edge of the plot
         spikeindex = [
-            int(t / dt)
-            for t in spiketimes
-            if (t >= time_win[0] and t < (time_win[1]))
+            int(t / dt) for t in spiketimes if (t >= time_win[0] and t < (time_win[1]))
         ]
         ax.plot(
             (time_base[spikeindex] - time_win[0]),
@@ -2359,14 +2389,15 @@ class Figures(object):
                 font="Arial",
             )
 
-    def plot_stim_waveform(self, 
-            ax,
-            ntrace:int=0,
-            d:object=None,
-            AR:object=None,
-            si:object=None,
-            stim_win: tuple = (0, 0.25),
-            ):
+    def plot_stim_waveform(
+        self,
+        ax,
+        ntrace: int = 0,
+        d: object = None,
+        AR: object = None,
+        si: object = None,
+        stim_win: tuple = (0, 0.25),
+    ):
         # stimulus waveform
         trd = d["Results"][ntrace]
         waveform = trd["stimWaveform"].tolist()
@@ -2374,14 +2405,14 @@ class Figures(object):
         stimdt = np.mean(np.diff(stb))
         sttb_beg = int(stim_win[0] / stimdt)
         sttb_end = int(stim_win[1] / stimdt)
-        
+
         ax.plot(
             (stb[sttb_beg:sttb_end] - stim_win[0]),
             np.array(waveform)[sttb_beg:sttb_end] * 1e3,
             "k-",
             linewidth=0.5,
         )  # stimulus underneath
-        ax.set_xlim(0, stim_win[1]-stim_win[0])
+        ax.set_xlim(0, stim_win[1] - stim_win[0])
         PH.talbotTicks(
             ax,
             axes="xy",
@@ -2392,8 +2423,8 @@ class Figures(object):
             floatAdd={"x": 2, "y": 1},
         )
         ax.set_ylabel("mPa")
-    
-    def plot_spiketrain_raster(self, spike_times, ax=None, plot_win:tuple=(0, 0.25)):
+
+    def plot_spiketrain_raster(self, spike_times, ax=None, plot_win: tuple = (0, 0.25)):
         # print(len(spike_times))
         # print(plot_win)
         for i in range(len(spike_times)):
@@ -2409,30 +2440,88 @@ class Figures(object):
                 markersize=1.5,
                 color="b",
             )
-    
-    def plot_stacked_spiketrain_rasters(self, trd, ax=None):
-        for k in range(n_inputs):  # raster of input spikes
-            if np.max(trd["inputSpikeTimes"][k]) > 2.0:  # probably in miec...
-                tk = np.array(trd["inputSpikeTimes"][k]) * 1e-3
-            else:
-                tk = np.array(trd["inputSpikeTimes"][k])
 
-            y = (i + 0.1 + k * 0.05) * np.ones(len(tk))
-            in_spt = [
-                i
-                for i in range(tk.shape[0])
-                if (tk[i] >= plot_win[0]) and (tk[i] < plot_win[1])
-            ]
-            y = (i + 0.1 + k * 0.05) * np.ones(len(in_spt))
-            if i % 10 == 0 and plotflag:
+    def plot_stacked_spiketrain_rasters(
+        self,
+        spike_times_by_input,
+        ax=None,
+        si=None,
+        plot_win: tuple = (0, 0.25),
+        max_trials=5,
+        use_colors: bool = True,
+        colormap="Set3",
+        cbar_vmax: float = 300.0,
+    ):
+        """
+        Spike trains are plotted as a raster for all inputs in the AN data
+    
+        Parameters
+        ----------
+        spike_times_by_input : list
+            list by input of spike times by trial
+    
+        ax : matplotlib axis to place the plat
+    
+        si : Params
+    
+        plot_win : tuple
+            time window of data to show
+
+        max_trials : int
+            number of trials to show (the first max_trials are plotted)
+    
+        use_colors : bool (default True)
+            Plot the raster ticks with colors scaled by input surface area
+    
+        colormap : str
+            color map to use for plotting when use_colors is True
+    
+        cbar_vmax : float
+            maximum for the colorbar scale
+    
+        """
+        n_inputs = len(spike_times_by_input)
+        n_trials = len(spike_times_by_input[0])
+        trial_spc = 1.0 / (n_inputs * 2)
+        input_spc = 1
+
+        if use_colors:
+            cmx = sns.color_palette(colormap, as_cmap=True)
+            cell_n = int(si.cellID[-2:])
+            SC, syninfo = self.parent.PLT.get_synaptic_info(cell_n)
+            syn_ASA = np.array([syninfo[1][isite][0] for isite in range(n_inputs)])
+            max_ASA = np.max(syn_ASA)
+        print("syn asa: ", syn_ASA)
+        for k in range(n_inputs):  # raster of input spikes by input
+            for i in range(n_trials):  # and by trial
+                if i > max_trials - 1:
+                    continue
+                if np.max(spike_times_by_input[k][i]) > 2.0:  # probably in msec...
+                    tk = np.array(spike_times_by_input[k][i]) * 1e-3
+                else:
+                    tk = np.array(spike_times_by_input[k][i])
+
+                in_spt = [
+                    i
+                    for i in range(tk.shape[0])
+                    if (tk[i] >= plot_win[0]) and (tk[i] < plot_win[1])
+                ]
+                y = (i * input_spc + ((n_trials - k - 1) * trial_spc)) * np.ones(
+                    len(in_spt)
+                )
+                if use_colors:
+                    color = cmx.colors[int(cmx.N * syn_ASA[k] / cbar_vmax) - 1]
+                else:
+                    color = "k"
                 ax.plot(
                     tk[in_spt] - plot_win[0],
                     y,
                     "|",
                     markersize=2.5,
-                    color="k",
+                    color=color,
                     linewidth=0.5,
-                    )
+                )
+        ax.set_xlim(plot_win)
 
     def get_bu_spikearray(self, AR, d):
         """
@@ -2446,7 +2535,7 @@ class Figures(object):
          data object from runmodel
         """
         all_bu_st = []
-        si = d['Params']
+        si = d["Params"]
         ntr = len(AR.MC.traces)
         for i in range(ntr):  # for all trials in the measure.
             trd = d["Results"][i]
@@ -2454,7 +2543,7 @@ class Figures(object):
                 cprint("r", "spiketimes is not a list")
                 return
             all_bu_st.append(trd["spikeTimes"])
-            
+
         return all_bu_st
 
     def get_an_spikearray(self, AR, d):
@@ -2469,7 +2558,7 @@ class Figures(object):
             data object from runmodel
         """
         # Collapse the input data
-        si = d['Params']
+        si = d["Params"]
         ntr = len(AR.MC.traces)
         all_an_st = []  # collapsed in trial order only
         an_st_grand = [[] for x in range(ntr)]  # accumulate across trials
@@ -2563,10 +2652,12 @@ class Figures(object):
             if i == 0:  # Voltage for first trial
                 self.plot_voltage(ax=tr_ax, ntrace=i, d=d, AR=AR, time_win=plot_win)
             if i == 0 and waveform is not None and st_ax is not None:
-                self.plot_stim_waveform(ax=st_ax, ntrace=i, d=d, AR=AR, stim_win=plot_win)
+                self.plot_stim_waveform(
+                    ax=st_ax, ntrace=i, d=d, AR=AR, stim_win=plot_win
+                )
 
         all_bu_st = self.get_bu_spikearray(AR, d)
-        
+
         psth_binw = 0.5e-3
         ninputs = 1
 
@@ -2584,7 +2675,7 @@ class Figures(object):
                 bupsth_ax.set_xlabel("Time (s)")
 
         an_st_by_input, all_an_st, an_st_grand = self.get_an_spikearray(AR, d)
-        
+
         if anpsth_ax is not None:
             print("anpsth to plotpsth")
             self.plot_psth_psth(
@@ -2767,7 +2858,9 @@ class Figures(object):
         self.generate_VS_data_file()
         pass
 
-    def analyze_VS_data(self, VS_data, cell_number, fout, firstline=False, sac_flag=False):
+    def analyze_VS_data(
+        self, VS_data, cell_number, fout, firstline=False, sac_flag=False
+    ):
         """
         Generate tables of vs measures for all cells
         across the frequencies listed
@@ -2789,7 +2882,9 @@ class Figures(object):
             with open(sfi, "rb") as fh:
                 d = FPM.pickle_load(fh)
 
-            self.parent.PLT.plot_AN_response(P, d.files[0], PD, "runANPSTH", sac_flag=sac_flag)
+            self.parent.PLT.plot_AN_response(
+                P, d.files[0], PD, "runANPSTH", sac_flag=sac_flag
+            )
             with open(fout, "a") as fth:
                 if firstline:
                     fth.write(self.parent.PLT.VS_colnames, sac_flag=sac_flag)
@@ -2840,12 +2935,24 @@ class Figures(object):
                     "NOTE: This table is automatically written by figures.py and should not be\n"
                 )
                 fh.write("      directly edited.")
-                fh.write(f"To Regenerate:\n  After running the simulations, use 'Print File Info' for each cell, ")
-                fh.write(f"  selecting the relevant simulations, and copy the text in the 'Reports' box in DataTablesVCN")
-                fh.write(f"  into a 'VS_datasets_xxdB.py' file, where xx is the sound pressure level.\n")
-                fh.write(f"Then select 'VS-SAMTone-no figure' in DataTables, and 'Create Figure.")
-                fh.write(f"  No figure will be generated, but the VS_data_xxdB.py file will be created.\n")
-                fh.write(f"The VS_data file holds all of the vector-strength information, in a text format, ")
+                fh.write(
+                    f"To Regenerate:\n  After running the simulations, use 'Print File Info' for each cell, "
+                )
+                fh.write(
+                    f"  selecting the relevant simulations, and copy the text in the 'Reports' box in DataTablesVCN"
+                )
+                fh.write(
+                    f"  into a 'VS_datasets_xxdB.py' file, where xx is the sound pressure level.\n"
+                )
+                fh.write(
+                    f"Then select 'VS-SAMTone-no figure' in DataTables, and 'Create Figure."
+                )
+                fh.write(
+                    f"  No figure will be generated, but the VS_data_xxdB.py file will be created.\n"
+                )
+                fh.write(
+                    f"The VS_data file holds all of the vector-strength information, in a text format, "
+                )
                 fh.write(f"  and is read by the plotting programs.\n")
                 fh.write(f'--pbm 2014-2021\n"""\n')  # end of the comment
                 fh.write('\ndata = """')  # start of the data

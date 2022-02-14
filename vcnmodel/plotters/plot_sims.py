@@ -3075,8 +3075,10 @@ class PlotSims:
         bin_width: float = 1e-3,
         ax: Union[object, None] = None,
         scale: float = 1.0,
-        bin_fill = True,
-        edge_color = "k",
+        bin_fill:bool = True,
+        edge_color:str = "k",
+        alpha: float=1.0,
+        
     ):
         """
         Correctly plot PSTH with spike rate in spikes/second
@@ -3106,6 +3108,7 @@ class PlotSims:
                 histtype="stepfilled",
                 facecolor=face_color,
                 edgecolor=edge_color,
+                alpha=alpha,
             )
         else:
             if ax is not None:
