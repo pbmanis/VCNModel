@@ -732,6 +732,9 @@ class ModelRun:
             if self.Params.dendriteExpt == "default":  # -dendriteExpt flags
                 self.Params.hocfile += "_Full"
                 label = self.Params.dendriteExpt
+            if self.Params.dendriteExpt == "NoUninnervated":
+                self.Params.hocfile += "_NoUninnervated"
+                label = self.Params.dendriteExpt
             else:
                 self.Params.hocfile += f"_{self.Params.dendriteExpt:s}"
                 label += self.Params.dendriteExpt
