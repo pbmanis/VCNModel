@@ -10,7 +10,7 @@
 # This script runs to get the thresholds for current injection for one
 # spike. 
 #######################################################
-CELLNAMES="02 05 06 09 10 11 13 17 18 30"
+CELLNAMES="09" # 02 05 06 09 10 11 13 17 18 30"
 #CELLNAMES="05"
 
 CONFIG="--configfile xm13a_multisite_testSpikeThr.toml"
@@ -27,8 +27,8 @@ do
             AXON="-A standardized"
             ;;
     esac
-    python src/vcnmodel/model_run2.py VCN_c$f  -D Full $AXON -P initIV -r 1 $CONFIG $DATATABLE
-    python src/vcnmodel/model_run2.py VCN_c$f  -D Full $AXON -P runIVSpikeThreshold -r 1 $CONFIG $DATATABLE
+    python vcnmodel/model_run2.py VCN_c$f  -D Full $AXON -P initIV -r 1 $CONFIG $DATATABLE
+    python vcnmodel/model_run2.py VCN_c$f  -D Full $AXON -P runIVSpikeThreshold -r 1 $CONFIG $DATATABLE
     if [ $? -ne 0 ]; then
         exit 1
     fi
