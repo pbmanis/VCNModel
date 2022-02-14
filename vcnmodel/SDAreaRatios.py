@@ -47,14 +47,9 @@ def area(fn):
     Get the area information for a cell
     specified as a hoc file
     """
-    filename = Path(
-        config['cellDataDirectory'],
-        fn,
-        "Morphology",
-        fn + "_Full.hoc",
-    )
+    filename = fn.name
     post_cell = cells.Bushy.create(
-        morphology=str(filename),
+        morphology=str(fn),
         # decorator=Decorator,
         species="mouse",
         modelType="II",
@@ -91,16 +86,34 @@ def area(fn):
 
 if __name__ == "__main__":
 
+
+
     ar = OrderedDict()
     for i, fn in enumerate(allcells):
-        filename = (
+        basefilename = (
             "VCN_c" + fn
         )  # os.path.join('VCN_Cells', 'VCN_c'+fn, 'Morphology', 'VCN_c'+fn+'.hoc')
-        if i + 1 in gradeA:
-            print("getting area for fn: ", fn)
-            ar[fn] = area(filename)
-        else:
-            ar[fn] = {"soma": np.nan, "dendrite": np.nan}
+        expts = ["_Full_MeshInflate.hoc", 
+                 "_Full_MeshInflate_standardized_axon.hoc",
+                 "_NoUninnervated_MeshInflate.hoc",
+                 "_NoDend_Meshinflate.hoc",
+                 "_NoDend.hoc",
+                 ]
+        for expt in expts:
+            filename = Path(
+                config['cellDataDirectory'],
+                basefilename,
+                "Morphology",
+                basefilename + expt,
+            )
+            if i + 1 in gradeA:
+                if filename.is_file():
+                    print("getting area for fn: ", filename)
+                    ar[basefilename+expt] = area(filename)
+                else:
+                    print("cant find: ", filename)
+                    ar[basefilename+expt] = {"soma": np.nan, "dendrite": np.nan}
+            
     print("")
     hdrstr = [
         "Cell",
@@ -125,13 +138,16 @@ if __name__ == "__main__":
     headers = "".join("{:^12s}  ".format(hs) for hs in hdrstr)
     # print(ar.keys())
     # print(headers)
+    last = ""
     for i, fn in enumerate(ar.keys()):
-        # print(ar[fn]["soma"], ar[fn]["dendrite"])
-        # print(ar[fn].keys())
+        if fn[:7] != last:
+            print()
+            last = fn[:7]
+        cellN = int(fn[5:7])
         ar[fn]["ratio"] = ar[fn]["dendrite"] / ar[fn]["soma"]
-        txt = "{:^12s}  ".format("VCN_c{0:2s}".format(fn))
-        if i + 1 == 29:
-            print(f"{fn:^12s}.D02")
+        txt = f"{fn:54s}  "
+        if cellN == 29:
+            print(f"{fn:54s}.D02")
         for ik, k in enumerate(hdrkeys):
             if k not in list(ar[fn].keys()):
                 continue
@@ -143,7 +159,7 @@ if __name__ == "__main__":
             else:
                 txt += f"{ar[fn][k]:>12.3f}  "  # .format(ar[fn][k], dec[ik])
         print(txt)
-        if i + 1 == 24:
-            print(f"{fn:^12s}.D01")
+        if cellN == 24:
+            print(f"{fn:54s}.D01")
         # print ('VCN_c{0:2s}:  Somatic area: {1:>8.2f}   Dendritic area: {2:>8.2f}  Ratio: {3:>5.3f}'
         #     .format(fn, ar[fn]['soma'], ar[fn]['dendrite'], ar[fn]['dendrite']/ar[fn]['soma']))
