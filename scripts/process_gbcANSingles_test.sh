@@ -24,8 +24,8 @@ for t in $TABLES
                     ;;
             esac
             echo $f
-            # python src/vcnmodel/model_run2.py VCN_c$f -P initAN -D $d $AXON $CONFIG  --datatable $t
-            python src/vcnmodel/model_run2.py VCN_c$f -P runANSingles -r $NREPS -D $d $AXON $CONFIG  --datatable $t
+            # python vcnmodel/model_run2.py VCN_c$f -P initAN -D $d $AXON $CONFIG  --datatable $t
+            python vcnmodel/model_run2.py VCN_c$f -P runANSingles -r $NREPS -D $d $AXON $CONFIG  --datatable $t
          done
     done
 done

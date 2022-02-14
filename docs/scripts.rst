@@ -38,8 +38,8 @@ A simple example script that runs the IV protocol for all cells, and for 3 diffe
         esac
         echo $f
         echo $AXON
-        python src/vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D Full $AXON $DATATABLE --dendritemode normal
-        python src/vcnmodel/model_run2.py VCN_c$f -P runIV  $CONFIG -D Full $AXON $DATATABLE --dendritemode normal
+        python vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D Full $AXON $DATATABLE --dendritemode normal
+        python vcnmodel/model_run2.py VCN_c$f -P runIV  $CONFIG -D Full $AXON $DATATABLE --dendritemode normal
     done
     wait
 
@@ -53,8 +53,8 @@ A simple example script that runs the IV protocol for all cells, and for 3 diffe
         esac
         echo $f
         echo $AXON
-        python src/vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D Full $AXON $DATATABLEP --dendritemode passive
-        python src/vcnmodel/model_run2.py VCN_c$f -P runIV  $CONFIG -D Full $AXON $DATATABLEP --dendritemode passive
+        python vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D Full $AXON $DATATABLEP --dendritemode passive
+        python vcnmodel/model_run2.py VCN_c$f -P runIV  $CONFIG -D Full $AXON $DATATABLEP --dendritemode passive
     done
     wait
 
@@ -68,8 +68,8 @@ A simple example script that runs the IV protocol for all cells, and for 3 diffe
         esac
         echo $f
         echo $AXON
-        python src/vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D Full $AXON $DATATABLEA --dendritemode active
-        python src/vcnmodel/model_run2.py VCN_c$f -P runIV  $CONFIG -D Full $AXON $DATATABLEA --dendritemode active
+        python vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D Full $AXON $DATATABLEA --dendritemode active
+        python vcnmodel/model_run2.py VCN_c$f -P runIV  $CONFIG -D Full $AXON $DATATABLEA --dendritemode active
     done
     wait
 

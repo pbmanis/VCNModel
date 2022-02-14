@@ -21,7 +21,7 @@ do
     do
 		for e in $EXPERIMENT
 		do
-		    python src/vcnmodel/model_run2.py VCN_c$f -P runANPSTH -r $REPS -D Full $AXON --Spirou $e $CONFIG --datatable $t --workers 8 $TEST
+		    python vcnmodel/model_run2.py VCN_c$f -P runANPSTH -r $REPS -D Full $AXON --Spirou $e $CONFIG --datatable $t --workers 8 $TEST
             exit_status=$?
             if [ "${exit_status}" -ne 0 ];
             then

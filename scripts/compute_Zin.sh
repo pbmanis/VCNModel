@@ -28,8 +28,8 @@ do
             AXON="-A standardized"
             ;;
     esac
-    python src/vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D Full $AXON $MODETABLEP
-    python src/vcnmodel/model_run2.py VCN_c$f -P Zin  $CONFIG -D Full  $AXON $MODETABLEP
+    python vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D Full $AXON $MODETABLEP
+    python vcnmodel/model_run2.py VCN_c$f -P Zin  $CONFIG -D Full  $AXON $MODETABLEP
 done
 wait
 
@@ -42,8 +42,8 @@ do
             AXON="-A standardized"
             ;;
     esac
-    python src/vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D Full $AXON $MODETABLEA
-    python src/vcnmodel/model_run2.py VCN_c$f -P Zin $CONFIG -D Full $AXON $MODETABLEA
+    python vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D Full $AXON $MODETABLEA
+    python vcnmodel/model_run2.py VCN_c$f -P Zin $CONFIG -D Full $AXON $MODETABLEA
 done
 wait
 
@@ -56,8 +56,8 @@ do
             AXON="-A standardized"
             ;;
     esac
-    python src/vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D NoDend $AXON $MODETABLEN
-    python src/vcnmodel/model_run2.py VCN_c$f -P Zin $CONFIG -D NoDend $AXON $MODETABLEN
+    python vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D NoDend $AXON $MODETABLEN
+    python vcnmodel/model_run2.py VCN_c$f -P Zin $CONFIG -D NoDend $AXON $MODETABLEN
 done
 wait
 
@@ -70,8 +70,8 @@ do
             AXON="-A standardized"
             ;;
     esac
-    python src/vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D AxonOnly $AXON $MODETABLEN
-    python src/vcnmodel/model_run2.py VCN_c$f -P Zin $CONFIG -D AxonOnly $AXON $MODETABLEN
+    python vcnmodel/model_run2.py VCN_c$f -P initIV $CONFIG -D AxonOnly $AXON $MODETABLEN
+    python vcnmodel/model_run2.py VCN_c$f -P Zin $CONFIG -D AxonOnly $AXON $MODETABLEN
 done
 wait
 

@@ -37,16 +37,16 @@ do
     esac
     echo $f
     echo $AXON
-    python src/vcnmodel/model_run2.py VCN_c$f -D Full -P initAN --dendritemode normal $CONFIG $AXON $DATATABLE $CHECK $TEST
-    python src/vcnmodel/model_run2.py VCN_c$f -D Full $PROTO -r $REPS --dB 10 --Spirou all --dendritemode normal $CONFIG $AXON $DATATABLE $CHECK $TEST
+    python vcnmodel/model_run2.py VCN_c$f -D Full -P initAN --dendritemode normal $CONFIG $AXON $DATATABLE $CHECK $TEST
+    python vcnmodel/model_run2.py VCN_c$f -D Full $PROTO -r $REPS --dB 10 --Spirou all --dendritemode normal $CONFIG $AXON $DATATABLE $CHECK $TEST
     if [ $? -ne 0 ]; then
         exit 1
     fi
-   #  python src/vcnmodel/model_run2.py VCN_c$f -D Full $PROTO -r $REPS --dB 10 --Spirou largestonly --dendritemode normal $CONFIG $AXON $DATATABLE $CHECK $TEST
+   #  python vcnmodel/model_run2.py VCN_c$f -D Full $PROTO -r $REPS --dB 10 --Spirou largestonly --dendritemode normal $CONFIG $AXON $DATATABLE $CHECK $TEST
    #  if [ $? -ne 0 ]; then
    #      exit 1
    #  fi
-   #  python src/vcnmodel/model_run2.py VCN_c$f -D Full $PROTO -r $REPS --dB 10 --Spirou removelargest --dendritemode normal $CONFIG $AXON $DATATABLE $CHECK $TEST
+   #  python vcnmodel/model_run2.py VCN_c$f -D Full $PROTO -r $REPS --dB 10 --Spirou removelargest --dendritemode normal $CONFIG $AXON $DATATABLE $CHECK $TEST
    # if [ $? -ne 0 ]; then
    #      exit 1
    #  fi
