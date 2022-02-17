@@ -2,11 +2,11 @@
 
 #CONFIG="noscale.toml" #"autoscale.toml"
 CONFIG="--configfile singles_multisite_parallel.toml"
-RUNTEXT="running the AN Single protocols NoDendrites"
+RUNTEXT="running the AN Single protocols NoUninnervatedDendrites"
 
 # sequentials:
 CELLNAMES="09" # 02 05 06 09 10 11 13 17 18 30"
-TABLES="data_XM13A_nacncoop_normal" # " data_XM13A_nacncoop_pasdend data_XM13A_nacncoop_actdend"
+TABLES="data_XM13A_nacncoop_normal data_XM13A_nacncoop_pasdend data_XM13A_nacncoop_actdend"
 DENDRITES="NoUninnervated"
 NREPS="5"
 echo $RUNTEXT

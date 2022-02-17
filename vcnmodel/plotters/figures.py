@@ -26,6 +26,7 @@ from rich.text import Text
 import toml
 from vcnmodel.plotters import efficacy_plot as EF
 from vcnmodel.plotters import plot_z as PZ
+from vcnmodel.plotters import SAM_VS_vplots
 import vcnmodel.util.fixpicklemodule as FPM
 from vcnmodel.analyzers import sac as SAC
 from vcnmodel.plotters import (
@@ -108,9 +109,9 @@ class Figures(object):
     mpl.style for figures.mplstyle, which overrides some defaults in mpl.
     The resulting figures are editable in Illustrator without any missing fonts.
     
-    This is ugly code, but it gets the job done.
+    This is overall ugly code, but it gets the job done. 
     Note that some plots are modifications of what is present in plot_sims,
-    and also that plot_sims is used here, through self.parent.PLT.
+    and also that plot_sims is used here, accessed through self.parent.PLT.
     
     This is part of the DataTablesVCN interactive analysis tool for the simulations
     in the SBEM project.
@@ -136,14 +137,20 @@ class Figures(object):
         # dispatch
         dispatch_table = {
             # "Fig 3 Ephys-1 main": self.Figure3Main,
-            "Fig 3 Supplemental1ABC_VC-KLTCalibration": self.plot_VC_gKLT,
-            "Fig 3 Supplemental1DE_RinTaum": self.plot_combined_VC_IV,
-            "Fig 3 Supplemental2_CC": self.plot_IVS,
-            "Fig 3 Supplemental3_Zin": self.plot_ZinS,
-            "Fig 3 Suppplemental4_PSTH": self.plot_All_PSTH,
-            "Fig 4 Ephys-2 main": self.Figure4Main,
-            "Fig 4 Ephys-2 Supplement1": self.Figure4_Supplmental1,
-            "Fig 7 Ephys-3 main": self.Figure7Main,
+            "Figure3-Ephys_1_Main": self.Figure3_Main,
+            "Figure3-Supplemental1_VC-KLTCalibration": self.plot_VC_gKLT,
+            "Figure3-Supplemental1_VC_Rin_Taum": self.Figure3_Supplemental1,
+            "Figure3-Supplemental2_CC": self.Figure3_Supplemental2_CC,
+            "Figure3-Supplemental3_Zin": self.Figure3_Supplemental3_Zin,
+            "Figure3-Supplemental4_PSTH": self.Figure3_Supplemental4_PSTH,
+            
+            "Figure4-Ephys_2_Main": self.Figure4_Main,
+            "Figure4-Ephys_2_Supplemental1": self.Figure4_Supplmental1,
+            
+            "Figure7-Ephys-3 Main": self.Figure7_Main,
+            # "Figure7-Ephys_3_Main": self.Figure7_Main,
+            "Figure7-Ephys-3_Supplemental1": self.Figure7_Supplemental1,
+
             "Fig M1: IV Figure (Fig_M1)": self.plotIV,
             "Fig_IV/ All IVs (Fig_IV/IV_cell_VCN_c##)": self.allIVs,
             "Fig M2: CombinedEffRevCorr (Fig_M2)": self.plot_combined_Eff_Rev,
@@ -156,13 +163,16 @@ class Figures(object):
             "Fig M3 Supp2: Revcorr Supplement (Fig_M3_supplemental_Full_40dB)": self.plot_revcorr_supplement_40dB,
             "Fig M4: Revcorr Compare (Fig_M4_Revcorr_Compare)": self.plot_revcorr_compare,
             "Fig M5: PSTH-FSL (Fig_M5)": self.plot_PSTH,
-            "Fig M5 Supp: PSTH-FSL Supplement (Fig_M5_supplemental_Full_dBSPL)": self.plot_PSTH_supplement,
             "VS-SAM Tone (no figure file - analysis only)": self.plot_VS_SAM,
         }
         if figure_name in list(dispatch_table.keys()):
             fig = dispatch_table[figure_name]()
             if fig is not None:
+                # mpl.show()
+                # pass
                 self.save_figure(fig)
+        else:
+            cprint("r", f"Figure name '{figure_name:s}' was not in dispatch table.")
 
     def save_figure(self, fig):
         """
@@ -206,7 +216,7 @@ class Figures(object):
         )
         print("fig title: ", fig.title["title"])
         mpl.savefig(
-            Path(config["baseDataDirectory"], "Figures", fig.filename),
+            Path(config["baseDataDirectory"], "Figures", "Figure7", "Figure7_supp", fig.filename),
             metadata={
                 "Creator": "Paul Manis",
                 "Author": "Paul Manis",
@@ -583,7 +593,25 @@ class Figures(object):
         # self.save_figure(self.P, save_file, title)
         return fig
 
-    def plot_combined_VC_IV(self):
+    def Figure3_Main(self):
+        message = """
+        This Figure was made by using Illustrator to combine parts of other figures/files as follows:
+        Panel A came from a syglass rendition of the obj (mesh).
+        Panel B (and the inset in C) came from a vispy rendition (neuronvis) of the HOC file.
+        Panel C is a combination of Illustrator text, and cnmodel output (see the notebook folder,
+        nb/Figure3_main_PanelC.ipynb, for the generation code; the matplotlib windows were then pulled
+        into Illustrator to make the figure)
+        
+        Panels D and E are taken from Figure3_Supplemental2_CC.pdf, for BC 17.
+        Panels F, G and H are taken from Figure3_Supplemental4_PSTH.pdf for BC 17.
+        """
+        cprint("y", message)
+
+    def Figure3_Supplemental1(self):
+        """
+        Figure 3, Supplemental Figure 1
+        Combined voltage clamp traces, IV with Rin, taum plots
+        """
         P0 = PH.regular_grid(  # dummy figure space
             1,
             1,
@@ -598,20 +626,20 @@ class Figures(object):
         P2 = self.plotIV(parent_figure=figp1.P, loc=(0, 8, 0.0, 4.0))
         fig = FigInfo()
         fig.P = self.P2
-        fig.filename = f"Figure_M0-Combined_Supplemental.pdf"
+        fig.filename = f"Figure3/Figure3-Supplemental1_VC_Rin_Taum.pdf"
         fig.title[
             "title"
-        ] = "SBEM Project Figure Suupplemental Figure 1 Modeling (Main)"
+        ] = "SBEM Project Figure4 Supplemental Figure 1 VC_Rin_Taum"
         return fig
 
-    def plot_IVS(self, parent_figure=None):
+    def Figure3_Supplemental2_CC(self, parent_figure=None):
         """
-        All of the IVS, for a supplemental figure
+        Plot all of the IVS, for a supplemental figure
         Passive, normal, active, plus the crossed IV
         Also put the PNG for the cell on the left.
         """
         nivs = len(FD.figure_AllIVs)
-        cprint("c", "plot_IVS.")
+        cprint("c", "Plotting Figure3_Supplemental2_CC")
         rows = nivs
         cols = 5
         height = 1.5 * nivs
@@ -641,12 +669,11 @@ class Figures(object):
         )
         cellpath = config["cellDataDirectory"]
         png_path = Path(config["baseDataDirectory"], config["pngDirectory"])
-        cprint("c", "prepping fo run")
 
         for rax, iv in enumerate(FD.figure_AllIVs.keys()):
             # if iv not in [9, 10]:
             #      continue
-            cprint("r", f"Doing Cell VCN_c{iv:02d} -----------------------------------")
+            cprint("c", f"    Doing Cell VCN_c{iv:02d} -----------------------------------")
             celln = Path(png_path, f"VCN_c{iv:02d}.png")
             if celln.is_file():  # add images from png files
                 img = mpimg.imread(str(celln))
@@ -698,7 +725,7 @@ class Figures(object):
         if parent_figure is None:
             fig = FigInfo()
             fig.P = self.P
-            fig.filename = f"Fig_3_Supplemental2_CC.pdf"
+            fig.filename = f"Figure3/Figure3_Supplemental2_CC.pdf"
             timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")
             fig.title[
                 "title"
@@ -707,11 +734,11 @@ class Figures(object):
         else:
             return self.P
 
-    def plot_ZinS(self):
+    def Figure3_Supplemental3_Zin(self):
         """
         All of the Zins for a supplemental figure
         """
-        PZ.PlotZ()
+        PZ.PlotZ()  # in plot_z.py
 
     def make_eff_fig(self):
         """
@@ -905,6 +932,27 @@ class Figures(object):
         calv: float = 20.0,
         maxstack: int = 9,
     ):
+        """
+        What it says: plot traces in a stacked format
+    
+        Parameters
+        ----------
+        cells : a list of ints (if none, default is to use all of the cells in the
+            gradeAList defined at the top of this file)
+        figure: Figure handle for the plot passed to plot_traces in plot_sims.py)
+        axes : a list
+             of axes passed to plot_traces in plot_sims.py
+        calxp : float
+            the position for the calibration bar in x (time), in msec
+        calv : float
+            the size of the calibration bar in voltage (in mV)
+        maxstack: int (default 9)
+            determines the height of the stack, relative to the offset (see code)
+    
+        Returns
+        -------
+        Nothing
+        """
         if cells is None:
             cells = grAList()
         trace_ht = 80  # mV
@@ -1150,7 +1198,7 @@ class Figures(object):
         fig = self.Figure4Main(supplemental1=True)
         return fig
 
-    def Figure4Main(self, supplemental1=False):
+    def Figure4_Main(self, supplemental1=False):
         """
         Generate Figure 4 for the paper. Combined bits from various other plots
         and revcorrs/singles
@@ -1238,7 +1286,7 @@ class Figures(object):
                 bp / ap,
                 marker="o",
                 color=color,
-                label=f"VCN_c{n:02d}",
+                label=f"BC{n:02d}",
             )
             ax.set_xlabel(r"Input ASA (${\mu m^2}$)")
             ax.set_xlim(0, 300)
@@ -1287,7 +1335,7 @@ class Figures(object):
             if j > 0:
                 PH.noaxes(ax, whichaxes="y")
             else:
-                ax.set_ylabel("Coinc. Rate (Hz)")
+                ax.set_ylabel("Presynaptic\nCoinc. Rate (Hz)", ha="center", fontsize=10)
             ax.xaxis.set_minor_locator(MultipleLocator(1))
             ax.tick_params(which="major", length=4, direction="in")
             ax.tick_params(which="minor", length=2, direction="in")
@@ -1297,19 +1345,18 @@ class Figures(object):
         else:
             fig.P = P
         if not supplemental1:
-            fig.filename = "Figure4_Ephys2_main_v4.pdf"
+            fig.filename = "Figure4_Ephys2_main_v7a.pdf"
             fig.title[
                 "title"
-            ] = "SBEM Project Figure 4 Modeling: Singles, Efficacy and Revcorr"
+            ] = "SBEM Project Figure 4 (main) Modeling: singles inputs, efficacy and revcorr"
         else:
-            fig.filename = "Figure4-Supplemental1_Revcorr.pdf"
+            fig.filename = "Figures/Figure4_supp/Figure4-Supplemental1_Revcorr_V2.pdf"
             fig.title[
                 "title"
-            ] = "SBEM Project Figure 4 Modeling: other cells Singles and Revcorr"
+            ] = "SBEM Project Figure 4 Modeling: Supplemental 1: other cells single inputs and revcorr"
 
         title2 = {"title": f"", "x": 0.99, "y": 0.01}
         fig.title2 = title2
-        print("returnin fig: ", fig)
         return fig
 
     def plot_all_revcorr(self):
@@ -1857,7 +1904,7 @@ class Figures(object):
         else:
             return None
 
-    def Figure7Main(self, parent_figure=None):
+    def Figure7_Main(self, parent_figure=None):
         sizer = OrderedDict(  # define figure layout
             [
                 ("A", {"pos": [0.08, 0.4, 0.87, 0.09]}),
@@ -1973,7 +2020,7 @@ class Figures(object):
             fig.P = parent_figure
         else:
             fig.P = P
-        fig.filename = "Figure7_Ephys3_main_v1.pdf"
+        fig.filename = "Figure7/Figure7_Ephys3_main_v1_left.pdf"
         fig.title["title"] = "SBEM Project Figure 7 Modeling: SAM, SAC"
         title2 = {"title": f"", "x": 0.99, "y": 0.01}
         fig.title2 = title2
@@ -2160,6 +2207,10 @@ class Figures(object):
                 horizontalalignment="center",
             )
 
+    def Figure7_Supplemental1(self):
+        V = SAM_VS_vplots.VS_Plots()
+        V.make_figure()
+
     def plot_psth_psth(
         self,
         ax: object,
@@ -2247,15 +2298,16 @@ class Figures(object):
 
     def plot_All_PSTH(self):
         for cell in grAList():
-            self.plot_PSTH(cellN=cell)
+            fig = self.plot_PSTH(cellN=cell)
+        return fig
 
     def plot_PSTH(self, cellN=None):
-        print("PSTH")
         dBSPL = "30dB"
         if cellN is None:
             cell_number = 17
         else:
             cell_number = cellN
+        print(f"Plotting PSTH for BC{str(cell_number):s}")
         box_size = 0.32
         box_size_x = 0.45
         sizer = {
@@ -2322,7 +2374,7 @@ class Figures(object):
         else:
             save_file = f"All_PSTH/PSTH_VCN_c{cell_number:02d}.png"
         title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
-        title = ("SBEM Project Figure 5 Modeling : PSTH Summary",)
+        title = ("SBEM Project Figure 3 Modeling : PSTH Summary",)
         # save_file = f"Fig_M5_supplemental_Full_{dBSPL:s}.pdf"
         fig = FigInfo()
         fig.P = P
@@ -2622,6 +2674,7 @@ class Figures(object):
         protocol = "runANPSTH"
         AR, SP, RMA = self.parent.PLT.analyze_data(ivdatafile, filemode, protocol)
         ntr = len(AR.MC.traces)  # number of trials
+        waveform = None
         v0 = -160.0
         trstep = 25.0 / ntr
         inpstep = 5.0 / ntr
@@ -2650,7 +2703,7 @@ class Figures(object):
             tb_beg = int(psth_win[0] / dt)
             tb_end = int(psth_win[1] / dt)
             if i == 0:  # Voltage for first trial
-                self.plot_voltage(ax=tr_ax, ntrace=i, d=d, AR=AR, time_win=plot_win)
+                self.plot_voltage(ax=tr_ax, ntrace=i, d=d, AR=AR, time_win=psth_win)
             if i == 0 and waveform is not None and st_ax is not None:
                 self.plot_stim_waveform(
                     ax=st_ax, ntrace=i, d=d, AR=AR, stim_win=plot_win
@@ -2760,8 +2813,8 @@ class Figures(object):
             )
         return axon_name
 
-    def plot_PSTH_supplement(self):
-        print("PSTH supplement")
+    def Figure3_Supplemental4_PSTH(self):
+        print("Plotting Figure 3 Supplement 4 PSTH")
         dBSPL = "30dB"
         lmar = 0.125
         rmar = 0.1
@@ -2809,7 +2862,7 @@ class Figures(object):
         PH.cleanAxes(P.axarr.ravel())
 
         for i, cell_number in enumerate(grAList()):
-            print("doing cell: ", cell_number)
+            print("Plotting psth for cell: ", cell_number)
             show_label = False
             if i == ncells - 1:
                 show_label = True
@@ -2828,26 +2881,27 @@ class Figures(object):
             )
 
             P.axarr[i, 0].text(
-                -0.60,
+                -0.20,
                 0.5,
-                f"VCN_c{cell_number:02d}",
+                f"BC{cell_number:02d}",
                 fontsize=9,
                 color="k",
                 transform=P.axarr[i, 0].transAxes,
-                horizontalalignment="left",
+                horizontalalignment="right",
             )
-            P.axarr[i, 0].text(
-                -0.60,
+            if axon_name == 'standardized':
+                P.axarr[i, 0].text(
+                -0.20,
                 0.3,
-                "\nAxon: " + axon_name,
+                "Sub. axon",
                 fontsize=7,
                 color="k",
                 transform=P.axarr[i, 0].transAxes,
-                horizontalalignment="left",
+                horizontalalignment="right",
             )
 
-        save_file = f"Fig_M5_Supplmental_PSTHs.pdf"
-        title = "SBEM Project Figure 5 Modeling Supplemental : PSTH and FSL, All cells"
+        save_file = f"Figure3/Figure3_supp/Figure3-Supplmental4.pdf"
+        title = "SBEM Project Figure 3 Modeling Supplemental : PSTH and FSL, all grade A cells"
         fig = FigInfo()
         fig.P = P
         fig.filename = save_file

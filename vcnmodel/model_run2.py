@@ -684,6 +684,8 @@ class ModelRun:
         filenames, and read the relevant data tables into cnmodel.
         Probably too much for just one function, but hey, it all has to happen.
 
+        NOTE: This is the ONLY place where cells are instantiated.
+        
         Parameters
         ----------
         par_map : dict (default: None)
@@ -839,6 +841,7 @@ class ModelRun:
             if changes is not None:
                 data.report_changes(changes)
                 data.report_changes(changes_c)
+            
             self.post_cell = cells.Bushy.create(
                 morphology=str(hoc_filename),
                 decorator=Decorator,
@@ -878,8 +881,26 @@ class ModelRun:
         self.post_cell.hr.h.Ra = self.Params.Ra
         print(f"Specified Temperature = {self.post_cell.hr.h.celsius:8.1f} degC ")
         print("Ra (ohm.cm) = {:8.1f}".format(self.post_cell.hr.h.Ra))
-
+        
+        ###############################################
+        # remove all non-parented sections, except the first.
+        ###############################################
+        for i, section in enumerate(self.post_cell.hr.h.allsec()):
+            sref = self.post_cell.hr.h.SectionRef(sec=section)
+            psec = self.post_cell.hr.h.parent_section(0, sec=section)
+            if sref.has_parent():
+                pass
+                # print("i: ", i, "  sec: ", section.name(), "  parent sec: ", psec)
+            else:
+                if i > 0:
+                    self.post_cell.hr.h.delete_section(sec=section)
+                    print("Section index i: ", i, "  sec: ", section.name(), "has no parent")
+        
+        ###############################################
+        # Fix singlet section (one point)
+        ###############################################
         self.fix_singlets(self.post_cell.hr.h)
+
         if self.Params.ASA_fromsoma:
             self.Params.ASA_inflation = self.Params.soma_inflation
             if self.RunInfo.runProtocol not in ["initVC", "testVC", "runVC"]:
@@ -2401,7 +2422,7 @@ class ModelRun:
                 pip_duration=self.RunInfo.pip_duration,
                 pip_start=pips,
             )
-        if self.RunInfo.soundtype in ["stationaryNoise", "noise"]:
+        elif self.RunInfo.soundtype in ["stationaryNoise", "noise"]:
             if self.RunInfo.soundtype == "noise":   # non-stationary noise generator seed changes on per-run basis
                 self.RunInfo.noise_seed = self.RunInfo.noise_seed + j
             print(f" **** Noise type: {self.RunInfo.soundtype:s}  seed={self.RunInfo.noise_seed}")

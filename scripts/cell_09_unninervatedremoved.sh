@@ -13,10 +13,10 @@ CONFIG="--configfile xm13a_multisite_parallel.toml"
 MODETABLEN="--dendritemode normal --datatable data_XM13A_nacncoop_normal"
 MODETABLEA="--dendritemode active --datatable data_XM13A_nacncoop_actdend"
 MODETABLEP="--dendritemode passive --datatable data_XM13A_nacncoop_pasdend"
+DENDMODE="NoUninnervated"
 
 echo "computing Zin for each configuration"
 
-DENDMODE="NoUninnervated"
 
 for f in $CELLNAMES
 do
@@ -67,8 +67,8 @@ echo Zin runs complete
 PROTO="runIV"
 #######################################################
 # Full models are from data/reconstuctions Matthew Kersting sent on
-# March 6, 2020. 
-# 
+# March 6, 2020.
+#
 #######################################################
 CONFIG="--configfile xm13a_multisite_parallel.toml"
 DATATABLE="--datatable data_XM13A_nacncoop_normal"

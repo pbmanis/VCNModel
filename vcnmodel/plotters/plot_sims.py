@@ -704,10 +704,12 @@ class PlotSims:
                 for n in range(len(trd["inputSpikeTimes"])):  # for each sgc
                     RCD.npre += len(trd["inputSpikeTimes"][n])
                 RCD.npost += len(trd["spikeTimes"])
+                RCD.st = SP.spikeIndices
+                # print("TR: ", tr)
+                # print("RCD.st: ", RCD.st)
                 RCD.npost += len(RCD.st[tr])
             else:
                 RCD.npost += sum(SP.spikes[i])
-            RCD.st = SP.spikeIndices
 
         RCD.ti = time_base
         # print(f"Detected {RCD.npost:d} Post spikes")
@@ -1221,6 +1223,7 @@ class PlotSims:
                 fontsize=9,
             )
         toptitle += f"\n{timestamp_str:s}"
+        figure.suptitle(toptitle, fontsize=9)
         cprint("y", toptitle)
         cprint("m", figure)
         cprint("m", ax)
@@ -1366,11 +1369,11 @@ class PlotSims:
         timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
             "%Y-%m-%d-%H:%M"
         )
-        if x is None:
-            self.textappend("No simulation found that matched conditions", color="red")
-            self.textappend(fn, color="red")
-            return
-        # unpack x
+        # if x is None:
+        #     self.textappend("No simulation found that matched conditions", color="red")
+        #     self.textappend(fn, color="red")
+        #     return
+        # # unpack x
         inx = str(fn).find("_Syn")
         synno = None
         if inx > 0:

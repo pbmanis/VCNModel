@@ -24,6 +24,7 @@ Plot the impedances as seen from the soma for VCN cells
 for different dendritic configurations
 Assumes that the analysis has already been done, and that the
 location of that data is given in the 'wheres_my_data.toml' file
+Generates: Figure3_Supplemental3_Zin.pdf
 """
 
 
@@ -166,7 +167,7 @@ class PlotZ:
         P.axarr[1, 2].set_ylabel(rholabel)
         P.axarr[1, 2].set_ylim((0, rho_scale))
 
-        save_file = "Figure3-Supplemental3_Zin.pdf"
+        save_file = "Figure3/Figure3_supp/Figure3_Supplemental3_Zin_undecorated.pdf"
         P.figure_handle.text(
             0.99,
             0.99,
@@ -180,7 +181,7 @@ class PlotZ:
             metadata={
                 "Creator": "Paul Manis",
                 "Author": "Paul Manis",
-                "Title": "SBEM Project Figure3 Modeling (Supplemental Zin)",
+                "Title": "SBEM Project Figure3, Supplemental Figure 3 Modeling, Zin",
             },
         )
         mpl.show()

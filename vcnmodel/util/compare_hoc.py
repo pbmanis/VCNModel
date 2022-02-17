@@ -5,7 +5,17 @@ from neuron import h
 import pylibrary.tools.cprint as CP
 
 cprint = CP.cprint
+"""
+This module takes one hoc file description of a neuron, and compares it to another one.
+The file written out is trimmed version of the first file, with the dendrite sections that are missing
+in the second file removed. Elements such as the soma and various axon parts are kept intact.
+In addition, the keepids list (see below) identifies IDs that need to be kept for the output
+file to be intact (they might be missing in the comparison file).
 
+This module is used to remove certain dendrites (un-innervated) from a hoc file, based on a second,
+possible incomplete, reconstruction in which those dendrites have been removed.
+
+"""
 file_full = Path("/Volumes/Pegasus_002/VCN-SBEM-Data/VCN_Cells/VCN_c09/Morphology/VCN_c09_Full_MeshInflate.hoc")
 print(" Full File found: ", file_full.is_file())
 file_trim = Path("/Volumes/Pegasus_002/VCN-SBEM-Data/VCN_Cells/VCN_c09/Morphology/VCN_c09_NoUninnervated.hoc")
@@ -49,116 +59,131 @@ def get_ids(filename):
     return ids
         # print(".. ", n)
 
-id1 = set(get_ids(file_full))
-id2 = set(get_ids(file_trim))
+def diff_files(file_full, file_trim, flag:str="comment"):
+    """
+    compare annotated two hoc files and get the difference in the SWC IDs
+    
+    flag: must be "comment" or "delete"
+        determines whether the output has the removed sections just
+        commented out with // or actually deleted (not written)
+    
+    """
+    assert flag in ["comment", "delete"]
+    id1 = set(get_ids(file_full))
+    id2 = set(get_ids(file_trim))
 
-nomatch = list(id1.difference(id2))
-print(sorted(nomatch))
-nd = np.diff(sorted(nomatch))
-print(len(id1), len(id2), len(nomatch))
-lineout = []
-with open(Path(file_full)) as fh:
-    xf = fh.readlines()
-    sectionlines = []
-    objrefs = []  # names of all objects found
-    in_section = False
-    appended_types = []
-    n3d_pts = 0
-    p_nomatch = False
-    for line in xf:
-        if line.startswith("//"):
-            lineout.append(line)  # echo comment lines
-            continue
-        if line.startswith("create sections"):
-            lineout.append(line)
-            continue
-        sec = re_access.match(line)  # look for access statements
-        if sec is not None:
-            in_section = True   # start of section definition
-            sectionlines.append(line)
-            continue
-
-        if in_section:
-            if line.startswith("sections["):
+    nomatch = list(id1.difference(id2))
+    # print("nomatch: ", sorted(nomatch))
+    nd = np.diff(sorted(nomatch))
+    print(f"# of entries: fullfile: {len(id1):d}, filetrim={len(id2):d}, nomatch={len(nomatch):d}")
+    lineout = []
+    with open(Path(file_full)) as fh:
+        xf = fh.readlines()
+        sectionlines = []
+        objrefs = []  # names of all objects found
+        in_section = False
+        appended_types = []
+        removed_sections = []
+        n3d_pts = 0
+        remove_section = False
+        id_list = []
+        current_section = None
+        for line in xf:
+            if line.startswith("//"):
+                lineout.append(line)  # echo comment lines
+                continue
+            if line.startswith("create sections"):
+                lineout.append(line)
+                continue
+            sec = re_access.match(line)  # look for access statements
+            if sec is not None:
+                in_section = True   # start of section definition
                 sectionlines.append(line)
-            elif re_append.match(line) is not None:
+                current_section = int(sec.groups()[2])
+                continue
+
+            if in_section:
+                if line.startswith("sections["):
+                    sectionlines.append(line)
+                    continue
                 ma = re_append.match(line)
-                sectype = ma.groups()[0]
-                if sectype not in appended_types:
-                    appended_types.append(sectype)
-                sectionlines.append(line)
-            elif re_connect.match(line) is not None:
-                sectionlines.append(line)
-            elif re_id.match(line) is not None:
+                if ma is not None:
+                    sectype = ma.groups()[0]
+                    if sectype not in appended_types:  # keep track of types in use
+                        appended_types.append(sectype)
+                    sectionlines.append(line)
+                    continue
+                if re_connect.match(line) is not None:  # always add the connections
+                    sectionlines.append(line)
+                    continue
                 m1 = re_id.match(line)
-                if m1 is None or sectype in alwayskeeplist:
-                    sectionlines.append(line)
-                    n3d_pts += 1
-                else:
-                    ID = int(m1.groups()[5])  # check the id
-                    # if ID == 2014:  # a point in the soma
-                    #     cprint("r", f"ID: {ID:5d}, {str(line):s}")
-                    #     cprint("r", f" {str(ID in nomatch):s}, {sectype:s}")
-                    if ID in nomatch and ID not in keepids:
-                        # if not p_nomatch:
-                        #     cprint("y", f"Found ID {ID:d} in nomatch: {str(nomatch):s}")
-                        #     p_nomatch=True
-                        # else:
-                        #     cprint("y", f"Found ID {ID:d} in nomatch")
-                        pass
-                    else:
-                        # if sectype == "soma":
-                        #      cprint("m", "ID was ok to keep")
-                        # else:
-                        #     cprint("c", f"ID not soma, but kept, type = <{sectype:s}>")
-                        n3d_pts += 1
+                if m1 is not None:  # line has an swc ID
+                    if sectype in alwayskeeplist:
                         sectionlines.append(line)
-            elif line.startswith("}"):  # closure
-                if n3d_pts == 0:  # no points
-                    in_section = False  # end of section
-                    print(f"Section of type = {sectype:s} was deleted as no pt3d found:")
-                    print(sectionlines)
-                    print()
-                    sectionlines = [] # clear the list of lines here 
-                    
-                else:
+                        n3d_pts += 1
+                        continue
+                    ID = int(m1.groups()[5])  # check the id
+                    if ID in nomatch and ID not in keepids:
+                        remove_section = True
+                        id_list.append(ID)
+                    else:
+                        n3d_pts += 1
                     sectionlines.append(line)
-                    lineout.append(sectionlines)
-                    n3d_pts = 0
-                    sectionlines = []
-                    in_section = False
-                    
-            
-        else:
-            mo = re_objref.match(line)
-            if mo is not None:
-                objrefs.append(mo.groups()[1])
-            lineout.append(line)
-                    
-         #
-        # m = re_id.match(line)
-        # if m is None:
-        #     lineout.append(line)  # no id on the line, so echo back
-        # else:
-        #     ID = int(m.groups()[5])  # check the id
-        #     if ID in nomatch:
-        #         line = '//' + line  # comment the line out
-        #         lineout.append(line)
-        #     else:
-        #         lineout.append(line)  # just print it
-        #
-        # if not in_section:
-        #     lineout.append(line)
+                    continue
 
-with open(Path(file_trim2), 'w') as fh:
-    for l in lineout:
-        if isinstance(l, list):
-            for lx in l:
-                fh.write(lx)
-        else:
-            fh.write(l)
+                if line.startswith("}"):  # closure
+                    if remove_section:  # section flagged for removal
+                        print(f"Section[{current_section:4d}] of type {sectype:s} was removed, found in 'nomatch'")
+                        print("    IDS were: ", id_list)
+                        if flag == "comment":
+                            sectionlines.append(line)
+                            for i, sl in enumerate(sectionlines):
+                                sectionlines[i] = f"//{sl:s}"  # comment them out. Could also just not add to lineout
+                            lineout.append(sectionlines)
+                        n3d_pts = 0
+                        id_list = []
+                        sectionlines = [] # clear the list of lines here
+                        current_section = None
+                        in_section = False  # end of section
+                        remove_section = False
+                    else:
+                        sectionlines.append(line)
+                        lineout.append(sectionlines)
+                        n3d_pts = 0
+                        sectionlines = []
+                        in_section = False
 
-ft = h.load_file(str(file_trim2))
-h.topology()
-# print(objrefs)
-# print(appended_types)
+            else:
+                mobj = re_objref.match(line)
+                if mobj is not None:
+                    objrefs.append(mobj.groups()[1])
+                lineout.append(line)
+
+
+    with open(Path(file_trim2), 'w') as fh:
+        for l in lineout:
+            if isinstance(l, list):
+                for lx in l:
+                    fh.write(lx)
+            else:
+                fh.write(l)
+    return file_trim2
+
+def delete_unparented_sections(file_trim2):
+    ft = h.load_file(str(file_trim2))
+    for i, section in enumerate(h.allsec()):
+        sref = h.SectionRef(sec=section)
+        psec = h.parent_section(0, sec=section)
+        if not sref.has_parent():
+            print("i: ", i, "  sec: ", section.name(), "has no parent")
+            if i > 0:
+                h.delete_section(sec=section)
+        # if psec == 0.0:
+        #     print(section.name())
+        #     h.delete_section(sec=section)
+
+    h.topology()  # to confirm that they do not exist...
+
+if __name__ == "__main__":
+    file_trim2 = diff_files(file_full, file_trim, flag="comment")
+    delete_unparented_sections(file_trim2)

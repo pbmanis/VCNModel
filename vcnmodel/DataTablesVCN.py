@@ -19,6 +19,8 @@ from vcnmodel.plotters import plot_sims
 from vcnmodel.plotters import figures
 from vcnmodel.plotters import figure_data
 from vcnmodel.plotters import plot_z
+from vcnmodel.plotters import SAM_VS_plot
+from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot
 from pylibrary.tools import cprint as CP
 # import vcnmodel.correlation_calcs
@@ -90,6 +92,8 @@ all_modules = [
     figures,
     figure_data,
     plot_z,
+    SAM_VS_vplots,
+    SAM_VS_plot,
     efficacy_plot,
     cell_config,
     # vcnmodel.correlation_calcs,
@@ -555,15 +559,21 @@ class DataTablesVCN:
                 "type": "group",
                 "children": [
                     {"name": "Figures", "type": "list", 
-                    "values":  ["Fig 3 Supplemental1ABC_VC-KLTCalibration",
-                                "Fig 3 Supplemental1DE_RinTaum",
-                                "Fig 3 Supplemental2_CC",
-                                "Fig 3 Supplemental3_Zin",
-                                "Fig 3 Suppplemental4_PSTH",
-                                "Fig 4 Ephys-2 main",
-                                "Fig 4 Ephys-2 Supplement1",
-                                "Fig 7 Ephys-3 main",
-                                "Fig 7 Ephys-3 supplement1",
+                    "values":  [
+                                "-------Figure 3-------",
+                                "Figure3-Ephys_1_Main",
+                                "Figure3-Supplemental1_VC_Rin_Taum",
+                                "Figure3-Supplemental2_CC",
+                                "Figure3-Supplemental3_Zin",
+                                "Figure3-Supplemental4_PSTH",
+                                "-------Figure 4--------",
+                                "Figure4-Ephys_2_Main",
+                                "Figure4-Ephys_2_Supplemental1",
+                                "-------Figure 7--------",
+                                "Figure7-Ephys_3_Main",
+                                "Figure7-Ephys_3_Supplemental1",
+                                "---------Misc-----------",
+                                "Fig 3Supplemental1ABC_VC-KLTCalibration",
                                 "Fig M0: VC-KLTCalibration (Fig_M0_VC_Adjustment)",
                                 "Fig M0 Supp: CombinedVCIV (Figure_M0-Combined_Supplemental)",
                                 "Fig M1: IV Figure (Fig_M1)",
@@ -585,7 +595,7 @@ class DataTablesVCN:
                                 "VS-SAM Tone (no figure file - analysis only)",
 
                                ],
-                    "value": "Fig M0: VC-KLTCalibration (Fig_M0_VC_Adjustment)",
+                    "value": "-------Figure 3-------",
                 },
                     {"name": "Create Figure", "type": "action"},
                 ],
