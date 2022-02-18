@@ -26,11 +26,12 @@ def reset_style():
     mpl.style.use("~/.matplotlib/figures.mplstyle")
 
 
-importlib.reload(VS_data)
+
 
 
 class VS_Plots:
     def __init__(self):
+        importlib.reload(VS_data)
         self.datas = VS_data.data
         self.cell_inputs = {
             "2": "subthreshold",

@@ -92,7 +92,7 @@ all_modules = [
     figures,
     figure_data,
     plot_z,
-    SAM_VS_vplots,
+    # SAM_VS_vplots,
     SAM_VS_plot,
     efficacy_plot,
     cell_config,

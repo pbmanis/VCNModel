@@ -216,7 +216,7 @@ class Figures(object):
         )
         print("fig title: ", fig.title["title"])
         mpl.savefig(
-            Path(config["baseDataDirectory"], "Figures", "Figure7", "Figure7_supp", fig.filename),
+            Path(config["baseDataDirectory"], "Figures",  fig.filename),
             metadata={
                 "Creator": "Paul Manis",
                 "Author": "Paul Manis",
@@ -632,7 +632,7 @@ class Figures(object):
         ] = "SBEM Project Figure4 Supplemental Figure 1 VC_Rin_Taum"
         return fig
 
-    def Figure3_Supplemental2_CC(self, parent_figure=None):
+    def Figure3_Supplemental2_CC(self, parent_figure=None, show_pngs=False):
         """
         Plot all of the IVS, for a supplemental figure
         Passive, normal, active, plus the crossed IV
@@ -641,7 +641,10 @@ class Figures(object):
         nivs = len(FD.figure_AllIVs)
         cprint("c", "Plotting Figure3_Supplemental2_CC")
         rows = nivs
-        cols = 5
+        if show_pngs:
+            cols = 5
+        else:
+            cols = 4
         height = 1.5 * nivs
         width = 8.5
         PD = PData()
@@ -675,7 +678,7 @@ class Figures(object):
             #      continue
             cprint("c", f"    Doing Cell VCN_c{iv:02d} -----------------------------------")
             celln = Path(png_path, f"VCN_c{iv:02d}.png")
-            if celln.is_file():  # add images from png files
+            if celln.is_file() and show_pngs:  # add images from png files
                 img = mpimg.imread(str(celln))
                 self.P.axarr[rax, 0].imshow(img, aspect="equal")
                 ylim = self.P.axarr[rax, 0].get_ylim()
@@ -701,8 +704,14 @@ class Figures(object):
                 sfi = Path(sfi, fn[0])
                 if rax > 0:
                     calx = None  # only one cal bar on this plot, top row.
+                if show_pngs:
+                    jax = iax + 1
+                    jrax = 4
+                else:
+                    jax = iax
+                    jrax = 3
                 self.parent.PLT.plot_traces(
-                    self.P.axarr[rax, iax + 1],
+                    self.P.axarr[rax, jax],
                     sfi,
                     PD,
                     protocol="IV",
@@ -710,26 +719,29 @@ class Figures(object):
                     ymax=ymax,
                     iax=iax,
                     figure=self.P.figure_handle,
-                    ivaxis=self.P.axarr[rax, 4],  # accumulate IV's in right side
+                    show_title=False,
+                    ivaxis=self.P.axarr[rax, jrax],  # accumulate IV's in right side
                     ivcolor=colors[iax],
                     iv_spike_color=spike_colors[dendmode],
                     spike_marker_size=1.5,
                     spike_marker_color=spike_colors[dendmode],
                     calx=calx,
                     caly=-10.0,
+                    axis_index=iax,
                 )
                 if rax == 0:
-                    self.P.axarr[rax, iax + 1].set_title(dendmode)
-                if iax == 0:
-                    self.P.axarr[rax, 0].text(-0.1, 0.5, str(iv))
+                    self.P.axarr[rax, jax].set_title(
+                        dendmode.title())
+                if iax == 0 and not show_pngs:
+                    self.P.axarr[rax, 0].text(-35., 0.6, f"BC{iv:02d}", fontweight="bold", fontsize=12)
         if parent_figure is None:
             fig = FigInfo()
             fig.P = self.P
-            fig.filename = f"Figure3/Figure3_Supplemental2_CC.pdf"
+            fig.filename = f"Figure3/Figure3_supp/Figure3-Supplemental2_CC.pdf"
             timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")
             fig.title[
                 "title"
-            ] = f"SBEM Project Figure 1 Modeling (Supplemental A) ({timestamp_str:s})"
+            ] = f"SBEM Project Figure 3 Modeling (Supplemental 2) ({timestamp_str:s})"
             return fig
         else:
             return self.P
@@ -2900,7 +2912,7 @@ class Figures(object):
                 horizontalalignment="right",
             )
 
-        save_file = f"Figure3/Figure3_supp/Figure3-Supplmental4.pdf"
+        save_file = f"Figure3/Figure3_supp/Figure3-Supplemental4_PSTH.pdf"
         title = "SBEM Project Figure 3 Modeling Supplemental : PSTH and FSL, all grade A cells"
         fig = FigInfo()
         fig.P = P

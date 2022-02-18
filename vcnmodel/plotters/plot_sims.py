@@ -937,6 +937,7 @@ class PlotSims:
         nax=0,
         rep=None,  # which rep : none is for all.
         figure=None,
+        show_title=True,
         longtitle=True,
         trace_color="k",
         ivaxis=None,
@@ -952,6 +953,7 @@ class PlotSims:
         caly2=20.0,
         calt2=10.0,
         calv2=10.0,
+        axis_index:int=0,  # index for axes, to prevent replotting text
     ) -> tuple:
         changetimestamp = get_changetimestamp()
         mtime = Path(fn).stat().st_mtime
@@ -1017,6 +1019,7 @@ class PlotSims:
                 linestyle="-",
                 color=trace_color,
                 linewidth=0.5,
+                clip_on=False,
             )
             if ax2 is not None:
                 ax2.plot(AR.MC.time_base, cmd, linewidth=0.5)
@@ -1176,6 +1179,12 @@ class PlotSims:
                 tickPlacesAdd={"x": 1, "y": 0},
                 floatAdd={"x": 1, "y": 0},
             )
+            if axis_index == 0:
+                secax.text(2.0, -70.0, 'nA', ha='center', va='top', fontweight="normal")
+                secax.text(0.0, -40.0, 'mV ', ha='right', va='center', fontweight="normal")
+            
+            
+            
         elif protocol in ["VC", "vc", "vclamp"]:
             maxt = np.max(AR.MC.time_base)
             if calx is None:
@@ -1223,10 +1232,9 @@ class PlotSims:
                 fontsize=9,
             )
         toptitle += f"\n{timestamp_str:s}"
-        figure.suptitle(toptitle, fontsize=9)
-        cprint("y", toptitle)
-        cprint("m", figure)
-        cprint("m", ax)
+        if show_title:
+            figure.suptitle(toptitle, fontsize=9)
+
         return (synno, noutspikes, ninspikes)
 
     @TraceCalls()

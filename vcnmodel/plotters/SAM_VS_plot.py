@@ -372,42 +372,47 @@ def convert_data(data):
     df = df.reset_index()
     return df
 
-P = setup_figure()  # make overall plot
-# P = individual_plots()
-datas_15 = convert_data(VS_data_15dB)
-datas_30 = convert_data(VS_data_30dB)
-plotwhat = "VectorStrength"
+def make_fig():
+    P = setup_figure()  # make overall plot
+    # P = individual_plots()
+    datas_15 = convert_data(VS_data_15dB)
+    datas_30 = convert_data(VS_data_30dB)
+    plotwhat = "VectorStrength"
 
-plot_freq_manipulation(plotwhat, df=datas_15, P=P, panels=['A', 'B'])
-PSG1 = Plot_Strength_Groups(plotwhat, df=datas_15, P=P, panels=['C', 'D'], legend=1)
-plot_freq_manipulation(plotwhat, df=datas_30, P=P, panels=['E', 'F'])
-PSG2 = Plot_Strength_Groups(plotwhat, df=datas_30, P=P, panels=['G', 'H'], legend=None)
+    plot_freq_manipulation(plotwhat, df=datas_15, P=P, panels=['A', 'B'])
+    PSG1 = Plot_Strength_Groups(plotwhat, df=datas_15, P=P, panels=['C', 'D'], legend=1)
+    plot_freq_manipulation(plotwhat, df=datas_30, P=P, panels=['E', 'F'])
+    PSG2 = Plot_Strength_Groups(plotwhat, df=datas_30, P=P, panels=['G', 'H'], legend=None)
 
-#save_file = f"Fig_M6_VS_SAM_Supplmental_V1.pdf"
-# P.figure_handle.text(
-#     0.99,
-#     0.01,
-#     f"All Cells",
-#     fontsize=10,
-#     horizontalalignment="right",
-#     verticalalignment="bottom",
-# )
-# ftxt = r"${savefile:s}$"
-# P.figure_handle.text(
-#     0.99,
-#     0.99,
-#     ftxt,  # .replace('_', '\_'),
-#     transform=P.figure_handle.transFigure,
-#     horizontalalignment="right",
-#     verticalalignment="top",
-# )
-# mpl.savefig(
-#     Path(config["baseDataDirectory"], "Figures", save_file),
-#     metadata={
-#         "Creator": "Paul Manis",
-#         "Author": "Paul Manis",
-#         "Title": "SBEM Project Figure 6 Modeling Supplemental : VS to SAM, All cells",
-#     },
-# )
+    #save_file = f"Fig_M6_VS_SAM_Supplmental_V1.pdf"
+    # P.figure_handle.text(
+    #     0.99,
+    #     0.01,
+    #     f"All Cells",
+    #     fontsize=10,
+    #     horizontalalignment="right",
+    #     verticalalignment="bottom",
+    # )
+    # ftxt = r"${savefile:s}$"
+    # P.figure_handle.text(
+    #     0.99,
+    #     0.99,
+    #     ftxt,  # .replace('_', '\_'),
+    #     transform=P.figure_handle.transFigure,
+    #     horizontalalignment="right",
+    #     verticalalignment="top",
+    # )
+    # mpl.savefig(
+    #     Path(config["baseDataDirectory"], "Figures", save_file),
+    #     metadata={
+    #         "Creator": "Paul Manis",
+    #         "Author": "Paul Manis",
+    #         "Title": "SBEM Project Figure 6 Modeling Supplemental : VS to SAM, All cells",
+    #     },
+    # )
 
-mpl.show()
+    mpl.show()
+
+
+if __name__ == '__main__':
+    make_fig()
