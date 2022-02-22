@@ -168,9 +168,9 @@ class Figures(object):
         if figure_name in list(dispatch_table.keys()):
             fig = dispatch_table[figure_name]()
             if fig is not None:
-                # mpl.show()
-                # pass
-                self.save_figure(fig)
+                mpl.show()
+                pass
+                #self.save_figure(fig)
         else:
             cprint("r", f"Figure name '{figure_name:s}' was not in dispatch table.")
 
@@ -1202,12 +1202,12 @@ class Figures(object):
             f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl",
         )
         with open(rc_datafile, "rb") as fh:
-            d = pickle.load(fh)
+            d = FPM.pickle_load(fh)
         # print(d.keys())
         return d
 
     def Figure4_Supplmental1(self):
-        fig = self.Figure4Main(supplemental1=True)
+        fig = self.Figure4_Main(supplemental1=True)
         return fig
 
     def Figure4_Main(self, supplemental1=False):
@@ -1269,7 +1269,7 @@ class Figures(object):
         # Efficacy plot
         if not supplemental1:
             EFP = EF.EfficacyPlots(parent_figure=P)
-            EFP.plot_efficacy("Full", ax=P.axdict["D"], figuremode="clean")
+            # EFP.plot_efficacy("Full", ax=P.axdict["D"], figuremode="clean")
         # participation plots
         synperum2 = 0.7686  # taken from cell_config.py, line 127 (11/15/2021)
 
@@ -1320,7 +1320,7 @@ class Figures(object):
                 )
 
         axl = [P.axdict[axi] for axi in trace_axes]
-        self.plot_stacked_traces(cells=example_cells, figure=P, axes=axl, maxstack=10)
+        self.plot_stacked_traces(cells=example_cells, figure=P.figure_handle, axes=axl, maxstack=10)
         if not supplemental1:
             self.plot_revcorr_compare(
                 parent_figure=P,

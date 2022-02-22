@@ -13,8 +13,9 @@ class RenameUnpickler(pickle.Unpickler):
         renamed_module = module
         #  Previously had modules one deeper (src/vcnmodel); now just at top
         if module in ["src.vcnmodel","src.vcnmodel.model_params", 'src.vcnmodel.table_manager',
-            "src.vcnmodel.plotters.plot_sims"]:
-            renamed_module =  module  # used to be "msrc." + module
+            "src.vcnmodel.plotters.plot_sims", "src.vcnmodel.plotters.figures", 
+            "src.vcnmodel.util"]:
+            renamed_module =  module  # used to be "src." + module
         if module.startswith("src."):
             renamed_module = module[4:]  # so strip src. from module name
         # print("renamed module: ", renamed_module)

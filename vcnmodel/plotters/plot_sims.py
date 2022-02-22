@@ -10,47 +10,47 @@ import sys
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from functools import wraps
 from pathlib import Path
 from typing import List, Tuple, Union
 
-
 import lmfit
+import matplotlib.cm
 import matplotlib.colorbar  # type: ignore
 import matplotlib.colors  # type: ignore
-from matplotlib import ticker
-import matplotlib.cm
 import numpy as np  # type: ignore
 import pandas as pd
 import pyperclip
 import pyqtgraph as pg  # type: ignore
 import quantities as pq
 import rich as RI
-from rich.text import Text
-from rich.console import Console
 import scipy.stats  # type: ignore
 import seaborn as sns
-
 from ephys.ephysanalysis import MakeClamps, RmTauAnalysis, SpikeAnalysis
 from lmfit import Model  # type: ignore
 from matplotlib import pyplot as mpl  # type: ignore
 from matplotlib import rc  # type: ignore
+from matplotlib import ticker
 from numba import jit  # type: ignore
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.plotting import styler as PLS
 from pylibrary.tools import cprint as CP
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
+from rich.console import Console
+from rich.text import Text
 
+import toml
 import vcnmodel.model_params
 from vcnmodel import cell_config as cell_config
 from vcnmodel.analyzers import analysis as SPKANA
+from vcnmodel.analyzers import reverse_correlation as REVCORR
+from vcnmodel.analyzers.reverse_correlation import RevCorrPars
+from vcnmodel.analyzers.reverse_correlation import RevCorrData
+from vcnmodel.analyzers import sac as SAC
 from vcnmodel.analyzers import spikestatistics as SPKS
 from vcnmodel.analyzers import sttc as STTC
-from vcnmodel.analyzers import sac as SAC
-import vcnmodel.analyzers.reverseCorrelation as REVCORR
-import vcnmodel.util.fixpicklemodule as FPM
 from vcnmodel.analyzers import vector_strength as VS
-import toml
+from vcnmodel.util import fixpicklemodule as FPM
+from vcnmodel.util import trace_calls as TRC
 
 config = toml.load(open("wheres_my_data.toml", "r"))
 
@@ -248,52 +248,6 @@ def def_empty_dict():
     return {}
 
 
-@dataclass
-class RevCorrPars:
-    ntrials: int = 1
-    ninputs: int = 1
-    algorithm: str = "RevcorrSPKS"  # save the algorithm name
-    # clip trace to avoid end effects
-    min_time: float = 10.0  # msec to allow the system to settlt  # this window needs to be at least as long as minwin
-    max_time: float = 250.0  # this window needs to be at least as long as maxwin
-    binw: float = 0.1
-    minwin: float = -5
-    maxwin: float = 2.5
-    amax: float = 0.0
-    si: dict = field(default_factory=def_empty_dict)
-    ri: dict = field(default_factory=def_empty_dict)
-
-
-@dataclass
-class RevCorrData:
-    C: list = field(default_factory=def_empty_list)  # using Brian 1.4 correlation
-    CB: list = field(
-        default_factory=def_empty_list
-    )  # using elephant/neo, binned correlation
-    CBT: list = field(
-        default_factory=def_empty_list
-    )  # using elephant/neo, binned correlation
-    TC: float = 0.0  # list = field(default_factory=def_empty_list)
-    st: np.array = field(default_factory=def_empty_np)
-    tx: np.array = field(default_factory=def_empty_np)
-    ti: np.array = field(default_factory=def_empty_np)
-    ti_avg: np.array = field(default_factory=def_empty_np)
-    sv_all: np.array = field(default_factory=def_empty_np)
-    sv_avg: np.array = field(default_factory=def_empty_np)
-    sites: np.array = field(default_factory=def_empty_np)
-    nsp_avg: int = 0
-    npost_spikes: int = 0
-    npre_spikes: int = 0
-    mean_pre_intervals: np.array = field(default_factory=def_empty_np)
-    mean_post_intervals: float = 0.0
-    max_coin_rate: float = 0
-    participation: np.array = field(default_factory=def_empty_np)
-    s_pair: float = 0.0
-    ynspike: np.array = field(default_factory=def_empty_np)
-    pre_w: list = field(default_factory=def_empty_list)
-    pre_st: list = field(default_factory=def_empty_list)
-
-
 def norm(p: Union[list, np.ndarray], n: int) -> np.ndarray:
     """
     Simple function to normalize the n'th point of p
@@ -350,30 +304,6 @@ def exp2decay(x, a0, a1, tau0, tau1, offset):
     return offset + a0 * np.exp(-x / tau0) + a1 * np.exp(-x / tau1)
 
 
-from numba import jit
-
-
-@jit(
-    parallel=True, cache=True,
-)
-def nb_revcorr(st1, st2, binwidth, corrwindow):
-    xds = np.zeros(int((corrwindow[1] - corrwindow[0]) / binwidth))
-
-    # [None]*len(st1)
-    for i, sp in enumerate(st1):
-        diff = st2 - sp
-        v = np.where((corrwindow[0] <= diff) & (diff <= corrwindow[1]))
-        # print('v: ', v)
-    #  if len(v) > 0:
-    #      iv = [int(vx/binwidth) for vx in v]
-    #      xds[iv] = 1
-    #      print('xds: ', xds)# for d in diff:
-    #     if corrwindow[0] <= d <= corrwindow[1]:
-    #         xds[i] = d
-    # print(np.array(xds))
-    # print(np.array(xds).ravel().shape)
-    return xds, len(st1)  # return the n postsynaptic spikes
-
 
 def clean_spiketimes(spikeTimes, mindT=0.7):
     """
@@ -392,112 +322,7 @@ def clean_spiketimes(spikeTimes, mindT=0.7):
     return spikeTimes
 
 
-class TraceCalls(object):
-    """ Use as a decorator on functions that should be traced. Several
-        functions can be decorated - they will all be indented according
-        to their call depth.
-        from: https://eli.thegreenplace.net/2012/08/22/easy-tracing-of-nested-function-calls-in-python
-    """
 
-    def __init__(
-        self, stream=sys.stdout, indent_step=2, show_args=False, show_ret=False,
-                show=True):
-        self.stream = stream
-        self.indent_step = indent_step
-        self.show_ret = show_ret
-        self.show_args = show_args
-        self.show = show
-
-        # This is a class attribute since we want to share the indentation
-        # level between different traced functions, in case they call
-        # each other.
-        TraceCalls.cur_indent = 0
-
-    def __call__(self, fn):
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            indent = " " * TraceCalls.cur_indent
-            if self.show_args:
-                argstr = ", ".join(
-                    [repr(a) for a in args]
-                    + ["%s=%s" % (a, repr(b)) for a, b in kwargs.items()]
-                )
-                if self.show:
-                    self.stream.write("-->%s%s(%s)\n" % (indent, fn.__name__, argstr))
-            else:
-                # self.stream.write('-->%s%s\n' % (indent, fn.__name__))
-                text = Text.assemble(
-                    (f"* {indent:s}-->{fn.__name__:s}\n", "bold yellow")
-                )
-                if self.show:
-                    console.print(text)
-
-            TraceCalls.cur_indent += self.indent_step
-            ret = fn(*args, **kwargs)
-            TraceCalls.cur_indent -= self.indent_step
-
-            if self.show_ret and self.show:
-                self.stream.write("%s returns--> %s\n" % (indent, ret))
-            return ret
-
-        return wrapper
-
-
-def winprint(func):
-    """
-    Wrapper decorator for functions that print to the text area
-    Clears the print area first,
-    and puts a line of '*' when the function returns
-    """
-
-    @functools.wraps(func)
-    def wrapper_print(self, *args, **kwargs):
-        self.textclear()
-        value = func(self, *args, **kwargs)
-        # end_time = time.perf_counter()      # 2
-        # run_time = end_time - start_time    # 3
-        self.textappend("*" * 80)
-        # print(f"Finished {func.__name__!r} in {run_time:.4f} secs")
-        return value
-
-    return wrapper_print
-
-
-def winprint_continuous(func):
-    """
-    Wrapper decorator for functions that print to the text area
-    DOES NOT clear the print area first,
-    """
-
-    @functools.wraps(func)
-    def wrapper_print(self, *args, **kwargs):
-        value = func(self, *args, **kwargs)
-        # end_time = time.perf_counter()      # 2
-        # run_time = end_time - start_time    # 3
-        # print(f"Finished {func.__name__!r} in {run_time:.4f} secs")
-        return value
-
-    return wrapper_print
-
-
-def time_func(func):
-    """
-    Decorator to ime functions.
-    Place inside (after) winprint if using
-    Output is to terminal.
-    """
-
-    @functools.wraps(func)
-    def wrapper_timer(self, *args, **kwargs):
-        print(f"Starting : {func.__name__!r}")
-        start_time = time.perf_counter()  # 1
-        value = func(self, *args, **kwargs)
-        end_time = time.perf_counter()  # 2
-        run_time = end_time - start_time  # 3
-        print(f"Finished {func.__name__!r} in {run_time:.4f} secs")
-        return value
-
-    return wrapper_timer
 
 
 class PlotSims:
@@ -607,7 +432,7 @@ class PlotSims:
             stitle = "Bare Scaling"
         return "      " + stitle
 
-    @TraceCalls(show=False)
+    @TRC.TraceCalls(show=False)
     def get_data_file(
         self, fn: Union[str, Path], changetimestamp: object, PD: dataclass, verbose=False
     ) -> Union[None, tuple]:
@@ -670,7 +495,7 @@ class PlotSims:
                 d["Results"] = self._data_flip(d["Results"])
         return par, stitle, ivdatafile, filemode, d
 
-    @TraceCalls(show=False)
+    @TRC.TraceCalls(show=False)
     def get_data(
         self, fn: Union[Path, str], PD: dataclass, changetimestamp, protocol
     ) -> Union[None, tuple]:
@@ -774,8 +599,8 @@ class PlotSims:
         # print("_data_flip: ", data_res.keys())
         return data_res
 
-    @time_func
-    @TraceCalls(show=False)
+    @TRC.time_func
+    @TRC.TraceCalls(show=False)
     def analyze_data(
         self,
         ivdatafile: Union[Path, str],
@@ -895,7 +720,7 @@ class PlotSims:
                 )
         self.P.figure_handle.show()
 
-    @winprint
+    @TRC.winprint
     def print_file_info(self, selected, mode="list"):
         if mode not in ["list", "dict"]:
             raise ValueError()
@@ -920,8 +745,8 @@ class PlotSims:
         if mode == "list":
             self.textappend(f"    {br[1]:s},")
 
-    @winprint
-    @TraceCalls()
+    @TRC.winprint
+    @TRC.TraceCalls()
     def plot_traces(
         self,
         ax: object,
@@ -975,7 +800,7 @@ class PlotSims:
         if figure is None:  # no figure... just analysis...
             return AR, SP, RMA
 
-        cprint("c", "plot_traces: reparing for plot")
+        cprint("c", "plot_traces: preparing for plot")
         ntr = len(AR.MC.traces)  # number of trials
         v0 = -160.0
         if isinstance(ri, dict):
@@ -1237,7 +1062,7 @@ class PlotSims:
 
         return (synno, noutspikes, ninspikes)
 
-    @TraceCalls()
+    @TRC.TraceCalls()
     def plot_VC(
         self,
         selected_index_rows=None,
@@ -1319,7 +1144,7 @@ class PlotSims:
             P.figure_handle.show()
         return P
 
-    @TraceCalls()
+    @TRC.TraceCalls()
     def setup_VC_plots(
         self, n_columns, parent_figure=None, loc: Union[None, tuple] = None
     ):
@@ -1365,9 +1190,9 @@ class PlotSims:
         P.figure_handle.show()
         return P
 
-    @winprint
-    @time_func
-    @TraceCalls()
+    @TRC.winprint
+    @TRC.time_func
+    @TRC.TraceCalls()
     def analyzeVC(
         self, ax: object, fn: Union[Path, str], PD: dataclass, protocol: str,
     ) -> tuple:
@@ -1980,7 +1805,7 @@ class PlotSims:
         syninfo = SC.VCN_Inputs[gbc_string]
         return (SC, syninfo)
 
-    @time_func
+    @TRC.time_func
     def compare_revcorrs(self):
         plabels = [f"VCN_c{int(self.parent.cellID):02d}"]
         pgbc = plabels[0]
@@ -2071,7 +1896,7 @@ class PlotSims:
 
         P.figure_handle.show()
 
-    # @time_func
+    # @TRC.time_func
 
     def _count_spikes_in_window(self, d, trial, site, s, RCP, pre_w):
         an_i = d["Results"][trial]["inputSpikeTimes"][
@@ -2093,8 +1918,8 @@ class PlotSims:
             pre_times = []
         return npre_i, pre_times
 
-    @winprint
-    # @time_func
+    @TRC.winprint
+    # @TRC.time_func
     def compute_revcorr(
         self,
         P: object,
@@ -2200,6 +2025,9 @@ class PlotSims:
         srate = (
             si.dtIC * 1e-3
         )  # this needs to be adjusted by the date of the run, somewhere...
+        # for runs prior to spring 2021, the 1e-3 is NOT needed. 
+        # for runs after that, the value is held in milliseconds, so needs to be
+        # converted to seconds 
         for trial in range(RCP.ntrials):  # sum across trials
             # spiketimes is in msec, so leave si.dtIC in msec
             spikeindex = [int(t / (srate)) for t in d["Results"][trial]["spikeTimes"]]
@@ -2705,7 +2533,7 @@ class PlotSims:
         self.textappend(df.to_csv(sep="\t"))
         P.figure_handle.show()
 
-    @time_func
+    @TRC.time_func
     def plot_tuning(self, args, filename=None, filenames=None):
         PD = PData()
         changetimestamp = get_changetimestamp()
@@ -2757,7 +2585,7 @@ class PlotSims:
             P.axarr[1, ic].imshow(imaged)
         return P
 
-    @TraceCalls()
+    @TRC.TraceCalls()
     def setup_PSTH(self):
         sizer = OrderedDict(  # define figure layout
             [
@@ -2809,7 +2637,7 @@ class PlotSims:
             P.axdict[axl].sharex(P.axdict["A"])
         return P
 
-    @winprint_continuous
+    @TRC.winprint_continuous
     def print_VS(self, d, freq, dmod, dB, experiment):
         print("Getting data")
         SC, syninfo = self.get_synaptic_info(self.parent.cellID)
@@ -2850,8 +2678,8 @@ class PlotSims:
 
         return d
 
-    @winprint_continuous
-    @TraceCalls()
+    @TRC.winprint_continuous
+    @TRC.TraceCalls()
     def plot_SAC(self, selected=None):
         print("SAC analysis and plotting starting")
 
@@ -3040,7 +2868,7 @@ class PlotSims:
         
         mpl.show()
 
-    @TraceCalls()
+    @TRC.TraceCalls()
     def psth_vs(self):
         """
         Generate tables of vs measures for all cells
@@ -3075,7 +2903,7 @@ class PlotSims:
             num_trials = spike_times.shape[0]
         return num_trials
 
-    @TraceCalls()
+    @TRC.TraceCalls()
     def plot_psth(
         self,
         spike_times: Union[list, np.ndarray],
@@ -3134,7 +2962,7 @@ class PlotSims:
                 )
         return  # h, b
 
-    @TraceCalls()
+    @TRC.TraceCalls()
     def plot_fsl_ssl(
         self,
         spike_times: Union[list, np.ndarray],
@@ -3260,8 +3088,8 @@ class PlotSims:
             dmod = ri.dmod
         return totaldur, soundtype, pip_start, pip_duration, F0, dB, fmod, dmod
 
-    @winprint_continuous
-    @TraceCalls()
+    @TRC.winprint_continuous
+    @TRC.TraceCalls()
     def plot_AN_response(
         self,
         P: Union[object, None] = None,
