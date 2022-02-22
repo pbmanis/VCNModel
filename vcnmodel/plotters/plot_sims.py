@@ -1967,25 +1967,24 @@ class PlotSims:
             RCD.sites[isite] = int(np.around(area * SC.synperum2))
 
         print("ninputs: ", RCP.ninputs)
-        maxtc = 0
 
         """
          2. set up parameters
         """
 
-        if isinstance(si, dict):
-            min_time = (si["pip_start"] + 0.025) * 1000.0  # push onset out of the way
-            max_time = (si["pip_start"] + si["pip_duration"]) * 1000.0
-            F0 = si["F0"]
-            dB = (si["dB"],)
+        if isinstance(RCP.si, dict):
+            min_time = (RCP.si["pip_start"] + 0.025) * 1000.0  # push onset out of the way
+            max_time = (RCP.si["pip_start"] + RCP.si["pip_duration"]) * 1000.0
+            F0 = RCP.si["F0"]
+            dB = (RCP.si["dB"],)
         else:
-            if isinstance(ri.pip_start, list):
-                start = ri.pip_start[0]
+            if isinstance(RCP.ri.pip_start, list):
+                start = RCP.ri.pip_start[0]
             else:
-                start = ri.pip_start
+                start = RCP.ri.pip_start
             min_time = (start + 0.025) * 1000.0
-            max_time = (start + ri.pip_duration) * 1000.0
-        expt = ri.Spirou
+            max_time = (start + RCP.ri.pip_duration) * 1000.0
+        expt = RCP.ri.Spirou
         print("expt: ", expt)
 
         RCD.sv_sites = []
@@ -1997,8 +1996,6 @@ class PlotSims:
         RCD.mean_post_interval = 0.0
         RCD.mean_pre_intervals = np.zeros(RCP.ninputs)
         RCD.nsp_avg = 0
-        nspk_plot = 0
-        # spksplotted = False
         RCP.min_time = min_time  # driven window without onset
         RCP.max_time = max_time
 
@@ -2015,15 +2012,23 @@ class PlotSims:
             RCD.C[isite] = np.zeros(ncpts)
             RCD.STTC[isite] = np.zeros(ncpts)
 
-        #
+        RPC, RCD = self.revc(d, RCP, RCD, nbins, revcorrtype)
+        if P is None:
+            return (P, PD, RCP, RCD)
+        else:
+            self.plot_revcorr_details(P, PD, RCP, RCD)
+
         # sum across trials, and sort by inputs
         #
         # print("starting loop")
+    def revc(self, d, RCP, RCD, nbins: int=0, revcorrtype:str=""):
+        maxtc = 0
+        nspk_plot = 0
         post_intervals = []
         pre_intervals = [[] for x in range(RCP.ninputs)]
         start_time = datetime.datetime.now()
         srate = (
-            si.dtIC * 1e-3
+            RCP.si.dtIC * 1e-3
         )  # this needs to be adjusted by the date of the run, somewhere...
         # for runs prior to spring 2021, the 1e-3 is NOT needed. 
         # for runs after that, the value is held in milliseconds, so needs to be
@@ -2323,14 +2328,10 @@ class PlotSims:
         # ynspike = np.cumsum(ynspike / nspikes)
         cprint("r", f"prespikecounts: {np.sum(pre_spike_counts[1:]):f}")
         if np.sum(pre_spike_counts[1:]) == 0:
-            return (P, PD, RCP, RCD)
+            return (RCP, RCD)
 
         RCD.ynspike = np.cumsum(pre_spike_counts[1:]) / np.sum(pre_spike_counts[1:])
-
-        if P is None:
-            return (P, PD, RCP, RCD)
-        else:
-            self.plot_revcorr_details(P, PD, RCP, RCD)
+        return (RCP, RCD)
 
     def plot_revcorr_details(self, P, PD, RCP, RCD):
         ax = P.axdict["B"]
