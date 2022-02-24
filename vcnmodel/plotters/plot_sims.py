@@ -46,11 +46,11 @@ from vcnmodel.analyzers import reverse_correlation as REVCORR
 from vcnmodel.analyzers.reverse_correlation import RevCorrPars
 from vcnmodel.analyzers.reverse_correlation import RevCorrData
 from vcnmodel.analyzers import sac as SAC
-from vcnmodel.analyzers import spikestatistics as SPKS
-from vcnmodel.analyzers import sttc as STTC
 from vcnmodel.analyzers import vector_strength as VS
 from vcnmodel.util import fixpicklemodule as FPM
-from vcnmodel.util import trace_calls as TRC
+from vcnmodel.util import trace_calls
+
+TRC = trace_calls.TraceCalls
 
 config = toml.load(open("wheres_my_data.toml", "r"))
 
@@ -198,22 +198,6 @@ class PData:
     basepath: str = config["baseDataDirectory"]
     renderpath: str = str(Path(config["codeDirectory"], "Renderings"))
     thiscell: str = ""
-
-
-@dataclass
-class SpikeData:
-    """
-    Data class to hold information about each spike
-    """
-
-    trial: int = -1  # the trial the spike came from
-    time_index: int = 0  # index into the time array for this spike
-    dt: float = 0.025  # sample interval, msec
-    start_win: float = -5.0
-    end_win: float = 5.0
-    waveform: np.array = None  # the waveform of this postspike, clipped
-    prespikes: np.array = None  # time indices to pre spikes
-
 
 @dataclass
 class SACPars:
@@ -432,7 +416,7 @@ class PlotSims:
             stitle = "Bare Scaling"
         return "      " + stitle
 
-    @TRC.TraceCalls(show=False)
+    @TRC(show=False)
     def get_data_file(
         self, fn: Union[str, Path], changetimestamp: object, PD: dataclass, verbose=False
     ) -> Union[None, tuple]:
@@ -495,7 +479,7 @@ class PlotSims:
                 d["Results"] = self._data_flip(d["Results"])
         return par, stitle, ivdatafile, filemode, d
 
-    @TRC.TraceCalls(show=False)
+    @TRC(show=False)
     def get_data(
         self, fn: Union[Path, str], PD: dataclass, changetimestamp, protocol
     ) -> Union[None, tuple]:
@@ -516,8 +500,8 @@ class PlotSims:
         RCP = RevCorrPars()
         RCD = RevCorrData()
 
-        RCD.npost = 0  # number of postsynaptic spikes
-        RCD.npre = 0  # number of presynaptic spikes
+        RCD.npost_spikes = 0  # number of postsynaptic spikes
+        RCD.npre_spikes = 0  # number of presynaptic spikes
 
         trials = range(len(d["Results"]))
         RCP.ntrials = len(trials)
@@ -527,14 +511,14 @@ class PlotSims:
             time_base = AR.MC.time_base / 1000.0  # convert to seconds
             if 'inputSpikeTimes' in list(trd.keys()):
                 for n in range(len(trd["inputSpikeTimes"])):  # for each sgc
-                    RCD.npre += len(trd["inputSpikeTimes"][n])
-                RCD.npost += len(trd["spikeTimes"])
+                    RCD.npre_spikes += len(trd["inputSpikeTimes"][n])
+                RCD.npost_spikes += len(trd["spikeTimes"])
                 RCD.st = SP.spikeIndices
                 # print("TR: ", tr)
                 # print("RCD.st: ", RCD.st)
-                RCD.npost += len(RCD.st[tr])
+                RCD.npost_spikes += len(RCD.st[tr])
             else:
-                RCD.npost += sum(SP.spikes[i])
+                RCD.npost_spikes += sum(SP.spikes[i])
 
         RCD.ti = time_base
         # print(f"Detected {RCD.npost:d} Post spikes")
@@ -599,8 +583,8 @@ class PlotSims:
         # print("_data_flip: ", data_res.keys())
         return data_res
 
-    @TRC.time_func
-    @TRC.TraceCalls(show=False)
+    @trace_calls.time_func
+    @TRC(show=False)
     def analyze_data(
         self,
         ivdatafile: Union[Path, str],
@@ -720,7 +704,7 @@ class PlotSims:
                 )
         self.P.figure_handle.show()
 
-    @TRC.winprint
+    @trace_calls.winprint
     def print_file_info(self, selected, mode="list"):
         if mode not in ["list", "dict"]:
             raise ValueError()
@@ -745,8 +729,8 @@ class PlotSims:
         if mode == "list":
             self.textappend(f"    {br[1]:s},")
 
-    @TRC.winprint
-    @TRC.TraceCalls()
+    @trace_calls.winprint
+    @TRC()
     def plot_traces(
         self,
         ax: object,
@@ -838,16 +822,17 @@ class PlotSims:
             else:
                 AR.MC.traces[trial] = AR.MC.traces[trial].asarray() * 1e3  # mV
                 cmd = AR.MC.cmd_wave[trial] * 1e9  # from A to nA
+            xclip = np.argwhere((AR.MC.time_base >= xmin) & (AR.MC.time_base < xmax))
             ax1.plot(
-                AR.MC.time_base,
-                AR.MC.traces[trial] + yoffset,
+                AR.MC.time_base[xclip],
+                AR.MC.traces[trial][xclip] + yoffset,
                 linestyle="-",
                 color=trace_color,
                 linewidth=0.5,
                 clip_on=False,
             )
             if ax2 is not None:
-                ax2.plot(AR.MC.time_base, cmd, linewidth=0.5)
+                ax2.plot(AR.MC.time_base[xclip], cmd, linewidth=0.5)
             if "spikeTimes" in list(d["Results"][icurr].keys()):
                 # cprint('r', 'spiketimes from results')
                 # print(d["Results"][icurr]["spikeTimes"])
@@ -890,29 +875,29 @@ class PlotSims:
                 if synno is None:
                     for ian in range(len(spkt)):
                         vy = v0 + tr_y * np.ones(len(spkt[ian])) + inpstep * ian
-                        ax.scatter(spkt[ian], vy, s=sz, marker="|", linewidths=0.35)
+                        ax1.scatter(spkt[ian], vy, s=sz, marker="|", linewidths=0.35)
                 else:
                     ian = synno
                     vy = v0 + tr_y * np.ones(len(spkt[ian])) + inpstep * ian
                     # ax.scatter(spkt[ian], vy, s=sz, marker="|", linewidths=0.35)
                     ninspikes += len(spkt[ian] > deadtime)
 
-                ax.set_ylim(ymin, ymax)
+                ax1.set_ylim(ymin, ymax)
                 if xmin is None:
                     xmin = 0.050
                 if xmax is None:
                     xmax = np.max(AR.MC.time_base)
-                ax.set_xlim(xmin, xmax)
+                ax1.set_xlim(xmin, xmax)
             elif protocol in ["VC", "vc", "vclamp"]:
                 pass  #
                 # ax.set_ylim((-100.0, 100.0))
             else:
-                ax.set_ylim(ymin, ymax)
+                ax1.set_ylim(ymin, ymax)
                 if xmin is None:
                     xmin = 0.050
                 if xmax is None:
                     xmax = np.max(AR.MC.time_base)
-                ax.set_xlim(xmin, xmax)
+                ax1.set_xlim(xmin, xmax)
         ftname = str(Path(fn).name)
         ip = ftname.find("_II_") + 4
         ftname = ftname[:ip] + "...\n" + ftname[ip:]
@@ -1062,7 +1047,7 @@ class PlotSims:
 
         return (synno, noutspikes, ninspikes)
 
-    @TRC.TraceCalls()
+    @TRC()
     def plot_VC(
         self,
         selected_index_rows=None,
@@ -1144,7 +1129,7 @@ class PlotSims:
             P.figure_handle.show()
         return P
 
-    @TRC.TraceCalls()
+    @TRC()
     def setup_VC_plots(
         self, n_columns, parent_figure=None, loc: Union[None, tuple] = None
     ):
@@ -1190,9 +1175,9 @@ class PlotSims:
         P.figure_handle.show()
         return P
 
-    @TRC.winprint
-    @TRC.time_func
-    @TRC.TraceCalls()
+    @trace_calls.winprint
+    @trace_calls.time_func
+    @TRC()
     def analyzeVC(
         self, ax: object, fn: Union[Path, str], PD: dataclass, protocol: str,
     ) -> tuple:
@@ -1612,6 +1597,7 @@ class PlotSims:
         start_letter="A",
         colormap="Set3",
         max_inputs=12,
+        show_average:bool=False,
         synlabel: Union[bool, None] = None,
         cbar_vmax: float = 300.0,
     ):
@@ -1647,16 +1633,29 @@ class PlotSims:
         SC, syninfo = self.get_synaptic_info(cell_n)
         syn_ASA = np.array([syninfo[1][isite][0] for isite in range(RCP.ninputs)])
         max_ASA = np.max(syn_ASA)
-
+        print("RCD: ", RCD)
+        
         for isite in reversed(range(RCP.ninputs)):
-            if RCD.sv_all.shape == ():
+            if len(RCD.sv_trials) == 0:
                 continue
-            stepsize = int(RCD.sv_all.shape[0] / 20)
-            if stepsize > 0:
-                sel = list(range(0, RCD.sv_all.shape[0], stepsize))
-            else:
-                sel = list(range(0, RCD.sv_all.shape[0], 1))
-            sel = list(range(0, RCD.sv_all.shape[0], 1))
+           # stepsize = int(RCD.sv_all.shape[0] / 20)
+            if isite == 0:  # all sites have the same voltage, but here
+            # we select some spikes waveforms
+                prewin = np.where(RCD.ti_avg < -0.5)
+                nprewin = len(prewin)
+                ex_spikes = []
+                for trial in range(len(RCD.sv_trials)):
+                    # if isite == 0:
+                    #     print(np.max(RCD.sv_all[trial][prewin]))
+                    for spk in RCD.sv_trials[trial]:
+                        if np.max(spk[prewin]) < -40.0:
+                            if len(ex_spikes) < 20:
+                                ex_spikes.append(spk)
+            # if stepsize > 0:
+            #     sel = list(range(0, RCD.sv_all.shape[0], stepsize))
+            # else:
+            #     sel = list(range(0, RCD.sv_all.shape[0], 1))
+            # sel = list(range(0, RCD.sv_all.shape[0], 1))
             refzero = int(RCP.minwin / RCP.binw)
 
             if RCD.C[isite] is not None:
@@ -1672,7 +1671,6 @@ class PlotSims:
                 colors[isite] = color
                 maxrevcorr = np.max((maxrevcorr, np.max(RCD.CB[isite])))
                 totalrevcorr = np.sum(RCD.CB[isite])
-                # print("Using algorithm:", RCP.algorithm)
                 label = "Input {0:2d} N={1:3d}".format(isite, int(RCD.sites[isite]))
                 label = None
                 if isite in range(RCP.ninputs):
@@ -1721,16 +1719,17 @@ class PlotSims:
             if (
                 isite == 0
             ):  # only plot the first time through - the APs are the same no matter the input
-                for t in sel:
+                for t in range(len(ex_spikes)):  # this plots the individual traces
                     secax.plot(
                         RCD.ti_avg,
-                        RCD.sv_all[t],
+                        ex_spikes[t],
                         color="#666666",
                         linewidth=0.2,
                         zorder=1,
                     )
-
-                secax.plot(RCD.ti_avg, RCD.sv_avg, color="k", linewidth=0.75, zorder=2)
+                # on top of that plot the average trace
+                if show_average:
+                    secax.plot(RCD.ti_avg, RCD.sv_avg, color="k", linewidth=0.75, zorder=2)
                 secax.plot([0.0, 0.0], [-120.0, 10.0], "r", linewidth=0.5)
                 if calbar_show:
                     PH.calbar(
@@ -1753,6 +1752,8 @@ class PlotSims:
                     )
                 PH.referenceline(secax, -60.0)
                 PH.noaxes(secax)
+        if yaxis_label:
+            secax.set_ylabel("Postsynaptic Voltage", fontsize=9, x=0.5)
         print(f"Total spikes: {RCD.nsp_avg:d}")
 
         # finally, put up a legend that shows which inputs map to what colors
@@ -1805,9 +1806,9 @@ class PlotSims:
         syninfo = SC.VCN_Inputs[gbc_string]
         return (SC, syninfo)
 
-    @TRC.time_func
+    @trace_calls.time_func
     def compare_revcorrs(self):
-        plabels = [f"VCN_c{int(self.parent.cellID):02d}"]
+        plabels = [f"BC{int(self.parent.cellID):02d}"]
         pgbc = plabels[0]
         revcorrtype = "RevcorrSimple"
         PSum = PH.regular_grid(
@@ -1858,7 +1859,7 @@ class PlotSims:
     def plot_revcorr_figure(self, selected, revcorrtype):
         PD = PData()
 
-        plabels = [f"VCN_c{int(self.parent.cellID):02d}"]
+        plabels = [f"BC{int(self.parent.cellID):02d}"]
         pgbc = plabels[0]
 
         sizer = {
@@ -1896,52 +1897,55 @@ class PlotSims:
 
         P.figure_handle.show()
 
-    # @TRC.time_func
 
-    def _count_spikes_in_window(self, d, trial, site, s, RCP, pre_w):
-        an_i = d["Results"][trial]["inputSpikeTimes"][
-            site
-        ]  # input spike times for one input
-        an_i = an_i[
-            (an_i > RCP.min_time) & (an_i < RCP.max_time)
-        ]  # restrict to those only within the response window
-        an_i = an_i - s  # get relative latency from spike to it's inputs
-        # print('ani: ', ani)
-        pre_indx = np.asarray((an_i >= pre_w[0]) & (an_i <= pre_w[1])).nonzero()[0]
-        pre_times = [an_i[k] for k in pre_indx]
-        if len(pre_times) > 0:
-            # print("pre times, prewindow: ", pre_times, pre_w)
-
-            npre_i = len(pre_times)
-        else:
-            npre_i = 0
-            pre_times = []
-        return npre_i, pre_times
-
-    @TRC.winprint
-    # @TRC.time_func
+    @trace_calls.winprint
+    # @trace_calls.time_func
     def compute_revcorr(
         self,
-        P: object,
-        gbc: str,
-        fn: Union[str, Path],
-        PD: object,
-        protocol: str,
+        P: Union[object, None]=None,
+        gbc: str = "",
+        fn: Union[str, Path]="",
+        PD: object = None,
+        protocol: str= "",
         revcorrtype: str = "RevcorrSPKS",
         thr: float = -20.0,
         width: float = 4.0,
     ) -> Union[None, tuple]:
         """
         Compute reverse correlation from data
+        This is a wrapper that sets up the call to the routine in 
+        reverse_correlation.py
         
+        Parameters
+        ----------
+        P : object
+            The figure object from plothelpers
+        gbc : str
+            The name of the gbc ('VCN_cnn')
+        fn : Path or str
+            name of the source data file
+        PD : 
+        protocol : str
+            name of the acq4 protocol
+        revcorrtype: str
+            revcorr algorithm to use. The only valid (tested)
+            protocol is RevcorrSPKS
+        thr : float
+            spike detection threshold, in mV (this is ignored
+            if spikes are detected using the Hight and Kalluri method)
+        width : width of the revcorr calculation, in msec.
+
+        Returns
+        -------
+        RCP: updated parameters with results.
+        RCD: updated data structure with results.
         """
         changetimestamp = get_changetimestamp()
         self.allspikes = None
-
         #
         # 1. Gather data
         #
-        print(f"Getting data for gbc: {gbc:s}")
+        print(f"    compute_revcorrGetting data for gbc: {gbc:s}")
         SC, syninfo = self.get_synaptic_info(gbc)
         res = self.get_data(fn, PD, changetimestamp, protocol)
         if res is None:
@@ -1953,10 +1957,8 @@ class PlotSims:
         RCP.si = si
         RCP.ri = ri
         RCP.algorithm = revcorrtype
-        if RCP.algorithm == "RevcorrSTTC":
-            sttccorr = STTC.STTC()
 
-        print("Preparing for computation", gbc)
+        print(f"    compute_revcorr: Preparing for computation for: {str(gbc):s}")
         RCP.ninputs = len(syninfo[1])
         self.ninputs = RCP.ninputs  # save for trace viewer.
         RCD.sites = np.zeros(RCP.ninputs)
@@ -1965,8 +1967,7 @@ class PlotSims:
             if area > RCP.amax:
                 RCP.amax = area
             RCD.sites[isite] = int(np.around(area * SC.synperum2))
-
-        print("ninputs: ", RCP.ninputs)
+        print("    compute_revcorr # of inputs: ", RCP.ninputs)
 
         """
          2. set up parameters
@@ -1985,9 +1986,9 @@ class PlotSims:
             min_time = (start + 0.025) * 1000.0
             max_time = (start + RCP.ri.pip_duration) * 1000.0
         expt = RCP.ri.Spirou
-        print("expt: ", expt)
+        print("    compute_revcorr experiment type: ", expt)
 
-        RCD.sv_sites = []
+        RCD.sv_trials = []
         RCD.C = [None] * RCP.ninputs
         RCD.CB = [None] * RCP.ninputs
         RCD.STTC = [None] * RCP.ninputs
@@ -1998,11 +1999,11 @@ class PlotSims:
         RCD.nsp_avg = 0
         RCP.min_time = min_time  # driven window without onset
         RCP.max_time = max_time
+        RCD.pre_w = [-2.7, -0.5]  # sets the values for the pre window
 
         """
         3. Prepare storage arrays
         """
-
         nbins = int((max_time - min_time) / RCP.binw)
 
         RCD.CBT = np.arange(RCP.minwin, RCP.maxwin, RCP.binw)  # refcorr time base
@@ -2012,326 +2013,16 @@ class PlotSims:
             RCD.C[isite] = np.zeros(ncpts)
             RCD.STTC[isite] = np.zeros(ncpts)
 
-        RPC, RCD = self.revc(d, RCP, RCD, nbins, revcorrtype)
-        if P is None:
-            return (P, PD, RCP, RCD)
+        """
+        4. Do the calculatoins.
+        """
+        RCP, RCD = REVCORR.revcorr(d, AR, RCP, RCD, nbins, revcorrtype)
+        RCP, RCD, self.allspikes = REVCORR.pairwise(d, AR, RCP, RCD)  # get the pairwise data as well
+        if P is None:  # nothing to plot
+            return P, PD, RCP, RCD
         else:
             self.plot_revcorr_details(P, PD, RCP, RCD)
-
-        # sum across trials, and sort by inputs
-        #
-        # print("starting loop")
-    def revc(self, d, RCP, RCD, nbins: int=0, revcorrtype:str=""):
-        maxtc = 0
-        nspk_plot = 0
-        post_intervals = []
-        pre_intervals = [[] for x in range(RCP.ninputs)]
-        start_time = datetime.datetime.now()
-        srate = (
-            RCP.si.dtIC * 1e-3
-        )  # this needs to be adjusted by the date of the run, somewhere...
-        # for runs prior to spring 2021, the 1e-3 is NOT needed. 
-        # for runs after that, the value is held in milliseconds, so needs to be
-        # converted to seconds 
-        for trial in range(RCP.ntrials):  # sum across trials
-            # spiketimes is in msec, so leave si.dtIC in msec
-            spikeindex = [int(t / (srate)) for t in d["Results"][trial]["spikeTimes"]]
-            stx = AR.MC.time_base[spikeindex]
-            stx = stx[  # get postsynaptic spikes and trim to analysis window
-                (stx > RCP.min_time) & (stx < RCP.max_time)
-            ]
-            if len(stx) == 0:
-                continue
-            RCD.npost_spikes += len(stx)
-            post_intervals.extend(np.diff(stx))
-            # accumulate spikes and calculate average spike
-            for n in range(len(stx)):
-                reltime = np.around(RCD.ti, 5) - np.around(stx[n], 5)
-                areltime = np.argwhere(
-                    (RCP.minwin <= reltime) & (reltime <= RCP.maxwin)
-                ).squeeze()
-
-                if RCD.nsp_avg == 0:  # init arrays
-                    RCD.sv_avg = d["Results"][trial]["somaVoltage"][areltime]
-                    RCD.nsp_avg = 1
-                    RCD.ti_avg = RCD.ti[0 : len(areltime)] + RCP.minwin
-                    RCD.sv_all = np.zeros(
-                        (RCP.ntrials, RCD.ti_avg.shape[0])
-                    )  # initialize the array
-                else:
-                    if len(areltime) > len(RCD.sv_avg):
-                        areltime = areltime[0 : len(RCD.sv_avg)]
-                    if len(areltime) < len(RCD.sv_avg):
-                        nextend = len(RCD.sv_avg) - len(areltime)
-                        areltime = np.append(
-                            areltime,
-                            np.arange(areltime[-1] + 1, areltime[-1] + nextend + 1),
-                        )
-                    RCD.sv_avg += d["Results"][trial]["somaVoltage"][areltime]
-                    RCD.nsp_avg += 1
-                RCD.sv_all[trial] = d["Results"][trial]["somaVoltage"][areltime]
-
-                nspk_plot += RCD.nsp_avg
-                RCD.sv_sites.append(RCD.sv_all)
-
-            # Now get reverse  correlation for each input
-            for isite in range(RCP.ninputs):  # for each ANF input
-                # print(len( d["Results"][trial]["inputSpikeTimes"]), isite)
-                anx = d["Results"][trial]["inputSpikeTimes"][
-                    isite
-                ]  # get input AN spikes and trim list to window
-                anx = anx[(anx > RCP.min_time) & (anx < RCP.max_time)]
-                if len(anx) == 0:
-                    continue
-                RCD.npre_spikes += len(anx)  # count up pre spikes.
-                pre_intervals[isite].extend(
-                    np.diff(anx)
-                )  # keep track of presynapit intervals by input
-                if revcorrtype == "RevcorrSPKS":
-                    RCD.C[isite] += SPKS.correlogram(
-                        stx * pq.ms,
-                        anx * pq.ms,
-                        width=-RCP.minwin * pq.ms,
-                        bin_width=RCP.binw * pq.ms,
-                        T=None,
-                    )
-
-                elif revcorrtype == "RevcorrSimple":
-                    refcorr, npost = REVCORR.reverse_correlation(
-                        stx,
-                        anx,
-                        binwidth=RCP.binw,
-                        datawindow=[RCP.min_time, RCP.max_time],
-                        corrwindow=[RCP.minwin, RCP.maxwin],
-                    )
-                    RCD.CB[isite] = RCD.CB[isite] + refcorr
-
-                elif revcorrtype == "RevcorrSTTC":
-                    sttccorr.set_spikes(RCP.binw, stx, anx, RCP.binw)
-                    refcorr = sttccorr.calc_ccf_sttc(
-                        corrwindow=[RCP.minwin, RCP.maxwin], binwidth=RCP.binw
-                    )
-                    print(len(refcorr))
-                    print(len(RCD.STTC[isite]))
-                    print(RCD.STTC[isite])
-                    RCD.STTC[isite] = RCD.STTC[isite] + refcorr
-
-                tct = SPKS.total_correlation(anx, stx, width=-RCP.minwin, T=None)
-                if ~np.isnan(tct):
-                    RCD.TC += tct
-
-            if isinstance(RCD.TC, float) and RCD.TC > maxtc:
-                maxtc = RCD.TC
-            else:
-                maxtc = 1.0
-        if RCD.nsp_avg > 0:
-            RCD.sv_avg /= RCD.nsp_avg
-        RCD.mean_pre_intervals = [0] * RCP.ninputs
-        RCD.pre_st = [[]] * RCP.ninputs
-        print(len(pre_intervals))
-        # print(pre_intervals)
-        for isite in range(RCP.ninputs):
-            RCD.mean_pre_intervals[isite] = np.mean(pre_intervals[isite])
-            RCD.pre_st[isite] = pre_intervals[isite]
-        RCD.mean_post_intervals = np.mean(post_intervals)
-        elapsed_time = datetime.datetime.now() - start_time
-        print("Time for calculation: ", elapsed_time)
-        RCD.pre_w = [-2.7, -0.5]
-        # RCD.pre_w = [-3.75, -0.1]
-
-        ################
-        # now some pariwise and participation stats on input events prior to a spike
-        ################
-        spikedata = SpikeData()  # storage in a dataclass
-        self.allspikes = []
-        RCD.pairwise = np.zeros((RCP.ninputs, RCP.ninputs))
-        RCD.participation = np.zeros(RCP.ninputs)
-        pre_spike_counts = np.zeros(
-            RCP.ninputs + 1
-        )  # there could be 0, or up to RCP.ninputs pre spikes
-        pre_solo_spikes = np.zeros(RCP.ninputs + 1)
-
-        nperspike = []
-        nfilt_spikes = 0
-        nfilt2_spikes = 0
-        filttable = []
-        filttable2 = []
-        RCD.nspikes = 0
-        sellist = [True] * RCP.ninputs
-        # if ri.Spirou == "largestonly":
-        #     for i in range(1, len(sellist)):
-        #         sellist[i] = False
-        # elif ri.Spirou == "twolargest":
-        #     for i in range(2, len(sellist)):
-        #         sellist[i] = False
-        # elif ri.Spirou == "removelargest":
-        #     sellist[0] = False
-        # print('RCP.ninputs: ', RCP.ninputs, RCD.sites)
-        for trial in range(RCP.ntrials):  # accumulate across all trials
-            # spiketimes is in msec, so si.dtIC should be in msec
-            spikeindex = [int(t / (srate)) for t in d["Results"][trial]["spikeTimes"]]
-            spks = AR.MC.time_base[spikeindex]  # get postsynaptic spikes for the trial
-            for n, s in enumerate(spks):  # for each postsynaptic spike
-                if (
-                    s < RCP.min_time or s > RCP.max_time
-                ):  # restrict post spikes to those only in a response window
-                    continue
-                reltime = np.around(RCD.ti, 5) - np.around(s, 5)
-                areltime = np.argwhere(
-                    (RCP.minwin <= reltime) & (reltime <= RCP.maxwin)
-                ).squeeze()
-                spikedata = SpikeData()  # store spike waveform using a dataclass
-                spikedata.trial = trial
-                spikedata.waveform = d["Results"][trial]["somaVoltage"][areltime]
-
-                spikedata.time_index = n
-                spikedata.prespikes = [[np.nan] for x in range(RCP.ninputs)]
-                RCD.nspikes += 1  # number of post spikes evaluated
-                n_active_inputs = (
-                    0  # number of active inputs associated with this post spike
-                )
-                spike_pattern = np.zeros(RCP.ninputs)
-                solo = np.zeros(RCP.ninputs)
-                lack_largest = np.zeros(RCP.ninputs)
-                lack_two_largest = np.zeros(RCP.ninputs)
-
-                for isite in range(RCP.ninputs):  # examine each input
-                    if not sellist[isite]:
-                        continue
-                    npre_i, pre_times = self._count_spikes_in_window(
-                        d, trial, isite, s, RCP, RCD.pre_w
-                    )
-                    n_active_inputs += min(1, npre_i)  # only count once
-                    if npre_i > 0:
-
-                        spikedata.prespikes[isite] = pre_times[
-                            0
-                        ]  # save all event times even if more than one
-                        RCD.participation[
-                            isite
-                        ] += 1  # any spikes in the window = participation (but only count as 1)
-                        spike_pattern[isite] += 1
-                        # print(' spk: ', s, 'isite: ', isite)
-                        for jsite in range(
-                            isite + 1, RCP.ninputs
-                        ):  # now do for joint combinations with other remaining inputs
-                            npre_j, pre_times = self._count_spikes_in_window(
-                                d, trial, jsite, s, RCP, RCD.pre_w
-                            )
-                            # print(npre_j)
-                            if npre_j > 0:  # accumulate if coincident for this pair
-                                RCD.pairwise[isite, jsite] += 1
-                # increment the number of times there were npre_spikes input to this post spike
-                pre_spike_counts[n_active_inputs] += 1
-                if np.sum(spike_pattern) == 1:  # only one input was active
-                    which_input = np.where(spike_pattern == 1)[0]
-                    pre_solo_spikes[which_input] += 1
-                if sum(spike_pattern[0:5]) == 0:
-                    cprint(
-                        "magenta",
-                        f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
-                    )
-                    nfilt_spikes += 1
-                    filttable.append(spike_pattern)
-                elif sum(spike_pattern[0:4]) == 0:
-                    cprint(
-                        "cyan",
-                        f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
-                    )
-                    nfilt_spikes += 1
-                    filttable.append(spike_pattern)
-                elif sum(spike_pattern[0:3]) == 0:
-                    cprint(
-                        "blue",
-                        f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
-                    )
-                    nfilt_spikes += 1
-                    filttable.append(spike_pattern)
-                elif sum(spike_pattern[0:2]) == 0:
-                    cprint(
-                        "green",
-                        f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
-                    )
-                    nfilt_spikes += 1
-                    filttable.append(spike_pattern)
-                    if spike_pattern[2] == 1:
-                        filttable2.append(spike_pattern)
-                        nfilt2_spikes += 1
-                # elif spike_pattern[0]== 0:
-                #     cprint('yellow', f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}")
-                # nfilt_spikes += 1
-                # filttable.append(spike_pattern)
-                else:
-                    pass
-                    # cprint("w", f"{str(spike_pattern):s}, {which_input[0]:d}")
-
-                self.allspikes.append(spikedata)
-
-        print("\nPairwise matrix: \n", RCD.pairwise)
-        print("nprespikes: \n", [int(p) for p in pre_spike_counts])
-        print("\nTotal post spikes: ", RCD.nspikes)
-        print("\nPre solo drive: ", pre_solo_spikes)
-        print("\nFiltered Spikes: ", nfilt_spikes)
-
-        # print('filttable: \n', filttable)
-        filttable = np.array(filttable)
-        filttable2 = np.array(filttable2)
-        print("Counts: ", filttable.sum(axis=0))
-        if filttable.shape[0] > 0:
-            print("\nFilt Spike Proportions: ", filttable.sum(axis=0) / nfilt_spikes)
-            fs1 = np.array(filttable)[:, 2:].sum(axis=0) / nfilt_spikes
-
-        fsa = np.array(RCD.sites[2:]) / np.sum(RCD.sites[2:])
-        print("Input Proportions: ", fsa)
-
-        filttable2 = np.array(filttable2)
-        # print('filttable 2 shape: ', filttable2.shape)
-        if filttable2.shape[0] > 0:
-            print(
-                "\nFilt Spike Proportions on input #3: ",
-                filttable2.sum(axis=0) / nfilt2_spikes,
-            )
-            fs2 = np.array(filttable2)[:, 2:].sum(axis=0) / nfilt2_spikes
-
-        # if filttable.shape[0] > 0:
-        #     f=mpl.figure()
-        #     mpl.plot(fs1, fsa)
-        #     mpl.show()
-        # print('pre spike_count associated with a post spike: ', pre_spike_counts)
-        # plot the position of the prespikes for every trial as determined by the
-        # second trial loop above.
-        # f, ax = mpl.subplots(1,1)
-        # for i in range(len(self.allspikes)):
-        #     y = i*np.ones(len(self.allspikes[i].prespikes))
-        #     print(list(self.allspikes[i].prespikes))
-        #     print(y)
-        #     ax.plot(self.allspikes[i].prespikes, y)
-        # mpl.show()
-        # print(self.allspikes)
-        npartipating = np.sum(RCD.participation)
-        RCD.s_pair = np.sum(RCD.pairwise)
-        if RCD.s_pair > 0.0:
-            RCD.pairwise /= RCD.s_pair
-
-        # print(np.unique(nperspike, return_counts=True))
-        # nperspike = [n for n in nperspike if n != 0]
-        # nperspike = scipy.stats.itemfreq(nperspike).T
-        # print('nperspike counts: ', nperspike)
-        # nperspike = np.array(np.unique(nperspike, return_counts=True))/nspikes
-        # properly fill out output
-        # xnspike = np.arange(RCP.ninputs)
-        # ynspike = np.zeros(RCP.ninputs)
-        # for j, i in enumerate(nperspike[0]):
-        #     # print(i, j, nperspike[1,j])
-        #     ynspike[i - 1] = nperspike[1, j]
-
-        # ynspike = np.cumsum(ynspike / nspikes)
-        cprint("r", f"prespikecounts: {np.sum(pre_spike_counts[1:]):f}")
-        if np.sum(pre_spike_counts[1:]) == 0:
-            return (RCP, RCD)
-
-        RCD.ynspike = np.cumsum(pre_spike_counts[1:]) / np.sum(pre_spike_counts[1:])
-        return (RCP, RCD)
+        return P, PD, RCP, RCD
 
     def plot_revcorr_details(self, P, PD, RCP, RCD):
         ax = P.axdict["B"]
@@ -2534,7 +2225,7 @@ class PlotSims:
         self.textappend(df.to_csv(sep="\t"))
         P.figure_handle.show()
 
-    @TRC.time_func
+    @trace_calls.time_func
     def plot_tuning(self, args, filename=None, filenames=None):
         PD = PData()
         changetimestamp = get_changetimestamp()
@@ -2586,7 +2277,7 @@ class PlotSims:
             P.axarr[1, ic].imshow(imaged)
         return P
 
-    @TRC.TraceCalls()
+    @TRC()
     def setup_PSTH(self):
         sizer = OrderedDict(  # define figure layout
             [
@@ -2638,7 +2329,7 @@ class PlotSims:
             P.axdict[axl].sharex(P.axdict["A"])
         return P
 
-    @TRC.winprint_continuous
+    @trace_calls.winprint_continuous
     def print_VS(self, d, freq, dmod, dB, experiment):
         print("Getting data")
         SC, syninfo = self.get_synaptic_info(self.parent.cellID)
@@ -2679,8 +2370,8 @@ class PlotSims:
 
         return d
 
-    @TRC.winprint_continuous
-    @TRC.TraceCalls()
+    @trace_calls.winprint_continuous
+    @TRC()
     def plot_SAC(self, selected=None):
         print("SAC analysis and plotting starting")
 
@@ -2869,7 +2560,7 @@ class PlotSims:
         
         mpl.show()
 
-    @TRC.TraceCalls()
+    @TRC()
     def psth_vs(self):
         """
         Generate tables of vs measures for all cells
@@ -2904,7 +2595,7 @@ class PlotSims:
             num_trials = spike_times.shape[0]
         return num_trials
 
-    @TRC.TraceCalls()
+    @TRC()
     def plot_psth(
         self,
         spike_times: Union[list, np.ndarray],
@@ -2963,7 +2654,7 @@ class PlotSims:
                 )
         return  # h, b
 
-    @TRC.TraceCalls()
+    @TRC()
     def plot_fsl_ssl(
         self,
         spike_times: Union[list, np.ndarray],
@@ -3089,8 +2780,8 @@ class PlotSims:
             dmod = ri.dmod
         return totaldur, soundtype, pip_start, pip_duration, F0, dB, fmod, dmod
 
-    @TRC.winprint_continuous
-    @TRC.TraceCalls()
+    @trace_calls.winprint_continuous
+    @TRC()
     def plot_AN_response(
         self,
         P: Union[object, None] = None,

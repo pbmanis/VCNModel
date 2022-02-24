@@ -17,7 +17,7 @@ class TraceCalls(object):
         to their call depth.
         from: https://eli.thegreenplace.net/2012/08/22/easy-tracing-of-nested-function-calls-in-python
     """
-
+    cur_indent = 0  # define as a class attribute
     def __init__(
         self, stream=sys.stdout, indent_step=2, show_args=False, show_ret=False,
                 show=True):
@@ -30,12 +30,12 @@ class TraceCalls(object):
         # This is a class attribute since we want to share the indentation
         # level between different traced functions, in case they call
         # each other.
-        TraceCalls.cur_indent = 0
+        # TraceCalls.cur_indent = 0
 
     def __call__(self, fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            indent = " " * TraceCalls.cur_indent
+            indent = " " * self.cur_indent
             if self.show_args:
                 argstr = ", ".join(
                     [repr(a) for a in args]
@@ -51,9 +51,9 @@ class TraceCalls(object):
                 if self.show:
                     console.print(text)
 
-            TraceCalls.cur_indent += self.indent_step
+            self.cur_indent += self.indent_step
             ret = fn(*args, **kwargs)
-            TraceCalls.cur_indent -= self.indent_step
+            self.cur_indent -= self.indent_step
 
             if self.show_ret and self.show:
                 self.stream.write("%s returns--> %s\n" % (indent, ret))

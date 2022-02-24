@@ -676,7 +676,7 @@ class Figures(object):
         for rax, iv in enumerate(FD.figure_AllIVs.keys()):
             # if iv not in [9, 10]:
             #      continue
-            cprint("c", f"    Doing Cell VCN_c{iv:02d} -----------------------------------")
+            cprint("c", f"    Doing Cell BC{iv:02d} -----------------------------------")
             celln = Path(png_path, f"VCN_c{iv:02d}.png")
             if celln.is_file() and show_pngs:  # add images from png files
                 img = mpimg.imread(str(celln))
@@ -1040,7 +1040,7 @@ class Figures(object):
 
                 if n == 0:
                     axes[ic].set_title(
-                        f"VCN_c{cellN:02d}",
+                        f"BC{cellN:02d}",
                         loc="center",
                         fontdict={
                             "verticalalignment": "baseline",
@@ -1225,7 +1225,7 @@ class Figures(object):
 
         if not supplemental1:
             sizer = {
-                "D": {"pos": [6.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
+                "B": {"pos": [6.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
                 "E": {"pos": [9.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
                 "F": {"pos": [6.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
                 "G": {"pos": [9.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
@@ -1246,12 +1246,12 @@ class Figures(object):
                 "labelpos": (-0.15, 1.02),
                 "noaxes": True,
             }
-            sizer[f"B{i:d}"] = {
+            sizer[f"C{i:d}"] = {
                 "pos": [xl, xw, 2.0, 1.0],
                 "labelpos": (-0.15, 1.02),
                 # "noaxes": True,
             }
-            sizer[f"C{i:d}"] = {
+            sizer[f"D{i:d}"] = {
                 "pos": [xl, xw, 0.5, 1.0],
                 "labelpos": (-0.15, 0.9),
                 "noaxes": True,
@@ -1269,7 +1269,7 @@ class Figures(object):
         # Efficacy plot
         if not supplemental1:
             EFP = EF.EfficacyPlots(parent_figure=P)
-            # EFP.plot_efficacy("Full", ax=P.axdict["D"], figuremode="clean")
+            EFP.plot_efficacy("Full", ax=P.axdict["B"])
         # participation plots
         synperum2 = 0.7686  # taken from cell_config.py, line 127 (11/15/2021)
 
@@ -1320,7 +1320,10 @@ class Figures(object):
                 )
 
         axl = [P.axdict[axi] for axi in trace_axes]
-        self.plot_stacked_traces(cells=example_cells, figure=P.figure_handle, axes=axl, maxstack=10)
+        self.plot_stacked_traces(cells=example_cells, figure=P.figure_handle, 
+            axes=axl, maxstack=10)
+        
+        # Cumulative plots
         if not supplemental1:
             self.plot_revcorr_compare(
                 parent_figure=P,
@@ -1331,6 +1334,7 @@ class Figures(object):
             synlabel_num = 5
         else:
             synlabel_num = 2
+
         self.plot_revcorr_supplement(
             cells=example_cells,
             parent_figure=P,
@@ -1339,18 +1343,20 @@ class Figures(object):
         )
         # self.plot_efficacy_supplement(cells=example_cells, parent_figure=P, traces=False)
 
+        # Revcorr axes cleanup
         for j in range(len(example_cells)):
-            ax = P.axdict[f"B{j+1:d}"]
+            ax = P.axdict[f"C{j+1:d}"]
             ax.set_ylim(0, 0.8)
-            ax.set_xlim(-5.0, 0.0)
+            ax.set_xlim(-5.0, 2.5)
 
             if j > 0:
                 PH.noaxes(ax, whichaxes="y")
             else:
                 ax.set_ylabel("Presynaptic\nCoinc. Rate (Hz)", ha="center", fontsize=10)
-            ax.xaxis.set_minor_locator(MultipleLocator(1))
+            ax.xaxis.set_minor_locator(MultipleLocator(2))
             ax.tick_params(which="major", length=4, direction="in")
             ax.tick_params(which="minor", length=2, direction="in")
+        
         fig = FigInfo()
         if parent_figure is not None:
             fig.P = parent_figure
@@ -1383,7 +1389,7 @@ class Figures(object):
         cell_number: int,
         dBSPL="Spont",
         parent_figure: Union[object, None] = None,
-        recompute=False,
+        recompute=False,  # if you need to recompute the revcorrs for all the grade A cells, just set this True
     ) -> tuple:
         """
         Get the revcorr data associated with the cell number
@@ -1418,7 +1424,7 @@ class Figures(object):
             if not sfi.is_dir():
                 return None, None, None, None
             fn = sorted(list(sfi.glob("*")))
-            (P, PD, RCP, RCD) = self.parent.PLT.compute_revcorr(
+            P, PD, RCP, RCD = self.parent.PLT.compute_revcorr(
                 P=None,  # no plotting (and return P is None)
                 gbc=str(cell_number),
                 fn=fn[0],
@@ -1608,6 +1614,7 @@ class Figures(object):
         cumulative: Union[object, None] = None,
         synlabel_num: int = 0,
         colormap: str = "magma",  # default color map
+        save_calcs: bool = False,  # set to True if need to update.
     ):
         if cells is None:
             cells = grAList()
@@ -1668,7 +1675,7 @@ class Figures(object):
 
         # run_calcs = True
         # P, PD, RCP, RCD = self._get_revcorr(cell_number=cellN, dBSPL = "Spont")
-        # rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
+        rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
         # if rc_datafile.is_file() and not run_calcs:
         #     with open(rc_datafile, "rb") as fh:
         #         all_RCD_RCP = FPM.pickle_load(fh)
@@ -1678,7 +1685,7 @@ class Figures(object):
         #     )
         #     run_calcs = False
         all_RCD_RCP = {}  # all revcorr data
-        save_calcs = False
+
         i_plot = 0
         for i, cell_number in enumerate(grAList()):
 
@@ -1723,13 +1730,14 @@ class Figures(object):
                     synlabel = False
 
             all_RCD_RCP[cell_number] = [RCD, RCP]
+            print(cell_number, cells)
             if cell_number in cells:
                 if parent_figure is None:
-                    axlist = P.axarr[i_plot, 0:2]
+                    axlist = P.axarr[0:2, i_plot]
                 else:
                     axlist = [
-                        P.axdict[f"B{i_plot+1:d}"],
                         P.axdict[f"C{i_plot+1:d}"],
+                        P.axdict[f"D{i_plot+1:d}"],
                         None,
                     ]
                 summarySiteTC = self.parent.PLT.plot_revcorr2(
@@ -1748,13 +1756,15 @@ class Figures(object):
                 print(f"  Mean pre: {RCD.mean_pre_intervals=}")
                 print(f"  Mean Post: {RCD.mean_post_intervals:.3f}")
                 if parent_figure is None:
-                    P.axarr[i, 0].text(
+                    print(axlist)
+                    print(P.axarr)
+                    P.axarr[0, i].text(
                         -0.25,
                         0.5,
-                        f"VCN_c{cell_number:02d}",
+                        f"BC{cell_number:02d}",
                         fontsize=9,
                         color="k",
-                        transform=axlist.transAxes,
+                        transform=axlist[0].transAxes,
                         horizontalalignment="right",
                     )
                 else:
@@ -1771,7 +1781,7 @@ class Figures(object):
                     pos[j, k, 1] = k + 1
 
             if parent_figure is None:
-                sax = P.axarr[i, :]
+                sax = P.axarr[:, i]
                 if dBSPL == "Spont":
                     sax[0].set_ylim(0, 0.5)
                 else:
@@ -1784,7 +1794,7 @@ class Figures(object):
                 )
 
             if parent_figure is None:
-                PH.noaxes(P.axarr[i, 1])
+                PH.noaxes(P.axarr[1, i])
                 s2 = sax[2]
 
                 s2.plot(
