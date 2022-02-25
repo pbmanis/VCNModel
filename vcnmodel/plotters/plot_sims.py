@@ -316,6 +316,7 @@ class PlotSims:
         )
         self.firstline = True
         self.VS = VS.VectorStrength()
+        self.axis_offset = -0.02
 
     def textclear(self):
         if self.parent is None:
@@ -1598,7 +1599,7 @@ class PlotSims:
         colormap="Set3",
         max_inputs=12,
         show_average:bool=False,
-        synlabel: Union[bool, None] = None,
+        synlabel: bool = True,
         cbar_vmax: float = 300.0,
     ):
         sns.set_style("ticks")
@@ -1633,7 +1634,6 @@ class PlotSims:
         SC, syninfo = self.get_synaptic_info(cell_n)
         syn_ASA = np.array([syninfo[1][isite][0] for isite in range(RCP.ninputs)])
         max_ASA = np.max(syn_ASA)
-        print("RCD: ", RCD)
         
         for isite in reversed(range(RCP.ninputs)):
             if len(RCD.sv_trials) == 0:
@@ -1715,7 +1715,14 @@ class PlotSims:
                             linewidth=0.9,
                             zorder=5,
                         )
-
+            ax.set_ylim(0, 0.8)
+            ax.set_xlim(-5, 2.5)
+            PH.talbotTicks( # set ticks for revcorrs
+                ax,
+                tickPlacesAdd={"x": 1, "y": 1},
+                floatAdd={"x": 1, "y": 1},
+                # pointSize=7,
+            )
             if (
                 isite == 0
             ):  # only plot the first time through - the APs are the same no matter the input
@@ -1750,48 +1757,62 @@ class PlotSims:
                         horizontalalignment="right",
                         verticalalignment="center",
                     )
+                PH.nice_plot(secax, position=self.axis_offset, direction="outward")
                 PH.referenceline(secax, -60.0)
-                PH.noaxes(secax)
+                PH.talbotTicks(
+                    secax,
+                    density=(1.0, 0.5),
+                    insideMargin=0,
+                    tickPlacesAdd={"x": 1, "y": 0},
+                    floatAdd={"x": 1, "y": 0},
+                    axrange={"x": (-5.0, 2.5), "y": (-60, 0)},
+                    pointSize=None,
+                )
+                PH.showaxes(secax)
         if yaxis_label:
             secax.set_ylabel("Postsynaptic Voltage", fontsize=9, x=0.5)
         print(f"Total spikes: {RCD.nsp_avg:d}")
 
         # finally, put up a legend that shows which inputs map to what colors
         # # the colors are in the legend
-        PH.nice_plot(ax, position=-0.05)
+        PH.nice_plot(ax, position=self.axis_offset, direction="outward")
 
-        if synlabel is None or synlabel is True:
+        if synlabel:
             self.axins = PH.make_colorbar(
                 ax,
-                bbox=[0.05, 0.8, 0.8, 0.2],
+                bbox=[0.05, 0.6, 0.8, 0.2],
                 vmin=0,
                 vmax=300.0,
                 nticks=4,
                 palette=colormap,
             )
             self.axins.tick_params(axis="x", length=2, labelsize=6)
+            self.axins.text(x=0.5, y=1.02, s=r"Input ASA (${\mu m^2}$)", horizontalalignment="center")
+                # transform=self.axins.transAxes)
 
         if yaxis_label:
             ax.set_ylabel("Coinc. Rate (Hz)")
-        ax.set_xlabel("T (ms)")
+        # ax.set_xlabel("T (ms)")
+        secax.set_xlabel("T (ms)")
         if RCD.max_coin_rate > 0.0:
             ns = PH.NiceScale(0.0, RCD.max_coin_rate)
             ax.set_ylim((0, ns.niceMax))
         else:
             ax.set_ylim((0, 0.25))
         ax.set_xlim((RCP.minwin, RCP.maxwin))
-        # PH.talbotTicks(
-        #     ax,
-        #     axes="xy",
-        #     # density=(5.0, 2.0),
-        #     insideMargin=0.05,
-        #     # pointSize=10,
-        #     tickPlacesAdd={"x": 1, "y": 1},
-        #     floatAdd={"x": 1, "y": 1},
-        # )
         secax.set_ylim([-70.0, 10.0])
         secax.set_xlim((RCP.minwin, RCP.maxwin))
         secax.tick_params(direction="in", length=3.0, width=1.0)
+        PH.talbotTicks(
+            ax,
+            axes="xy",
+            density=(1.0, 1.0),
+            insideMargin=0.05,
+            pointSize=None,
+            tickPlacesAdd={"x": 1, "y": 1},
+            floatAdd={"x": 1, "y": 1},
+            axrange={"x": (-5.0, 2.5), "y": (0, 0.8)},
+        )
         return summarySiteTC
 
     def get_synaptic_info(self, gbc: str) -> tuple:

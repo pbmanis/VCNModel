@@ -350,12 +350,21 @@ def eff_ais():
             df.at[x.index, "DendArea"] = DendAreas[f"{ident:02d}"]
     df0 = df[df["syn#"].values == 0]
     print(df0)
-    fig = mpl.figure(constrained_layout=True, figsize=(6, 8))
+    
+    fig = mpl.figure(figsize=(5, 8))
     axd = fig.subplot_mosaic(
         """
         A
         B
-        """
+        """,
+    gridspec_kw={
+        "bottom": 0.1,
+        "top": 0.9,
+        "left": 0.15,
+        "right": 0.85,
+        "wspace": 0.05,
+        "hspace": 0.8,
+    },
     )
     slope, intercept, r_value, p_value, std_err = stats.linregress(
         df0["DendArea"], df0["Eff"]
@@ -369,35 +378,71 @@ def eff_ais():
             x0n.append(x0[i])
             y0n.append(y0[i])
     slopea, intercepta, r_valuea, p_valuea, std_erra = stats.linregress(x0n, y0n)
-    x = range(3000, 4500)
+    x = range(3100, 4400)
     y = x * slope + intercept
     xa = range(10, 25)
     ya = xa * slopea + intercepta
+    axd["A"].set_clip_on(False)
     pa = sns.scatterplot(
-        x="DendArea", y="Eff", hue="Cell", data=df0, palette="tab10", ax=axd["A"], s=25
+        x="DendArea", y="Eff", hue="Cell", data=df0, palette="tab10", ax=axd["A"],
+        s=32, clip_on=False,
+    )
+    mpl.setp(axd["A"].get_legend().get_texts(), fontsize='11') # for legend text
+    axd["A"].legend(labelspacing=0.35)
+    axd["A"].set_xlabel(r"Dendrite area (${\mu m^2}$)")
+    axd["A"].set_ylabel("Efficacy")
+    axd["A"].set_xlim(3000, 4800)
+    axd["A"].set_ylim(0, 1.0)
+    axd["A"].text(-0.05, 1.05, "A", fontsize=13, fontweight="bold", fontfamily="sans-serif", transform=axd["A"].transAxes)
+    PH.nice_plot(axd["A"], position=-0.02, direction="outward")
+
+    PH.talbotTicks(
+        axd["A"],
+        density=(1.0, 1.5),
+        insideMargin=0,
+        tickPlacesAdd={"x": 0, "y": 1},
+        floatAdd={"x": 0, "y": 1},
+        axrange={"x": (3000, 4800), "y": (0, 1)},
+        pointSize=10,
     )
     axd["A"].plot(x, y, color="k", linewidth=0.5)
+
+    axd["B"].set_clip_on(False)
+    axd["B"].text(-0.05, 1.05, "B", fontsize=13, fontweight="bold", fontfamily="sans-serif", transform=axd["B"].transAxes)
+    
     pb = sns.scatterplot(
-        x="AIS", y="Eff", hue="Cell", data=df0, palette="tab10", ax=axd["B"], s=25
+        x="AIS", y="Eff", hue="Cell", data=df0, palette="tab10", ax=axd["B"],
+        legend=False, s=32, clip_on=False
     )
+    axd["B"].set_xlabel(r"AIS length (${\mu m}$)")
+    axd["B"].set_ylabel("Efficacy")
     axd["B"].plot(xa, ya, color="k", linewidth=0.5)
-    pa.set_xlim(3000, 4500)
-    pb.set_xlim(10, 25)
+    axd["B"].legend(handles=[], labels=[])
+    axd["B"].set_xlim(3000, 4500)
+    axd["B"].set_xlim(10, 24)
+    PH.nice_plot(axd["B"], position=-0.02, direction="outward")
+    PH.talbotTicks(
+        axd["B"],
+        density=(1.0, 1.5),
+        insideMargin=0,
+        tickPlacesAdd={"x": 0, "y": 1},
+        floatAdd={"x": 0, "y": 1},
+        axrange={"x": (10, 25), "y": (0, 1)},
+        pointSize=10,
+    )
     line_fit = f"y={slope:.4f}x+{intercept:.4f}, p={p_value:6.4f} r={r_value:6.4f}"
     line_fita = f"y={slopea:.4f}x+{intercepta:.4f}, p={p_valuea:6.4f} r={r_valuea:6.4f}"
-    print(line_fit)
-    print(line_fita)
-    axd["A"].text(3100, 0, line_fit, fontsize=6)
-    axd["B"].text(17, 0.7, line_fita, fontsize=6)
-    mpl.setp(pa.get_legend().get_texts(), fontsize="6")
-    mpl.setp(pb.get_legend().get_texts(), fontsize="6")
+    axd["A"].text(0.05, 0.92, line_fit, fontsize=10, transform=axd["A"].transAxes)
+    axd["B"].text(0.05, 0.92, line_fita, fontsize=10, transform=axd["B"].transAxes)
+    mpl.setp(pa.get_legend().get_texts(), fontsize="7")
+    # mpl.setp(pb.get_legend().get_texts(), fontsize="6")
     for lh in pa.legend_.legendHandles:
         lh.set_alpha(1)
-        lh._sizes = [18]
+        lh._sizes = [12]
         # You can also use lh.set_sizes([50])
-    for lh in pb.legend_.legendHandles:
-        lh.set_alpha(1)
-        lh._sizes = [18]
+    # for lh in pb.legend_.legendHandles:
+    #     lh.set_alpha(1)
+    #     lh._sizes = [18]
 
     mpl.show()
 
@@ -414,15 +459,30 @@ class EfficacyPlots(object):
     def __init__(self, parent_figure: object = None, draft=False):
         self.parent_figure = parent_figure
         self.draft = draft
+        self.clean = False
 
+    def prep_data(self, data):
+        spc = re.compile("[ ;,\t\f\v]+")  # format replacing all spaces with tabs
+        dataiter = re.finditer(spc, data)
+        data = re.sub(spc, ",", data)
+        sio = io.StringIO(data)
+        df = pd.read_table(sio, sep=",")
+        cell_names = [f"BC{c:02d}" for c in df.Cell]
+        uni = r"$\mu m^2$"
+        x = df[["ASA", "Eff"]]
+        return x, df
+    
     def plot_efficacy(
         self,
         datasetname: str,
         ax: object,
         loc: tuple = (0.0, 0.0, 0.0, 0.0),
-        figuremode="full",
+        figuremode:str="full",
+        clean:bool=False,
+        clip_on:bool=False
     ):
         self.figuremode = figuremode
+        self.clean = clean
         self.titles = ["Intact", "Intact", "No Dendrites", "No Dendrites"]
         dmap = {"Full": data_Full, "NoDend": data_NoDend}
         dataset = dmap[datasetname]
@@ -445,7 +505,7 @@ class EfficacyPlots(object):
             )
         else:
             self.P = self.parent_figure
-        self.plot_dataset(dataset, ax=ax)
+        self.plot_dataset(dataset, ax=ax, clip_on=clip_on)
         return
 
     def plot_ASA_SD(self):
@@ -551,7 +611,7 @@ class EfficacyPlots(object):
             lab = method
         ax.plot(xfit, yfit, color, label=lab, linewidth=1)  # all cells
 
-        if self.figuremode == "full":
+        if self.figuremode == "full" and not self.clean:
             ax.text(
                 1.1,
                 0.8 + y0,
@@ -592,6 +652,7 @@ class EfficacyPlots(object):
         title: str = None,
         gmodel: object = None,
         legend: bool = True,
+        clip_on: bool = False
     ):
         spc = re.compile("[ ;,\t\f\v]+")  # format replacing all spaces with tabs
         dataiter = re.finditer(spc, data)
@@ -599,7 +660,7 @@ class EfficacyPlots(object):
 
         sio = io.StringIO(data)
         df = pd.read_table(sio, sep=",")
-        cell_names = [f"VCN\_c{c:02d}" for c in df.Cell]
+        cell_names = [f"BC{c:02d}" for c in df.Cell]
         uni = r"$\mu m^2$"
         resdict = {"leastsq": None}
 
@@ -612,10 +673,11 @@ class EfficacyPlots(object):
             size=cell_names,
             sizes=(40, 40),
             legend="full",
+            clip_on=clip_on
         )
 
         ax.set_xlabel(f"ASA ({uni:s})")
-        label = [f"VCN\_c{c:02d}" for c in df.Cell]
+        label = [f"BC{c:02d}" for c in df.Cell]
         method = "leastsq"
 
         cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
@@ -644,13 +706,13 @@ class EfficacyPlots(object):
         ax.set_ylabel("Efficacy (Bushy spikes/input spikes)")
         ax.set_ylim(0, 1.0)
         ax.set_title(title, fontsize=12, fontweight="bold")
-        PH.nice_plot(ax, direction="outward", ticklength=2.0)
+        PH.nice_plot(ax, direction="outward", ticklength=2.0, position=-0.02)
         PH.talbotTicks(
             ax,
             density=(1.0, 1.0),
             insideMargin=0,
-            tickPlacesAdd={"x": 0, "y": 1},
-            floatAdd={"x": 0, "y": 1},
+            tickPlacesAdd={"x": 0, "y": 2},
+            floatAdd={"x": 0, "y": 2},
             axrange={"x": (0, 300.0), "y": (0, 1)},
             pointSize=None,
         )
@@ -685,6 +747,11 @@ def eff_plot():
 # ---------------------------------------------------------------
 # clustering
 # ---------------------------------------------------------------
+def EffClusters(ax, clip_on: bool=True):
+    data = data_Full
+    x, df, clustering, data_with_clusters = aggcluster(data, ax, clip_on=clip_on)
+    
+
 def prep_data(data):
     spc = re.compile("[ ;,\t\f\v]+")  # format replacing all spaces with tabs
     dataiter = re.finditer(spc, data)
@@ -696,11 +763,19 @@ def prep_data(data):
     x = df[["ASA", "Eff"]]
     return x, df
 
+def plot_cluster(data_with_clusters, ax, clip_on:bool=False):
+    ax.scatter(
+        data_with_clusters["ASA"],
+        data_with_clusters["Eff"],
+        c=data_with_clusters["Clusters"],
+        cmap="rainbow",
+        clip_on=clip_on,
+    )
 
-def aggcluster(data, axn):
+def aggcluster(data, axn, clip_on:bool=False):
     x, df = prep_data(data)
     ax = axn[0]
-    axc = axn[1]
+
     dx = np.array((x["ASA"].values, x["Eff"].values)).T
     sx = preprocessing.StandardScaler().fit_transform(dx)
     max_cl = 25
@@ -713,7 +788,6 @@ def aggcluster(data, axn):
         data_with_clusters["Clusters"] = clustering.labels_
         print(" agg nclusters: ", clustering.n_clusters_)
         chs[n_cl] = metrics.calinski_harabasz_score(dx, data_with_clusters["Clusters"])
-    print(chs)
     max_clust = np.argmax(chs)
     max_clust = 5
     clustering = AgglomerativeClustering(
@@ -723,16 +797,12 @@ def aggcluster(data, axn):
     # vis.fit(sx)
     # vis.show()
     data_with_clusters["Clusters"] = clustering.labels_
-    print(max_cl)
+    plot_cluster(data_with_clusters, ax=ax, clip_on=clip_on)
 
-    ax.scatter(
-        data_with_clusters["ASA"],
-        data_with_clusters["Eff"],
-        c=data_with_clusters["Clusters"],
-        cmap="rainbow",
-    )
-    axc.plot(range(max_cl), chs, "ro-")
-    return x, df
+    if len(axn) > 1:
+        axc = axn[1]
+        axc.plot(range(max_cl), chs, "ro-", clip_on = clip_on)
+    return x, df, clustering, data_with_clusters
 
 
 def kmeans(data, ax):
@@ -813,9 +883,9 @@ def kmeans(data, ax):
 
 
 if __name__ == "__main__":
-    # eff_ais()  # generate plot of efficacy vs ais length (supplemental)
+    eff_ais()  # generate plot of efficacy vs ais length (supplemental)
 
-    eff_plot()  # generate plot of efficay vs ASA
+    # eff_plot()  # generate plot of efficay vs ASA
 
     #    print(dir(metrics))
 
