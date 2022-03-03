@@ -171,8 +171,7 @@ class Figures(object):
             fig = dispatch_table[figure_name]()
             if fig is not None:
                 mpl.show()
-                pass
-                #self.save_figure(fig)
+                self.save_figure(fig)
         else:
             cprint("r", f"Figure name '{figure_name:s}' was not in dispatch table.")
 
@@ -212,11 +211,9 @@ class Figures(object):
             )
         ofile = Path(config["baseDataDirectory"], "Figures", fig.filename)
         ofile.parent.mkdir(exist_ok=True)
-        print(
-            "Saving to: ",
-            str(Path(config["baseDataDirectory"], "Figures", fig.filename)),
-        )
-        print("fig title: ", fig.title["title"])
+        cprint("g",
+            f"Saving to: {str(Path(config['baseDataDirectory'])):s}, Figures: {str(fig.filename):s}")
+        cprint("g", f"   Figure title: {fig.title['title']:s}")
         mpl.savefig(
             Path(config["baseDataDirectory"], "Figures",  fig.filename),
             metadata={
@@ -972,6 +969,7 @@ class Figures(object):
         trace_ht = 80  # mV
 
         simulation_experiment = "Full"
+        print("Cells: ", cells)
         for ic, cellN in enumerate(cells):
             # if ic > 0:  # for quick tests
             #               continue
@@ -1001,10 +999,15 @@ class Figures(object):
             if simulation_experiment != "Full":
                 ymax = 40.0
             for n in range(len(fn)):
-                if n == 0 and ic == 0:
+                if n == (len(fn)-1) and ic == 0: # (len(cells)-1):
                     calxv = calxp
+                    calyv = -50.
+                    iax = n
                 else:
+                    iax = None
                     calxv = None
+                    calyv = -50.
+                # cprint("c", f"iax: {str(iax):s}, calxv = {str(calxv):s}  calyv = {str(calyv):s}")
                 y0 = n * yoffset
                 self.parent.PLT.plot_traces(
                     ax=axes[ic],
@@ -1027,7 +1030,7 @@ class Figures(object):
                     spike_marker_size=1.5,
                     spike_marker_color="r",
                     calx=calxv,
-                    caly=-110.0,
+                    caly=calyv,
                     calt=50.0,
                     calv=20.0,
                 )
@@ -1212,15 +1215,27 @@ class Figures(object):
         fig = self.Figure4_Main(supplemental1=True)
         return fig
 
+    def Figure4_assign_panel(self, supplemental1:bool=False, index:int=0):
+        if not supplemental1:
+            revcorr_panel = f"D{index:d}"
+            vm_panel = f"E{index:d}"
+        else:
+            revcorr_panel = f"B{index:d}"
+            vm_panel = f"C{index:d}"
+        return revcorr_panel, vm_panel
+    
+    
     def Figure4_Main(self, supplemental1=False):
         """
         Generate Figure 4 for the paper. Combined bits from various other plots
         and revcorrs/singles
         """
-        if not supplemental1:
-            example_cells = [5, 9, 17, 30]
-        else:
+        print(f"Figure 4 main: supplemental1={str(supplemental1):s}")
+        if supplemental1:
             example_cells = [2, 6, 10, 11, 13, 18]
+        else:
+            example_cells = [5, 9, 17, 30]
+            
 
         start_letter = "A"
         parent_figure = None
@@ -1242,31 +1257,46 @@ class Figures(object):
         else:
             sizer = {}
             figsize = (9, 8)
-        
+            
+
         xw = 1.1
         xw2 = 1.0
         trace_axes = []
-        yb1 = 3.25
-        yb2 = 3.5+2.5
-        yb3 = 3.5+0.5
+        if supplemental1:
+            yh2 = 1.1
+            yb2 = 2.25
+            yb3 = 0.5
+            yb1 = 3.75
+            yh1 = 3.75
+        else:
+            yh2 = 1.2
+            yb2 = 3.5+2.5
+            yb3 = 3.5+0.5
+            yb1 = 3.25
+            yh1 = 4.25
         for j in range(len(example_cells)):
             i = j + 1
-            xl1 = j * 1.25 + 0.75
-            xl2 = j * 1.25 + 6.5  # set panels to the right
+            pan_rev, pan_vm = self.Figure4_assign_panel(supplemental1, i)
+            if not supplemental1:
+                xl1 = j * 1.25 + 0.75
+                xl2 = j * 1.25 + 6.5  # set panels to the right
+            else:
+                xl1 = j * 1.25 + 0.75
+                xl2 = j * 1.25 + 0.75  # set panels on the bottom matching columns
             axn = f"A{i:d}"
             trace_axes.append(axn)
             sizer[axn] = {
-                "pos": [xl1, xw, 3.25, 4.25],
+                "pos": [xl1, xw, yb1, yh1],
                 "labelpos": (-0.15, 1.03),
                 "noaxes": True,
             }
-            sizer[f"D{i:d}"] = {
-                "pos": [xl2, xw2, yb2, 1.2],
+            sizer[pan_rev] = {  # reverse correlatoin
+                "pos": [xl2, xw2, yb2, yh2],
                 "labelpos": (-0.15, 1.05),
                 # "noaxes": True,
             }
-            sizer[f"E{i:d}"] = {
-                "pos": [xl2, xw2, yb3, 1.2],
+            sizer[pan_vm] = {
+                "pos": [xl2, xw2, yb3, yh2],
                 "labelpos": (-0.15, 1.05),
                 "noaxes": True,
             }
@@ -1284,8 +1314,8 @@ class Figures(object):
         # Efficacy plot
         if not supplemental1:
             EFP = EF.EfficacyPlots(parent_figure=P)
-            EFP.plot_efficacy("Full", ax=P.axdict["C"], clean=True)
-        # participation plots
+            EFP.plot_efficacy("Full", datasetname_added="Added", ax=P.axdict["C"], clean=True)
+
         synperum2 = 0.7686  # taken from cell_config.py, line 127 (11/15/2021)
 
         def plot_participation(ax, n, a, b, dB=0, color=None):
@@ -1315,6 +1345,7 @@ class Figures(object):
                 color=color,
                 label=f"BC{n:02d}",
                 clip_on=False,
+                s=12,
                 
             )
             ax.set_xlabel(r"Input ASA (${\mu m^2}$)")
@@ -1366,7 +1397,8 @@ class Figures(object):
         # participation
             ds = self._load_rcdata("Spont")
             drc = self._load_rcdata(f"{dB:2d}dB")
-            palette = sns.color_palette(None, len(ds.keys()))
+            sns.set_palette(palette="tab10", n_colors = 10)
+            palette = sns.color_palette(palette="tab10", n_colors=len(ds.keys()))
             for i, c in enumerate(ds.keys()):
                 # plot_participation(P.axdictax[0], c, ds, drc, dB=dB, color=palette[i])
                 plot_diff_participation(
@@ -1389,6 +1421,7 @@ class Figures(object):
         self.plot_revcorr_supplement(
             cells=example_cells,
             parent_figure=P,
+            supplemental1=supplemental1,
             dBSPL="30dB",
             synlabel_num=synlabel_num,
         )
@@ -1396,18 +1429,20 @@ class Figures(object):
 
         # Revcorr axes cleanup
         for j in range(len(example_cells)):
-            ax = P.axdict[f"D{j+1:d}"]
+            pan_rev, pan_vm = self.Figure4_assign_panel(supplemental1, j+1)
+            ax = P.axdict[pan_rev]
             ax.set_ylim(0, 0.8)
             ax.set_xlim(-5.0, 2.5)
-            ax2 = P.axdict[f"E{j+1:d}"]
+            ax2 = P.axdict[pan_vm]
             ax2.set_xlim(-5.0, 2.5)
             ax2.set_ylim(-70, 0)
-            if j > 0:
-                PH.noaxes(ax, whichaxes="y")
-                PH.noaxes(ax2, whichaxes="y")
-            else:
+            
+            if j == 0:
                 ax.set_ylabel("Presynaptic\nCoinc. Rate (Hz)", ha="center", fontsize=10)
                 ax2.set_ylabel("Vm (mV)", ha="center", fontsize=10)
+            else:
+                PH.noaxes(ax, whichaxes="y")
+                PH.noaxes(ax2, whichaxes="y")
             # ax.xaxis.set_minor_locator(MultipleLocator(2))
 
             ax.tick_params(which="major", length=4, direction="out")
@@ -1428,7 +1463,7 @@ class Figures(object):
                 "title"
             ] = "SBEM Project Figure 4 (main) Modeling: singles inputs, efficacy and revcorr, revised version 8"
         else:
-            fig.filename = "Figures/Figure4_supp/Figure4-Supplemental1_Revcorr_V2.pdf"
+            fig.filename = "Figure4/Figure4_supp/Figure4-Supplemental1_Revcorr_V3.pdf"
             fig.title[
                 "title"
             ] = "SBEM Project Figure 4 Modeling: Supplemental 1: other cells single inputs and revcorr"
@@ -1671,6 +1706,7 @@ class Figures(object):
         dBSPL: str,
         cells=None,
         parent_figure=None,
+        supplemental1=False,
         rate_ax: Union[list, None] = None,
         vm_ax: Union[list, None] = None,
         cumulative: Union[object, None] = None,
@@ -1749,7 +1785,10 @@ class Figures(object):
         all_RCD_RCP = {}  # all revcorr data
 
         i_plot = 0
-        for i, cell_number in enumerate(grAList()):
+        if cells is None:
+            cells = grAList()
+            
+        for i, cell_number in enumerate(cells):
 
             PR, PD, RCP, RCD = self._get_revcorr(cell_number=cell_number, dBSPL=dBSPL)
             if PD is None:
@@ -1771,15 +1810,14 @@ class Figures(object):
             sfi = Path(cellpath, Path(dataset[dBSPL]).name)
             if not sfi.is_dir():
                 return
-            print(sfi)
             fn = sorted(list(sfi.glob("*")))
-            print("revcorr supplement fn: ", fn)
+            print("Revcorr supplement file: ", fn)
 
             if i == 0:
                 tcal = True  # point font for cal bar
             else:
                 tcal = False  # no cal bar
-            if synlabel_num == 0:
+            if synlabel_num == 0:  # labels all of them
                 synlabel = True
             else:
                 if cell_number == synlabel_num:
@@ -1788,8 +1826,9 @@ class Figures(object):
                     synlabel = False
 
             all_RCD_RCP[cell_number] = [RCD, RCP]
-            ax_top_row = P.axdict[f"D{i_plot+1:d}"]
-            ax_bot_row = P.axdict[f"E{i_plot+1:d}"]
+            ax_top_row_name, ax_bot_row_name = self.Figure4_assign_panel(supplemental1, index=i_plot+1)
+            ax_top_row = P.axdict[ax_top_row_name]
+            ax_bot_row = P.axdict[ax_bot_row_name]
             if cell_number in cells:
                 if parent_figure is None:
                     axlist = P.axarr[0:2, i_plot]
@@ -1812,8 +1851,8 @@ class Figures(object):
                     colormap=colormap,
                 )
 
-                print(f"  Mean pre: {RCD.mean_pre_intervals=}")
-                print(f"  Mean Post: {RCD.mean_post_intervals:.3f}")
+                print(f"  Mean pre: {np.mean(RCD.mean_pre_intervals):5.3f} ms  ({1./np.mean(RCD.mean_pre_intervals):7.3f} Hz)")
+                print(f"  Mean Post: {RCD.mean_post_intervals:5.3f} ms  ({1./RCD.mean_post_intervals:7.3f} Hz)")
                 # if parent_figure is None:
                 ax_top_row.text(
                     0.5,
@@ -1959,7 +1998,12 @@ class Figures(object):
                 fillstyle = "none"
             else:
                 fillstyle = "full"
-            for cell_number in R.keys():
+            r_keys = list(R.keys())
+            sns.set_palette("tab10", len(r_keys))
+            palette = sns.color_palette(palette="tab10", n_colors=len(r_keys))
+            print(len(r_keys))
+            print("palette in G: ", palette)
+            for c, cell_number in enumerate(r_keys):
                 RCD = R[cell_number][0]
                 RCP = R[cell_number][1]
                 xnspike = np.arange(len(RCD.ynspike)) + 1
@@ -1967,7 +2011,8 @@ class Figures(object):
                     xnspike,
                     RCD.ynspike,
                     syms[i],
-                    markersize=4,
+                    color=palette[c],  # force palette colors
+                    markersize=3.5,
                     fillstyle=fillstyle,
                     clip_on=False,
                     label=f"BC{cell_number:02d}",
@@ -1990,8 +2035,8 @@ class Figures(object):
                 ]
                 ax.legend(hidden_lines, dBSPLs)
                 hpoints = np.reshape(hpoints, (len(hpoints), 2))
-                mpl.plot(hpoints[:,0], hpoints[:,1], 'o')
-                mpl.show()
+                # ax.plot(hpoints[:,0], hpoints[:,1], 'o')
+                # mpl.show()
                 
                 if i == 0:  # draw a alphashape hull around the data points
                     alphafactor = 0.4
@@ -2524,15 +2569,15 @@ class Figures(object):
             markersize=1.5,
         )
         PH.referenceline(ax, -60.0)
-        if cal_x_axis:
-            ax.text(
-                0.0,
-                -60.0,
-                "-60 mV",
-                fontsize=7,
-                horizontalalignment="right",
-                verticalalignment="center",
-            )
+        # if cal_x_axis:
+        #     ax.text(
+        #         0.0,
+        #         -60.0,
+        #         "-60 mV",
+        #         fontsize=7,
+        #         horizontalalignment="right",
+        #         verticalalignment="center",
+        #     )
         ax.set_xlim(0.0, time_win[1] - time_win[0])
         if cal_x_axis:
             PH.noaxes(ax)

@@ -70,7 +70,7 @@ cellsintable = [
     # 0,  # test cell with soma only
 ]
 datafile = dendqual
-inputs = [f"Input {i+1:d}" for i in range(12)]  # input column labels
+inputs = [f"Input {i+1:d}" for i in range(20)]  # input column labels, up to 20
 
 # synperum2 = 0.65 # average density of synapses, synapses per micron squared
 # Original value, from Spriou measurements in MNTB.
@@ -153,10 +153,12 @@ class CellConfig:
         DC R01 DC004551 (Manis, 2013-2019, Early development)
         DC R01 DC019053 (Manis, 2020-2025, Later development)
     """
+
     def __init__(
         self,
         datafile: Union[str, Path, None] = None,
         spont_mapping: Union[str, None] = None,
+        add_inputs: str="none",
         verbose: bool = False,
     ):
         """
@@ -182,6 +184,13 @@ class CellConfig:
         self.synperum2 = synperum2
         if datafile is None:
             datafile = dendqual
+        if add_inputs in ["None", "none"]:
+            self.add_inputs = None
+        elif add_inputs in ["101730", 101713]:
+            self.add_inputs = [150, 190, 230]
+        else:
+            raise ValueError(f"AddInputs does not know {str(add_inputs):s}")
+            exit()
         self.verbose = verbose
         self.datafile = datafile
         self.spont_mapping = spont_mapping  # only set if the spont map is determined
@@ -226,14 +235,28 @@ class CellConfig:
         Parameters
         ----------
         cellnum : str (required)
+        
+        insert_inputs : list or None
+            list of the ASA to insert into the cell's list
 
         """
+        for k in range(13, 21):
+            self.ASA = self.ASA.assign(**{f"Input {k:d}": np.nan})
+
         dcell = self.ASA[self.ASA["Cell-Inputs"] == cellnum]
         celln = f"VCN_c{cellnum:02d}"
         self.VCN_Inputs[celln] = ["bushy", []]
+        j = 0
         for i in inputs:
             inasa = dcell[i].values
-            if len(inasa) == 0 or np.isnan(inasa):  # skip empty entries
+            if (cellnum in [10, 17, 30] and 
+                    (self.add_inputs is not None or self.add_inputs not in ["None", "none"]) and 
+                    np.isnan(inasa)
+                ):
+                if isinstance(self.add_inputs, list) and  j < len(self.add_inputs):
+                    inasa = self.add_inputs[j]
+                    j += 1
+            if np.isnan(inasa):  # skip empty entries
                 continue
             self.VCN_Inputs[celln][1].append(
                 [
@@ -248,7 +271,10 @@ class CellConfig:
                     {"soma": [0, 0.5, 1.0]},
                 ]
             )
-        # print('dcell: ', dcell)
+
+    def modify_cell(self, cellnum: str):
+        celln = f"VCN_c{cellnum:02d}"
+        
 
     def make_dict(
         self,
@@ -274,7 +300,9 @@ class CellConfig:
             Area correction to use, when mapping between swc areas and mesh areas
             for more accurate areal representations.
         synapse_map: str
-            one of 'HS', 'LS', 'MS', or 'mixed1' This assigns the SR grouping. 'mixed1' does assignments based on a table
+            one of 'HS', 'LS', 'MS', or 'mixed1' 
+            This assigns the SR grouping. 
+            'mixed1' does assignments based on a table for LS, MS and HS.
 
         Returns
         -------
@@ -406,10 +434,11 @@ class CellConfig:
         hoc_soma_area = dcell[hocsomarecons].values[0]
         inflateratio = mesh_area / hoc_soma_area
         print(
-            f"    From Table: Cell={cellnum:02d}: Soma mesh area:     {mesh_area:8.2f}", end="")
-        print(
-            f"  HOC Soma area:     {hoc_soma_area:8.2f}  ",
+            f"    From Table: Cell={cellnum:02d}: Soma mesh area:     {mesh_area:8.2f}",
             end="",
+        )
+        print(
+            f"  HOC Soma area:     {hoc_soma_area:8.2f}  ", end="",
         )
         print(f"    Soma Inflation ratio:     {inflateratio:6.3f}")
         return inflateratio
@@ -436,7 +465,10 @@ class CellConfig:
             inflateratio = mesh_area / hoc_dend_area
         else:
             inflateratio = 1.0
-        print(f"    From Table: Cell={cellnum:02d}: Dendrite mesh area: {mesh_area:8.2f}", end="")
+        print(
+            f"    From Table: Cell={cellnum:02d}: Dendrite mesh area: {mesh_area:8.2f}",
+            end="",
+        )
         print(f" HOC Dendrite area: {hoc_dend_area:8.2f}  ", end="")
         print(f"    Dendrite Inflation ratio: {inflateratio:6.3f}")
         return inflateratio
@@ -463,7 +495,7 @@ class CellConfig:
         Nothing
         """
         cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]  # just grade A cells
-        synsizes = [0.65, 0.799, 0.7686]
+        synsizes = [0.65, 0.7686, 0.7990]
         for j, cell in enumerate(cells):
             print(f"Cell: VCN_c{cell:02d}")
             for i, synsize in enumerate(synsizes):
@@ -521,7 +553,7 @@ class CellConfig:
         # exit()
         for i, p in enumerate(pct):
             ne = int(0.5 + nendings * (float(p) / 100.0))
-            end_group = allendings[sp: sp + ne]
+            end_group = allendings[sp : sp + ne]
             # print(sp, sp+ne, ne, len(end_group))
             # print(f"Group {i:d} ({gname[2-i]:s}) Range = {np.min(end_group):.2f} - {np.max(end_group):.2f},
             # N={len(end_group):d}", end='')
@@ -700,18 +732,19 @@ class CellConfig:
 
 if __name__ == "__main__":
     # Check the formatting and display the results
-    cc = CellConfig(datafile, spont_mapping="mixed1")
+    # cc = CellConfig(datafile, spont_mapping="mixed1")
+    cc = CellConfig(datafile, spont_mapping="HS", add_inputs="101730")
     # make sure all is working
     cc.summarize_release_sites()
     cc.print_cell_inputs(cc.VCN_Inputs)
-    cc.print_cell_inputs_json(cc.VCN_Inputs)
-    for cellnum in cellsintable:
-        cc.get_soma_ratio(cellnum)
-        cc.get_dendrite_ratio(cellnum)
-
-    sm = cc.divide_SR_by_size()
-    # print(sm)
-    for asa in [40.0, 80.0, 200.0, np.min(cc.allendings), np.max(cc.allendings)]:
-        indx = cc.get_SR_from_ASA(asa)
-        print(f"ASA {asa:.2f} is in group: {indx:d}")
-    # cc.summarize_inputs()
+    # cc.print_cell_inputs_json(cc.VCN_Inputs)
+    # for cellnum in cellsintable:
+    #     cc.get_soma_ratio(cellnum)
+    #     cc.get_dendrite_ratio(cellnum)
+    #
+    # sm = cc.divide_SR_by_size()
+    # # print(sm)
+    # for asa in [40.0, 80.0, 200.0, np.min(cc.allendings), np.max(cc.allendings)]:
+    #     indx = cc.get_SR_from_ASA(asa)
+    #     print(f"ASA {asa:.2f} is in group: {indx:d}")
+    cc.summarize_inputs()

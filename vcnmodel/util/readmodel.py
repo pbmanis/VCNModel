@@ -68,7 +68,7 @@ class ReadModel():
                 filename = datasource
         else:
             df = datasource
-            print(df.Params)
+            print("df.Params: ", df.Params)
             raise ValueError()
             
         if filemode in ['vcnmodel.v0']:

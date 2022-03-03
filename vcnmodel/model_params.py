@@ -118,6 +118,11 @@ class CmdChoices:
         "threelargest",
         "fourlargest",
     ]
+    SpirouInputSubChoices = [
+        "none",
+        "1017",
+        "101730",
+    ]
     ANSynapseChoices = ["simple", "multisite"]
 
     srname = ["LS", "MS", "HS"]  # runs 0-2, not starting at 0
@@ -303,6 +308,7 @@ class RunInfo:
     signalToMasker: float = 0.0
     CMMRmode: str = "CM"
     Spirou: str = "all"
+    SpirouSubs: str = "none"
 
     # gif model parameters
     # parameters for generating a noise signal to generating GIF model of cell
@@ -654,6 +660,15 @@ def build_parser():
         default="all",
         choices=CmdChoices.SpirouChoices,
         help="Specify Spirou experiment type.... ",
+    )
+    parser.add_argument(
+        "--subs",
+        type=str,
+        dest="SpirouSubs",
+        action="store",
+        default="none",
+        choices=CmdChoices.SpirouInputSubChoices,
+        help="Specify Spirou substitute/add inputs (hardwired)....none or 1017 ",
     )
     # Morphology
     parser.add_argument(

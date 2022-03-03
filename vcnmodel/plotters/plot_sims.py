@@ -636,7 +636,6 @@ class PlotSims:
         if spike_shape:
             SP.analyzeSpikeShape()
         RMA = None
-        print(SP.analysis_summary)
         SP.analysis_summary['pulseDuration'] = 0.1
         if protocol == "IV":
             SP.fitOne(function="fitOneOriginal")
@@ -738,31 +737,31 @@ class PlotSims:
         fn: Union[Path, str],
         PD: dataclass,
         protocol: str,
-        ymin=-80.0,
-        ymax=20.0,
-        xmin=0.0,
-        xmax=None,
+        ymin:float=-80.0,
+        ymax:float=20.0,
+        xmin:float=0.0,
+        xmax:Union[float, None] =None,
         yoffset: float = 0.0,
-        iax=None,
-        nax=0,
-        rep=None,  # which rep : none is for all.
-        figure=None,
-        show_title=True,
-        longtitle=True,
-        trace_color="k",
-        ivaxis=None,
-        ivcolor="k",
-        iv_spike_color="r",
-        spike_marker_size=2.5,
-        spike_marker_color="r",
-        calx=0.0,
-        caly=0.0,
-        calt=10.0,
-        calv=20.0,
-        calx2=20.0,
-        caly2=20.0,
-        calt2=10.0,
-        calv2=10.0,
+        iax:Union[int, None]=None,
+        nax:int=0,
+        rep:Union[int, list, None]=None,  # which rep : none is for all.
+        figure:object=None,
+        show_title:bool=True,
+        longtitle:bool=True,
+        trace_color:str="k",
+        ivaxis:object=None,
+        ivcolor:str="k",
+        iv_spike_color:str="r",
+        spike_marker_size:float=2.5,
+        spike_marker_color:str="r",
+        calx:Union[float, None]=0.0,
+        caly:Union[float, None]=0.0,
+        calt:Union[float, None]=10.0,
+        calv:Union[float, None]=20.0,
+        calx2:Union[float, None]=20.0,
+        caly2:Union[float, None]=20.0,
+        calt2:Union[float, None]=10.0,
+        calv2:Union[float, None]=10.0,
         axis_index:int=0,  # index for axes, to prevent replotting text
     ) -> tuple:
         changetimestamp = get_changetimestamp()
@@ -799,6 +798,13 @@ class PlotSims:
         ninspikes = 0
         ispikethr = None
         spike_rheobase = None
+        if xmax is None:
+            # print(ri.pip_start)
+            # print(ri.pip_duration)
+            # return
+            xmax = 1e3*(ri.pip_start+ri.pip_duration)
+            xmin = 1e3*ri.pip_start
+            # np.max(AR.MC.time_base)
         if isinstance(ax, list):
             ax1 = ax[0]
             ax2 = ax[1]
@@ -824,6 +830,7 @@ class PlotSims:
                 AR.MC.traces[trial] = AR.MC.traces[trial].asarray() * 1e3  # mV
                 cmd = AR.MC.cmd_wave[trial] * 1e9  # from A to nA
             xclip = np.argwhere((AR.MC.time_base >= xmin) & (AR.MC.time_base < xmax))
+            # plot trace
             ax1.plot(
                 AR.MC.time_base[xclip],
                 AR.MC.traces[trial][xclip] + yoffset,
@@ -845,6 +852,7 @@ class PlotSims:
                 # cprint('r', 'spikes from SP.spikeIndices')
                 spikeindex = SP.spikeIndices[trial]
             # print(f"Trial: {trial:3d} Nspikes: {len(spikeindex):d}")
+            # plot spike peaks
             ax1.plot(
                 AR.MC.time_base[spikeindex],
                 AR.MC.traces[trial][spikeindex] + yoffset,
@@ -913,9 +921,9 @@ class PlotSims:
                 f"\nRin={RMA['Rin']:.1f} M$\Omega$  $\\tau_m$={RMA['taum']:.2f} ms"
             )
 
-            if iax == 2 and calx is not None:
+            if iax is not None and calx is not None:
                 PH.calbar(
-                    ax,
+                    ax1,
                     calbar=[calx, caly, calt, calv],
                     scale=[1.0, 1.0],
                     axesoff=True,
@@ -1023,7 +1031,9 @@ class PlotSims:
                     font="Arial",
                 )
         else:
-            if nax == 0 or calx is not None:
+            if calx is not None and iax is not None:
+                cprint("r", "**** making cal bar")
+                print("calx, y, calt, v: ", iax, calx, caly, calt, calv)
                 PH.calbar(
                     ax,
                     calbar=[calx, caly, calt, calv],
@@ -1815,8 +1825,8 @@ class PlotSims:
         )
         return summarySiteTC
 
-    def get_synaptic_info(self, gbc: str) -> tuple:
-        SC = cell_config.CellConfig()
+    def get_synaptic_info(self, gbc: str, add_inputs="none") -> tuple:
+        SC = cell_config.CellConfig(add_inputs=add_inputs)
         # print(SC.VCN_Inputs)
         if isinstance(gbc, int):
             gbc_string = f"VCN_c{gbc:02d}"
@@ -1967,7 +1977,6 @@ class PlotSims:
         # 1. Gather data
         #
         print(f"    compute_revcorrGetting data for gbc: {gbc:s}")
-        SC, syninfo = self.get_synaptic_info(gbc)
         res = self.get_data(fn, PD, changetimestamp, protocol)
         if res is None:
             return None
@@ -1978,6 +1987,8 @@ class PlotSims:
         RCP.si = si
         RCP.ri = ri
         RCP.algorithm = revcorrtype
+        print(ri.SpirouSubs)
+        SC, syninfo = self.get_synaptic_info(gbc)
 
         print(f"    compute_revcorr: Preparing for computation for: {str(gbc):s}")
         RCP.ninputs = len(syninfo[1])
@@ -2195,7 +2206,8 @@ class PlotSims:
 
         PD = PData()
         sfi = sorted(selected.files)
-
+        changetimestamp = get_changetimestamp()
+        
         df = pd.DataFrame(
             index=np.arange(0, nfiles),
             columns=[
@@ -2218,7 +2230,18 @@ class PlotSims:
                 nax=i,
                 figure=P.figure_handle,
             )
-            SC, syninfo = self.get_synaptic_info(self.parent.cellID)
+            res = self.get_data(sfi[i], PD, changetimestamp, selected.runProtocol)
+            if res is None:
+                return None
+            (d, AR, SP, RMA, RCP, RCD) = res
+            PD.thiscell = self.parent.cellID
+            si = d["Params"]
+            ri = d["runInfo"]
+            try: 
+                print("Ri: ", ri.SpirouSubs)
+            except:
+                ri.SpirouSubs = "none"
+            SC, syninfo = self.get_synaptic_info(self.parent.cellID, add_inputs=ri.SpirouSubs)
             r, ctype = SC.make_dict(f"VCN_c{int(self.parent.cellID):02d}")
             area = syninfo[1][synno][0]
             nsites = int(np.around(area * SC.synperum2))

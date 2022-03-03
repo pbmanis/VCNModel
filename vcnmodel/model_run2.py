@@ -322,7 +322,9 @@ class ModelRun:
         if self.Params.verbose:
             self.print_modelsetup()
         self.cconfig = cell_config.CellConfig(
-            verbose=self.Params.verbose, spont_mapping=self.Params.SRType,
+            verbose=self.Params.verbose,
+            spont_mapping=self.Params.SRType,
+            add_inputs=self.RunInfo.SpirouSubs,  # input substitutions/additions
         )
 
         # find out where our files live
@@ -1576,7 +1578,10 @@ class ModelRun:
         independent.
         If not, then we generate a consequetive sequence of seeds (so it is controlled and
         reusable) offset by the starting number specified as the seed
-
+        
+        Note: If you change the number of synapses, then the seeds for subsequent repetitions
+        will be different. Probably should have made the seed array > # of synapses ever expected.
+        
         Parameters
         ----------
         nReps: int (no default)

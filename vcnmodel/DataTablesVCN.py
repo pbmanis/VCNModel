@@ -844,6 +844,7 @@ class DataTablesVCN:
 
                     print("   reload ok")
                     print("-" * 80)
+
                     self.table_manager.build_table(mode="scan")
                     self.table.setSortingEnabled(True)
                     self.table.horizontalHeader().sortIndicatorChanged.connect(
