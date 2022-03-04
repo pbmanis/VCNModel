@@ -30,6 +30,7 @@ from vcnmodel.plotters import plot_z as PZ
 from vcnmodel.plotters import SAM_VS_vplots
 import vcnmodel.util.fixpicklemodule as FPM
 from vcnmodel.analyzers import sac as SAC
+from vcnmodel.analyzers import isi_cv as ISI
 from vcnmodel.plotters import (
     figure_data as FD,
 )  # table of simulation runs used for plotting figures
@@ -2426,12 +2427,12 @@ class Figures(object):
             f"\nSSL: {np.nanmean(grand_ssl):.3f} (SD {np.nanstd(grand_ssl):.3f})"
         )
         ax.text(
-            0.45,
+            0.20,
             0.95,
             fsl_text,
             # N={np.count_nonzero(~np.isnan(fsl)):3d})",
-            fontsize=7,
-            color="k",
+            fontsize=5,
+            color="b",
             # fontfamily="monospace",
             transform=ax.transAxes,
             horizontalalignment="left",
@@ -2782,6 +2783,7 @@ class Figures(object):
                 an_st_grand[i].extend(tk * 1e-3)
         return an_st_by_input, all_an_st, an_st_grand
 
+    
     def plot_one_PSTH(
         self,
         cell_number: int,
@@ -2861,9 +2863,11 @@ class Figures(object):
                 self.plot_stim_waveform(
                     ax=st_ax, ntrace=i, d=d, AR=AR, stim_win=plot_win
                 )
+        PH.nice_plot(tr_ax, direction="outward", ticklength=3.0)
+        
 
         all_bu_st = self.get_bu_spikearray(AR, d)
-
+        self.all_bu_st = all_bu_st
         psth_binw = 0.5e-3
         ninputs = 1
 
@@ -2877,6 +2881,8 @@ class Figures(object):
                 ntr=ntr,
                 ninputs=1,
             )
+            PH.nice_plot(bupsth_ax, direction="outward", ticklength=3.0)
+            
             if label_x_axis:
                 bupsth_ax.set_xlabel("Time (s)")
 
@@ -2908,6 +2914,8 @@ class Figures(object):
                 zero_time=psth_win[0] * 1e-3,
                 cellID=cell_number,
             )
+            PH.nice_plot(bufsl_ax, direction="outward", ticklength=3.0)
+            
             PH.talbotTicks(
                 bufsl_ax,
                 axes="xy",
@@ -2964,8 +2972,44 @@ class Figures(object):
                 label_x_axis=label_x_axis,
                 fsl_win=an_fsl_win,
             )
+
         return axon_name
 
+    def plot_one_CV(self,
+        cell_number: int,
+        dbSPL: float,
+        cv_win:Union[list, tuple]=(0.220, 0.3),
+        t_grace: float=0.0,
+        cv_binw: float=0.001, 
+        cv_ax:object=None,
+        label_x_axis:bool=False,
+    ):
+        if self.all_bu_st is None or cv_ax is None:  # use the data from PSTH. If not present, skip this
+            return
+        print(len(self.all_bu_st))
+        cvisit, cvisi, cvt, cvm, cvs = ISI.isi_cv(self.all_bu_st, 
+                        binwidth=cv_binw,
+                        t0 = cv_win[0],
+                        t1 = cv_win[1],
+                        tgrace = t_grace)
+        cv_ax.plot(1e3*(cvt-cv_win[0]), cvs/cvm, 'k-')
+        PH.nice_plot(cv_ax, direction="outward", ticklength=3.0)
+        cv_ax.set_ylim(0, 1.2)
+        cv_ax.set_xlim(0, 1e3*(cv_win[1]-cv_win[0]))
+        PH.talbotTicks(
+            cv_ax,
+            axes="xy",
+            density=(1.0, 1.0),
+            insideMargin=0.02,
+            # pointSize=ticklabelsize,
+            tickPlacesAdd={"x": 2, "y": 1},
+            floatAdd={"x": 2, "y": 1},
+        )
+        cv_ax.set_ylabel("CV")
+        if label_x_axis:
+            cv_ax.set_xlabel("Latency (ms)")
+    
+    
     def Figure3_Supplemental4_PSTH(self):
         print("Plotting Figure 3 Supplement 4 PSTH")
         dBSPL = "30dB"
@@ -2974,7 +3018,7 @@ class Figures(object):
         hspc = 0.08
         P = PH.regular_grid(
             rows=len(grAList()),
-            cols=3,
+            cols=4,
             order="rowsfirst",
             figsize=(8, 10),
             # showgrid=True,
@@ -2994,6 +3038,7 @@ class Figures(object):
             0: f"Soma Voltage",
             1: f"PSTH",
             2: f"FSL/SSL",
+            3: f"CV",
         }
         for i in list(cdata.keys()):
             P.axarr[0, i].set_title(
@@ -3032,9 +3077,17 @@ class Figures(object):
                 label_x_axis=show_label,
                 bu_fsl_win=(2.2e-3, 4e-3),  # FSL window after onset, in msec
             )
+            self.plot_one_CV(
+                cell_number = cell_number,
+                dbSPL = dBSPL,
+                cv_win=(0.05, 0.100),
+                cv_ax = P.axarr[i, 3],
+                label_x_axis=show_label,
+                t_grace=0.025,
+            )
 
             P.axarr[i, 0].text(
-                -0.20,
+                -0.40,
                 0.5,
                 f"BC{cell_number:02d}",
                 fontsize=9,
@@ -3044,7 +3097,7 @@ class Figures(object):
             )
             if axon_name == 'standardized':
                 P.axarr[i, 0].text(
-                -0.20,
+                -0.40,
                 0.3,
                 "Sub. axon",
                 fontsize=7,

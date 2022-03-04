@@ -99,6 +99,7 @@ all_modules = [
     vcnmodel.analyzers.spikestatistics,
     vcnmodel.analyzers.analysis,
     vcnmodel.analyzers.reverse_correlation,
+    vcnmodel.analyzers.isi_cv,
     vcnmodel.analyzers.sttc,
     vcnmodel.analyzers.sac,
     vcnmodel.util.fixpicklemodule,

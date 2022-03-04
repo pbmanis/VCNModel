@@ -2780,7 +2780,7 @@ class PlotSims:
                 else:
                     fsl_text = "No spikes for SSL measure. "
                 ax.text(
-                    0.45,
+                    0.30,
                     0.95,
                     fsl_text,
                     fontsize=7,
