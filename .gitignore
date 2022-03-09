@@ -6,6 +6,7 @@ vcn_venv
 vcnmodel/archived
 #vcnmodel/archived/plotters
 vcnmodel/util/testmpl.py
+src
 src/  # the old source directory
 toml/archived
 scripts/Archived
