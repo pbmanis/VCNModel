@@ -4,6 +4,7 @@
 # development utilities
 black==19.10b0
 flake8
+vulture
 Pint==0.14
 isort==5.0.2
 mypy==0.782

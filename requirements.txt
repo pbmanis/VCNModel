@@ -5,6 +5,7 @@
 # development utilities
 black==19.10b0
 flake8
+vulture
 bokeh==2.3.3
 Pint==0.14
 isort==5.0.2
