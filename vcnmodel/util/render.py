@@ -3,7 +3,6 @@ import argparse
 import importlib
 import os
 import sys
-import typing
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Union
@@ -229,8 +228,6 @@ class Render:
 def set_table_and_cells(
     filename: str,
     dataTable: str,
-    morphology: str,
-    decorator: object,
     species: str,
     modelName: str,
     modelType: str,
@@ -366,13 +363,10 @@ def main():
         fnum = int(fnum[5:7])
     else:
         raise ValueError("Need either -n cell number or -f filename")
-        exit(1)
 
     post_cell = set_table_and_cells(
         filename=filename,
         dataTable="data_XM13A_nacncoop_normal",
-        morphology=str(filename),
-        decorator=Decorator,
         species="mouse",
         modelName="XM13A_nacncoop",
         modelType="II",

@@ -1,32 +1,28 @@
-from pathlib import Path
-import io
 import importlib
-import pandas as pd
-import numpy as np
+import io
 import os
 import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
 import seaborn as sns
-import palettable
 
 sys.path.insert(0, os.path.abspath("nb"))
 import VS_data_30dB as VS_data
-import matplotlib.pyplot as mpl
-from matplotlib import scale as mscale
+from matplotlib import pyplot as mpl
 from pylibrary.plotting import plothelpers as PH
+
 import toml
 
 config = toml.load(open("wheres_my_data.toml", "r"))
-from matplotlib import transforms as mtransforms
-from matplotlib import ticker
 import plotnine as PN
+from matplotlib import ticker
 
 
 def reset_style():
     #     sns.set_style(rc={"pdf.fonttype": 42})
     mpl.style.use("~/.matplotlib/figures.mplstyle")
-
-
-
 
 
 class VS_Plots:

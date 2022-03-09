@@ -11,7 +11,6 @@ import numpy as np
 import pickle
 import pycircstat as PCS
 from collections import OrderedDict
-from cycler import cycler
 import random
 
 import matplotlib

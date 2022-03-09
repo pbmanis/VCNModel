@@ -190,7 +190,6 @@ class CellConfig:
             self.add_inputs = [150, 190, 230]
         else:
             raise ValueError(f"AddInputs does not know {str(add_inputs):s}")
-            exit()
         self.verbose = verbose
         self.datafile = datafile
         self.spont_mapping = spont_mapping  # only set if the spont map is determined

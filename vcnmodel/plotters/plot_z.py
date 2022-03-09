@@ -187,7 +187,7 @@ class PlotZ:
         mpl.show()
 
     def plot_col(self, col, f, P, axonly_scale=3000.):
-        import matplotlib.scale as MPLS
+#        import matplotlib.scale as MPLS
         import matplotlib.ticker
         
         ax = P.axarr

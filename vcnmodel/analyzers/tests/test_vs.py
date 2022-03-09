@@ -71,18 +71,18 @@ class VectorStrengthTester(UserTester):
         mpl.show()
         return
 
-        fig, ax = mpl.subplots(2, 1)
-        ax = ax.ravel()
-        plot_ticks(ax[0], phsp, 'r-')
-        plot_ticks(ax[1], spikes, 'b-')
-        mpl.show()
-        print('mean isi: ', np.mean(np.diff(spikes)), 'stim period: ', 1./freq)
-        vsd = VS.vector_strength(spikes, freq)
-        print('VS: ', vsd.vs, 'SD sec: ', vsd.circ_timeSD)
-        print('circ_phase min max: ', np.min(vsd.circ_phase), np.max(vsd.circ_phase))
-        bins = np.linspace(0, 2*np.pi, 36)
-        mpl.hist(vsd.circ_phase, bins)
-        mpl.show()
+        # fig, ax = mpl.subplots(2, 1)
+        # ax = ax.ravel()
+        # plot_ticks(ax[0], phsp, 'r-')
+        # plot_ticks(ax[1], spikes, 'b-')
+        # mpl.show()
+        # print('mean isi: ', np.mean(np.diff(spikes)), 'stim period: ', 1./freq)
+        # vsd = VS.vector_strength(spikes, freq)
+        # print('VS: ', vsd.vs, 'SD sec: ', vsd.circ_timeSD)
+        # print('circ_phase min max: ', np.min(vsd.circ_phase), np.max(vsd.circ_phase))
+        # bins = np.linspace(0, 2*np.pi, 36)
+        # mpl.hist(vsd.circ_phase, bins)
+        # mpl.show()
 
 
     def assert_test_info(self, *args, **kwds):

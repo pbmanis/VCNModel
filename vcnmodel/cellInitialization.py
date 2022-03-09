@@ -203,7 +203,6 @@ def restore_initial_conditions_state(
     filename: Path,
     electrode_site: object = None,
     reinit: bool = False,
-    autoinit: bool = False
 ) -> None:
     """
     Restore initial conditions from a file

@@ -12,7 +12,6 @@ import seaborn as sns
 from lmfit import Model
 from matplotlib import pyplot as mpl
 from pylibrary.plotting import plothelpers as PH
-from pylibrary.plotting import styler as STY
 
 matplotlib.rcParams["mathtext.fontset"] = "stixsans"
 

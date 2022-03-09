@@ -1,5 +1,7 @@
 #!/usr/bin/python
 """
+Runs AN input simulations for cells. This has been superceeded by 
+the shell scripts in scripts, and may no longer work.
 
 """
 from __future__ import print_function
@@ -17,7 +19,6 @@ from matplotlib import rc
 rc("text", usetex=False)
 import pickle
 from collections import OrderedDict
-import all_gbc_AN as oneAN
 
 default_modelName = "XM13_nacncoop"
 if len(sys.argv) > 1:
@@ -118,13 +119,6 @@ for gbc in cellnames:
     print("=" * 32)
     cell = gbc
 
-    # an_result_file = 'AN_Result_VCN_c{0:s}_delays_N{1:03d}_040dB_4000.0_{2:2s}.p'.format(gbc, nrep, SR)
-    # andatafile = Path(baseDirectory, cell, simDirectory, 'AN', an_result_file)
-    # print('  an result file: {0:s}'.format(str(andatafile)))
-    # print (andatafile.is_file() )
-    # if not andatafile.is_file() or forcerun: # only run if no evidence we have run this already
-
-    # ANR = oneAN.OneANRun(gbc, modelName, modelType, protocol, SR, nrep, forcerun=forcerun, testing=testing, inflateflag=inflateflag)
     runpars = {
         "gbc": gbc,
         "modelName": modelName,

@@ -22,7 +22,6 @@ import pandas as pd
 import pyperclip
 import pyqtgraph as pg  # type: ignore
 import quantities as pq
-import rich as RI
 import scipy.stats  # type: ignore
 import seaborn as sns
 from ephys.ephysanalysis import MakeClamps, RmTauAnalysis, SpikeAnalysis
@@ -743,7 +742,6 @@ class PlotSims:
         xmax:Union[float, None] =None,
         yoffset: float = 0.0,
         iax:Union[int, None]=None,
-        nax:int=0,
         rep:Union[int, list, None]=None,  # which rep : none is for all.
         figure:object=None,
         show_title:bool=True,
@@ -1607,7 +1605,6 @@ class PlotSims:
         yaxis_label=True,
         start_letter="A",
         colormap="Set3",
-        max_inputs=12,
         show_average:bool=False,
         synlabel: bool = True,
         cbar_vmax: float = 300.0,
@@ -2565,7 +2562,6 @@ class PlotSims:
                     "stimdur": pip_duration * 0.8,
                     "maxn": 100000000,
                 }
-            print(ri.soundtype)
             sac = SAC.SAC()
             yh, bins = sac.SAC_with_histo(
                 all_bu_st_trials, pars=pars, engine="cython", dither=dt / 2.0
@@ -2585,7 +2581,7 @@ class PlotSims:
             else:
                 sac_label = f"Expt: {ri.Spirou:14s} {ri.dB:3.0f} dBSPL Fmod={ri.fmod:5.1}fHz Dmod={ri.dmod:5.1f}\%"
             
-            return 
+            # return
             P.axdict["A"].plot(
                 bins,
                 yh,
@@ -2644,7 +2640,6 @@ class PlotSims:
         self,
         spike_times: Union[list, np.ndarray],
         run_info: object,
-        stim_onset: float = 0.0,
         zero_time: float = 0.0,
         max_time: float = 1.0,
         bin_width: float = 1e-3,
@@ -2712,7 +2707,6 @@ class PlotSims:
         offset: float = 0.0,
         cellID: Union[int, None, str] = None,
         show_values: bool = True,
-        trange: Union[tuple, list] = [0, 25.0],
     ):
         # spike_times = np.array(spike_times, dtype=object)
 

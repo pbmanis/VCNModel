@@ -2,7 +2,7 @@
 """
 Run one gbc... but know about them all
 
-call: all_gbc_AN.py #
+call: all_gbc_AN.py BC_number
 
 """
 from __future__ import print_function
@@ -17,7 +17,7 @@ class OneANRun(object):
         testing=False, inflateflag=False, initialize=False, inputPattern=None):
         self.forcerun = forcerun  # force the run to be redone
         self.initialize = initialize # force initialization
-        self.testflag = testing  # 
+        self.testflag = testing
         self.inflateflag = inflateflag
         sim_reportfile = Path('lastsim.txt')
         

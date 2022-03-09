@@ -13,12 +13,11 @@ from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
 # from pylibrary.plotting import styler as STY
 from scipy import stats
-import statsmodels.api as sm
 from sklearn.cluster import KMeans
 from sklearn.cluster import AgglomerativeClustering
 import sklearn.metrics as metrics
 from sklearn import preprocessing
-from sklearn.datasets import make_blobs
+# from sklearn.datasets import make_blobs
 
 matplotlib.rcParams["mathtext.fontset"] = "stixsans"
 
@@ -941,9 +940,9 @@ def plot_cluster(data_with_clusters, ax, clip_on:bool=False, mode=None):
 def aggcluster(data, axn, eff_crit:float=0.0, clip_on:bool=False, elbow=True):
     if elbow:
         from yellowbrick.cluster import (
-            InterclusterDistance,
+            # InterclusterDistance,
             KElbowVisualizer,
-            SilhouetteVisualizer,
+            # SilhouetteVisualizer,
         )
     x, df = prepare_data(data, eff_crit=eff_crit)
     ax = axn[0]
@@ -981,9 +980,9 @@ def kmeans(data, ax, eff_crit:float=0.0, elbow=True):
     # we avoid importing this at the top because it messes with the plotting.
     if elbow:
         from yellowbrick.cluster import (
-            InterclusterDistance,
+            # InterclusterDistance,
             KElbowVisualizer,
-            SilhouetteVisualizer,
+            # SilhouetteVisualizer,
         )
 
     x, df = prepare_data(data, eff_crit=eff_crit)
@@ -1024,7 +1023,7 @@ def kmeans(data, ax, eff_crit:float=0.0, elbow=True):
         )
         return x, df
 
-    def wcs(x, maxk=8, ax=None):
+    def wcs(x, ax=None):
         n_clusters = 20
         n_cl = range(n_clusters - 2)
         nrand = 5
@@ -1041,7 +1040,7 @@ def kmeans(data, ax, eff_crit:float=0.0, elbow=True):
                 ck[rs, i] = chs
 
             ax.plot(n_cl, ck[rs, :])
-        print(ck)
+        print("Scores: ", ck)
         ax.set_title("Score")
         ax.set_xlabel("no. clusters")
         ax.set_ylabel("WCSS")

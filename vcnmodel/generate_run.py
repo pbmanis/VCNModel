@@ -59,7 +59,7 @@ class GenerateRun:
     """
 
     def __init__(
-        self, Params, RunInfo, cell, idnum=0, starttime=None, useSavedState=True,
+        self, Params, RunInfo, cell, idnum=0, starttime=None,
     ):
         self.run_initialized = False
         self.Params = Params  # make available to the rest of the classself.RunInfo.
@@ -408,7 +408,6 @@ class GenerateRun:
         save: Union[str, bool] = False,
         restore_from_file: bool = False,
         initfile: Union[str, Path, None] = None,
-        workers: int = 4,
     ):
         """
         Perform the run/simulation. 
@@ -450,7 +449,7 @@ class GenerateRun:
             ipulses = [0]
         nLevels = len(ipulses)
 
-        nWorkers = MP.cpu_count()
+        nWorkers = MP.cpu_count()  # get this automatically
         # workers
         CP.cprint("m", f"Parallel with {nWorkers:d} processes")
         # print(f"do_run: initfile = {str(initfile):s}")

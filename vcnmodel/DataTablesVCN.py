@@ -19,7 +19,6 @@ from vcnmodel.plotters import plot_sims
 from vcnmodel.plotters import figures
 from vcnmodel.plotters import figure_data
 from vcnmodel.plotters import plot_z
-from vcnmodel.plotters import SAM_VS_plot
 from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot
 from pylibrary.tools import cprint as CP
@@ -92,8 +91,7 @@ all_modules = [
     figures,
     figure_data,
     plot_z,
-    # SAM_VS_vplots,
-    SAM_VS_plot,
+    SAM_VS_vplots,
     efficacy_plot,
     cell_config,
     vcnmodel.analyzers.spikestatistics,

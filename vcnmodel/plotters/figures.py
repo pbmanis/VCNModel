@@ -10,13 +10,11 @@ from typing import Union
 import matplotlib
 import numpy as np
 import pandas as pd
-import rich as RI
 import seaborn as sns
-from cycler import cycler
+
 from matplotlib import image as mpimg
 from matplotlib import pyplot as mpl
 from matplotlib.lines import Line2D
-from matplotlib.ticker import MultipleLocator, AutoMinorLocator
 
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
@@ -451,7 +449,6 @@ class Figures(object):
             for iax, mode in enumerate(["Z_passive", "Z_normal", "Z_active"]):
                 if mode not in FD.figure_IV.keys():
                     continue
-                # cprint('r', f"doing iv: {str(mode):s}")
                 sfi = Path(
                     config["cellDataDirectory"],
                     config["impedanceDirectory"],
@@ -460,9 +457,6 @@ class Figures(object):
                 if not sfi.is_file():
                     cprint("r", f"File not found!!!!!!\n->>> {str(sfi):s}")
                     return None
-                    continue
-                # cprint('c', f"sfi Z: {str(sfi):s}")
-                # ax = self.P2.axarr[0, 1]
                 ax = self.P3.axdict[phaseplot1]
                 label = sfi.name  # .replace("_", "\_")
                 with open(sfi, "rb") as fh:
@@ -1708,9 +1702,6 @@ class Figures(object):
         cells=None,
         parent_figure=None,
         supplemental1=False,
-        rate_ax: Union[list, None] = None,
-        vm_ax: Union[list, None] = None,
-        cumulative: Union[object, None] = None,
         synlabel_num: int = 0,
         colormap: str = "magma",  # default color map
         save_calcs: bool = False,  # set to True if need to update.
@@ -2984,9 +2975,9 @@ class Figures(object):
         cv_ax:object=None,
         label_x_axis:bool=False,
     ):
-        if self.all_bu_st is None or cv_ax is None:  # use the data from PSTH. If not present, skip this
+        # use the data from PSTH. If not present, skip the CV  plot
+        if self.all_bu_st is None or cv_ax is None:
             return
-        print(len(self.all_bu_st))
         cvisit, cvisi, cvt, cvm, cvs = ISI.isi_cv(self.all_bu_st, 
                         binwidth=cv_binw,
                         t0 = cv_win[0],
