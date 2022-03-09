@@ -10,6 +10,9 @@ src
 src/  # the old source directory
 toml/archived
 scripts/Archived
+nb/*.html
+nb/*.nwb
+nb/*.jl
 
 blenderneuron/
 # /vcnmodel/VS_data_mar2021.py
@@ -20,6 +23,7 @@ blenderneuron/
 # some local files that might be hanging around
 requirements.txt_5-5-2020
 thrrun.txt
+lastsim.txt
 VS_data.py
 
 # Byte-compiled / optimized / DLL files
