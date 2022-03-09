@@ -1,6 +1,6 @@
 from collections import OrderedDict
 import pickle
-import pylibrary as PL
+
 import pprint
 import vcnmodel.model_params as model_params
 
@@ -12,7 +12,6 @@ Show the parameters for a given model run
 MP = model_params.ModelParams()
 pp = pprint.PrettyPrinter()
 
-fn = 'VCN_Cells/VCN_c09/Simulations/IV/VCN_c09_pulse_XM13_nacncoop_II_soma=1.514_dend=1.514_ASA=1.514_monitor.p'
 def show_model_params(filename: Union[Path, str]):
     fn = Path(filename)
     with open(fn, 'rb'):

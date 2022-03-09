@@ -1,7 +1,6 @@
 import dataclasses
 import datetime
 import quantities as pq
-import typing
 from dataclasses import dataclass, field
 from typing import List, Tuple, Union
 

@@ -127,7 +127,7 @@ def nb_XAC_Calc(X, Y, event_lengths_x, event_lengths_y, twin, binw,
     for n in range(N):  # for each trial
         for m in range(M):  # against each other trial, except:
             for mi in range(event_lengths_y):
-                xd = X[n][:event_lengths[n]] - Y[m][mi]
+                xd = X[n][:event_lengths_x[n]] - Y[m][mi]
                 # all differences from i'th spike in m'th trial to spikes in nth trial
                 xd = xd[
                     np.where((xd >= (-twin - binw / 2.0)) & (xd <= (twin + binw / 2.0)))

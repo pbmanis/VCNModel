@@ -6,7 +6,6 @@ import argparse
 import sys
 from pathlib import Path
 
-import neuronvis.swc_to_hoc
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as mpl

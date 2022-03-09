@@ -8,7 +8,7 @@ import subprocess
 import sys
 from collections import OrderedDict
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import  List, Union
 
 import cnmodel
 import numpy as np

@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from typing import Union
 import numpy as np
 import matplotlib.pyplot as mpl
 import pandas as pd
@@ -201,7 +202,7 @@ class ParseHoc(object):
             for o in olines:
                 fh.write(o+'\n')        
                       
-    def translate_cell(self, trans_xyz, fn=None, soma_section=None, reorder=False):
+    def translate_cell(self, trans_xyz, fn:Union[Path, str, None]=None, reorder=False):
         """
         Translate a cell position by modifying the hoc code
         Writes out a new hoc file with "_translated" in the name
@@ -211,6 +212,9 @@ class ParseHoc(object):
         trans_xyz: 3 element list or tuple
             Values to translate the position of EVERY point by,
             in order of (x, y, z)
+        
+        fn: str or filename (default None):
+            the name of the hoc file to translate.
         
         reorder : bool (default: False)
             Cause values on soma section to be reordered in reverse

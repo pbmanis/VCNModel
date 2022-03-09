@@ -13,7 +13,6 @@ import toml
 
 import datetime as datetime
 from dateutil.tz import tzlocal
-import h5py
 import numpy as np
 
 matplotlib.use("Qt5Agg")
