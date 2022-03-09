@@ -3,16 +3,23 @@ ForGeorge/ # files that are for George Spirou
 MorphologyData/  # misc morphology data not necessarily related to the project
 vcn_venv/ # virtual environment
 vcn_venv
-src/vcnmodel/archived
-src/vcnmodel/util/testmpl.py
+vcnmodel/archived
+#vcnmodel/archived/plotters
+vcnmodel/util/testmpl.py
+src/vcnmodel  # the old source directory
 toml/archived
 scripts/Archived
-VS_data.py
+
 blenderneuron/
-src/vcnmodel/VS_data_mar2021.py
-src/vcnmodel/VS_datasets_Nov2020.py
-src/vcnmodel/model_data/Old_data_tables/
-src/vcnmodel/analyzers/tests/test_cross_correlation.py
+# /vcnmodel/VS_data_mar2021.py
+# src/vcnmodel/VS_datasets_Nov2020.py
+# src/vcnmodel/model_data/Old_data_tables/
+# src/vcnmodel/analyzers/tests/test_cross_correlation.py
+
+# some local files that might be hanging around
+requirements.txt_5-5-2020
+thrrun.txt
+VS_data.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
