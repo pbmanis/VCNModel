@@ -26,7 +26,6 @@ import json
 import toml
 
 
-
 display_orient_cells = {
     "VCN_c02": [140.0, 0.0, -144.0],
     "VCN_c06": [140.0, -59.0, -12.0],
@@ -72,12 +71,7 @@ class CmdChoices:
         "fromcell",
         "mixed1",
     ]  # AN SR groups (assigned across all inputs)
-    dendriteChoices = [
-        "normal",
-        "passive",
-        "active",
-        "allpassive"
-    ]
+    dendriteChoices = ["normal", "passive", "active", "allpassive"]
     dendriteExptChoices = [
         "default",
         "Full",
@@ -86,10 +80,7 @@ class CmdChoices:
         "NoDistal",
         "NoUninnervated",
     ]
-    axonExptChoices = [
-        "default",
-        "standardized"
-    ]
+    axonExptChoices = ["default", "standardized"]
     protocolChoices = [
         "initIV",
         "Zin",
@@ -105,7 +96,14 @@ class CmdChoices:
         "runANThreshold",
         "gifnoise",
     ]
-    soundChoices = ["tonepip", "noise", "stationaryNoise", "regularClicks", "poissonClicks" "SAM", "CMMR"]
+    soundChoices = [
+        "tonepip",
+        "noise",
+        "stationaryNoise",
+        "regularClicks",
+        "poissonClicks" "SAM",
+        "CMMR",
+    ]
     speciesChoices = ["mouse", "guineapig"]
     SpirouChoices = [
         "all",
@@ -131,6 +129,7 @@ class CmdChoices:
     displayStyleChoices = ["cylinders", "graph", "volume", "surface"]
     channelChoices = ["klt", "kht", "ihvcn", "nacncoop", "nacn", "najsr"]
 
+
 # set up the Params data structure. This should hold everything that might be modified
 # or need to be known when running the CmdChoices.
 #
@@ -140,7 +139,9 @@ class CmdChoices:
 class Params:
 
     setup: bool = False  # true once we have setup the cell and filenames
-    cellID: Union[str, None] = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
+    cellID: Union[
+        str, None
+    ] = None  # ID of cell (string, corresponds to directory name under VCN_Cells)
     cell: object = None  # model instance (neuron/hoc)
     AMPAScale: float = 1.0  # Use the default scale for AMPAR conductances
     ANSynapseType: str = "simple"  # or multisite
@@ -169,7 +170,7 @@ class Params:
 
     # cell specific parameters related to geometry
     fullhocfile: bool = False  # use the "full" hoc file (cellname_Full.hoc) (obselete)
-    hocstring: str=""  # a string containing the hoc file that was read and used at the time of the simulation
+    hocstring: str = ""  # a string containing the hoc file that was read and used at the time of the simulation
     dtIC: float = 0.025  # ok.
     dtVC: float = 0.005  # voltage clamp; need shorter steop size for transient measure
     celsius: float = 37  # set the temperature.
@@ -184,7 +185,12 @@ class Params:
     lambdaFreq: float = 2000.0  # Hz for segment number
     area_adjustment_method: str = "pt3d"
     # spontaneous rate (group, in spikes/s) of the fiber BEFORE refractory effects; "1" = Low; "2" = Medium; "3" = High
-    srnames = ["LS", "MS", "HS", "mixed1"]  # runs 0-2, not starting at 0    # same as CmcChoices
+    srnames = [
+        "LS",
+        "MS",
+        "HS",
+        "mixed1",
+    ]  # runs 0-2, not starting at 0    # same as CmcChoices
     SRType: str = CmdChoices.SRChoices[2]
     inputPattern: Union[
         str, None,
@@ -222,10 +228,10 @@ def defVCsteps():
     """
     Steps are relative to HOLDING, which is typicall -60 mV
     """
-    start = -20.
-    stop = 120.
-    step = 10.
-    npts = int((stop-start)/step)+1
+    start = -20.0
+    stop = 120.0
+    step = 10.0
+    npts = int((stop - start) / step) + 1
     return {"pulse": np.linspace(start, stop, npts, endpoint=True)}
 
 
@@ -240,8 +246,10 @@ def defemptydict():
 def defemptylist():
     return []
 
+
 def defdatadict():
-    return {'ChannelCompartments': "", 'ChannelData': ""}
+    return {"ChannelCompartments": "", "ChannelData": ""}
+
 
 @dataclass
 class RunInfo:
@@ -262,7 +270,9 @@ class RunInfo:
         object, str, None
     ] = None  # dendriticElectrodeSection,
     dendriticSectionDistance: float = 100.0  # microns.
-    tableData: dict = field(default_factory=defdatadict)  # the table data itself, which might change between runs...
+    tableData: dict = field(
+        default_factory=defdatadict
+    )  # the table data itself, which might change between runs...
 
     nReps: int = 1
     seeds: list = field(default_factory=defemptylist)
@@ -292,12 +302,12 @@ class RunInfo:
     pip_duration: float = 0.1  # duration in seconds for tone pip
     pip_start: list = field(default_factory=defstarts)  # start (delay to start of pip)
     pip_offduration: float = 0.05  # time after pip ends to keep running
-    
-    clickStart: float=0.1
-    clickDuration: float=1e-4
-    clickTrainDuration: float=0.8
-    clickRate: float=20.  # Hz  for regular clicks, or mean poisson rate
-    
+
+    clickStart: float = 0.1
+    clickDuration: float = 1e-4
+    clickTrainDuration: float = 0.8
+    clickRate: float = 20.0  # Hz  for regular clicks, or mean poisson rate
+
     Fs: float = 100e3  # cochlea/zilany model rate
     F0: float = 16000.0  # stimulus frequency
     dB: float = 30.0  # in SPL
@@ -400,7 +410,7 @@ def build_parser():
         "-D",
         "--dendriteexpt",
         dest="dendriteExpt",
-        default='default',
+        default="default",
         choices=CmdChoices.dendriteExptChoices,
         help="Choose dendrite experiment (default, Full, NoDend, NoDistal, NoUninnervated)",
     )
@@ -408,7 +418,7 @@ def build_parser():
         "-A",
         "--axonexpt",
         dest="axonExpt",
-        default='default',
+        default="default",
         # choices=CmdChoices.axonExptChoices,
         help="Choose dendrite/axon experiment (default, standardized)",
     )
@@ -504,7 +514,7 @@ def build_parser():
     parser.add_argument(
         "--clickRate",
         type=float,
-        default=20.,
+        default=20.0,
         dest="clickRate",
         help="Set the click rate in a train",
     )
@@ -515,7 +525,7 @@ def build_parser():
         dest="clickStart",
         help="Set the start time for a click train",
     )
-    
+
     parser.add_argument(
         "--check",
         "-/",
@@ -528,7 +538,7 @@ def build_parser():
         "--testsetup",
         action="store_true",
         default=False,
-        help="Test all setup, but do not run simulations"
+        help="Test all setup, but do not run simulations",
     )
     parser.add_argument(
         "-C",
@@ -570,7 +580,11 @@ def build_parser():
         "--seed", type=int, default=1, dest="seed", help="AN starting seed"
     )
     parser.add_argument(
-        "--noise_seed", type=int, default=1, dest="noise_seed", help="Noise generator starting seed"
+        "--noise_seed",
+        type=int,
+        default=1,
+        dest="noise_seed",
+        help="Noise generator starting seed",
     )
     parser.add_argument(
         "-S",
@@ -849,7 +863,7 @@ def build_parser():
     return parser
 
 
-def getCommands(toml_dir='.'):
+def get_commands(toml_dir="."):
     parser = build_parser()
     args = parser.parse_args()
 
@@ -899,5 +913,5 @@ def getCommands(toml_dir='.'):
 
 
 if __name__ == "__main__":
-    a, p, r = getCommands()
+    a, p, r = get_commands()
     print(p)

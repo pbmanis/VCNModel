@@ -67,8 +67,6 @@ def eng(x):
     return "%8.4gE%s" % (a, b)
 
 
-showCell = True
-
 cprint = CP.cprint
 
 
@@ -284,7 +282,7 @@ class ModelRun:
         DC R01 DC019053 (Manis, 2020-2025, Later development)
 
     """
-    
+
     def __init__(self, params: dataclass = None, runinfo: dataclass = None, args=None):
         """
         The two dataclass parameters are defined in model_params.py, and must be passed here
@@ -768,9 +766,9 @@ class ModelRun:
             cprint("r", f"No Hoc file matching: {str(hoc_filename):s}")
             exit()  # fatal error
         else:
-            with(open(hoc_filename, 'r')) as fh:
-                self.Params.hocstring = fh.read() 
-        
+            with (open(hoc_filename, "r")) as fh:
+                self.Params.hocstring = fh.read()
+
         # instantiate cells
         if self.Params.cellType in ["Bushy", "bushy"]:
             print("Creating a bushy cell (run_model) ")
@@ -843,7 +841,7 @@ class ModelRun:
             if changes is not None:
                 data.report_changes(changes)
                 data.report_changes(changes_c)
-            
+
             self.post_cell = cells.Bushy.create(
                 morphology=str(hoc_filename),
                 decorator=Decorator,
@@ -883,21 +881,24 @@ class ModelRun:
         self.post_cell.hr.h.Ra = self.Params.Ra
         print(f"Specified Temperature = {self.post_cell.hr.h.celsius:8.1f} degC ")
         print("Ra (ohm.cm) = {:8.1f}".format(self.post_cell.hr.h.Ra))
-        
+
         ###############################################
         # remove all non-parented sections, except the first.
         ###############################################
         for i, section in enumerate(self.post_cell.hr.h.allsec()):
             sref = self.post_cell.hr.h.SectionRef(sec=section)
             psec = self.post_cell.hr.h.parent_section(0, sec=section)
-            if sref.has_parent():
-                pass
-                # print("i: ", i, "  sec: ", section.name(), "  parent sec: ", psec)
-            else:
+            if not sref.has_parent():
                 if i > 0:
                     self.post_cell.hr.h.delete_section(sec=section)
-                    print("Section index i: ", i, "  sec: ", section.name(), "has no parent")
-        
+                    print(
+                        "Section index i: ",
+                        i,
+                        "  sec: ",
+                        section.name(),
+                        "has no parent",
+                    )
+
         ###############################################
         # Fix singlet section (one point)
         ###############################################
@@ -909,8 +910,10 @@ class ModelRun:
                 rtau = self.post_cell.compute_rmrintau(
                     auto_initialize=True, vrange=[-80.0, -60.0]
                 )
-                print(f"    New Rin after somatic inflation: {rtau['Rin']:.2f}", end="")
-                print(f" , tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}")
+                print(
+                    f"    New Rin after somatic inflation: {rtau['Rin']:.2f}", end="",
+                )
+                print(f"        tau: {rtau['tau']*1e3:.2f}, RMP: {rtau['v']:.2f}")
 
         # adjustments to areas are done with adjust_areas.py, and stored as a hoc file
         # no adjustments to areas are done on the fly here.
@@ -923,12 +926,17 @@ class ModelRun:
                     print("Section: ", section)
                     print("Ra: ", self.post_cell.hr.get_section(section).Ra)
 
-        if 'soma' in self.post_cell.hr.sec_groups.keys() and len(self.post_cell.hr.sec_groups["soma"]) > 0:
+        if (
+            "soma" in self.post_cell.hr.sec_groups.keys()
+            and len(self.post_cell.hr.sec_groups["soma"]) > 0
+        ):
             electrode_section = list(self.post_cell.hr.sec_groups["soma"])[0]
-            secname = 'soma'
+            secname = "soma"
             self.RunInfo.electrodeSectionName = "soma"
         else:
-            electrode_section = list(self.post_cell.hr.sec_groups["Axon_Initial_Segment"])[0]
+            electrode_section = list(
+                self.post_cell.hr.sec_groups["Axon_Initial_Segment"]
+            )[0]
             self.RunInfo.electrodeSectionName = "Axon_Initial_Segment"
         self.RunInfo.electrodeSection = self.post_cell.hr.get_section(electrode_section)
         # self.hg = hoc_graphics
@@ -938,7 +946,7 @@ class ModelRun:
             if par_map is not None:
                 print("Listing par_map (run_model): ", par_map)
             self.post_cell.hr.h.topology()
-        
+
         self.post_cell.set_nseg(freq=self.Params.lambdaFreq)
 
         self.Params.setup = True
@@ -1003,7 +1011,8 @@ class ModelRun:
                 try:
                     srindex = self.Params.srnames.index(self.Params.SRType)
                     print(
-                        f"(configure_cell: NOT mixed): Retrieved SR index {srindex:d}", end=" "
+                        f"(configure_cell: NOT mixed): Retrieved SR index {srindex:d}",
+                        end=" ",
                     )
                     print(f" with SR type {self.Params.SRType:s}")
                 except ValueError:
@@ -1042,7 +1051,10 @@ class ModelRun:
                         )
                     )
                 else:
-                    print(f" Synapsetype: multisite, with {int(syn['nSyn']):4d} zones", end=" ")
+                    print(
+                        f" Synapsetype: multisite, with {int(syn['nSyn']):4d} zones",
+                        end=" ",
+                    )
                     synapse.append(
                         preCell[-1].connect(
                             thisCell,
@@ -1068,11 +1080,12 @@ class ModelRun:
     def view_model(self, par_map: dict = None):
         """
         This method provides a sub connection to neuronvis that lets you
-        view the hoc structure that has been requested
+        view the hoc structure that has been requested.
         """
         if not self.Params.setup:
             self.setup_model(par_map=par_map)
-        return  # until we figure out opengl on mac osx Big Sur
+        return
+        # until we figure out opengl on mac osx Big Sur
         # import neuronvis as NV
         #
         # if self.Params.cellID in list(vcnmodel.model_params.display_orient_cells):
@@ -1103,17 +1116,17 @@ class ModelRun:
             self.setup_model(par_map=par_map)
 
         dispatcher = {
-            "initIV": self.initIV,
+            "initIV": self.init_iv,
             "runIV": self.iv_run,
-            "Zin": self.Zin,
+            "Zin": self.compute_input_impedance,
             "runIVSpikeThreshold": self.iv_run_spike_threshold,
-            "initVC": self.initVC,
-            "runVC": self.VC_run,
-            "initAN": self.an_run_init,  # (self.post_cell, make_an_intial_conditions=True),
+            "initVC": self.init_vc,
+            "runVC": self.vc_run,
+            "initAN": self.an_run_init,
             "runANPSTH": self.an_run,
             "runANIO": self.an_run_IO_gSyn,
             "runANSingles": self.an_run_singles,
-            "runANOmitOne": self.an_run_omit_one,  # .(self.post_cell, exclude=True),
+            "runANOmitOne": self.an_run_omit_one,
             "runANThreshold": self.an_run_find_syn_thr,
             "gifnoise": self.noise_run,
         }
@@ -1137,7 +1150,7 @@ class ModelRun:
     # model.
     # ===============================================================================
 
-    def initIV(self):
+    def init_iv(self):
         self.R = GenerateRun(
             self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
         )
@@ -1150,7 +1163,7 @@ class ModelRun:
         )
         print(f"Ran to get initial state for {self.post_cell.hr.h.t:.1f} msec")
 
-    def Zin(self, measure_section:Union[str, None]=None):
+    def compute_input_impedance(self, measure_section: Union[str, None] = None):
         """
         Measure Zin from the soma or specific compartment for a compartmental cell.
 
@@ -1167,7 +1180,7 @@ class ModelRun:
             measure_section = self.post_cell.soma
 
         self.Params.initialization_time = 500.0
-        self.initIV()
+        self.init_iv()
         # print(dir(self.post_cell.hr.h))
         Z = self.post_cell.hr.h.Impedance(0.5, measure_section)
         freqs = np.logspace(0, 4, 50)
@@ -1196,7 +1209,9 @@ class ModelRun:
             p2 = win.addPlot()
             p1.setLogMode(x=True, y=False)
             p2.setLogMode(x=True, y=False)
-            p1.plot(freqs, Zin, pen="k", symbol="o", symbolsize=1,)
+            p1.plot(
+                freqs, Zin, pen="k", symbol="o", symbolsize=1,
+            )
             p2.plot(freqs, Zphase, pen="b", symbol="s", symbolsize=1)
             pg.QtGui.QApplication.instance().exec_()
 
@@ -1236,7 +1251,7 @@ class ModelRun:
         if self.Params.Parallel is False:
             nworkers = 1
         #        print('Number of workers available on this machine: ', nworkers)
-        self.R.doRun(
+        self.R.do_run(
             self.Params.hocfile,
             parMap=self.RunInfo.stimInj,
             save="monitor",
@@ -1353,13 +1368,15 @@ class ModelRun:
         last_spike_thr = current_I
         while step > precision:
             niter += 1
-            self.RunInfo.stimInj = {
-                "pulse": [current_I]
-            }
+            self.RunInfo.stimInj = {"pulse": [current_I]}
             self.R = GenerateRun(
-                self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
+                self.Params,
+                self.RunInfo,
+                self.post_cell,
+                idnum=self.idnum,
+                starttime=None,
             )
-            self.R.doRun(
+            self.R.do_run(
                 self.Params.hocfile,
                 parMap=self.RunInfo.stimInj,
                 save="monitor",
@@ -1368,7 +1385,7 @@ class ModelRun:
                 workers=nworkers,
             )
             fspk = np.where(self.R.IVResult["Nspike"])[0]
-            if len(fspk) == 0: # no spikes, increase current
+            if len(fspk) == 0:  # no spikes, increase current
                 current_I += step
             else:
                 current_I -= step
@@ -1376,15 +1393,15 @@ class ModelRun:
                 step /= 2.0  # only decrease step size when spike detected
 
         thrstr = (
-            f"{datetime.datetime.now().strftime('%m.%d.%Y %H:%M:%S'):s} Prec. {precision:.3f} pA, " +
-            f" {last_spike_thr:.3f} niter={niter:3d} {str(self.Params.hocfile):s}"
+            f"{datetime.datetime.now().strftime('%m.%d.%Y %H:%M:%S'):s} Prec. {precision:.3f} pA, "
+            + f" {last_spike_thr:.3f} niter={niter:3d} {str(self.Params.hocfile):s}"
         )
         cprint("m", thrstr)
         with (open("thrrun.txt", "a")) as fh:
             fh.write(thrstr + "\n")
         return
 
-    def initVC(self):
+    def init_vc(self):
         self.R = GenerateRun(
             self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
         )
@@ -1397,7 +1414,7 @@ class ModelRun:
         )
         print(f"VC Ran to get initial state for {self.post_cell.hr.h.t:.1f} msec")
 
-    def testVC(self):
+    def test_vc(self):
         self.R = GenerateRun(
             self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
         )
@@ -1406,10 +1423,10 @@ class ModelRun:
             filename=self.Params.initStateFile,
             electrode_site=self.R.electrode_site,
         )
-        self.R.testRun(initfile=self.Params.initStateFile)
-        return  # that is ALL, never make testVC/init and then keep running.
+        self.R.test_run(initfile=self.Params.initStateFile)
+        return  # that is all...
 
-    def VC_run(self, par_map: dict = None):
+    def vc_run(self, par_map: dict = None):
         """
         Main entry routine for running all IV (current-voltage relationships with somatic electrode)
 
@@ -1425,7 +1442,7 @@ class ModelRun:
                 time constant, and spike times
 
         """
-        print("VC_run: starting")
+        print("vc_run: starting")
         start_time = timeit.default_timer()
 
         if self.RunInfo.sequence != "":  # replace sequence?
@@ -1437,13 +1454,13 @@ class ModelRun:
             self.baseDirectory, self.Params.cellID, self.simDirectory, "VC"
         )
         if self.Params.verbose:
-            print("VC_run: calling do_run")
+            print("vc_run: calling do_run")
         nworkers = self.Params.nWorkers
         #        print(self.Params.Parallel)
         if self.Params.Parallel is False:
             nworkers = 1
         #        print('Number of workers available on this machine: ', nworkers)
-        self.R.doRun(
+        self.R.do_run(
             self.Params.hocfile,
             parMap=self.RunInfo.stimInj,
             save="monitor",
@@ -1452,9 +1469,9 @@ class ModelRun:
             workers=nworkers,
         )
         if self.Params.verbose:
-            print("   VC_run: do_run completed")
+            print("   vc_run: do_run completed")
         elapsed = timeit.default_timer() - start_time
-        print(f"   VC_rin: Elapsed time: {elapsed:2f} seconds")
+        print(f"   VC_Rin: Elapsed time: {elapsed:2f} seconds")
         # isteps = self.R.VCResult["I"]
         # if self.Params.verbose:
         #     for k, i in enumerate(self.R.IVResult["tauih"].keys()):
@@ -1546,7 +1563,7 @@ class ModelRun:
 
         if self.Params.Parallel is False:
             nworkers = 1
-        self.R.doRun(
+        self.R.do_run(
             self.Params.hocfile,
             parMap=par_map,
             save="monitor",
@@ -1715,7 +1732,9 @@ class ModelRun:
         if self.Params.save_all_sections:  # just save soma sections
             for sd in tresults["allsecVec"]:
                 print(str(sd))
-                result["allDendriteVoltages"][str(sd)] = np.array(tresults["allsecVec"][sd])
+                result["allDendriteVoltages"][str(sd)] = np.array(
+                    tresults["allsecVec"][sd]
+                )
                 # tresults["allsecVec"]
             # )  # convert out of neuron
         return celltime, result
@@ -1724,7 +1743,7 @@ class ModelRun:
         self.an_run(make_an_intial_conditions=True)
 
     def an_run(
-        self, verify: bool = False, make_an_intial_conditions: bool = False,
+        self, make_an_intial_conditions: bool = False,
     ):
         """
         Establish AN inputs to soma, and run the model.
@@ -1739,8 +1758,6 @@ class ModelRun:
 
         Parameters
         ----------
-        verify : boolean (default: False)
-            Flag to control printing of various intermediate results
 
         make_ANIntitialConditions : bool (default : False)
             Flag to control whether the initial conditions need to be recomputed and stored.
@@ -1751,7 +1768,10 @@ class ModelRun:
 
         """
         if make_an_intial_conditions:
-            cprint("g", f"\n*** Initializing for an_run, time={self.Params.initialization_time:.5f}\n")
+            cprint(
+                "g",
+                f"\n*** Initializing for an_run, time={self.Params.initialization_time:.5f}\n",
+            )
         else:
             cprint("g", "\n*** an_run\n")
         if self.Params.inputPattern is not None:
@@ -1949,12 +1969,12 @@ class ModelRun:
 
         self.print_timing()
 
-        self.analysis_filewriter(self.Params.cell, result, tag="delays")
+        self.analysis_filewriter(result, tag="delays")
         if self.Params.plotFlag:
             print("plotting")
             self.plot_an(celltime, result)
 
-    def an_run_singles(self, exclude=False, verify=False):
+    def an_run_singles(self, exclude=False):
         """
         Establish AN inputs to soma, and run the model.
         synapseConfig is list of tuples gathered from the configuration file. 
@@ -2069,7 +2089,7 @@ class ModelRun:
             for j, N in enumerate(range(nReps)):
                 celltime[N], result[N] = self.retrieve_data(tresults[j])
 
-            self.analysis_filewriter(self.Params.cell, result, tag=tagname)
+            self.analysis_filewriter(result, tag=tagname)
             self.print_timing()
             if self.Params.plotFlag:
                 self.plot_an(celltime, result)
@@ -2161,7 +2181,9 @@ class ModelRun:
             n_an = len(an_st)
             ratio = float(n_bu) / float(n_an)
             output_str = f"Niter: {iteration:3d}  nSyn: {nsyn:4d}  nbu: {n_bu:4d}  n_an: {n_an:4d}"
-            output_str += f" ratio: {ratio:.2f} target: {target_ratio:.2f} ndiff: {ndiff:3d}"
+            output_str += (
+                f" ratio: {ratio:.2f} target: {target_ratio:.2f} ndiff: {ndiff:3d}"
+            )
             print(output_str)
             with (open(f_log, "a")) as fh:
                 fh.write(output_str + "\n")
@@ -2253,7 +2275,6 @@ class ModelRun:
         for j, N in enumerate(range(nReps)):
             celltime[N], result[N] = self.retrieve_data(tresults[j])
 
-        # self.analysis_filewriter(self.Params.cell, result, tag=tagname % k)
         if self.Params.testsetup:
             return
         if self.Params.plotFlag:
@@ -2361,7 +2382,7 @@ class ModelRun:
             for j, N in enumerate(range(nReps)):
                 celltime[N], result[N] = self.retrieve_data(tresults[j])
 
-            self.analysis_filewriter(self.Params.cell, result, tag=tagname % k)
+            self.analysis_filewriter(result, tag=tagname % k)
         if self.Params.testsetup:
             return
         if self.Params.plotFlag:
@@ -2411,7 +2432,7 @@ class ModelRun:
         # make independent inputs for each synapse
         ANSpikeTimes = []
         an0_time = time.time()
-        nrn_run_time = 0.
+        nrn_run_time = 0.0
         #
         # Generate stimuli - they are always the same for every synaptic input, so just generate once
         #
@@ -2428,9 +2449,13 @@ class ModelRun:
                 pip_start=pips,
             )
         elif self.RunInfo.soundtype in ["stationaryNoise", "noise"]:
-            if self.RunInfo.soundtype == "noise":   # non-stationary noise generator seed changes on per-run basis
+            if (
+                self.RunInfo.soundtype == "noise"
+            ):  # non-stationary noise generator seed changes on per-run basis
                 self.RunInfo.noise_seed = self.RunInfo.noise_seed + j
-            print(f" **** Noise type: {self.RunInfo.soundtype:s}  seed={self.RunInfo.noise_seed}")
+            print(
+                f" **** Noise type: {self.RunInfo.soundtype:s}  seed={self.RunInfo.noise_seed}"
+            )
             stim = sound.NoisePip(
                 rate=self.RunInfo.Fs,
                 duration=self.RunInfo.run_duration,
@@ -2455,15 +2480,17 @@ class ModelRun:
         elif self.RunInfo.soundtype in ["regularClicks", "poissonClicks"]:
             if self.RunInfo.soundtype == "poissonClicks":
                 eventintervals = np.random.exponential(
-                    1.0 / self.RunInfo.clickRate, int(self.RunInfo.clickTrainDuration*self.RunInfo.clickRate)
+                    1.0 / self.RunInfo.clickRate,
+                    int(self.RunInfo.clickTrainDuration * self.RunInfo.clickRate),
                 )
                 events = np.cumsum(eventintervals)
                 events = events[events < self.RunInfo.clickTrainDuration]
             else:
-                events = np.linspace(self.RunInfo.clickStart, 
-                                             self.RunInfo.clickTrainDuration, 
-                                             int(self.RunInfo.clickTrainDuration*self.RunInfo.clickRate)
-                                             )
+                events = np.linspace(
+                    self.RunInfo.clickStart,
+                    self.RunInfo.clickTrainDuration,
+                    int(self.RunInfo.clickTrainDuration * self.RunInfo.clickRate),
+                )
             stim = sound.ClickTrain(
                 rate=self.RunInfo.Fs,
                 duration=self.RunInfo.clickTrainDuration,
@@ -2522,7 +2549,7 @@ class ModelRun:
                     self.allsecVec[sec.name()].record(
                         sec(0.5)._ref_v, sec=sec
                     )  # recording of voltage all set up here
-            cprint('r', f"save all sections: n = {len(self.allsecVec):d}")
+            cprint("r", f"save all sections: n = {len(self.allsecVec):d}")
         Vsoma.record(self.post_cell.soma(0.5)._ref_v, sec=self.post_cell.soma)
         rectime.record(self.post_cell.hr.h._ref_t)
         # print("restoring state from : ", self.Params.initStateFile)
@@ -2630,30 +2657,29 @@ class ModelRun:
         )
         mpl.show()
 
-    def cleanNeuronObjs(self):
-        if not isinstance(self.RunInfo.electrodeSection, str):
-            self.RunInfo.electrodeSection = str(
-                self.RunInfo.electrodeSection.name()
+    def clean_neuron_objects(self, runinfo):
+        if not isinstance(runinfo.electrodeSection, str):
+            runinfo.electrodeSection = str(
+                runinfo.electrodeSection.name()
             )  # electrodeSection
         # self.RunInfo.electrodeSectionName = str(self.RunInfo.electrodeSection.name())
-        if self.RunInfo.dendriticElectrodeSection is not None and not isinstance(
-            self.RunInfo.dendriticElectrodeSection, str
+        if runinfo.dendriticElectrodeSection is not None and not isinstance(
+            runinfo.dendriticElectrodeSection, str
         ):
-            self.RunInfo.dendriticElectrodeSection = str(
+            runinfo.dendriticElectrodeSection = str(
                 self.dendriticElectrodeSection.name()
             )  # dendriticElectrodeSection,
         # dendriticSectionDistance = 100.0  # microns.
+        return runinfo
 
-    def analysis_filewriter(self, filebase:str, result:dict, tag:str=""):
+    def analysis_filewriter(self, result: dict, tag: str = ""):
         """
         Write the analysis information to a pickled file
 
         Parameters
         ----------
-        filebase : string (no default)
-            base filename - *not used* (value replaced bye cellID)
         result : dict (no default)
-            dict hlding results. Must be pickleable
+            dict holding results. Must be pickleable
         tag : string (default: '')
             tag to insert in filename string
         
@@ -2690,8 +2716,8 @@ class ModelRun:
         results["Params"].initStateFile = str(self.Params.initStateFile)
         results["Params"].simulationFilename = str(self.Params.simulationFilename)
         results["Params"].hocfile = str(self.Params.hocfile)
-        self.cleanNeuronObjs()
-        results["runInfo"] = self.RunInfo
+        # do not change RunInfo itself
+        results["runInfo"] = self.clean_neuron_objects(copy.deepcopy(self.RunInfo))
         results["modelPars"] = copy.deepcopy(self.post_cell.status)
         del results["modelPars"]["decorator"]  # remove neuron section objects
         results["Results"] = result
@@ -2699,7 +2725,7 @@ class ModelRun:
 
         fout = (
             self.Params.simulationFilename
-        )  # base name created by make-filename - do not overwrite
+        )  # the base name was created by make_filename
         if len(tag) > 0:
             fout = Path(str(fout).replace("_all_", "_" + tag + "_"))
         if self.Params.tagstring is not None:
@@ -2712,7 +2738,7 @@ class ModelRun:
         print(f"**** Model output written to: ****\n   {str(fout):s}")
         self.ANFilename = str(fout)  # save most rexent value
 
-    def get_hoc_file(self, hf:object):
+    def get_hoc_file(self, hf: object):
         """
         Gets a section list from a previously loaded hoc file (morphology)
         and generates a list of section name (str)/reference (NEURON object) pairs
@@ -2760,7 +2786,7 @@ class ModelRun:
 
 def main():
 
-    (parsedargs, params, runinfo,) = vcnmodel.model_params.getCommands(
+    (parsedargs, params, runinfo,) = vcnmodel.model_params.get_commands(
         toml_dir="toml"
     )  # get from command line
     model = ModelRun(
