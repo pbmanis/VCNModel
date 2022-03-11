@@ -345,9 +345,11 @@ class SAC(object):
                 maxn=self.SPars.maxn,
             )
         elif engine == "numba":
+            typed_evl = List()
+            [typed_evl.append(x) for x in event_lengths]
             y, ns = nb_SAC_Calc(
                 XC,
-                event_lengths=event_lengths,
+                event_lengths=typed_evl,
                 twin=self.SPars.twin,
                 binw=self.SPars.binw,
                 maxn=self.SPars.maxn,
@@ -418,6 +420,8 @@ class SAC(object):
             density=False,
         )
         bins = (bins[1:] + bins[:-1])/2.0
+        binw = np.mean(np.diff(bins))
+        bins = np.append(bins, [bins[-1]+binw])
         yh = yh / nfac  # to convert to rate, spikes/second
         return yh, bins
 

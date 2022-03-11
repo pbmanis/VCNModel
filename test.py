@@ -7,6 +7,7 @@ Run unit tests for vcnmodel
 import os, sys
 from pathlib import Path
 import pytest
+import vcnmodel
 
 def main():
     # Make sure we look for the right path first.
@@ -18,7 +19,7 @@ def main():
     if '--audit' in sys.argv:
         sys.argv.remove('--audit')
         sys.argv.append('-s') # needed for cli-based user interaction
-        src.vcnmodel.AUDIT_TESTS = True
+        vcnmodel.AUDIT_TESTS = True
 
     # generate test flags
     flags = sys.argv[1:]
@@ -34,7 +35,7 @@ def main():
             add_path = False
             break
     if add_path:
-        flags.append('src/vcnmodel')
+        flags.append('vcnmodel')
 
     # ignore the an cache
     # flags.append('--ignore=minis/somedir')

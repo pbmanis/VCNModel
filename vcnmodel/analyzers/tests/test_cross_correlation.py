@@ -1,75 +1,80 @@
+from vcnmodel.util.user_tester import UserTester
 import numpy as np
 from elephant import spike_train_correlation as ESTC
 from elephant.conversion import BinnedSpikeTrain
 from elephant.spike_train_generation import homogeneous_poisson_process
 import quantities as pq 
-from vcnmodel.analyzers import spikestatistics as SPKS  # from Brian
-from vcnmodel.analyzers import reverseCorrelation as RC
+# from vcnmodel.analyzers import spikestatistics as SPKS  # from Brian
+from vcnmodel.analyzers import reverse_correlation as RC
 
 """
 Test different cross-correlation methods (and compare)
 """
+class regular_process(object):
+    def __init__(self, start, interval, duration, offset=0.0):
+        self.times = pq.s*(offset + np.arange(start, duration, interval))
 
-plot_flag = True
-
-st1 = homogeneous_poisson_process(rate=100.0 * pq.Hz, t_start=0.0 * pq.s, t_stop=10.0 * pq.s)
-st2 = st1 - 0.005*pq.s
-
-# print(dir(st1))
-st2 = homogeneous_poisson_process(rate=50.0 * pq.Hz, t_start=0.0 * pq.s, t_stop=10.0 * pq.s)
-# st1 = np.linspace(0., 1, 100)*pq.s
-# st2 = st1 + 0.005*pq.s
-# standard analysis parameters:
-bw = 1.0*1e-3*pq.s
-width = 30.0*1e-3*pq.s
-# use simple spike correlator for analysis
-cc_simple = RC.reverse_correlation(st1, st2, binwidth=bw,
-    corrwindow=[-width, width])
-
-print('revcorr simple: ', cc_simple)
-# use Elephant for analysis:
-# cc_matrix = ESTC.correlation_coefficient(BinnedSpikeTrain([st1, st2], binsize=bw*pq.ms))
-# print("ccmatrix: ", cc_matrix[0, 1])
-# binned_st1 = BinnedSpikeTrain([st1], bin_size=bw*pq.ms)
-# binned_st2 = BinnedSpikeTrain([st2], bin_size=bw*pq.ms)
-# # print(dir(st1))
-# # print('st1 times: ', st1.times)
-# # exit()
-# cc_hist = ESTC.cross_correlation_histogram(
-#     binned_st1,
-#     binned_st2,
-#     window=[-width, width],
-#     border_correction=False,
-#     binary=False,
-#     kernel=None,
-#     method="memory",
-# )
-
-# print("cchist: ", cc_hist[0].times.magnitude)
-# print("cchist mag: ", cc_hist[0].sampling_period.magnitude)
-
-# use Brian for analysis:
-cc_spks = SPKS.correlogram(
-        st2.times*pq.ms, st1.times*pq.ms, width=2*width, bin_width=bw, T=None)
-
-print('cc: ', cc_spks)
-print(len(cc_spks))
+        
+def test_cross_correlation():
+   CrossCorrelationTester(key="CrossCorrelation")
 
 
-if plot_flag:
-    from matplotlib import pyplot as mpl
-    f, ax = mpl.subplots(2, 1)
-    # mpl.bar(
-    #     x=cc_hist[0].times.magnitude,
-    #     height=[c[0] for c in cc_hist[0][:, 0].magnitude],
-    #     width=cc_hist[0].sampling_period.magnitude,
-    #     linewidth=1,
-    # )
-    ax[0].eventplot([st1.times, st2.times], linelengths=0.75)
-    t = np.linspace(-width, width, len(cc_spks))
-    ax[1].plot(t, cc_spks, "r-")
-    ax[1].plot(t[int(len(t)/2):], cc_simple[0], 'b-')
-    # mpl.xlabel("time (" + str(cc_hist[0].times.units) + ")")
-    mpl.ylabel("cross-correlation histogram")
-    mpl.axis("tight")
-    mpl.show()
+def compute_cc_data(method='coherent'):
+    if method not in ['coherent', 'offset', 'uncorrelated']:
+        raise ValueError(f"The methods for testing cc is not known: '{str(method):s}'")
+    # st1 = homogeneous_poisson_process(rate=20.0 * pq.Hz, t_start=0.0 * pq.s, t_stop=50.0 * pq.s)
+    st1 = regular_process(
+            0.010, 1.0, 0.010
+        )  # all identical
+    if method == 'coherent':
+        st2 = st1
+    elif method == 'offset':
+        st2 = regular_process(
+            0.010, 1.0, 0.010, offset = 0.005,
+        )  # al
+    elif method == 'uncorrelated':
+        # st2 = homogeneous_poisson_process(rate=20.0 * pq.Hz, t_start=0.0 * pq.s, t_stop=50.0 * pq.s)
+        st2 = regular_process((0.1/np.pi), 1.0, (0.1/2.713))
+    # st1 = np.linspace(0., 1, 100)*pq.s
+    # st2 = st1 + 0.005*pq.s
+    # standard analysis parameters:
+    bw = 0.20*1e-3*pq.s
+    width = 30.0*1e-3*pq.s
+    # use simple spike correlator for analysis
+    cc_simple = RC.reverse_correlation(st1.times, st2.times, binwidth=bw,
+        corrwindow=[-width, width], )
+    return cc_simple, st1, st2
+
+class CrossCorrelationTester(UserTester):
+    def init(self, key):
+        UserTester.__init__(self, key)
+    
+    def assert_test_info(self, *args, **kwds):
+        try:
+            super(CrossCorrelationTester, self).assert_test_info(*args, **kwds)
+        finally:
+            pass
+    
+    def run_test(self):
+        for m in ["coherent", "offset", "uncorrelated"]:
+            self.ccs, self.st1, self.st2 = compute_cc_data(method=m)
+            self.show_result()
+        # if self.audit:
+        #     self.show_result()
+
+    def show_result(self):
+        from matplotlib import pyplot as mpl
+        width = 0.1
+        f, ax = mpl.subplots(2, 1)
+
+        ax[0].eventplot([self.st1.times, self.st2.times], linelengths=0.75)
+        cc_len = len(self.ccs[0])
+        t = np.linspace(-width, width, cc_len, endpoint=True)
+        print("t: ", t.shape)
+        print("ccs: ", cc_len)
+        ax[1].plot(t, self.ccs[0], "r-")
+        ax[1].plot(t[int(len(t)/2):], self.ccs[0][int(len(t)/2):], 'b-')
+        # mpl.xlabel("time (" + str(cc_hist[0].times.units) + ")")
+        mpl.ylabel("cross-correlation histogram")
+        mpl.axis("tight")
+        mpl.show()
