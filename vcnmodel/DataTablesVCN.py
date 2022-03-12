@@ -44,8 +44,9 @@ The left panel provides a set of organized controls:
         VC : plot current voltage relationships in voltage clamp.
         Singles: For the "single" AN protocol, where only one input at a time is active, creates stacked plot
         Trace Viewer : dynamic plot of APs and preceding times for AN inputs in the "Traces" tab
-         RevcorrSPKS : reverse correlation against postsynaptic spikes for each input. 
-        RevcorrSimple : same as revcorrSPKS, but simpler algorithm. 
+        RevcorrSPKS : reverse correlation against postsynaptic spikes for each input. Using brian package
+        RevcorrEleph : reverse correlation using the elephant pacakge.
+        RevcorrSimple : Simple reverse correlation calculation. 
         RevcorrSTTC : not implemented.
         PSTH : Plot PSTH, raster, for bu cell and AN input; also compute phase locking to AM if needed.
     Filters:
@@ -182,6 +183,7 @@ analysistypes = ["traces", "PSTH", "revcorr", "SAC", "tuning", "traceviewer"]
 # Known revers correlation types
 revcorrtypes = [
     "RevcorrSPKS",
+    "RevcorrEleph",
     "RevcorrSimple",
     "RevcorrSTTC",
 ]
@@ -429,7 +431,8 @@ class DataTablesVCN:
                     {"name": "PSTH", "type": "action"},
                     {"name": "Trace Viewer", "type": "action",},
                     {"name": "RevcorrSPKS", "type": "action"},
-                    # {"name": "RevcorrSimple", "type": "action"},
+                    {"name": "RevcorrEleph", "type": "action"},
+                    {"name": "RevcorrSimple", "type": "action"},
                     {"name": "RevcorrSTTC", "type": "action"},
                     {"name": "SAC", "type": "action"}
                 ],
@@ -751,9 +754,9 @@ class DataTablesVCN:
                     "VC": self.analyze_VC,
                     "PSTH": self.analyze_PSTH,
                     "Singles": self.analyze_singles,
-                    # 'CMMR_Summary': self.analyze_cmmr_summary,
                     "RevcorrSPKS": self.analyze_revcorr,
-                    # "RevcorrSimple": self.analyze_revcorr,
+                    "RevcorrEleph": self.analyze_revcorr,
+                    "RevcorrSimple": self.analyze_revcorr,
                     "RevcorrSTTC": self.analyze_revcorr,
                     "SAC": self.analyze_SAC,
                     "Trace Viewer": self.trace_viewer,

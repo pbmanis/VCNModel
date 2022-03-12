@@ -1973,7 +1973,7 @@ class PlotSims:
         #
         # 1. Gather data
         #
-        print(f"    compute_revcorrGetting data for gbc: {gbc:s}")
+        print(f"    compute_revcorr  Getting data for gbc: {gbc:s}")
         res = self.get_data(fn, PD, changetimestamp, protocol)
         if res is None:
             return None

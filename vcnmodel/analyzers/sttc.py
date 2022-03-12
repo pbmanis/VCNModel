@@ -230,11 +230,9 @@ class STTC():
 
 if __name__ == '__main__':
     
-    S = STTC(seed=0, engine="python")
-    S.tests(distribution='regular', pdelete=0.0, independent=False, dither=.0,
-        tilewindow=2.0, nspikes=1000)
-    S.tests(distribution='poisson', pdelete=0.0, independent=False, dither=.0,
-        tilewindow=2.0, nspikes=1000)
-    S.tests(distribution='exponential', pdelete=0.0, independent=False, dither=.0,
+    distributions = ['regular', 'poisson', 'exponential']
+    S = STTC(seed=0, engine="cython")
+    for i, dist in enumerate(distributions):
+        S.tests(distribution=dist, pdelete=0.0, independent=False, dither=.0,
         tilewindow=2.0, nspikes=1000)
     mpl.show()

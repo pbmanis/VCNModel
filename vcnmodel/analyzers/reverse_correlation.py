@@ -7,6 +7,8 @@ from typing import List, Tuple, Union
 import numpy as np
 
 from pylibrary.tools import cprint as CP
+import elephant.spike_train_correlation as ESTC
+import elephant.conversion as EC
 from vcnmodel.analyzers import spikestatistics as SPKS
 from vcnmodel.analyzers import sttc as STTC
 from vcnmodel.util import trace_calls as TRC
@@ -75,7 +77,9 @@ class RevCorrData:
     ti_avg: np.array = field(
         default_factory=def_empty_np
     )  # timebase for average revcorr
-    sv_all: list = field(default_factory=def_empty_list)# np.array = field(default_factory=def_empty_np)  #
+    sv_all: list = field(
+        default_factory=def_empty_list
+    )  # np.array = field(default_factory=def_empty_np)  #
     sv_avg: np.array = field(default_factory=def_empty_np)
     sv_trials: list = field(default_factory=def_empty_list)
     sites: np.array = field(default_factory=def_empty_np)
@@ -116,24 +120,36 @@ def reverse_correlation(
         1.0,
     ],  # time window to examine correlation relative to st1
 ) -> (np.ndarray, int):
+    """
+    Basic reverse correlation between two sets of event times
+    Bins are set up so that the center bin straddles 0 time
+    
+    """
 
     if st1 is None or st2 is None:
         raise ValueError(
             "reverse_correlation: reference and comparator must be defined"
         )
 
-    xds = np.zeros(int((corrwindow[1] - corrwindow[0]) / binwidth))
+    nbins = int((corrwindow[1] - corrwindow[0]) / binwidth) + 1
+    bins = np.arange(
+        corrwindow[0] - binwidth, corrwindow[1] + binwidth * 3, binwidth
+    )  # bin centers
+    bins -= binwidth / 2.0  # shift to let bins mark left edges
+    xds = np.zeros_like(bins)  # (int((corrwindow[1] - corrwindow[0]) / binwidth))
     for i, sp in enumerate(st1):
         diff = st2 - sp
-        v = diff[np.where((corrwindow[0] < diff) & (diff < corrwindow[1]))]
-        # print('v: ', v)
+        # differences of spike times within the window
+        v = diff[np.where((corrwindow[0] <= diff) & (diff <= corrwindow[1]))]
         if len(v) > 0:
-            indxs = [int(vx / binwidth) for vx in v]
+            indxs = np.digitize(v, bins)
+            # indxs = [int((vx-binwidth/2.) / binwidth) for vx in v]
             xds[indxs] = xds[indxs] + 1
 
     return xds, len(st1)  # return the n postsynaptic spikes
 
     # @trace_calls.time_func
+
 
 def _count_spikes_in_window(d, trial, site, s, RCP, pre_w):
     an_i = d["Results"][trial]["inputSpikeTimes"][
@@ -154,7 +170,8 @@ def _count_spikes_in_window(d, trial, site, s, RCP, pre_w):
         npre_i = 0
         pre_times = []
     return npre_i, pre_times
-        
+
+
 def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
     maxtc = 0
     nspk_plot = 0
@@ -187,17 +204,17 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
         RCD.npost_spikes += len(stx)
         post_intervals.extend(np.diff(stx))
         # accumulate spikes and calculate average spike
-            
+
         for n in range(len(stx)):  # for all the spikes that were detected
-            reltime = np.around(RCD.ti*1e3, 5) - np.around(stx[n], 5)
+            reltime = np.around(RCD.ti * 1e3, 5) - np.around(stx[n], 5)
             areltime = np.argwhere(
                 (RCP.minwin <= reltime) & (reltime <= RCP.maxwin)
             ).squeeze()
-                
+
             if RCD.nsp_avg == 0:  # init arrays
                 RCD.sv_avg = d["Results"][trial]["somaVoltage"][areltime]
                 RCD.nsp_avg = 1
-                RCD.ti_avg = 1e3*RCD.ti[0 : len(areltime)] + RCP.minwin
+                RCD.ti_avg = 1e3 * RCD.ti[0 : len(areltime)] + RCP.minwin
             else:
                 if len(areltime) > len(RCD.sv_avg):
                     areltime = areltime[0 : len(RCD.sv_avg)]
@@ -212,8 +229,8 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
                     (len(stx), RCD.ti_avg.shape[0])
                 )  # initialize the array
                 RCD.sv_avg += d["Results"][trial]["somaVoltage"][areltime]
-                RCD.nsp_avg += 1 
-            RCD.sv_all[n,:] = d["Results"][trial]["somaVoltage"][areltime]
+                RCD.nsp_avg += 1
+            RCD.sv_all[n, :] = d["Results"][trial]["somaVoltage"][areltime]
 
             nspk_plot += RCD.nsp_avg
         RCD.sv_trials.append(RCD.sv_all)
@@ -239,7 +256,37 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
                     bin_width=RCP.binw * pq.ms,
                     T=None,
                 )
-
+            elif revcortype == "RevcorrEleph":
+                nbins = int(width / bw)
+                bst_i = EC.BinnedSpikeTrain(
+                    spiketrains=st1.times,
+                    bin_size=bw,
+                    n_bins=None,
+                    t_start=tstart * pq.s,
+                    t_stop=tstop * pq.s,
+                    tolerance=1e-8,
+                    sparse_format="csr",
+                )
+                bst_j = EC.BinnedSpikeTrain(
+                    spiketrains=st2.times,
+                    bin_size=bw,
+                    n_bins=None,
+                    t_start=tstart * pq.s,
+                    t_stop=tstop * pq.s,
+                    tolerance=1e-8,
+                    sparse_format="csr",
+                )
+                cc_result, lags = ESTC.cross_correlation_histogram(
+                    bst_i,
+                    bst_j,
+                    window=(-nbins, nbins),
+                    border_correction=False,
+                    binary=False,
+                    kernel=None,
+                    method="speed",
+                    cross_correlation_coefficient=True,
+                )
+                RCD.C[isite] += cc_result
             elif revcorrtype == "RevcorrSimple":
                 refcorr, npost = reverse_correlation(
                     stx,
@@ -280,6 +327,7 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
     print(f"    Time for calculation: {str(elapsed_time):s}")
     return RCP, RCD
 
+
 def pairwise(d, AR, RCP, RCD):
     allspikes = []
     RCD.pairwise = np.zeros((RCP.ninputs, RCP.ninputs))
@@ -309,14 +357,14 @@ def pairwise(d, AR, RCP, RCD):
     #         sellist[i] = False
     # elif ri.Spirou == "removelargest":
     #     sellist[0] = False
-    print('RCP.ninputs: ', RCP.ninputs, RCD.sites)
+    print("RCP.ninputs: ", RCP.ninputs, RCD.sites)
     lack_largest = 0
     lack_two_largest = 0
     lack_three_largest = 0
     only_largest = 0
     only_two_largest = 0
     only_three_largest = 0
-    
+
     for trial in range(RCP.ntrials):  # accumulate across all trials
         # spiketimes is in msec, so si.dtIC should be in msec
         spikeindex = [int(t / (srate)) for t in d["Results"][trial]["spikeTimes"]]
@@ -369,10 +417,10 @@ def pairwise(d, AR, RCP, RCD):
                         # print(npre_j)
                         if npre_j > 0:  # accumulate if coincident for this pair
                             RCD.pairwise[isite, jsite] += 1
-                        
+
             # increment the number of times there were npre_spikes input to this post spike
             pre_spike_counts[n_active_inputs] += 1
-            
+
             # check for different spike patterns (# of inputs, ordered)
             if np.sum(spike_pattern) == 1:  # only one input was active
                 which_input = np.where(spike_pattern == 1)[0]
@@ -390,7 +438,7 @@ def pairwise(d, AR, RCP, RCD):
                 only_two_largest += 1
             if np.sum(spike_pattern[0:3]) == 3 and np.sum(spike_pattern) == 3:
                 only_three_largest += 1
-            
+
             if sum(spike_pattern[0:5]) == 0:
                 cprint(
                     "magenta",
@@ -400,22 +448,19 @@ def pairwise(d, AR, RCP, RCD):
                 filttable.append(spike_pattern)
             elif sum(spike_pattern[0:4]) == 0:
                 cprint(
-                    "cyan",
-                    f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
+                    "cyan", f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
                 )
                 nfilt_spikes += 1
                 filttable.append(spike_pattern)
             elif sum(spike_pattern[0:3]) == 0:
                 cprint(
-                    "blue",
-                    f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
+                    "blue", f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
                 )
                 nfilt_spikes += 1
                 filttable.append(spike_pattern)
             elif sum(spike_pattern[0:2]) == 0:
                 cprint(
-                    "green",
-                    f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
+                    "green", f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
                 )
                 nfilt_spikes += 1
                 filttable.append(spike_pattern)
@@ -433,18 +478,34 @@ def pairwise(d, AR, RCP, RCD):
             allspikes.append(spikedata)
 
     print("\nPairwise matrix: \n", RCD.pairwise)
-    print("Total prespikes: \n", sum(pre_spike_counts), [int(p) for p in pre_spike_counts])
+    print(
+        "Total prespikes: \n", sum(pre_spike_counts), [int(p) for p in pre_spike_counts]
+    )
     print("\nTotal post spikes: ", RCD.nspikes)
     print("Windowd post spikes: ", RCD.npost_spikes)
     print("\nPre solo drive: ", pre_solo_spikes)
     print("\nFiltered Spikes: ", nfilt_spikes)
-    print(f"Postspikes without the largest input active:      {lack_largest:5d} ({100.*lack_largest/RCD.nspikes:4.1f}%)")
-    print(f"Postspikes with only the largest input active:    {only_largest:5d} ({100.*only_largest/RCD.nspikes:4.1f}%)")
-    print(f"Postspikes without two largest inputs active:     {lack_two_largest:5d} ({100.*lack_two_largest/RCD.nspikes:4.1f}%)")
-    print(f"Postspikes with only two largest inputs active:   {only_two_largest:5d} ({100.*only_two_largest/RCD.nspikes:4.1f}%)")
-    print(f"Postspikes without three largest inputs active:   {lack_three_largest:5d} ({100.*lack_three_largest/RCD.nspikes:4.1f}%)")
-    print(f"Postspikes with only three largest inputs active: {only_three_largest:5d} ({100.*only_three_largest/RCD.nspikes:4.1f}%)")
-    print(f"Mean presynaptic rate: {np.mean([1./RCD.mean_pre_intervals[k] for k in range(len(RCD.mean_pre_intervals))]):f}")
+    print(
+        f"Postspikes without the largest input active:      {lack_largest:5d} ({100.*lack_largest/RCD.nspikes:4.1f}%)"
+    )
+    print(
+        f"Postspikes with only the largest input active:    {only_largest:5d} ({100.*only_largest/RCD.nspikes:4.1f}%)"
+    )
+    print(
+        f"Postspikes without two largest inputs active:     {lack_two_largest:5d} ({100.*lack_two_largest/RCD.nspikes:4.1f}%)"
+    )
+    print(
+        f"Postspikes with only two largest inputs active:   {only_two_largest:5d} ({100.*only_two_largest/RCD.nspikes:4.1f}%)"
+    )
+    print(
+        f"Postspikes without three largest inputs active:   {lack_three_largest:5d} ({100.*lack_three_largest/RCD.nspikes:4.1f}%)"
+    )
+    print(
+        f"Postspikes with only three largest inputs active: {only_three_largest:5d} ({100.*only_three_largest/RCD.nspikes:4.1f}%)"
+    )
+    print(
+        f"Mean presynaptic rate: {np.mean([1./RCD.mean_pre_intervals[k] for k in range(len(RCD.mean_pre_intervals))]):f}"
+    )
     print(f"Mean postsynaptic rate: {1./RCD.mean_post_intervals:f}")
     print(f"RCP min/max time: {RCP.min_time:8.3f} {RCP.max_time:8.3f}")
 

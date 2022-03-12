@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
     N = 100
     reps = 50
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(1)
     spikes = rng.exponential(scale=5.0, size=(reps, N))
     T1 = [np.cumsum(s) for s in spikes]
     print(np.mean(T1[0]))
