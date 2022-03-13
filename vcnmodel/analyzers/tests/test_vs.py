@@ -1,8 +1,8 @@
-from vcnmodel.util.user_tester import UserTester
-# from vcnmodel.util import neuron_reset
+import numpy as np
 import vcnmodel.analyzers.vector_strength as vector_strength
 from numpy.random import default_rng
-import numpy as np
+from vcnmodel.util.user_tester import UserTester
+
 """
 Test routine for pytest
 Vector Strength routine testing
@@ -24,10 +24,10 @@ def compute_vs_data(freq=100., nsp=1000., sd=0.0, rg=None):
     return(spikes, phsp)
 
 class VectorStrengthTester(UserTester):
-    def init(self, key):
+    def __init__(self, key):
         UserTester.__init__(self, key)
 
-    def run_test(self):
+    def run_test(self, plotflag=False):
         # neuron_reset.reset(raiseError=False)
         rg = default_rng(12345)
         freq = 100.
@@ -49,7 +49,7 @@ class VectorStrengthTester(UserTester):
         self.vs = vs
         self.ph = ph
 
-        if self.audit:
+        if self.audit and plotflag:
             self.show_result()
 
         info = dict(
@@ -90,3 +90,6 @@ class VectorStrengthTester(UserTester):
             super(VectorStrengthTester, self).assert_test_info(*args, **kwds)
         finally:
             pass
+
+if __name__ == "__main__":
+    test_vector_strength()

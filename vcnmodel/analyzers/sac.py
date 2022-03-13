@@ -3,13 +3,15 @@ import functools
 import time
 from dataclasses import dataclass
 from typing import Union
+
+import matplotlib.pyplot as mpl
 import numpy as np
-import scipy
 import pyqtgraph as pg
 import pyximport
-from numba import njit, jit
+import scipy
+import scipy.signal
+from numba import jit, njit
 from numba.typed import List
-from pylibrary.plotting import pyqtgraph_plothelpers as pgh
 
 pyximport.install()
 from vcnmodel.analyzers import sac_cython
@@ -50,6 +52,8 @@ as cython is faster, we stick with that.
 see sac_cython for implementations of sac and xac in cython.
 SAC tested against original python and numba - all produce
 the same result. (No numba version for xac was coded).
+Revised to use matplotlib, and verify all routines yield same result. 
+3/13/2022. pbm
 """
 
 
@@ -68,6 +72,7 @@ class SACPars:
 
 @dataclass
 class SACResult:
+    SAC_CI : float = np.nan
     SAC_peak : float = np.nan  # max of sac
     SAC_minimum: float = np.nan  # min of sac
     SAC_HW: float = np.nan  # half-width of SAC peak around 0 time
@@ -93,14 +98,14 @@ def time_func(func):
     return wrapper_timer
 
 
-# @time_func
+#@time_func
 @jit(nopython=False, parallel=False, cache=True)
 def nb_SAC_Calc(X, event_lengths, twin, binw, maxn):
     yc = np.nan * np.zeros(maxn)
     ns = 0
     N = len(X)
     for n in range(N):  # for each trial
-        for m in range(1, N):  # against each other trial, except:
+        for m in range(N):  # against each other trial, except:
             if m == n:
                 continue  # skip identical trains
             for mi in range(event_lengths[m]):  # cross correlate all spikes in Yi
@@ -115,7 +120,7 @@ def nb_SAC_Calc(X, event_lengths, twin, binw, maxn):
     return y, ns
 
 
-# @time_func
+@time_func
 @njit(parallel=False, cache=True)
 def nb_XAC_Calc(X, Y, event_lengths_x, event_lengths_y, twin, binw,
         maxn):
@@ -139,7 +144,7 @@ def nb_XAC_Calc(X, Y, event_lengths_x, event_lengths_y, twin, binw,
     return y, ns
 
 
-# @time_func
+#@time_func
 def c_SAC_Calc(
     X: Union[list, np.ndarray], event_lengths:np.array, twin: float, binw: float,
         maxn: int,
@@ -185,7 +190,10 @@ class SAC(object):
             displayDuration=0.050,
             baseper=0.001*(4.0 / 3.0),
         )
-
+        # initialize the random number generator for consistency
+        # and so that unit tests are consistent
+        #
+        self.rng = np.random.default_rng(92311)
         X = [None] * self.SPars.nrep
 
         if test == "A":
@@ -199,14 +207,14 @@ class SAC(object):
                 X[i] = np.arange(
                     self.SPars.baseper, self.SPars.stimdur, self.SPars.baseper
                 )  # all identical
-                X[i] = X[i] + np.random.normal(0.0, 0.00008, len(X[i]))
+                X[i] = X[i] + self.rng.normal(0.0, 0.00008, len(X[i]))
 
         elif test == "C":
             for i in range(self.SPars.nrep):
                 X[i] = np.arange(
                     self.SPars.baseper, self.SPars.stimdur, self.SPars.baseper
                 )  # all identical
-                X[i] = X[i] + np.random.normal(0.0, 0.00008, len(X[i]))
+                X[i] = X[i] + self.rng.normal(0.0, 0.00008, len(X[i]))
                 n = len(X[i])
                 sig = self.SPars.stimdur * np.sort(np.random.rand(int(n / 4)))
                 X[i] = np.sort(np.append(X[i], sig))
@@ -216,11 +224,11 @@ class SAC(object):
                 X[i] = np.arange(
                     self.SPars.baseper, self.SPars.stimdur, self.SPars.baseper
                 )  # all identical
-                X[i] = X[i] + np.random.normal(0.0, 0.000170, len(X[i]))
+                X[i] = X[i] + self.rng.normal(0.0, 0.000170, len(X[i]))
 
         elif test == "E":
             for i in range(self.SPars.nrep):
-                bx = np.random.permutation(
+                bx = self.rng.permutation(
                     np.arange(
                         self.SPars.baseper, self.SPars.stimdur, self.SPars.baseper
                     )
@@ -233,13 +241,13 @@ class SAC(object):
             X = [None] * self.SPars.nrep
             for i in range(self.SPars.nrep):
                 X[i] = self.SPars.stimdur * np.sort(
-                    np.random.rand(120)
+                    self.rng.random(120)
                 )  # corresponds to about 120 s/s
             self.SPars.displayDuration = 0.100
 
         elif test == "G":
             self.SPars.binw = 0.00015
-            sig = self.SPars.stimdur * np.sort(np.random.rand(120))
+            sig = self.SPars.stimdur * np.sort(self.rng.random(120))
             for i in range(self.SPars.nrep):
                 X[i] = sig  # same signal every time
             self.SPars.displayDuration = 100
@@ -265,7 +273,7 @@ class SAC(object):
         # window data
         ns = 0
         for n in range(N):  # for each trial
-            for m in range(1, N):  # against each other trial, except:
+            for m in range(N):  # against each other trial, except:
                 if m == n:
                     continue  # skip identical trains
                 for i in range(event_lengths[m]):  # cross correlate against all spikes in Yi
@@ -375,7 +383,6 @@ class SAC(object):
             SACR.SAC_peak = np.nan
             SACR.SAC_minimum = np.nan
             SACR.n_spikes = 0
-            
         return y, event_lengths, SACR
 
     def SAC_with_histo(self, X, pars, engine="cython", binsize=0.0, dither=0.0):
@@ -386,6 +393,9 @@ class SAC(object):
             X = [x + np.random.uniform(-dither, dither, size=len(x)) for x in X]
         y, spcount, SAC_R = self.SAC(X, pars=pars, engine=engine)
         yh, bins = self.SAC_make_histogram(y, spcount)
+#        CI, peaks, half_widths, full_widths = self.SAC_measures(yh, bins)  # save for another day
+
+        self.SACResult = SAC_R
         return yh, bins
 
     def SAC_make_histogram(self, y, spcount):
@@ -632,7 +642,7 @@ class SAC(object):
 if __name__ == "__main__":
 
     """
-    Test the SAC method, regenerating Figure 2 of Louage et al. J. Neurophys, 2004
+    Test the SAC method, reproducing Figure 2 of Louage et al. J. Neurophys, 2004
     We also test all versions of the SAC calculation (different computation engines)
     with timings, and assert that they give identical results for
     all versions.
@@ -640,53 +650,39 @@ if __name__ == "__main__":
     sac = SAC()
     tests = ["A", "B", "C", "D", "E", "F", "G"]
     ymax = {"A": 30, "B": 6, "C": 6, "D": 6, "E": 6, "F": 6, "G": 56}
-    win = pgh.figure(title="AN Inputs")
-    layout = pgh.LayoutMaker(
-        cols=2, rows=len(tests), win=win, labelEdges=True, ticks="talbot"
-    )
+    fig, axes = mpl.subplots(len(tests), 2,  figsize=(8, 8))
+
     maxn = 25000000
-    if len(tests) <= 2:
-        win.resize(600, 300)
-    else:
-        win.resize(600, 125 * len(tests))
     for i, t in enumerate(tests):
         X = sac.makeTests(t)
         
         yhp, binsp = sac.SAC_with_histo(X, sac.SPars, engine="python", dither=0.)
         yhn, binsn = sac.SAC_with_histo(X, sac.SPars, engine="numba", dither=0.)
         yhc, binsc = sac.SAC_with_histo(X, sac.SPars, engine="cython", dither=0.)
-        # assert np.array_equal(yhc, yhn)
-        # assert np.array_equal(yhp, yhc)
-        # assert np.array_equal(yhp, yhn)  # make sure all results are the same
-
-        SAC_with_histo = pg.PlotDataItem(
-            binsp, yhp, stepMode=True, fillLevel=0, brush=(128, 128, 128, 255), pen=None
-        )
-        sacn = pg.PlotDataItem(binsn, yhn, stepMode=True, brush=None, pen=pg.mkPen("m")
-        )
-        sacc = pg.PlotDataItem(binsc, yhc, stepMode=True, brush=None, pen=pg.mkPen("r")
-        )
-        layout.getPlot((i, 1)).addItem(SAC_with_histo)
-        layout.getPlot((i, 1)).addItem(sacn)
-        layout.getPlot((i, 1)).addItem(sacc)
-        layout.getPlot((i, 1)).setXRange(-0.005, 0.005)
-        layout.getPlot((i, 1)).setYRange(0, ymax[t])
+        assert np.array_equal(yhp, yhn)
+        # diffs = np.where(np.fabs(yhp-yhc) > 0.0)
+        # print(t, (yhp-yhc)[diffs])
+        assert np.array_equal(yhp, yhc)
+        print("All algorithms agree")
+        axes[i, 1].plot(
+                binsp[:-1],
+                yhp,
+                'k-',
+                # label=sac_label,
+            )
+        axes[i, 1].fill_between(binsn[:-1], yhn, color='grey', alpha=0.3)
+        axes[i, 1].fill_between(binsc[:-1], yhc, color='red', alpha=0.3)
         size = 4
-        Y = [[]] * len(X)
-        for j in range(len(X)):
-            Y[j] = (j + 1) * np.ones(len(X[j]))
-        raster = pg.ScatterPlotItem(
-            x=np.array(X).flatten(),
-            y=np.array(Y).flatten(),
-            pen="w",
-            brush="b",
-            size=size,
-            pxMode=True,
-        )
-        layout.getPlot((i, 0)).addItem(raster)
+        Y = np.arange(0, len(X))
+        raster = axes[i, 0].eventplot(X,
+            linelengths=0.75,
+            lineoffsets=Y,
+            colors="k",)
         if t not in ["F", "G"]:
-            layout.getPlot((i, 0)).setXRange(0.0, 0.010)
+            axes[i, 0].set_xlim(0, 0.01)
         else:
-            layout.getPlot((i, 0)).setXRange(0.0, 1.0)
+            axes[i, 0].set_xlim(0, 1)
+        axes[i, 1].set_xlim(-0.005, 0.005)
+        axes[i, 1].set_ylim(0., ymax[tests[i]])
 
-    pgh.show()
+    mpl.show()

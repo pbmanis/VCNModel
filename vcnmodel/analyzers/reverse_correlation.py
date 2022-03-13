@@ -264,7 +264,7 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
                     n_bins=None,
                     t_start=tstart * pq.s,
                     t_stop=tstop * pq.s,
-                    tolerance=1e-8,
+                    tolerance=None,
                     sparse_format="csr",
                 )
                 bst_j = EC.BinnedSpikeTrain(
@@ -273,7 +273,7 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
                     n_bins=None,
                     t_start=tstart * pq.s,
                     t_stop=tstop * pq.s,
-                    tolerance=1e-8,
+                    tolerance=None,
                     sparse_format="csr",
                 )
                 cc_result, lags = ESTC.cross_correlation_histogram(

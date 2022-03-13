@@ -23,7 +23,7 @@ envisage==4.7.2
 
 imreg_dft
 
-lmfit==0.9.13
+lmfit==1.0.3
 llvmlite==0.32.1  # required for numba version to avoid "TypeError: create_target_machine() got an unexpected keyword 
 
 matplotlib==3.4.3
@@ -70,7 +70,7 @@ traitsui==6.1.0
 xlrd>=1.0.0
 imreg_dft>=2.0
 descartes
-mahotas
+
 
 -e /Users/pbmanis/Desktop/Python/pyqtgraph
 -e /Users/pbmanis/Desktop/Python/neuronvis
@@ -90,7 +90,6 @@ mahotas
 
 # this has to be last as the compilation depends on getting Cython and numpy installed first
 #-e git+https://github.com/pbmanis/cochlea-1.git#egg=cochlea
-
 
 
 future==0.17.1
