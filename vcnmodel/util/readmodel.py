@@ -1,21 +1,91 @@
-from pathlib import Path
-import numpy as np
-import pickle
-import matplotlib
-from dataclasses import dataclass
 import dataclasses
-from typing import Union
 import datetime
+import pickle
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Union
 
-from ephys.ephysanalysis import MakeClamps
+import matplotlib
+import numpy as np
+import vcnmodel.model_params
 import vcnmodel.util.fixpicklemodule as FPM
-from vcnmodel.util import Params  # for old simulation results only
+from ephys.ephysanalysis import MakeClamps
+from pylibrary.tools import cprint as CP
+from vcnmodel.analyzers.reverse_correlation import RevCorrData, RevCorrPars
 
-class ReadModel():
-    def __init__(self):
-       self.MC = MakeClamps.MakeClamps()
-    
-    def read_pfile(self, datasource:Union[str, Path, dict, None]=None, filemode:str='vcnmodel.v0', vscale:float=1e-3, iscale:float=1e-9, plot=False):
+from vcnmodel.analyzers import analyze_data
+from vcnmodel.util import params  # for old simulation results only
+from vcnmodel.util import trace_calls
+
+TRC = trace_calls.TraceCalls
+cprint = CP.cprint
+
+
+@dataclass
+class Inflate:
+    soma_inflation: float = 0.0
+    dendrite_inflation: float = 0.0
+
+
+class ReadModel:
+    """read model data files from two different formats, and put the
+    data into a standard format for analysis. The format is similar
+    to that used by ephys ("AR")
+
+    Returns
+    -------
+    None
+
+    """    
+    def __init__(self, parent=None, my_parent=None):
+        self.MC = MakeClamps.MakeClamps()
+        self.parent = parent
+        self.my_parent = None
+        self.firstline = False
+
+    def set_parent(self, parent=None, my_parent=None):
+        self.parent = parent
+        self.my_parent = my_parent
+
+    def textclear(self):
+        """Clear the text display region
+
+        Raises
+        ------
+        ValueError
+            It is invalid to clear the display if there is
+            no specified parent
+        """        
+        if self.parent is None:
+            raise ValueError("parent is None")
+        else:
+            self.parent.textbox.clear()
+
+    def textappend(self, text:str, color="white"):
+        """append text to the console or GUI
+
+        Parameters
+        ----------
+        text : str
+            The text to display
+        color : str, optional
+            color for the text display, by default "white"
+        """
+        if self.parent is None:
+            cprint(color, text)  # just go straight to the terminal
+        else:
+            self.parent.textbox.setTextColor(self.parent.QColor(color))
+            self.parent.textbox.append(text)
+            self.parent.textbox.setTextColor(self.parent.QColor("white"))
+
+    def read_pfile(
+        self,
+        datasource: Union[str, Path, dict, None] = None,
+        filemode: str = "vcnmodel.v0",
+        vscale: float = 1e-3,
+        iscale: float = 1e-9,
+        plot=False,
+    ):
         """
         Read a pickled file; optionally plot the data
         Puts the data into a Clamps structure.
@@ -24,13 +94,12 @@ class ReadModel():
         ----------
         filename : str or Path
             The file to be read
-        
+
         mode: str
             version name
         plot: Boolean (default: False)
             Flag to specify plotting the data in a simple mode
         """
-        
 
         """
         The runInfo dictionary holds somethign like this:
@@ -64,116 +133,388 @@ class ReadModel():
         ... and undone later, so that all are top-level (filemode is 'vcnmodel.v1')
         """
         if isinstance(datasource, (str, Path)):
-            with open(datasource, 'rb') as fh:
+            with open(datasource, "rb") as fh:
                 df = FPM.pickle_load(fh)
                 filename = datasource
         else:
             df = datasource
             print("df.Params: ", df.Params)
             raise ValueError()
-            
-        if filemode in ['vcnmodel.v0']:
-            print(f"Reading model file in version v0:, with {len(df['Results']):4d} trials")
-        elif filemode in ['vcnmodel.v1']:
-            print(f"Reading model file in version v1:, with {len(df['Results']):4d} trials")
+
+        if filemode in ["vcnmodel.v0"]:
+            print(
+                f"Reading model file in version v0:, with {len(df['Results']):4d} trials"
+            )
+        elif filemode in ["vcnmodel.v1"]:
+            print(
+                f"Reading model file in version v1:, with {len(df['Results']):4d} trials"
+            )
         else:
-            raise ValueError(f'Unknown file mode: {filemode:s}')
+            raise ValueError(f"Unknown file mode: {filemode:s}")
         mtime = Path(filename).stat().st_mtime
-        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d-%H:%M')
-        if filemode == 'vcnmodel.v0':
+        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
+            "%Y-%m-%d-%H:%M"
+        )
+        if filemode == "vcnmodel.v0":
             try:
-                dinfo = df['Params']['runInfo']
+                dinfo = df["Params"]["runInfo"]
             except:
                 try:
-                    dinfo = df['runInfo']
+                    dinfo = df["runInfo"]
                 except:
-                    raise ValueError ("Cannot read the file in v0 mode?")
-            run_protocol = df['Params']['runProtocol']
-            if isinstance(dinfo, Params):
+                    raise ValueError("Cannot read the file in v0 mode?")
+            run_protocol = df["Params"]["runProtocol"]
+            if isinstance(dinfo, params.Params):
                 dinfo = dinfo.todict()
-            dur = dinfo['stimDur']
-            delay = dinfo['stimDelay']
-            mode = dinfo['postMode'].upper()
-            ntr = len(df['Results'])
-            if 'dt' in df['Params'].keys():
-                self.rate = df['Params']['dt']
+            dur = dinfo["stimDur"]
+            delay = dinfo["stimDelay"]
+            mode = dinfo["postMode"].upper()
+            ntr = len(df["Results"])
+            if "dt" in df["Params"].keys():
+                self.rate = df["Params"]["dt"]
             else:
-                self.rate = df['Params'].dt
-            V = [[]]*ntr
-            I = [[]]*ntr
-            for i in range(len(df['Results'])):
-                fk = list(df['Results'][i].keys())[0]
-                dfx = df['Results'][i][fk]['monitor']
-                timebase = dfx['time']
-                V[i] = dfx['postsynapticV']*vscale
-                I[i] = dfx['i_stim0']*iscale
+                self.rate = df["Params"].dt
+            V = [[]] * ntr
+            I = [[]] * ntr
+            for i in range(len(df["Results"])):
+                fk = list(df["Results"][i].keys())[0]
+                dfx = df["Results"][i][fk]["monitor"]
+                timebase = dfx["time"]
+                V[i] = dfx["postsynapticV"] * vscale
+                I[i] = dfx["i_stim0"] * iscale
         else:
-            dinfo = df['runInfo']
+            dinfo = df["runInfo"]
             x = dir(dinfo)
-            if 'stimVC' not in x:  # create fields for missing values from older versions of files.
+            if (
+                "stimVC" not in x
+            ):  # create fields for missing values from older versions of files.
                 dinfo.stimVC = None
             mode = dinfo.postMode.upper()
             dur = dinfo.stimDur
             delay = dinfo.stimDelay
             mode = dinfo.postMode
             try:
-                self.rate = df['Params'].dt  # old version, now separated IC and VC
+                self.rate = df["Params"].dt  # old version, now separated IC and VC
             except:
-                if mode == 'VC':
-                    self.rate = df['Params'].dtVC
+                if mode == "VC":
+                    self.rate = df["Params"].dtVC
                 elif mode == "CC":
-                    self.rate = df['Params'].dtIC
+                    self.rate = df["Params"].dtIC
                 else:
                     raise ValueError("Cannot find rate for data mode: ", mode)
 
             run_protocol = dinfo.runProtocol
-            if dinfo.runProtocol in ['runIV', 'initIV', 'testIV']:
-                ntr = len(df['Results'])
-                V = [[]]*ntr
-                I = [[]]*ntr
-                for ii, i in enumerate(df['Results'].keys()):
-                    dfx = df['Results'][i]['monitor']
-                    timebase = dfx['time']
-                    V[ii] = np.array(dfx['postsynapticV'])*vscale
-                    I[ii] = np.array(dfx['i_stim0'])*iscale
-            elif dinfo.runProtocol in ['runVC', 'initVC', 'testVC']:
-                dur = dinfo.vstimDur # msec
-                delay = dinfo.vstimDelay # msec
-                ntr = len(df['Results'])
-                V = [[]]*ntr
-                I = [[]]*ntr
-                for ii, i in enumerate(df['Results'].keys()):
-                    dfx = df['Results'][i]['monitor']
-                    timebase = dfx['time']
-                    V[ii] = np.array(dfx['postsynapticV'])*vscale
-                    I[ii] = np.array(dfx['postsynapticI'])*iscale
-                    
-            elif dinfo.runProtocol in ['initAN', 'runANPSTH', 'runANIO', 'runANSingles']:
+            if dinfo.runProtocol in ["runIV", "initIV", "testIV"]:
+                ntr = len(df["Results"])
+                V = [[]] * ntr
+                I = [[]] * ntr
+                for ii, i in enumerate(df["Results"].keys()):
+                    dfx = df["Results"][i]["monitor"]
+                    timebase = dfx["time"]
+                    V[ii] = np.array(dfx["postsynapticV"]) * vscale
+                    I[ii] = np.array(dfx["i_stim0"]) * iscale
+            elif dinfo.runProtocol in ["runVC", "initVC", "testVC"]:
+                dur = dinfo.vstimDur  # msec
+                delay = dinfo.vstimDelay  # msec
+                ntr = len(df["Results"])
+                V = [[]] * ntr
+                I = [[]] * ntr
+                for ii, i in enumerate(df["Results"].keys()):
+                    dfx = df["Results"][i]["monitor"]
+                    timebase = dfx["time"]
+                    V[ii] = np.array(dfx["postsynapticV"]) * vscale
+                    I[ii] = np.array(dfx["postsynapticI"]) * iscale
+
+            elif dinfo.runProtocol in [
+                "initAN",
+                "runANPSTH",
+                "runANIO",
+                "runANSingles",
+            ]:
 
                 # two ways data can be organized, so try both
                 try:  # cnmodel_models simulations
-                    ntr = len(df['Results'])
-                    V = [[]]*ntr
-                    I = [[]]*ntr
-                    for j in list(df['Results'].keys()):
-                        dfx = df['Results'][j]
-                        timebase = dfx['time']
-                        V[j] = np.array(dfx['somaVoltage'])*vscale
+                    ntr = len(df["Results"])
+                    V = [[]] * ntr
+                    I = [[]] * ntr
+                    for j in list(df["Results"].keys()):
+                        dfx = df["Results"][j]
+                        timebase = dfx["time"]
+                        V[j] = np.array(dfx["somaVoltage"]) * vscale
                         I[j] = np.zeros_like(V[j])
                 except:  # vcnmodel simulatipns
-                    ntr = len(df["Results"]['somaVoltage'])
-                    V = [[]]*ntr
-                    I = [[]]*ntr
+                    ntr = len(df["Results"]["somaVoltage"])
+                    V = [[]] * ntr
+                    I = [[]] * ntr
                     for j in range(ntr):
-                        timebase = df['Results']['time']
-                        V[j] = np.array(df['Results']['somaVoltage'][j])*vscale
+                        timebase = df["Results"]["time"]
+                        V[j] = np.array(df["Results"]["somaVoltage"][j]) * vscale
                         I[j] = np.zeros_like(V[j])
 
         V = np.array(V)
         I = np.array(I)
 
-        if run_protocol in ['runVC', 'initVC', 'testVC']:
-            self.MC.set_clamps(dmode=mode, time=timebase, data=I, cmddata=V, tstart_tdur=[delay, dur])
+        if run_protocol in ["runVC", "initVC", "testVC"]:
+            self.MC.set_clamps(
+                dmode=mode, time=timebase, data=I, cmddata=V, tstart_tdur=[delay, dur]
+            )
         else:
-            self.MC.set_clamps(dmode=mode, time=timebase, data=V, cmddata=I, tstart_tdur=[delay, dur])
+            self.MC.set_clamps(
+                dmode=mode, time=timebase, data=V, cmddata=I, tstart_tdur=[delay, dur]
+            )
         self.MC.getClampData()
+        return self
+
+    def _convert_params(self, d, fns, filemode):
+        """
+        Capture the parameters in different versions of the files,
+        and return as a simple dictionary.
+
+        Parameters
+        ----------
+        d : dict from the top level of the file
+            Must have 'runInfo' and/or 'Params' as entries
+
+        filemode : str (no default)
+            A string corresponding to the file mode for the file
+            Must be either "vcnmodel.v0" or "vcnmodel.v1"
+        """
+        if filemode in ["vcnmodel.v0"]:
+            # print(d['runInfo'].keys())
+            par = d["runInfo"]
+            par["soma_inflation"] = False
+            par["dendrite_inflation"] = False
+            if fns.find("soma=") > -1:
+                par["soma_inflation"] = True
+            if fns.find("dend=") > -1:
+                par["dendrite_inflation"] = True
+            par["soma_autoinflate"] = False
+            par["dendrite_autoinflate"] = False
+        elif filemode in ["vcnmodel.v1"]:
+            try:
+                par = d["Params"]
+            except ValueError:
+                try:
+                    par = d["self.Params"]
+                except ValueError:
+                    raise ValueError("File missing Params; need to re-run")
+            if isinstance(par, vcnmodel.model_params.Params):
+                par = dataclasses.asdict(par)
+        else:
+            raise ValueError("File mode must be either vcnmodel.v0 or vcnmodel.v1")
+
+        return par
+
+    def _get_scaling(self, fn, PD, par_in):
+        """
+        Get the dendrite/soma scaling information from this data file
+        and return a string. Also prints out the scaling information as we go.
+
+        Parameters
+        ----------
+        PD : Parameter Dataclass (no default)
+        par : parameter list.
+        Returns
+        -------
+        string with the type of scaling applied to the data.
+        """
+        stitle = "Bare Scaling"
+        if isinstance(par_in, dict):
+            par = Inflate(
+                par_in["soma_inflation"],
+                par_in["dendrite_inflation"],
+            )
+        if PD.soma_inflate and PD.dend_inflate:
+            if par.soma_inflation > 0.0 and par.dendrite_inflation > 0.0:
+                ivdatafile = Path(fn)
+                stitle = "Soma and Dend scaled"
+                print(stitle)
+        elif PD.soma_inflate and not PD.dend_inflate:
+            if par.soma_inflation > 0.0 and par.dendrite_inflation < 0.0:
+                ivdatafile = Path(fn)
+                stitle = "Soma only scaled"
+                print(stitle)
+        elif PD.dend_inflate and not PD.soma_inflate:
+            if par.soma_inflation < 0.0 and par.dendrite_inflation > 0.0:
+                ivdatafile = Path(fn)
+                stitle = "Dend only scaled"
+                print(stitle)
+        elif not PD.soma_autoinflate and not PD.dendrite_autoinflate:
+            print("\nConditions x: soma= ", PD.soma_inflate, "  dend=", PD.dend_inflate)
+            ivdatafile = Path(fn)
+            stitle = "No scaling (S, D)"
+            print(stitle)
+        else:
+            ivdatafile = Path(fn)
+            self.textappend(
+                f"Bare file: no identified soma/dendrite inflation conditions", "red"
+            )
+            stitle = "Bare Scaling"
+        return "      " + stitle
+
+    @TRC(show=False)
+    def get_data_file(
+        self,
+        fn: Union[str, Path],
+        changetimestamp: object,
+        PD: dataclass,
+        verbose=False,
+    ) -> Union[None, tuple]:
+        """
+        Get a data file, and also parse information from the file
+        for display,
+
+        Parameters
+        ----------
+        fn : str or Path
+            the file to read
+        changetimestamp : object
+            the timestamp associated with this file.
+        PD : dataclass
+
+        """
+        fnp = Path(fn)
+        fns = str(fn)
+        ivdatafile = Path(fn)
+        if self.firstline:
+            if not fnp.is_file():
+                cprint("r", f"   File: {str(fnp):s} NOT FOUND")
+                self.textappend(f"   File: {str(fnp):s} NOT FOUND", color="red")
+                return None
+            else:
+                if verbose:
+                    self.textappend(f"   File: {str(fnp):s} OK")
+        mtime = fnp.stat().st_mtime
+        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
+            "%Y-%m-%d-%H:%M"
+        )
+        if verbose and self.firstline:
+            self.textappend(
+                f"pgbcivr2: Checking file: {fnp.name:s} [{timestamp_str:s}]"
+            )
+        if mtime > changetimestamp:
+            filemode = "vcnmodel.v1"
+        else:
+            filemode = "vcnmodel.v0"
+        if self.firstline and verbose:
+            self.textappend(f"pgbcivr2: file mode: {filemode:s}")
+        with (open(fnp, "rb")) as fh:
+            d = FPM.pickle_load(fh)
+        if verbose:
+            self.textappend(f"   ...File read, mode={filemode:s}")
+        par = self._convert_params(d, fns, filemode)
+        stitle = self._get_scaling(fn, PD, par)
+
+        if verbose:
+            print("Read file: ", ivdatafile)
+        if ivdatafile is None or not ivdatafile.is_file():
+            if self.firstline and verbose:
+                self.textappend(f"no file matching conditions : {str(ivdatafile):s}")
+            return None
+
+        if self.firstline and verbose:
+            self.textappend(f"\npgbcivr2: datafile to read: {str(ivdatafile):s}")
+        if isinstance(d["Results"], dict):
+            if "time" in list(d["Results"].keys()):
+                d["Results"] = self._data_flip(d)
+        return par, stitle, ivdatafile, filemode, d
+
+    @TRC(show=False)
+    def get_data(
+        self, fn: Union[Path, str], PD: dataclass, changetimestamp:object=None, protocol:str="",
+    ) -> Union[None, tuple]:
+
+        X = self.get_data_file(fn, changetimestamp, PD)
+        if X is None:
+            print("No simulation found that matched conditions")
+            print("Looking for file: ", fn)
+            return None
+        # unpack x
+        par, stitle, ivdatafile, filemode, d = X
+        if "time" in list(d["Results"].keys()):
+            d["Results"] = self._data_flip(d)
+
+        # 2. find spikes
+        AR, SP, RMA = analyze_data.analyze_data(ivdatafile, filemode, protocol)
+        # set up analysis parameters and result storage
+        RCP = RevCorrPars()
+        RCD = RevCorrData()
+
+        RCD.npost_spikes = 0  # number of postsynaptic spikes
+        RCD.npre_spikes = 0  # number of presynaptic spikes
+
+        trials = range(len(d["Results"]))
+        RCP.ntrials = len(trials)
+
+        for i, tr in enumerate(list(d["Results"].keys())):
+            trd = d["Results"][tr]  # trial data
+            time_base = AR.MC.time_base / 1000.0  # convert to seconds
+            if "inputSpikeTimes" in list(trd.keys()):
+                for n in range(len(trd["inputSpikeTimes"])):  # for each sgc
+                    RCD.npre_spikes += len(trd["inputSpikeTimes"][n])
+                RCD.npost_spikes += len(trd["spikeTimes"])
+                RCD.st = SP.spikeIndices
+                # print("TR: ", tr)
+                # print("RCD.st: ", RCD.st)
+                RCD.npost_spikes += len(RCD.st[tr])
+            else:
+                RCD.npost_spikes += sum(SP.spikes[i])
+
+        RCD.ti = time_base
+        # print(f"Detected {RCD.npost:d} Post spikes")
+        # print(f"Detected {RCD.npre:d} Presynaptic spikes")
+        # print("# trials: ", RCP.ntrials)
+
+        # clip trace to avoid end effects
+        RCP.max_time = (
+            np.max(RCD.ti) - RCP.min_time
+        )  # this window needs to be at least as long as maxwin
+        RCD.tx = np.arange(RCP.minwin, 0, RCP.binw)
+        return (d, AR, SP, RMA, RCP, RCD)
+
+    def _data_flip(self, d):
+        """
+        Convert from old data file format to new
+
+        Parameters
+        ----------
+        d : dict from the top of the data file,
+            or from results (d['Results'])
+
+        Returns
+        -------
+        d['Results'] with the data format adjusted.
+        """
+        # flip order to put trials first (this was an old format)
+        data_res = d["Results"]
+        trials = range(d["runInfo"].nReps)
+
+        for tr in trials:
+            sv = data_res["somaVoltage"][tr]
+            dv = data_res["dendriteVoltage"][tr]
+            st = data_res["spikeTimes"][tr]
+            isp = data_res["inputSpikeTimes"][tr]
+            if len(data_res["stimWaveform"].shape) > 0:
+                swv = data_res["stimWaveform"][tr]
+            else:
+                swv = None
+            stb = data_res["stimTimebase"][tr]
+
+            ti = data_res["time"][tr]
+
+            data_res[tr] = {
+                "somaVoltage": sv,
+                "dendriteVoltage": dv,
+                "spikeTimes": st,
+                "inputSpikeTimes": isp,
+                "stimWaveform": swv,
+                "stimTimebase": stb,
+                "time": ti,
+            }
+        delete = [key for key in data_res[0].keys()]  # get from saved keys
+        for key in delete:
+            del data_res[key]  # but delete top level
+        # print("_data_flip: ", data_res.keys())
+        return data_res
+    
+    

@@ -1,38 +1,38 @@
 import datetime
 import importlib
 import pickle
+import string
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
-import string
 from typing import Union
 
 import matplotlib
+import matplotlib.pyplot as mpl
 import numpy as np
 import pandas as pd
+import scipy.spatial
 import seaborn as sns
-
+import toml
+import vcnmodel.util.fixpicklemodule as FPM
+import vcnmodel.util.readmodel as readmodel
 from matplotlib import image as mpimg
-from matplotlib import pyplot as mpl
 from matplotlib.lines import Line2D
-
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
 from rich.console import Console
 from rich.text import Text
-import scipy.spatial
-
-import toml
-from vcnmodel.plotters import efficacy_plot as EF
-from vcnmodel.plotters import plot_z as PZ
-from vcnmodel.plotters import SAM_VS_vplots
-import vcnmodel.util.fixpicklemodule as FPM
-from vcnmodel.analyzers import sac as SAC
+from vcnmodel.analyzers import analyze_data
 from vcnmodel.analyzers import isi_cv as ISI
+from vcnmodel.analyzers import sac as SAC
+from vcnmodel.plotters import SAM_VS_vplots
+from vcnmodel.plotters import efficacy_plot as EF
 from vcnmodel.plotters import (
     figure_data as FD,
 )  # table of simulation runs used for plotting figures
+from vcnmodel.plotters import plot_z as PZ
 
+from . import plot_functions as PF
 
 cprint = CP.cprint
 
@@ -78,9 +78,9 @@ class PData:
     default_modelName: str = "XM13_nacncoop"
     soma_inflate: bool = True
     dend_inflate: bool = True
-    basepath: str = "" # config["baseDataDirectory"]
-    renderpath: str = "" # str(Path(config["codeDirectory"], "Renderings"))
-    revcorrpath: str = "" # config["revcorrDataDirectory"]
+    basepath: str = ""  # config["baseDataDirectory"]
+    renderpath: str = ""  # str(Path(config["codeDirectory"], "Renderings"))
+    revcorrpath: str = ""  # config["revcorrDataDirectory"]
     thiscell: str = ""
 
 
@@ -102,23 +102,24 @@ class FigInfo:
 
 class Figures(object):
     """
-    This class generates final figures for the SBEM manuscript by reaching back to the 
+    This class generates final figures for the SBEM manuscript by reaching back to the
     original simulation data, including, in some cases, refitting.
     Both primary "examplar" figures, and supplemental figures, are generated.
-    The figures are made consistent by using both sns.set_style and 
+    The figures are made consistent by using both sns.set_style and
     mpl.style for figures.mplstyle, which overrides some defaults in mpl.
     The resulting figures are editable in Illustrator without any missing fonts.
-    
-    This is overall ugly code, but it gets the job done. 
+
+    This is overall ugly code, but it gets the job done.
     Note that some plots are modifications of what is present in plot_sims,
     and also that plot_sims is used here, accessed through self.parent.PLT.
-    
+    Some plotting routines have been moved into plot_functions.
+
     This is part of the DataTablesVCN interactive analysis tool for the simulations
     in the SBEM project.
     Supported primarily by R01DC015901 (Spirou, Manis, Ellisman),
     Early development: R01 DC004551 (Manis, until 2019)
     Later development: R01 DC019053 (Manis, 2020-2025)
-    
+
     """
 
     def __init__(self, parent):
@@ -128,6 +129,10 @@ class Figures(object):
         )  # sorry, have to reload it here.
         self.axis_offset = -0.02
         config = toml.load(open("wheres_my_data.toml", "r"))
+        self.ReadModel = readmodel.ReadModel()
+        self.ReadModel.set_parent(
+            parent=self.parent, my_parent=self
+        )  # pass our parent and US to the reader
 
     def newPData(self):
         """
@@ -136,10 +141,12 @@ class Figures(object):
         Returns:
             PData: dataclass
         """
-        return PData(basepath=self.config["baseDataDirectory"],
-                     renderpath=str(Path(self.config["codeDirectory"], "Renderings")),
-                     revcorrpath=self.config["revcorrDataDirectory"],
-                     )
+        return PData(
+            basepath=self.config["baseDataDirectory"],
+            renderpath=str(Path(self.config["codeDirectory"], "Renderings")),
+            revcorrpath=self.config["revcorrDataDirectory"],
+        )
+
     def reset_style(self):
         sns.set_style(rc={"pdf.fonttype": 42})
         mpl.style.use("~/.matplotlib/figures.mplstyle")
@@ -156,14 +163,11 @@ class Figures(object):
             "Figure3-Supplemental2_CC": self.Figure3_Supplemental2_CC,
             "Figure3-Supplemental3_Zin": self.Figure3_Supplemental3_Zin,
             "Figure3-Supplemental4_PSTH": self.Figure3_Supplemental4_PSTH,
-            
             "Figure4-Ephys_2_Main": self.Figure4_Main,
             "Figure4-Ephys_2_Supplemental1": self.Figure4_Supplmental1,
-            
             "Figure7-Ephys-3 Main": self.Figure7_Main,
             # "Figure7-Ephys_3_Main": self.Figure7_Main,
             "Figure7-Ephys-3_Supplemental1": self.Figure7_Supplemental1,
-
             "Fig M1: IV Figure (Fig_M1)": self.plotIV,
             "Fig_IV/ All IVs (Fig_IV/IV_cell_VCN_c##)": self.allIVs,
             "Fig M2: CombinedEffRevCorr (Fig_M2)": self.plot_combined_Eff_Rev,
@@ -189,14 +193,14 @@ class Figures(object):
     def save_figure(self, fig):
         """
         Save a figure to a disk file.
-        This routine adds metadata to the figure, along with 
+        This routine adds metadata to the figure, along with
         a title if specified.
-        
+
         Parameters
         ----------
         fig : figinfo dataclass object. This should be created and
             populated by the calling routine.
-        
+
         Returns
         -------
         Nothing
@@ -222,11 +226,13 @@ class Figures(object):
             )
         ofile = Path(self.config["baseDataDirectory"], "Figures", fig.filename)
         ofile.parent.mkdir(exist_ok=True)
-        cprint("g",
-            f"Saving to: {str(Path(self.config['baseDataDirectory'])):s}, Figures: {str(fig.filename):s}")
+        cprint(
+            "g",
+            f"Saving to: {str(Path(self.config['baseDataDirectory'])):s}, Figures: {str(fig.filename):s}",
+        )
         cprint("g", f"   Figure title: {fig.title['title']:s}")
         mpl.savefig(
-            Path(self.config["baseDataDirectory"], "Figures",  fig.filename),
+            Path(self.config["baseDataDirectory"], "Figures", fig.filename),
             metadata={
                 "Creator": "Paul Manis",
                 "Author": "Paul Manis",
@@ -279,20 +285,20 @@ class Figures(object):
     ):
         """
         Plot the traces and current-voltage relationship for the specified cell.
-        
+
         Parameters
         ----------
         cell : int (default None)
             Specify the cell number to plot.
             If no cell number is specified, this will plot the "default" cell specified
             in figure_data.py, figure_IV dictionary.
-        parent_figure : figure object. 
+        parent_figure : figure object.
             Sets up the arrangement/order of panel labels based on whether this is being plotted
-            as a "sub" figure of a parent figure or not. 
+            as a "sub" figure of a parent figure or not.
         loc: location of the "sub" figure relative to the parent figure. ranges 0-1 in each axis
-        
+
         toponly: just for replotting the raw traces.
-        
+
         """
         if cell is None:
             cellN = FD.figure_IV["Cell"]
@@ -633,9 +639,7 @@ class Figures(object):
         fig = FigInfo()
         fig.P = self.P2
         fig.filename = f"Figure3/Figure3-Supplemental1_VC_Rin_Taum.pdf"
-        fig.title[
-            "title"
-        ] = "SBEM Project Figure4 Supplemental Figure 1 VC_Rin_Taum"
+        fig.title["title"] = "SBEM Project Figure4 Supplemental Figure 1 VC_Rin_Taum"
         return fig
 
     def Figure3_Supplemental2_CC(self, parent_figure=None, show_pngs=False):
@@ -682,7 +686,9 @@ class Figures(object):
         for rax, iv in enumerate(FD.figure_AllIVs.keys()):
             # if iv not in [9, 10]:
             #      continue
-            cprint("c", f"    Doing Cell BC{iv:02d} -----------------------------------")
+            cprint(
+                "c", f"    Doing Cell BC{iv:02d} -----------------------------------"
+            )
             celln = Path(png_path, f"VCN_c{iv:02d}.png")
             if celln.is_file() and show_pngs:  # add images from png files
                 img = mpimg.imread(str(celln))
@@ -736,10 +742,11 @@ class Figures(object):
                     axis_index=iax,
                 )
                 if rax == 0:
-                    self.P.axarr[rax, jax].set_title(
-                        dendmode.title())
+                    self.P.axarr[rax, jax].set_title(dendmode.title())
                 if iax == 0 and not show_pngs:
-                    self.P.axarr[rax, 0].text(-35., 0.6, f"BC{iv:02d}", fontweight="bold", fontsize=12)
+                    self.P.axarr[rax, 0].text(
+                        -35.0, 0.6, f"BC{iv:02d}", fontweight="bold", fontsize=12
+                    )
         if parent_figure is None:
             fig = FigInfo()
             fig.P = self.P
@@ -760,7 +767,7 @@ class Figures(object):
 
     def make_eff_fig(self):
         """
-        Set up plotter grid for efficacy figure. 
+        Set up plotter grid for efficacy figure.
         """
         row1y = 5.5
         row1h = 3.0
@@ -853,7 +860,9 @@ class Figures(object):
         if parent_figure is None:
             parent_figure = self.make_eff_fig()
         EFP = EF.EfficacyPlots(parent_figure=parent_figure)
-        EFP.plot_efficacy(datasetname="Full", ax=EFP.parent_figure.axdict["B"], loc=loc, clean=True)
+        EFP.plot_efficacy(
+            datasetname="Full", ax=EFP.parent_figure.axdict["B"], loc=loc, clean=True
+        )
         # EFP.P.figure_handle.set_size_inches(figsize[0], figsize[1])
         #        return
         # stacked IV in first column:
@@ -952,7 +961,7 @@ class Figures(object):
     ):
         """
         What it says: plot traces in a stacked format
-    
+
         Parameters
         ----------
         cells : a list of ints (if none, default is to use all of the cells in the
@@ -966,7 +975,7 @@ class Figures(object):
             the size of the calibration bar in voltage (in mV)
         maxstack: int (default 9)
             determines the height of the stack, relative to the offset (see code)
-    
+
         Returns
         -------
         Nothing
@@ -1006,14 +1015,14 @@ class Figures(object):
             if simulation_experiment != "Full":
                 ymax = 40.0
             for n in range(len(fn)):
-                if n == (len(fn)-1) and ic == 0: # (len(cells)-1):
+                if n == (len(fn) - 1) and ic == 0:  # (len(cells)-1):
                     calxv = calxp
-                    calyv = -50.
+                    calyv = -50.0
                     iax = n
                 else:
                     iax = None
                     calxv = None
-                    calyv = -50.
+                    calyv = -50.0
                 # cprint("c", f"iax: {str(iax):s}, calxv = {str(calxv):s}  calyv = {str(calyv):s}")
                 y0 = n * yoffset
                 self.parent.PLT.plot_traces(
@@ -1222,7 +1231,7 @@ class Figures(object):
         fig = self.Figure4_Main(supplemental1=True)
         return fig
 
-    def Figure4_assign_panel(self, supplemental1:bool=False, index:int=0):
+    def Figure4_assign_panel(self, supplemental1: bool = False, index: int = 0):
         if not supplemental1:
             revcorr_panel = f"D{index:d}"
             vm_panel = f"E{index:d}"
@@ -1230,8 +1239,7 @@ class Figures(object):
             revcorr_panel = f"B{index:d}"
             vm_panel = f"C{index:d}"
         return revcorr_panel, vm_panel
-    
-    
+
     def Figure4_Main(self, supplemental1=False):
         """
         Generate Figure 4 for the paper. Combined bits from various other plots
@@ -1242,7 +1250,6 @@ class Figures(object):
             example_cells = [2, 6, 10, 11, 13, 18]
         else:
             example_cells = [5, 9, 17, 30]
-            
 
         start_letter = "A"
         parent_figure = None
@@ -1256,15 +1263,23 @@ class Figures(object):
                 # "F": {"pos": [6.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
                 # "G": {"pos": [9.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
                 "B": {"pos": [xl, xw, 0.5, 2.5], "labelpos": (-0.15, 1.02)},
-                "C": {"pos": [xl + 2.75, xw, 0.5 , 2.5], "labelpos": (-0.15, 1.02),},
-                "F": {"pos": [6.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
-                "G": {"pos": [9.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
+                "C": {
+                    "pos": [xl + 2.75, xw, 0.5, 2.5],
+                    "labelpos": (-0.15, 1.02),
+                },
+                "F": {
+                    "pos": [6.5, 2.2, 0.5, 2.5],
+                    "labelpos": (-0.15, 1.02),
+                },
+                "G": {
+                    "pos": [9.5, 2.2, 0.5, 2.5],
+                    "labelpos": (-0.15, 1.02),
+                },
             }
             figsize = (12, 8)
         else:
             sizer = {}
             figsize = (9, 8)
-            
 
         xw = 1.1
         xw2 = 1.0
@@ -1277,8 +1292,8 @@ class Figures(object):
             yh1 = 3.75
         else:
             yh2 = 1.2
-            yb2 = 3.5+2.5
-            yb3 = 3.5+0.5
+            yb2 = 3.5 + 2.5
+            yb3 = 3.5 + 0.5
             yb1 = 3.25
             yh1 = 4.25
         for j in range(len(example_cells)):
@@ -1321,7 +1336,9 @@ class Figures(object):
         # Efficacy plot
         if not supplemental1:
             EFP = EF.EfficacyPlots(parent_figure=P)
-            EFP.plot_efficacy("Full", datasetname_added="Added", ax=P.axdict["C"], clean=True)
+            EFP.plot_efficacy(
+                "Full", datasetname_added="Added", ax=P.axdict["C"], clean=True
+            )
 
         synperum2 = 0.7686  # taken from cell_config.py, line 127 (11/15/2021)
 
@@ -1353,7 +1370,6 @@ class Figures(object):
                 label=f"BC{n:02d}",
                 clip_on=False,
                 s=12,
-                
             )
             ax.set_xlabel(r"Input ASA (${\mu m^2}$)")
             ax.set_xlim(0, 350)
@@ -1380,7 +1396,7 @@ class Figures(object):
             ax.set_ylim(0, 1.0)
             ax.set_ylabel(f"Efficacy (Bushy spikes/input spikes)")
             PH.nice_plot(ax, position=self.axis_offset, direction="outward")
-            
+
             PH.talbotTicks(
                 ax,
                 density=(1.0, 1.0),
@@ -1393,18 +1409,19 @@ class Figures(object):
 
         # Traces
         axl = [P.axdict[axi] for axi in trace_axes]
-        self.plot_stacked_traces(cells=example_cells, figure=P.figure_handle, 
-            axes=axl, maxstack=10)
-                
+        self.plot_stacked_traces(
+            cells=example_cells, figure=P.figure_handle, axes=axl, maxstack=10
+        )
+
         dB = 30
         if not supplemental1:
-        # clusters
+            # clusters
             plot_clustering(P.axdict["B"])
-        
-        # participation
+
+            # participation
             ds = self._load_rcdata("Spont")
             drc = self._load_rcdata(f"{dB:2d}dB")
-            sns.set_palette(palette="tab10", n_colors = 10)
+            sns.set_palette(palette="tab10", n_colors=10)
             palette = sns.color_palette(palette="tab10", n_colors=len(ds.keys()))
             for i, c in enumerate(ds.keys()):
                 # plot_participation(P.axdictax[0], c, ds, drc, dB=dB, color=palette[i])
@@ -1412,10 +1429,10 @@ class Figures(object):
                     P.axdict["F"], c, ds, drc, dB=dB, color=palette[i], legend=False
                 )
 
-        # Cumulative plots
+            # Cumulative plots
             self.plot_revcorr_compare(
                 parent_figure=P,
-                axlist=[P.axdict["G"]], # P.axdict["G"]],
+                axlist=[P.axdict["G"]],  # P.axdict["G"]],
                 dBSPLs=["Spont", "30dB"],
                 legend=False,
             )
@@ -1436,14 +1453,14 @@ class Figures(object):
 
         # Revcorr axes cleanup
         for j in range(len(example_cells)):
-            pan_rev, pan_vm = self.Figure4_assign_panel(supplemental1, j+1)
+            pan_rev, pan_vm = self.Figure4_assign_panel(supplemental1, j + 1)
             ax = P.axdict[pan_rev]
             ax.set_ylim(0, 0.8)
             ax.set_xlim(-5.0, 2.5)
             ax2 = P.axdict[pan_vm]
             ax2.set_xlim(-5.0, 2.5)
             ax2.set_ylim(-70, 0)
-            
+
             if j == 0:
                 ax.set_ylabel("Presynaptic\nCoinc. Rate (Hz)", ha="center", fontsize=10)
                 ax2.set_ylabel("Vm (mV)", ha="center", fontsize=10)
@@ -1454,11 +1471,11 @@ class Figures(object):
 
             ax.tick_params(which="major", length=4, direction="out")
             ax.tick_params(which="minor", length=2, direction="out")
-            
+
             # ax2.xaxis.set_minor_locator(MultipleLocator(2))
             ax2.tick_params(which="major", length=4, direction="out")
             ax2.tick_params(which="minor", length=2, direction="out")
-        
+
         fig = FigInfo()
         if parent_figure is not None:
             fig.P = parent_figure
@@ -1552,7 +1569,7 @@ class Figures(object):
         else:
             cell_number = cellN
             example = FD.figure_revcorr[cell_number]
-        
+
         P, PD, RCP, RCD = self._get_revcorr(cell_number=cellN, dBSPL="Spont")
         dBSPL = RCP.ri.dB
         if PD is None:
@@ -1595,7 +1612,6 @@ class Figures(object):
                 figsize=(8, 10),
                 label=True,
                 fontsize={"tick": 9, "label": 10, "panel": 14},
-                
                 # margins={
                 #     "bottommargin": 0.1,
                 #     "leftmargin": 0.1,
@@ -1792,7 +1808,7 @@ class Figures(object):
         i_plot = 0
         if cells is None:
             cells = grAList()
-            
+
         for i, cell_number in enumerate(cells):
 
             PR, PD, RCP, RCD = self._get_revcorr(cell_number=cell_number, dBSPL=dBSPL)
@@ -1831,7 +1847,9 @@ class Figures(object):
                     synlabel = False
 
             all_RCD_RCP[cell_number] = [RCD, RCP]
-            ax_top_row_name, ax_bot_row_name = self.Figure4_assign_panel(supplemental1, index=i_plot+1)
+            ax_top_row_name, ax_bot_row_name = self.Figure4_assign_panel(
+                supplemental1, index=i_plot + 1
+            )
             ax_top_row = P.axdict[ax_top_row_name]
             ax_bot_row = P.axdict[ax_bot_row_name]
             if cell_number in cells:
@@ -1856,8 +1874,12 @@ class Figures(object):
                     colormap=colormap,
                 )
 
-                print(f"  Mean pre: {np.mean(RCD.mean_pre_intervals):5.3f} ms  ({1./np.mean(RCD.mean_pre_intervals):7.3f} Hz)")
-                print(f"  Mean Post: {RCD.mean_post_intervals:5.3f} ms  ({1./RCD.mean_post_intervals:7.3f} Hz)")
+                print(
+                    f"  Mean pre: {np.mean(RCD.mean_pre_intervals):5.3f} ms  ({1./np.mean(RCD.mean_pre_intervals):7.3f} Hz)"
+                )
+                print(
+                    f"  Mean Post: {RCD.mean_post_intervals:5.3f} ms  ({1./RCD.mean_post_intervals:7.3f} Hz)"
+                )
                 # if parent_figure is None:
                 ax_top_row.text(
                     0.5,
@@ -2023,30 +2045,44 @@ class Figures(object):
                     label=f"BC{cell_number:02d}",
                 )
                 if i == 0:
-                    hpoints.extend([[xnspike[k], RCD.ynspike[k]] for k in range(len(xnspike))])
+                    hpoints.extend(
+                        [[xnspike[k], RCD.ynspike[k]] for k in range(len(xnspike))]
+                    )
             ax.set_xlim(0, 12)
             ax.set_ylim(0, 1.0)
             ax.set_xlabel("Number of inputs prior to spike")
             ax.set_ylabel("Cumulative Fraction of Spikes")
             if i == 0 and legend:
                 ax.legend()
-            if len(axes) == 1: # superimposed, so just show the symbols
-                from matplotlib.lines import Line2D
+            if len(axes) == 1:  # superimposed, so just show the symbols
+                import alphashape
                 import matplotlib.patches
                 from descartes import PolygonPatch
-                import alphashape
-                hidden_lines = [Line2D([0], [0], color="gray", marker="^", markerfacecolor="none", markersize=4, lw=1),
-                                Line2D([0], [0], color="gray", marker="o", markersize=4, lw=1),
+                from matplotlib.lines import Line2D
+
+                hidden_lines = [
+                    Line2D(
+                        [0],
+                        [0],
+                        color="gray",
+                        marker="^",
+                        markerfacecolor="none",
+                        markersize=4,
+                        lw=1,
+                    ),
+                    Line2D([0], [0], color="gray", marker="o", markersize=4, lw=1),
                 ]
                 ax.legend(hidden_lines, dBSPLs)
                 hpoints = np.reshape(hpoints, (len(hpoints), 2))
                 # ax.plot(hpoints[:,0], hpoints[:,1], 'o')
                 # mpl.show()
-                
+
                 if i == 0:  # draw a alphashape hull around the data points
                     alphafactor = 0.4
                     poly = alphashape.alphashape(hpoints, alphafactor)
-                    ax.add_patch(PolygonPatch(poly, fc='grey', ec='darkgrey',  alpha=0.3))
+                    ax.add_patch(
+                        PolygonPatch(poly, fc="grey", ec="darkgrey", alpha=0.3)
+                    )
 
             # ax.set_title(dBSPL)
 
@@ -2202,7 +2238,7 @@ class Figures(object):
 
         fn = sorted(list(sfi.glob("*")))[0]
         changetimestamp = get_changetimestamp()
-        X = self.parent.PLT.get_data_file(fn, changetimestamp, PD)
+        X = self.ReadModel.get_data_file(fn, changetimestamp, PD)
         mtime = Path(fn).stat().st_mtime
         timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
             "%Y-%m-%d-%H:%M"
@@ -2215,7 +2251,7 @@ class Figures(object):
         par, stitle, ivdatafile, filemode, d = X
         axon_name = par["axonExpt"]
         protocol = "runANPSTH"
-        AR, SP, RMA = self.parent.PLT.analyze_data(ivdatafile, filemode, protocol)
+        AR, SP, RMA = analyze_data.analyze_data(ivdatafile, filemode, protocol)
         i = 0
         plot_win = (0.4, 0.550)
         psth_binw = 0.0005
@@ -2285,7 +2321,10 @@ class Figures(object):
             S = SAC.SAC()
             sac_engine = "cython"
             bu_sac, bu_sacbins = S.SAC_with_histo(
-                all_bu_st, pars=spars, engine=sac_engine, dither=1e-3 * si.dtIC / 2.0,
+                all_bu_st,
+                pars=spars,
+                engine=sac_engine,
+                dither=1e-3 * si.dtIC / 2.0,
             )
             P.axdict[pan[5]].plot(
                 bu_sacbins,
@@ -2294,7 +2333,10 @@ class Figures(object):
                 # label=sac_label,
             )
             an_sac, an_sacbins = S.SAC_with_histo(
-                an_st_grand, pars=spars, engine=sac_engine, dither=1e-3 * si.dtIC / 2.0,
+                an_st_grand,
+                pars=spars,
+                engine=sac_engine,
+                dither=1e-3 * si.dtIC / 2.0,
             )
             P.axdict[pan[5]].plot(
                 an_sacbins,
@@ -2379,7 +2421,7 @@ class Figures(object):
         ntr: int = 1,
         ninputs: int = 1,
     ):
-        self.parent.PLT.plot_psth(
+        PF.plot_psth(
             data,
             run_info=ri,
             zero_time=psth_win[0],
@@ -2411,7 +2453,7 @@ class Figures(object):
         label_x_axis=True,
     ):
 
-        grand_fsl, grand_ssl = self.parent.PLT.plot_fsl_ssl(
+        grand_fsl, grand_ssl = PF.plot_fsl_ssl(
             an_st_grand,
             run_info=ri,
             max_time=25.0,
@@ -2664,31 +2706,31 @@ class Figures(object):
     ):
         """
         Spike trains are plotted as a raster for all inputs in the AN data
-    
+
         Parameters
         ----------
         spike_times_by_input : list
             list by input of spike times by trial
-    
+
         ax : matplotlib axis to place the plat
-    
+
         si : Params
-    
+
         plot_win : tuple
             time window of data to show
 
         max_trials : int
             number of trials to show (the first max_trials are plotted)
-    
+
         use_colors : bool (default True)
             Plot the raster ticks with colors scaled by input surface area
-    
+
         colormap : str
             color map to use for plotting when use_colors is True
-    
+
         cbar_vmax : float
             maximum for the colorbar scale
-    
+
         """
         n_inputs = len(spike_times_by_input)
         n_trials = len(spike_times_by_input[0])
@@ -2759,7 +2801,7 @@ class Figures(object):
     def get_an_spikearray(self, AR, d):
         """
         Get the arrays of auditory nerve inputs, sorted by input, all, and grand...
-        
+
         Parameters
         ----------
         AR : object
@@ -2787,7 +2829,6 @@ class Figures(object):
                 an_st_grand[i].extend(tk * 1e-3)
         return an_st_by_input, all_an_st, an_st_grand
 
-    
     def plot_one_PSTH(
         self,
         cell_number: int,
@@ -2799,7 +2840,7 @@ class Figures(object):
         bufsl_ax: object,
         anfsl_ax: object,
         psth_win: tuple = (0, 0.25),  # (0.15, 0.3), # [start, end]
-        plot_win:tuple = (0.4, 0.550),
+        plot_win: tuple = (0.4, 0.550),
         bu_fsl_win: Union[None, tuple] = None,
         an_fsl_win: Union[None, tuple] = None,
         label_x_axis=True,
@@ -2819,7 +2860,7 @@ class Figures(object):
 
         fn = sorted(list(sfi.glob("*")))[0]
         changetimestamp = get_changetimestamp()
-        X = self.parent.PLT.get_data_file(fn, changetimestamp, PD)
+        X = self.ReadModel.get_data_file(fn, changetimestamp, PD)
         mtime = Path(fn).stat().st_mtime
         timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
             "%Y-%m-%d-%H:%M"
@@ -2832,7 +2873,9 @@ class Figures(object):
         par, stitle, ivdatafile, filemode, d = X
         axon_name = par["axonExpt"]
         protocol = "runANPSTH"
-        AR, SP, RMA = self.parent.PLT.analyze_data(ivdatafile, filemode, protocol)
+        AR, SP, RMA = analyze_data.analyze_data(
+            ivdatafile=ivdatafile, filemode=filemode, protocol=protocol
+        )
         ntr = len(AR.MC.traces)  # number of trials
         waveform = None
         v0 = -160.0
@@ -2869,7 +2912,6 @@ class Figures(object):
                     ax=st_ax, ntrace=i, d=d, AR=AR, stim_win=plot_win
                 )
         PH.nice_plot(tr_ax, direction="outward", ticklength=3.0)
-        
 
         all_bu_st = self.get_bu_spikearray(AR, d)
         self.all_bu_st = all_bu_st
@@ -2887,7 +2929,7 @@ class Figures(object):
                 ninputs=1,
             )
             PH.nice_plot(bupsth_ax, direction="outward", ticklength=3.0)
-            
+
             if label_x_axis:
                 bupsth_ax.set_xlabel("Time (s)")
 
@@ -2909,7 +2951,7 @@ class Figures(object):
             anpsth_ax.set_title("AN")
 
         if bufsl_ax is not None:
-            self.parent.PLT.plot_fsl_ssl(
+            PF.plot_fsl_ssl(
                 all_bu_st,
                 run_info=ri,
                 max_time=25.0,
@@ -2920,7 +2962,7 @@ class Figures(object):
                 cellID=cell_number,
             )
             PH.nice_plot(bufsl_ax, direction="outward", ticklength=3.0)
-            
+
             PH.talbotTicks(
                 bufsl_ax,
                 axes="xy",
@@ -2954,7 +2996,7 @@ class Figures(object):
         dy = 50
         # for k in range(ninputs):
         #
-        #     fsl, ssl = self.parent.PLT.plot_fsl_ssl(an_st_by_input[k],
+        #     fsl, ssl = PF.plot_fsl_ssl(an_st_by_input[k],
         #          run_info=ri,
         #          max_time = 25.0,
         #          min_fsl = 1.0e-3,
@@ -2980,41 +3022,59 @@ class Figures(object):
 
         return axon_name
 
-    def plot_one_CV(self,
+    def plot_one_CV(
+        self,
         cell_number: int,
         dbSPL: float,
-        cv_win:Union[list, tuple]=(0.220, 0.3),
-        t_grace: float=0.0,
-        cv_binw: float=0.001, 
-        cv_ax:object=None,
-        label_x_axis:bool=False,
+        cv_win: Union[list, tuple] = (0.220, 0.3),
+        reftime: float = 0.0,
+        t_grace: float = 0.0,
+        cv_binw: float = 0.001,
+        cv_ax: object = None,
+        label_x_axis: bool = False,
     ):
-        # use the data from PSTH. If not present, skip the CV  plot
+        # use the data from PSTH. If not present, skip the CV plot
         if self.all_bu_st is None or cv_ax is None:
             return
-        cvisit, cvisi, cvt, cvm, cvs = ISI.isi_cv(self.all_bu_st, 
-                        binwidth=cv_binw,
-                        t0 = cv_win[0],
-                        t1 = cv_win[1],
-                        tgrace = t_grace)
-        cv_ax.plot(1e3*(cvt-cv_win[0]), cvs/cvm, 'k-')
+        cvisit, cvisi, cvt, cvm, cvs = ISI.isi_cv(
+            self.all_bu_st,
+            binwidth=cv_binw,
+            reftime=0.0,
+            t0=cv_win[0],
+            t1=cv_win[1],
+            tgrace=t_grace,
+        )
+        cv_ax.plot((cvt - reftime) * 1e3, cvs / cvm, "k-")
+
         PH.nice_plot(cv_ax, direction="outward", ticklength=3.0)
         cv_ax.set_ylim(0, 1.2)
-        cv_ax.set_xlim(0, 1e3*(cv_win[1]-cv_win[0]))
+        cv_ax.set_xlim(0, 1e3 * (cv_win[1] - cv_win[0])- 20.0)
         PH.talbotTicks(
             cv_ax,
             axes="xy",
-            density=(1.0, 1.0),
+            density=(3, 1.5),
             insideMargin=0.02,
             # pointSize=ticklabelsize,
             tickPlacesAdd={"x": 2, "y": 1},
             floatAdd={"x": 2, "y": 1},
         )
+        # compute the mean CV from 10-60 msec for display on the plot
+        itwin = np.where(((cvt - reftime) > 0.01) &( (cvt - reftime) < 0.06))[0]
+        CVp = np.nanmean(cvs[itwin] / cvm[itwin])
+        cvlabel = r"$CV\prime$"
+        cv_ax.text(
+            1.0,
+            1.15,
+            f"{cvlabel:s}: {CVp:4.2f}",
+            transform=cv_ax.transAxes,
+            fontsize=7,
+            horizontalalignment='right',
+            verticalalignment='top',
+        )
         cv_ax.set_ylabel("CV")
         if label_x_axis:
             cv_ax.set_xlabel("Latency (ms)")
-    
-    
+
     def Figure3_Supplemental4_PSTH(self):
         print("Plotting Figure 3 Supplement 4 PSTH")
         dBSPL = "30dB"
@@ -3083,12 +3143,12 @@ class Figures(object):
                 bu_fsl_win=(2.2e-3, 4e-3),  # FSL window after onset, in msec
             )
             self.plot_one_CV(
-                cell_number = cell_number,
-                dbSPL = dBSPL,
-                cv_win=(0.05, 0.100),
-                cv_ax = P.axarr[i, 3],
+                cell_number=cell_number,
+                dbSPL=dBSPL,
+                cv_win=(0.0, 0.100),
+                cv_ax=P.axarr[i, 3],
                 label_x_axis=show_label,
-                t_grace=0.025,
+                t_grace=0.0,
             )
 
             P.axarr[i, 0].text(
@@ -3100,16 +3160,16 @@ class Figures(object):
                 transform=P.axarr[i, 0].transAxes,
                 horizontalalignment="right",
             )
-            if axon_name == 'standardized':
+            if axon_name == "standardized":
                 P.axarr[i, 0].text(
-                -0.40,
-                0.3,
-                "Sub. axon",
-                fontsize=7,
-                color="k",
-                transform=P.axarr[i, 0].transAxes,
-                horizontalalignment="right",
-            )
+                    -0.40,
+                    0.3,
+                    "Sub. axon",
+                    fontsize=7,
+                    color="k",
+                    transform=P.axarr[i, 0].transAxes,
+                    horizontalalignment="right",
+                )
 
         save_file = f"Figure3/Figure3_supp/Figure3-Supplemental4_PSTH.pdf"
         title = "SBEM Project Figure 3 Modeling Supplemental : PSTH and FSL, all grade A cells"

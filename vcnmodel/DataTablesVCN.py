@@ -97,6 +97,7 @@ all_modules = [
     cell_config,
     vcnmodel.analyzers.spikestatistics,
     vcnmodel.analyzers.analysis,
+    vcnmodel.analyzers.analyze_data,
     vcnmodel.analyzers.reverse_correlation,
     vcnmodel.analyzers.isi_cv,
     vcnmodel.analyzers.sttc,
