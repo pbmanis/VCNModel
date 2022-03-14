@@ -796,13 +796,16 @@ class PlotSims:
         ninspikes = 0
         ispikethr = None
         spike_rheobase = None
-        if xmax is None:
+        if xmax is None and protocol not in "IV":
             # print(ri.pip_start)
             # print(ri.pip_duration)
             # return
             xmax = 1e3*(ri.pip_start+ri.pip_duration)
             xmin = 1e3*ri.pip_start
             # np.max(AR.MC.time_base)
+        else:
+            xmin = 0
+            xmax = np.max(AR.MC.time_base)
         if isinstance(ax, list):
             ax1 = ax[0]
             ax2 = ax[1]
@@ -828,6 +831,7 @@ class PlotSims:
                 AR.MC.traces[trial] = AR.MC.traces[trial].asarray() * 1e3  # mV
                 cmd = AR.MC.cmd_wave[trial] * 1e9  # from A to nA
             xclip = np.argwhere((AR.MC.time_base >= xmin) & (AR.MC.time_base < xmax))
+
             # plot trace
             ax1.plot(
                 AR.MC.time_base[xclip],

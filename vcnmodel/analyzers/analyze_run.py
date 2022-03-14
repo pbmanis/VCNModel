@@ -7,7 +7,7 @@ from lmfit import Model
 from lmfit.models import ExponentialModel
 from pylibrary.tools import utility as pu
 
-verbose = False
+verbose = True
 
 """
 Perform analysis of IVs pip from model_run
