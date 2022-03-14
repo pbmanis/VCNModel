@@ -9,6 +9,7 @@ import datetime
 
 from ephys.ephysanalysis import MakeClamps
 import vcnmodel.util.fixpicklemodule as FPM
+from vcnmodel.util import Params  # for old simulation results only
 
 class ReadModel():
     def __init__(self):
