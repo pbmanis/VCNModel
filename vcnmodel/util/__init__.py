@@ -4,6 +4,7 @@ from . import combine_pdfs
 from . import hoc_swc_sectionmap
 from . import mpl_colormaps
 from . import readmodel
+from . import params
 # from . import render
 # from . import show_swc
 # from . import swc_to_hoc  # this belongs in neuronvis, and so there it is...
