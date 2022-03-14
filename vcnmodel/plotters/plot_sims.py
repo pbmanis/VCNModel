@@ -519,13 +519,13 @@ class PlotSims:
         elif protocol in ["VC", "runVC"]:
             protocol = "VC"
 
-        d, AR, SP, RMA, RCP, RCD = self.ReadModel.get_data(
+        d, AR, SP, RM, RCP, RCD = self.ReadModel.get_data(
             fn, PD=PD, changetimestamp=changetimestamp, protocol=protocol
         )
         si = d["Params"]
         ri = d["runInfo"]
         if figure is None:  # no figure... just analysis...
-            return AR, SP, RMA
+            return AR, SP, RM
 
         cprint("c", "plot_traces: preparing for plot")
         ntr = len(AR.MC.traces)  # number of trials
@@ -658,9 +658,9 @@ class PlotSims:
         else:
             toptitle = si.dendriteExpt
         if protocol in ["IV"]:
-            cprint("r", f"RMA taum: {RMA['taum']:.2f}")
+            cprint("r", f"RM analysis taum: {RM.analysis_summary['taum']:.2f}")
             toptitle += (
-                f"\nRin={RMA['Rin']:.1f} M$\Omega$  $\\tau_m$={RMA['taum']:.2f} ms"
+                f"\nRin={RM.analysis_summary['Rin']:.1f} M$\Omega$  $\\tau_m$={RM.analysis_summary['taum']:.2f} ms"
             )
 
             if iax is not None and calx is not None:
@@ -679,6 +679,7 @@ class PlotSims:
             else:
                 PH.noaxes(ax)
             # insert IV curve
+ 
             if ivaxis is None:
                 secax = PLS.create_inset_axes(
                     [0.45, -0.05, 0.3, 0.3], ax, label=str(ax)
@@ -784,12 +785,12 @@ class PlotSims:
                 )
             else:
                 PH.noaxes(ax)
-        if RMA is not None:
-            PH.referenceline(ax, RMA["RMP"])
+        if RM.analysis_summary is not None:
+            PH.referenceline(ax, RM.analysis_summary["RMP"])
             ax.text(
                 -1.0,
-                RMA["RMP"],
-                f"{RMA['RMP']:.1f}",
+                RM.analysis_summary["RMP"],
+                f"{RM.analysis_summary['RMP']:.1f}",
                 verticalalignment="center",
                 horizontalalignment="right",
                 fontsize=9,
@@ -959,8 +960,7 @@ class PlotSims:
         res = self.ReadModel.get_data(fn, PD=PD, changetimestamp=changetimestamp, protocol=protocol)
         if res is None:
             return None
-        (d, AR, SP, RMA, RCP, RCD) = res
-        # AR, SP, RMA = analyze_data.analyze_data(ivdatafile, filemode, protocol)
+        (d, AR, SP, RM, RCP, RCD) = res
         tss = [0, 0]
         sr = AR.MC.sample_rate[0]
         tss[0] = int(
@@ -1150,7 +1150,7 @@ class PlotSims:
         elif runProtocol in ["VC", "runVC"]:
             runProtocol = "VC"
         par, stitle, ivdatafile, filemode, d = x
-        AR, SP, RMA = analyze_data.analyze_data(ivdatafile, filemode, runProtocol)
+        AR, SP, RM = analyze_data.analyze_data(ivdatafile, filemode, runProtocol)
 
         self.ntr = len(AR.MC.traces)  # number of trials
         self.pwin = None
@@ -1745,7 +1745,7 @@ class PlotSims:
         res = self.ReadModel.get_data(fn, PD=PD, changetimestamp=changetimestamp, protocol=protocol)
         if res is None:
             return None
-        (d, AR, SP, RMA, RCP, RCD) = res
+        (d, AR, SP, RM, RCP, RCD) = res
         PD.thiscell = gbc
         si = d["Params"]
         ri = d["runInfo"]
@@ -2007,7 +2007,7 @@ class PlotSims:
             )
             if res is None:
                 return None
-            (d, AR, SP, RMA, RCP, RCD) = res
+            (d, AR, SP, RM, RCP, RCD) = res
             PD.thiscell = self.parent.cellID
             si = d["Params"]
             ri = d["runInfo"]
@@ -2251,7 +2251,7 @@ class PlotSims:
             res = self.ReadModel.get_data(fn, PD=PD, changetimestamp=changetimestamp, protocol=protocol)
             if res is None:
                 return None
-            (d, AR, SP, RMA, RCP, RCD) = res
+            (d, AR, SP, RM, RCP, RCD) = res
             PD.thiscell = gbc
             si = d["Params"]
             ri = d["runInfo"]
@@ -2474,7 +2474,7 @@ class PlotSims:
         timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
             "%Y-%m-%d-%H:%M"
         )
-        d, AR, SP, RMA, RCP, RCD = self.ReadModel(fn, PD, changetimestamp, protocol)
+        d, AR, SP, RM, RCP, RCD = self.ReadModel.get_data(fn, PD, changetimestamp, protocol)
 
         ntr = len(AR.MC.traces)  # number of trials
         v0 = -160.0
