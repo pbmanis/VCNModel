@@ -10,7 +10,7 @@ from cnmodel import cells
 from cnmodel.decorator import Decorator
 import adjust_areas
 import toml
-config = toml.load(open("wheres_my_data.toml", "r"))
+
 
 AdjA = adjust_areas.AdjustAreas()
 
@@ -87,7 +87,7 @@ def area(fn):
 if __name__ == "__main__":
 
 
-
+    config = toml.load(open("wheres_my_data.toml", "r"))    
     ar = OrderedDict()
     for i, fn in enumerate(allcells):
         basefilename = (
@@ -119,7 +119,7 @@ if __name__ == "__main__":
         "Cell",
         "Somatic area",
         "Dendritic area",
-        "Ratio",
+        "Ratio", 
         "Hillock Area",
         "Unmyel Area",
         "Myelin Area",

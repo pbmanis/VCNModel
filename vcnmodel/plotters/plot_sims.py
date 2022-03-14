@@ -50,8 +50,6 @@ from vcnmodel.util import trace_calls
 
 TRC = trace_calls.TraceCalls
 
-config = toml.load(open("wheres_my_data.toml", "r"))
-
 cprint = CP.cprint
 console = Console()
 """
@@ -193,8 +191,8 @@ class PData:
     default_modelName: str = "XM13_nacncoop"
     soma_inflate: bool = True
     dend_inflate: bool = True
-    basepath: str = config["baseDataDirectory"]
-    renderpath: str = str(Path(config["codeDirectory"], "Renderings"))
+    basepath: str = "" #config["baseDataDirectory"]
+    renderpath: str = "" # " str(Path(self.config["codeDirectory"], "Renderings"))
     thiscell: str = ""
 
 @dataclass
@@ -304,9 +302,6 @@ def clean_spiketimes(spikeTimes, mindT=0.7):
     return spikeTimes
 
 
-
-
-
 class PlotSims:
     def __init__(self, parent):
         self.parent = (
@@ -315,6 +310,18 @@ class PlotSims:
         self.firstline = True
         self.VS = VS.VectorStrength()
         self.axis_offset = -0.02
+        self.config = toml.load(open("wheres_my_data.toml", "r"))
+
+    def newPData(self):
+        """
+        Return Pdata with the paths set from self.config
+
+        Returns:
+            PData: dataclass
+        """
+        return PData(basepath=self.config["baseDataDirectory"],
+                     renderpath=str(Path(self.config["codeDirectory"], "Renderings")),
+                     )
 
     def textclear(self):
         if self.parent is None:
@@ -672,7 +679,7 @@ class PlotSims:
             panel_labels=None,
         )
 
-        PD = PData()
+        PD = self.newPData()
         for iax, index_row in enumerate(self.parent.selected_index_rows):
             selected = self.parent.table_manager.get_table_data(index_row)
             if selected is None:
@@ -1092,7 +1099,7 @@ class PlotSims:
         titlemap = {"normal": "Half-active", "passive": "Passive", "active": "Active"}
 
         for i in range(n_columns):
-            PD = PData()
+            PD = self.newPData()
             trace_ax = P.axarr[i * 3, 0]
             cmd_ax = P.axarr[i * 3 + 1, 0]
             self.plot_traces(
@@ -1880,7 +1887,7 @@ class PlotSims:
                 return
             sfi = Path(selected.simulation_path, selected.files[0])
             res = self.compute_revcorr(
-                None, pgbc, sfi, PData(), selected.runProtocol, revcorrtype
+                None, pgbc, sfi, self.newPData(), selected.runProtocol, revcorrtype
             )
             # unpack
             ninputs, ynspike, sites, participation, nspikes = res
@@ -1898,7 +1905,7 @@ class PlotSims:
         PSum.figure_handle.show()
 
     def plot_revcorr_figure(self, selected, revcorrtype):
-        PD = PData()
+        PD = self.newPData()
 
         plabels = [f"BC{int(self.parent.cellID):02d}"]
         pgbc = plabels[0]
@@ -1931,7 +1938,7 @@ class PlotSims:
             fontweight={"tick": "normal", "label": "normal", "panel": "bold"},
         )
 
-        dPD = PData()
+        dPD = self.newPData()
         sfi = Path(selected.simulation_path, selected.files[0])
         res = self.compute_revcorr(P, pgbc, sfi, PD, selected.runProtocol, revcorrtype)
 
@@ -2212,7 +2219,7 @@ class PlotSims:
             panel_labels=None,
         )
 
-        PD = PData()
+        PD = self.newPData()
         sfi = sorted(selected.files)
         changetimestamp = get_changetimestamp()
         
@@ -2279,7 +2286,7 @@ class PlotSims:
 
     @trace_calls.time_func
     def plot_tuning(self, args, filename=None, filenames=None):
-        PD = PData()
+        PD = self.newPData()
         changetimestamp = get_changetimestamp()
         channel = "nacncoop"
         channel = "klt"
@@ -2450,7 +2457,7 @@ class PlotSims:
             parent_figure=None,
             panel_labels=None,
         )
-        PD = PData()
+        PD = self.newPData()
         protocol = selected.runProtocol
         changetimestamp = get_changetimestamp()
         sfi = sorted(selected.files)
@@ -2618,12 +2625,12 @@ class PlotSims:
         across the frequencies listed
         """
         self.textclear()  # just at start
-        PD = PData()
+        PD = self.newPData()
         if self.parent.selected_index_rows is None:
             return
         # P = self.PLT.setup_PSTH()
         P = None
-        PD = PData()
+        PD = self.newPData()
         selrows = self.parent.table.selectionModel().selectedRows()
         for i, index_row in enumerate(selrows):
             selected = self.parent.table_manager.get_table_data(
@@ -3490,7 +3497,7 @@ def cmdline_display(args, PD):
 
         fng = []
         for ig, gbc in enumerate(PD.gradeA):
-            basefn = f"{config['cellDataDirectory']:s}/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
+            basefn = f"{self.config['cellDataDirectory']:s}/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
             pgbc = f"VCN_c{gbc:02d}"
             allf = list(Path(basefn).glob("*"))
             allfiles = sorted([f for f in allf if f.is_dir()])
@@ -3503,7 +3510,7 @@ def cmdline_display(args, PD):
 
     else:
         for ig, gbc in enumerate(PD.gradeA):
-            basefn = f"{config['cellDataDirectory']:s}/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
+            basefn = f"{self.config['cellDataDirectory']:s}/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
             pgbc = f"VCN_c{gbc:02d}"
             if args.protocol == "IV":
                 name_start = f"IV_Result_VCN_c{gbc:02d}_inp=self_{modelName:s}*.p"
@@ -3603,7 +3610,7 @@ def getCommands():
     #
     #     print("   ... All configuration file variables read OK")
     # now copy into the dataclass
-    PD = PData()
+    PD = self.newPData()
     # for key, value in vargs.items():
     #      if key in parnames:
     #          # print('key: ', key)

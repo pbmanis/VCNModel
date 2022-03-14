@@ -9,10 +9,11 @@ from pathlib import Path
 import pickle
 import matplotlib.pyplot as mpl
 import toml
-config = toml.load(open("wheres_my_data.toml", "r"))
+
 
 
 def main():
+    config = toml.load(open("wheres_my_data.toml", "r"))
     # modify to point to the file:
     basepath = Path(config['cellDataDirectory'], 'VCN_c09/Simulations/')
 

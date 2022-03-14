@@ -33,7 +33,7 @@ from vcnmodel.plotters import (
     figure_data as FD,
 )  # table of simulation runs used for plotting figures
 
-config = toml.load(open("wheres_my_data.toml", "r"))
+
 cprint = CP.cprint
 
 
@@ -78,9 +78,9 @@ class PData:
     default_modelName: str = "XM13_nacncoop"
     soma_inflate: bool = True
     dend_inflate: bool = True
-    basepath: str = config["baseDataDirectory"]
-    renderpath: str = str(Path(config["codeDirectory"], "Renderings"))
-    revcorrpath: str = config["revcorrDataDirectory"]
+    basepath: str = "" # config["baseDataDirectory"]
+    renderpath: str = "" # str(Path(config["codeDirectory"], "Renderings"))
+    revcorrpath: str = "" # config["revcorrDataDirectory"]
     thiscell: str = ""
 
 
@@ -127,7 +127,19 @@ class Figures(object):
             open("wheres_my_data.toml", "r")
         )  # sorry, have to reload it here.
         self.axis_offset = -0.02
+        config = toml.load(open("wheres_my_data.toml", "r"))
 
+    def newPData(self):
+        """
+        Return Pdata with the paths set from self.config
+
+        Returns:
+            PData: dataclass
+        """
+        return PData(basepath=self.config["baseDataDirectory"],
+                     renderpath=str(Path(self.config["codeDirectory"], "Renderings")),
+                     revcorrpath=self.config["revcorrDataDirectory"],
+                     )
     def reset_style(self):
         sns.set_style(rc={"pdf.fonttype": 42})
         mpl.style.use("~/.matplotlib/figures.mplstyle")
@@ -320,7 +332,7 @@ class Figures(object):
             bmar = 0.0
             tmar = 0.0
 
-        PD = PData()
+        PD = self.newPData()
         ymin = -125.0
         ymax = 20.0
         # We generate subplot setups here by defining
@@ -641,7 +653,7 @@ class Figures(object):
             cols = 4
         height = 1.5 * nivs
         width = 8.5
-        PD = PData()
+        PD = self.newPData()
         ymin = -125.0
         ymax = 40.0
         calx = 120.0
@@ -836,7 +848,7 @@ class Figures(object):
             return
         fn = sorted(list(sfi.glob("*")))
         print("plot_efficacy fn: ", fn)
-        PD = PData()
+        PD = self.newPData()
         calx = 800.0
         if parent_figure is None:
             parent_figure = self.make_eff_fig()
@@ -982,7 +994,7 @@ class Figures(object):
                 return
             fn = sorted(list(sfiles.glob("*")))
             # print("files to plot: ", fn)
-            PD = PData()
+            PD = self.newPData()
 
             nfn = len(fn)
             ymax = 20.0
@@ -1100,7 +1112,7 @@ class Figures(object):
             if not sfiles.is_dir():
                 return
             fn = sorted(list(sfiles.glob("*")))
-            PD = PData()
+            PD = self.newPData()
 
             row_n = 1 - int(ic / 5)
             col_n = ic % 5
@@ -1489,7 +1501,7 @@ class Figures(object):
         cell_revcorr = FD.figure_revcorr[cell_number]
         run_calcs = False
         rc_datafile = Path(
-            PData().revcorrpath, f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl"
+            self.newPData().revcorrpath, f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl"
         )
         cprint("c", f"Rcdatafile: {str(rc_datafile):s}")
         if rc_datafile.is_file() and not recompute:
@@ -1497,7 +1509,7 @@ class Figures(object):
                 all_RCD_RCP = FPM.pickle_load(fh)
             RCD = all_RCD_RCP[cell_number][0]
             RCP = all_RCD_RCP[cell_number][1]
-            PD = PData()
+            PD = self.newPData()
             P = None
         else:
             print(
@@ -1518,7 +1530,7 @@ class Figures(object):
                 P=None,  # no plotting (and return P is None)
                 gbc=str(cell_number),
                 fn=fn[0],
-                PD=PData(),
+                PD=self.newPData(),
                 protocol="runANPSTH",
                 revcorrtype="RevcorrSPKS",
                 thr=-20.0,
@@ -2174,7 +2186,7 @@ class Figures(object):
 
     def Figure7_one_column(self, mode, cell_number, dataset, P, pan):
 
-        PD = PData()
+        PD = self.newPData()
         cellpath = Path(
             self.config["cellDataDirectory"],
             f"VCN_c{cell_number:02d}",
@@ -2791,7 +2803,7 @@ class Figures(object):
         label_x_axis=True,
     ):
         dataset = FD.figure_psth[cell_number]
-        PD = PData()
+        PD = self.newPData()
         cellpath = Path(
             self.config["cellDataDirectory"],
             f"VCN_c{cell_number:02d}",
@@ -3117,7 +3129,7 @@ class Figures(object):
         across the frequencies listed
         """
         self.parent.PLT.textclear()  # just at start
-        PD = PData()
+        PD = self.newPData()
         P = None
         self.parent.cellID = cell_number
         for i, filename in enumerate(VS_data.samdata[cell_number]):

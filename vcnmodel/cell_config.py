@@ -20,10 +20,6 @@ rcParams["svg.fonttype"] = "none"  # No text as paths. Assume font installed.
 rcParams["pdf.fonttype"] = 42
 rcParams["ps.fonttype"] = 42
 
-# datafile_default = Path('MorphologyData', 'Dendrite Quality and Surface Areas_comparisons_pbm_15Mar2019_v2.xlsx')
-# soma_area_data = 'Mesh Surface Area'
-config = toml.load(open("wheres_my_data.toml", "r"))
-dendqual = Path(config["baseMorphologyDirectory"], config["dendriteQualityFile"])
 
 # specify the name of the columns in the excel sheet
 # these keep getting edited and changing
@@ -69,8 +65,6 @@ cellsintable = [
     30,
     # 0,  # test cell with soma only
 ]
-datafile = dendqual
-inputs = [f"Input {i+1:d}" for i in range(20)]  # input column labels, up to 20
 
 # synperum2 = 0.65 # average density of synapses, synapses per micron squared
 # Original value, from Spriou measurements in MNTB.
@@ -178,12 +172,16 @@ class CellConfig:
         Initialization does not return anything, but it restructures the data
         for later use
         """
+        # datafile_default = Path('MorphologyData', 'Dendrite Quality and Surface Areas_comparisons_pbm_15Mar2019_v2.xlsx')
+        # soma_area_data = 'Mesh Surface Area'
+        self.config = toml.load(open("wheres_my_data.toml", "r"))
+        self.dendqualfile = Path(self.config["baseMorphologyDirectory"], self.config["dendriteQualityFile"])
+        inputs = [f"Input {i+1:d}" for i in range(20)]  # input column labels, up to 20
 
         assert spont_mapping in ["HS", "LS", "MS", "mixed1", None]
 
         self.synperum2 = synperum2
-        if datafile is None:
-            datafile = dendqual
+        datafile = self.dendqualfile
         if add_inputs in ["None", "none"]:
             self.add_inputs = None
         elif add_inputs in ["101730", 101713]:
@@ -197,14 +195,14 @@ class CellConfig:
             print("CellConfig: configuration dict: ")
         with open(datafile, "rb") as fh:
             self.SDSummary = pd.read_excel(
-                fh, config["SomaAndDendriteData"], skiprows=3
+                fh, self.config["SomaAndDendriteData"], skiprows=3
             )
 
         with open(datafile, "rb") as fh:
             self.ASA = pd.read_excel(
                 fh,
-                config["asaData"],
-                skiprows=config["asaHeaderSkip"],
+                self.config["asaData"],
+                skiprows=self.config["asaHeaderSkip"],
                 engine="openpyxl",
             )
 
@@ -731,7 +729,7 @@ class CellConfig:
 
 if __name__ == "__main__":
     # Check the formatting and display the results
-    # cc = CellConfig(datafile, spont_mapping="mixed1")
+    cc = CellConfig(datafile, spont_mapping="mixed1")
     cc = CellConfig(datafile, spont_mapping="HS", add_inputs="101730")
     # make sure all is working
     cc.summarize_release_sites()

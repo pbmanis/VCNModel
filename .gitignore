@@ -219,3 +219,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+vcnmodel/analyzers/sac_cython.c
+vcnmodel/analyzers/sttc_cython.c
+docs/vcnmodel.rstx

@@ -5,10 +5,11 @@ In all functions below, spikes is a sorted list of spike times
 
 These functions are from Brian 1.4, and are not included in Brian 2.
 From 2017.
-See the public archive on github at:
+See the public archive on github at::
+
     https://github.com/brian-team/brian
-        at brian/brian/tools/statistics.py (renamed here to be more 
-        descriptive of the functions)
+    at brian/brian/tools/statistics.py (renamed here to be more 
+    descriptive of the functions)
 
 """
 from __future__ import print_function

@@ -17,7 +17,7 @@ rc("mathtext", fontset="stixsans")
 
 sns.set_style(rc={"pdf.fonttype": 42})
 mpl.style.use("~/.matplotlib/figures.mplstyle")
-config = toml.load(open("wheres_my_data.toml", "r"))
+
 
 """
 Plot the impedances as seen from the soma for VCN cells
@@ -31,7 +31,7 @@ Generates: Figure3_Supplemental3_Zin.pdf
 class PlotZ:
     def __init__(self, pg=False):
         self.pg = pg
-
+        self.config = toml.load(open("wheres_my_data.toml", "r"))
         # f = ['VCN_c09_Full_Z.pkl', 'VCN_c09_NoUninnervated_Z.pkl', 'VCN_c09_NoDend_Z.pkl']
         self.fi = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
         # fi = [9, 11, 13, 30]
@@ -86,7 +86,7 @@ class PlotZ:
         for i, filename in enumerate(self.filenames):
             with open(
                 Path(
-                    config["cellDataDirectory"], config["impedanceDirectory"], filename
+                    self.config["cellDataDirectory"], self.config["impedanceDirectory"], filename
                 ),
                 "rb",
             ) as fh:
@@ -145,14 +145,14 @@ class PlotZ:
         for i, fin in enumerate(self.fi):
             with open(
                 Path(
-                    config["cellDataDirectory"], config["impedanceDirectory"], self.checkfi(fin, cellmode="Full", decorate="normal")
+                    self.config["cellDataDirectory"], self.config["impedanceDirectory"], self.checkfi(fin, cellmode="Full", decorate="normal")
                 ),
                 "rb",
             ) as fh:
                 d1 = pickle.load(fh)
             with open(
                 Path(
-                    config["cellDataDirectory"], config["impedanceDirectory"], self.checkfi(fin, cellmode="AxonOnly", decorate="normal")
+                    self.config["cellDataDirectory"], self.config["impedanceDirectory"], self.checkfi(fin, cellmode="AxonOnly", decorate="normal")
                 ),
                 "rb",
             ) as fh:
@@ -177,7 +177,7 @@ class PlotZ:
             verticalalignment="top",
         )
         mpl.savefig(
-            Path(config["baseDataDirectory"], "Figures", save_file),
+            Path(self.config["baseDataDirectory"], "Figures", save_file),
             metadata={
                 "Creator": "Paul Manis",
                 "Author": "Paul Manis",
@@ -197,7 +197,7 @@ class PlotZ:
             label = f"BC{int(filename[5:7]):d}"
             with open(
                 Path(
-                    config["cellDataDirectory"], config["impedanceDirectory"], filename
+                    self.config["cellDataDirectory"], self.config["impedanceDirectory"], filename
                 ),
                 "rb",
             ) as fh:

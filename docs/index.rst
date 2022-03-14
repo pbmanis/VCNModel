@@ -28,6 +28,7 @@ Used in Spirou, Kersting, Ellisman and Manis (in preparation).
    scripts
    datatable
    figures
+   modules
 
 .. toctree::
    :maxdepth: 1

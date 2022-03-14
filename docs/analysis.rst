@@ -62,7 +62,7 @@ vcnmodel.analyzers.vector\_strength
 vcnmodel.analyzers.analyzer\_run
 --------------------------------
 
-.. automodule:: vcnmodel.analyzers.analyzer_run
+.. automodule:: vcnmodel.analyzers.analyze_run
    :members:
    :undoc-members:
    :show-inheritance:
@@ -71,7 +71,7 @@ vcnmodel.analyzers.analyzer\_run
 vcnmodel.analyzers.reverseCorrelation
 -------------------------------------
 
-.. automodule:: vcnmodel.analyzers.reverseCorrelation
+.. automodule:: vcnmodel.analyzers.reverse_correlation
    :members:
    :undoc-members:
    :show-inheritance:

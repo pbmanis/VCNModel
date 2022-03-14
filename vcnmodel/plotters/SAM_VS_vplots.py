@@ -15,7 +15,7 @@ from pylibrary.plotting import plothelpers as PH
 
 import toml
 
-config = toml.load(open("wheres_my_data.toml", "r"))
+
 import plotnine as PN
 from matplotlib import ticker
 
@@ -41,6 +41,7 @@ class VS_Plots:
             "11": "two",
             "17": "two",
         }
+        self.config = toml.load(open("wheres_my_data.toml", "r"))
 
     def prepare_data(self, datas):
         sio = io.StringIO(datas)
@@ -211,7 +212,7 @@ class VS_Plots:
         #     verticalalignment="top",
         # )
         mpl.savefig(
-            Path(config["baseDataDirectory"], "Figures", save_file),
+            Path(self.config["baseDataDirectory"], "Figures", save_file),
             metadata={
                 "Creator": "Paul Manis",
                 "Author": "Paul Manis",

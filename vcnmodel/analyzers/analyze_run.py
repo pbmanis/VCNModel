@@ -11,7 +11,8 @@ verbose = False
 
 """
 Perform analysis of IVs pip from model_run
-Provides basic analysis for:
+Provides basic analysis for::
+
     1. Current clamp IV
     2. Voltage clamp IV
     3. Count spikes and get FI
@@ -50,7 +51,7 @@ class AnalyzeRun:
 
     def parseStim(self, result: dict):
         """
-        parse the stimulus information in the results dictionary.
+        Parse the stimulus information in the results dictionary.
         We only need to look at the first element to get the delay and duration
         """
         try:
@@ -104,6 +105,7 @@ class AnalyzeRun:
     ) -> Union[list, np.ndarray]:
         """
         Clean up spike time array, removing all less than mindT
+
         Parameters
         ----------
         spikeTimes : list or numpy array (1-D)
@@ -115,7 +117,7 @@ class AnalyzeRun:
 
         Return
         ------
-        spikeTimes : list or numpy array (1-D_
+        spikeTimes : list or numpy array (1-D)
             A cleaned list of the spike times where the events are at least
             mindT appart.
             Note: If there is only 1 or 0 spikes in array, just return the array
@@ -151,11 +153,12 @@ class AnalyzeRun:
             current traces, corresponding to the voltage traces in V. Should
             be organized in the same way.
         windows : list
-            list of [tdelay, tdur, tssw], where:
+            list of [tdelay, tdur, tssw], where::
+
                 tdelay is the delay to the start of the step.
                 tdur is the duration of the step
                 tssw is the duration of the steady-state window prior
-                    to the end of the step
+                to the end of the step
         threshold : float
             voltage threshold that will be used for spike detection.
 
@@ -320,7 +323,8 @@ class AnalyzeRun:
             current traces, corresponding to the voltage traces in V. Should
             be organized in the same way.
         windows : list
-            list of [tdelay, tdur, tssw], where:
+            list of [tdelay, tdur, tssw], where::
+
                 tdelay is the delay to the start of the step.
                 tdur is the duration of the step
                 tssw is the duration of the steady-state window prior
@@ -397,6 +401,7 @@ class AnalyzeRun:
         Save the result of multiple runs to disk. Results is in a dictionary,
         each element of which is a Param structure, which we then turn into
         a dictionary.
+
         Parameters
         ----------
         name : tuple of str (default: None)

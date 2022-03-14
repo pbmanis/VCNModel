@@ -14,7 +14,6 @@ from vcnmodel import h_reader
 
 import toml
 
-config = toml.load(open("wheres_my_data.toml", "r"))
 
 cprint = CP.cprint
 
@@ -757,7 +756,7 @@ class SetNSegs(object):
         print(f"{aother_inf/aother:6.3f} (should be: {1.0:6.3f})")
 
 
-def make_cell_name(cellname, args, compareflag=False):
+def make_cell_name(cellname, config, args, compareflag=False):
     cname = cellname
     # cname = "VCN_c05"
     basepath = config["cellDataDirectory"]
@@ -851,7 +850,7 @@ def compare(cellno, args):
                     print(f"   ratio: {float(l2parts[j])/float(l1parts[j]):.4f}")
 
 
-def rescale(cellno, args):
+def rescale(cellno, config, args):
     """
     Perform and check a rescale
     """
@@ -864,7 +863,7 @@ def rescale(cellno, args):
     for i, c in enumerate(cell_no):
         print("I, c: ", i, c)
         cell_name = f"VCN_c{c:02d}"
-        cname, fn = make_cell_name(cell_name, args)
+        cname, fn = make_cell_name(cell_name, config, args)
         Rescaled, Original = recon_hoc(cell_name, args)
         print(dir(Original))
         print(dir(Rescaled.cell))
@@ -931,7 +930,7 @@ def rescale(cellno, args):
             out_file.close()
 
 
-def print_hoc_areas(cellname, nodend):
+def print_hoc_areas(cellname, config, nodend):
     """
     Print the areas from the hoc file
     """
@@ -1030,5 +1029,5 @@ if __name__ == "__main__":
     # if args.compare:
     #     compare(cell_no, args)
     #     exit()
-
-    rescale(cell_no, args)
+    config = toml.load(open("wheres_my_data.toml", "r"))
+    rescale(cell_no, config, args)
