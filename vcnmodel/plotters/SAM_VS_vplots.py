@@ -201,7 +201,7 @@ class VS_Plots:
         for i, ax in enumerate(P.axs):
             ax.tick_params(left=True, bottom=True)
 
-        save_file = f"Figure7_Supplemental_V2.pdf"
+        save_file = f"Figure7/Figure7_supp/Figure7_Supplemental2_V2.pdf"
 
         # fig.text(
         #     0.99,
@@ -211,16 +211,22 @@ class VS_Plots:
         #     horizontalalignment="right",
         #     verticalalignment="top",
         # )
+        title = (
+            "SBEM Project Supplemental Figure 7 Modeling : Vector Strength Summary",
+        )
         mpl.savefig(
             Path(self.config["baseDataDirectory"], "Figures", save_file),
             metadata={
                 "Creator": "Paul Manis",
                 "Author": "Paul Manis",
-                "Title": "SBEM Project Figure 6 Modeling : Vector Strength Summary",
+                "Title": title,
             },
         )
 
-    # fig.savefig('/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/Figures/Fig_M6_VS_SAM.pdf')
+        fig.filename = save_file
+        if hasattr(fig, 'title'):
+            fig.title["title"] = title
+        return fig
 
 
 if __name__ == "__main__":

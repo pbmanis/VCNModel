@@ -414,6 +414,7 @@ class PlotSims:
         xmax: Union[float, None] = None,
         yoffset: float = 0.0,
         iax: Union[int, None] = None,
+        nax: Union[int, None] = None,
         rep: Union[int, list, None] = None,  # which rep : none is for all.
         figure: object = None,
         show_title: bool = True,
@@ -434,6 +435,76 @@ class PlotSims:
         calv2: Union[float, None] = 10.0,
         axis_index: int = 0,  # index for axes, to prevent replotting text
     ) -> tuple:
+        """Plot traces in a generaly way
+
+        Parameters
+        ----------
+        ax : object
+            target matplotlib axis
+        fn : Union[Path, str]
+            filename of data to plot
+        PD : dataclass
+            PData object with info about the dataset
+        protocol : str
+            String name of the protocol
+        ymin : float, optional
+            Minimum for y axis, normally mV, by default -80.0
+        ymax : float, optional
+            Maximum for y axis, normally mV, by default 20.0
+        xmin : float, optional
+            Minimum for x axis, normally msec, but may be sec, by default 0.0
+        xmax : Union[float, None], optional
+            Maximum for x axis, normally msec, but may be sec, by default None
+        yoffset : float, optional
+            Value to offset Y by with an axis (for stacked traces), by default 0.0
+        iax : Union[int, None], optional
+            axis number, by default None
+        nax : Union[int, None], optional
+            number of axes (not used), by default None
+        rep : Union[int, list, None], optional
+            repetition, by default None
+        show_title : bool, optional
+            display descriptive title, by default True
+        longtitle : bool, optional
+            display a long descriptive title, by default True
+        trace_color : str, optional
+            color of the traces, by default "k"
+        ivaxis : object, optional
+            optional axis for an IV plot, by default None
+        ivcolor : str, optional
+            color for an ivplot trace, by default "k"
+        iv_spike_color : str, optional
+            color to mark spikes in IV plot, by default "r"
+        spike_marker_size : float, optional
+            size of spike marker in traces, by default 2.5
+        spike_marker_color : str, optional
+            color of spike marker in traces, by default "r"
+        calx : Union[float, None], optional
+            calibration bar x length, by default 0.0
+        caly : Union[float, None], optional
+           calibration bar y length, by default 0.0
+        calt : Union[float, None], optional
+            calibration bar position along x axis (time), by default 10.0
+        calv : Union[float, None], optional
+            calibration bar position along y axis (voltage), by default 20.0
+        calx2 : Union[float, None], optional
+            secondary cal bar, by default 20.0
+        caly2 : Union[float, None], optional
+            secondary cal bar, by default 20.0
+        calt2 : Union[float, None], optional
+            secondary cal bar, by default 10.0
+        calv2 : Union[float, None], optional
+            secondary cal bar, by default 10.0
+        axis_index : int, optional
+            index for axes, to prevent replotting text_, by default 0
+
+        Returns
+        -------
+        tuple
+            synno : number of synapses on this cell
+            noutspikes : number of spikes from the cell
+            ninspikes : number of input spikes to the cell
+        """        
         changetimestamp = get_changetimestamp()
         mtime = Path(fn).stat().st_mtime
         timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(

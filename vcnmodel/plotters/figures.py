@@ -165,9 +165,8 @@ class Figures(object):
             "Figure3-Supplemental4_PSTH": self.Figure3_Supplemental4_PSTH,
             "Figure4-Ephys_2_Main": self.Figure4_Main,
             "Figure4-Ephys_2_Supplemental1": self.Figure4_Supplmental1,
-            "Figure7-Ephys-3 Main": self.Figure7_Main,
-            # "Figure7-Ephys_3_Main": self.Figure7_Main,
-            "Figure7-Ephys-3_Supplemental1": self.Figure7_Supplemental1,
+            "Figure7-Ephys_3_Main": self.Figure7_Main,
+            "Figure7-Ephys_3_Supplemental1": self.Figure7_Supplemental1,
             "Fig M1: IV Figure (Fig_M1)": self.plotIV,
             "Fig_IV/ All IVs (Fig_IV/IV_cell_VCN_c##)": self.allIVs,
             "Fig M2: CombinedEffRevCorr (Fig_M2)": self.plot_combined_Eff_Rev,
@@ -215,15 +214,16 @@ class Figures(object):
             verticalalignment="top",
         )
 
-        if fig.title2["title"] is not None or len(fig.title2["title"]) > 0:
-            fig.P.figure_handle.text(
-                fig.title2["x"],
-                fig.title2["y"],
-                fig.title2["title"],  # .replace('_', '\_'),
-                transform=fig.P.figure_handle.transFigure,
-                horizontalalignment="right",
-                verticalalignment="top",
-            )
+        if hasattr(fig, 'title2'):  # ggplot figures do not have a title or title2 attribute
+            if fig.title2["title"] is not None or len(fig.title2["title"]) > 0:
+                fig.P.figure_handle.text(
+                    fig.title2["x"],
+                    fig.title2["y"],
+                    fig.title2["title"],  # .replace('_', '\_'),
+                    transform=fig.P.figure_handle.transFigure,
+                    horizontalalignment="right",
+                    verticalalignment="top",
+                )
         ofile = Path(self.config["baseDataDirectory"], "Figures", fig.filename)
         ofile.parent.mkdir(exist_ok=True)
         cprint(
@@ -2327,7 +2327,7 @@ class Figures(object):
                 dither=1e-3 * si.dtIC / 2.0,
             )
             P.axdict[pan[5]].plot(
-                bu_sacbins,
+                bu_sacbins[:-1],
                 bu_sac,
                 "k-",
                 # label=sac_label,
@@ -2339,7 +2339,7 @@ class Figures(object):
                 dither=1e-3 * si.dtIC / 2.0,
             )
             P.axdict[pan[5]].plot(
-                an_sacbins,
+                an_sacbins[:-1],
                 an_sac,
                 "r-",
                 # label=sac_label,
@@ -2369,14 +2369,14 @@ class Figures(object):
             else:
                 est_binw = est_binw1
             # print('est_binw: ', est_binw, est_binw1, dt, nints, per)
-            self.parent.PLT.plot_psth(
+            PF.plot_psth(
                 vs_bu.circ_phase,
                 run_info=ri,
                 max_time=2 * np.pi,
                 bin_width=est_binw,
                 ax=P.axdict[pan[5]],
             )
-            self.parent.PLT.plot_psth(
+            PF.plot_psth(
                 vs_an.circ_phase,
                 run_info=ri,
                 max_time=2 * np.pi,
@@ -2386,7 +2386,7 @@ class Figures(object):
                 edge_color="r",
                 alpha=0.5,
             )
-            self.parent.PLT.plot_psth(
+            PF.plot_psth(
                 vs_bu.circ_phase,
                 run_info=ri,
                 max_time=2 * np.pi,
@@ -2409,7 +2409,8 @@ class Figures(object):
 
     def Figure7_Supplemental1(self):
         V = SAM_VS_vplots.VS_Plots()
-        V.make_figure()
+        fig = V.make_figure()
+        return fig
 
     def plot_psth_psth(
         self,
