@@ -24,7 +24,7 @@ import time
 
 # The cython version is not correct. Since the python version
 # is actually faster, we ditched it.
-from vcnmodel.analyzers import sttc_cython
+# from vcnmodel.analyzers import sttc_cython
 # pyximport.install()
 
 
@@ -129,22 +129,22 @@ class STTC:
         self.tbtiles = tbtiles
         return sttc
 
-    @time_func
-    def tile_times_cython(
-        self, times: np.array, st: Union[list, np.array], rate: float, itile: int
-    ):
-        ta = 0.0
-        tiles = np.zeros_like(times)
+    # @time_func
+    # def tile_times_cython(
+    #     self, times: np.array, st: Union[list, np.array], rate: float, itile: int
+    # ):
+    #     ta = 0.0
+    #     tiles = np.zeros_like(times)
 
-        sttc_cython.sttc_cython(
-            np.array(times),  # data array (input)
-            np.array(st),
-            self.sample_rate,
-            itile,
-            ta,
-            tiles,
-        )
-        return ta, tiles
+    #     sttc_cython.sttc_cython(
+    #         np.array(times),  # data array (input)
+    #         np.array(st),
+    #         self.sample_rate,
+    #         itile,
+    #         ta,
+    #         tiles,
+    #     )
+    #     return ta, tiles
 
     @time_func
     def tiletimes_python(self, times, spike_times, rate, itile):

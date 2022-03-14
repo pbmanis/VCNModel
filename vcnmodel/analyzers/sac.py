@@ -385,7 +385,7 @@ class SAC(object):
             SACR.n_spikes = 0
         return y, event_lengths, SACR
 
-    def SAC_with_histo(self, X, pars, engine="cython", binsize=0.0, dither=0.0):
+    def SAC_with_histo(self, X, pars, engine="python", binsize=0.0, dither=0.0):
         if binsize > 0.0:  # digitize spike times to 25 usec bins
             t = np.arange(0., pars["dur"], binsize)
             X = t[np.digitize(X, t)]
@@ -461,8 +461,8 @@ class SAC(object):
         """
         if np.isnan(np.sum(yh)):
             return np.nan, [np.nan], [np.nan], [np.nan]# cannot compute, no spikes.
-        win_data = np.where((-twin <= bins) & (bins <= twin))[0]
-        win_data = yh[win_data]
+        win_data = np.where((-twin <= bins) & (bins < twin))[0]
+        win_data = yh[win_data[:-1]]
         CI = np.max(win_data)
         peaks, _ = scipy.signal.find_peaks(win_data)
         center = [int((len(win_data)-1)/2)]  # only analyze the center peak
@@ -509,33 +509,33 @@ class SAC(object):
         return y, spcount_x, spcount_y
 
     @time_func
-    def c_XAC_Calc(
-        self,
-        X: np.ndarray,
-        Y: np.ndarray,
-        twin: float,
-        binw: float,
-        delay: float,
-        dur: float,
-    ):
-        y = np.full(10000000, np.nan)  # need to size array
-        spcount_x = np.zeros(np.array(X).shape[0], dtype=np.int)
-        spcount_y = np.zeros(np.array(Y).shape[0], dtype=np.int)
-        ns = 0
-        sac_cython.xac_cython(
-            np.array(X),  # data array (input)
-            np.array(Y),
-            self.SPars.twin,  # time win single float input
-            self.SPars.binw,
-            self.SPars.delay,
-            self.SPars.dur,
-            y,  # result SAC (output)
-            spcount_x,  # spike count, int, output
-            spcount_y,
-            ns,
-        )
-        y = y[~np.isnan(y)]
-        return y, spcount_x, spcount_y
+    # def c_XAC_Calc(
+    #     self,
+    #     X: np.ndarray,
+    #     Y: np.ndarray,
+    #     twin: float,
+    #     binw: float,
+    #     delay: float,
+    #     dur: float,
+    # ):
+    #     y = np.full(10000000, np.nan)  # need to size array
+    #     spcount_x = np.zeros(np.array(X).shape[0], dtype=np.int)
+    #     spcount_y = np.zeros(np.array(Y).shape[0], dtype=np.int)
+    #     ns = 0
+    #     sac_cython.xac_cython(
+    #         np.array(X),  # data array (input)
+    #         np.array(Y),
+    #         self.SPars.twin,  # time win single float input
+    #         self.SPars.binw,
+    #         self.SPars.delay,
+    #         self.SPars.dur,
+    #         y,  # result SAC (output)
+    #         spcount_x,  # spike count, int, output
+    #         spcount_y,
+    #         ns,
+    #     )
+    #     y = y[~np.isnan(y)]
+    #     return y, spcount_x, spcount_y
 
     def XAC_with_histo(self, X, Y, pars, engine="cython"):
         y, spcount_x, spcount_y = self.XAC(X, Y, pars=pars, engine=engine)
