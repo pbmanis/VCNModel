@@ -176,7 +176,7 @@ class CellConfig:
         # soma_area_data = 'Mesh Surface Area'
         self.config = toml.load(open("wheres_my_data.toml", "r"))
         self.dendqualfile = Path(self.config["baseMorphologyDirectory"], self.config["dendriteQualityFile"])
-        inputs = [f"Input {i+1:d}" for i in range(20)]  # input column labels, up to 20
+        self.inputs = [f"Input {i+1:d}" for i in range(20)]  # input column labels, up to 20
 
         assert spont_mapping in ["HS", "LS", "MS", "mixed1", None]
 
@@ -244,7 +244,7 @@ class CellConfig:
         celln = f"VCN_c{cellnum:02d}"
         self.VCN_Inputs[celln] = ["bushy", []]
         j = 0
-        for i in inputs:
+        for i in self.inputs:
             inasa = dcell[i].values
             if (cellnum in [10, 17, 30] and 
                     (self.add_inputs is not None or self.add_inputs not in ["None", "none"]) and 
@@ -729,8 +729,8 @@ class CellConfig:
 
 if __name__ == "__main__":
     # Check the formatting and display the results
-    cc = CellConfig(datafile, spont_mapping="mixed1")
-    cc = CellConfig(datafile, spont_mapping="HS", add_inputs="101730")
+    cc = CellConfig(spont_mapping="mixed1")
+    cc = CellConfig(spont_mapping="HS", add_inputs="101730")
     # make sure all is working
     cc.summarize_release_sites()
     cc.print_cell_inputs(cc.VCN_Inputs)

@@ -21,9 +21,10 @@ import pyximport
 from typing import Union
 import time
 
+
 # The cython version is not correct. Since the python version
 # is actually faster, we ditched it.
-# #from vcnmodel.analyzers import sttc_cython
+from vcnmodel.analyzers import sttc_cython
 # pyximport.install()
 
 

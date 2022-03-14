@@ -220,13 +220,13 @@ class Figures(object):
                 horizontalalignment="right",
                 verticalalignment="top",
             )
-        ofile = Path(config["baseDataDirectory"], "Figures", fig.filename)
+        ofile = Path(self.config["baseDataDirectory"], "Figures", fig.filename)
         ofile.parent.mkdir(exist_ok=True)
         cprint("g",
-            f"Saving to: {str(Path(config['baseDataDirectory'])):s}, Figures: {str(fig.filename):s}")
+            f"Saving to: {str(Path(self.config['baseDataDirectory'])):s}, Figures: {str(fig.filename):s}")
         cprint("g", f"   Figure title: {fig.title['title']:s}")
         mpl.savefig(
-            Path(config["baseDataDirectory"], "Figures",  fig.filename),
+            Path(self.config["baseDataDirectory"], "Figures",  fig.filename),
             metadata={
                 "Creator": "Paul Manis",
                 "Author": "Paul Manis",
@@ -462,8 +462,8 @@ class Figures(object):
                 if mode not in FD.figure_IV.keys():
                     continue
                 sfi = Path(
-                    config["cellDataDirectory"],
-                    config["impedanceDirectory"],
+                    self.config["cellDataDirectory"],
+                    self.config["impedanceDirectory"],
                     FD.figure_IV[mode],
                 )
                 if not sfi.is_file():
@@ -676,8 +676,8 @@ class Figures(object):
             parent_figure=parent_figure,
             # panel_labels=['A', 'B', 'C', 'D', 'E', 'F'],
         )
-        cellpath = config["cellDataDirectory"]
-        png_path = Path(config["baseDataDirectory"], config["pngDirectory"])
+        cellpath = self.config["cellDataDirectory"]
+        png_path = Path(self.config["baseDataDirectory"], self.config["pngDirectory"])
 
         for rax, iv in enumerate(FD.figure_AllIVs.keys()):
             # if iv not in [9, 10]:
@@ -1209,8 +1209,8 @@ class Figures(object):
 
     def _load_rcdata(self, dBSPL):
         rc_datafile = Path(
-            config["baseDataDirectory"],
-            config["revcorrDataDirectory"],
+            self.config["baseDataDirectory"],
+            self.config["revcorrDataDirectory"],
             f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl",
         )
         with open(rc_datafile, "rb") as fh:
@@ -1552,8 +1552,9 @@ class Figures(object):
         else:
             cell_number = cellN
             example = FD.figure_revcorr[cell_number]
-
+        
         P, PD, RCP, RCD = self._get_revcorr(cell_number=cellN, dBSPL="Spont")
+        dBSPL = RCP.ri.dB
         if PD is None:
             return  # unable to get the revcorr
         str_a = string.ascii_uppercase
@@ -2798,6 +2799,7 @@ class Figures(object):
         bufsl_ax: object,
         anfsl_ax: object,
         psth_win: tuple = (0, 0.25),  # (0.15, 0.3), # [start, end]
+        plot_win:tuple = (0.4, 0.550),
         bu_fsl_win: Union[None, tuple] = None,
         an_fsl_win: Union[None, tuple] = None,
         label_x_axis=True,
@@ -3135,7 +3137,7 @@ class Figures(object):
         for i, filename in enumerate(VS_data.samdata[cell_number]):
             print(f"Cell: {cell_number:d}  Filename: {filename:s}")
             cellpath = Path(
-                config["cellDataDirectory"],
+                self.config["cellDataDirectory"],
                 f"VCN_c{cell_number:02d}",
                 "Simulations",
                 "AN",

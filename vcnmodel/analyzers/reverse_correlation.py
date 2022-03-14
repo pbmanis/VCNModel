@@ -116,11 +116,11 @@ def reverse_correlation(
     st1: Union[np.ndarray, List] = None,
     st2: Union[np.ndarray, List] = None,
     binwidth: float = 0.1,
-    corrwindow: Union[List, Tuple] = [
+    corrwindow: List = [
         -5.0,
         1.0,
     ],  # time window to examine correlation relative to st1
-) -> (np.ndarray, int):
+) -> Tuple[np.ndarray, int]:
     """
     Basic reverse correlation between two sets of event times
     Bins are set up so that the center bin straddles 0 time

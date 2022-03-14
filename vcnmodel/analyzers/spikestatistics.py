@@ -53,8 +53,8 @@ def CV(spikes):
     """
     if spikes == []:
         return np.nan
-    ISI = diff(spikes)  # interspike intervals
-    return std(ISI) / mean(ISI)
+    ISI = np.diff(spikes)  # interspike intervals
+    return np.std(ISI) / np.mean(ISI)
 
 
 # Second-order statistics
@@ -177,7 +177,7 @@ def spike_triggered_average(
     nspikes = len(spikes)
     sta_length = int(max_interval/dt)
     spike_triggered_ensemble=np.zeros((nspikes,sta_length))
-    time_axis = linspace(0, max_interval, sta_length)
+    time_axis = np.linspace(0, max_interval, sta_length)
     onset = float(onset)
     for ispike, spike in enumerate(spikes):
         if display == True:
@@ -252,12 +252,12 @@ def group_correlations(spikes, delta=None):
     if delta is None:
         delta = 10  # size of the window
     windows = (
-        -2 * delta * ones(N)
+        -2 * delta * np.ones(N)
     )  # windows[i] is the end of the window for neuron i = lastspike[i}+delta
     for i, t in spikes:
         sources = t <= windows  # neurons such that (i,t) is a target spike for them
         if sum(sources) > 0:
-            indices = nonzero(sources)[0]
+            indices = np.nonzero(sources)[0]
             S[indices, i] += 1
             delays = t - windows[indices] + delta
             #            print i, t, indices, delays
@@ -267,12 +267,12 @@ def group_correlations(spikes, delta=None):
 
     tauc /= S
 
-    S = S / tile(spikecount.reshape((-1, 1)), (1, N))  # normalize S
+    S = S / np.tile(spikecount.reshape((-1, 1)), (1, N))  # normalize S
     rates = spikecount / T
-    S = S - tile(rates.reshape((1, -1)), (N, 1)) * delta
+    S = S - np.tile(rates.reshape((1, -1)), (N, 1)) * delta
 
-    S[isnan(S)] = 0.0
-    tauc[isnan(tauc)] = 0.0
+    S[np.isnan(S)] = 0.0
+    tauc[np.isnan(tauc)] = 0.0
 
     return S, tauc
 
@@ -300,9 +300,9 @@ def get_gamma_factor_matrix(
     coincidence_matrix, model_length, target_length, target_rates, delta
 ):
 
-    target_lengthMAT = tile(target_length, (len(model_length), 1))
-    target_rateMAT = tile(target_rates, (len(model_length), 1))
-    model_lengthMAT = tile(model_length.reshape(-1, 1), (1, len(target_length)))
+    target_lengthMAT = np.tile(target_length, (len(model_length), 1))
+    target_rateMAT = np.tile(target_rates, (len(model_length), 1))
+    model_lengthMAT = np.tile(model_length.reshape(-1, 1), (1, len(target_length)))
     NCoincAvg = 2 * delta * target_lengthMAT * target_rateMAT
     norm = 0.5 * (1 - 2 * delta * target_rateMAT)
 
@@ -313,7 +313,7 @@ def get_gamma_factor_matrix(
     gamma = (coincidence_matrix - NCoincAvg) / (
         norm * (target_lengthMAT + model_lengthMAT)
     )
-    gamma = triu(gamma, 0) + triu(gamma, 1).T
+    gamma = np.triu(gamma, 0) + np.triu(gamma, 1).T
     return gamma
 
 
@@ -336,14 +336,14 @@ def gamma_factor(source, target, delta, normalize=True, dt=None):
 
     source = np.array(source)
     target = np.array(target)
-    target_rate = firing_rate(target) * Hz
+    target_rate = firing_rate(target) * pq.Hz
 
     if dt is None:
         delta_diff = delta
     else:
-        source = np.array(rint(source / dt), dtype=int)
-        target = np.array(rint(target / dt), dtype=int)
-        delta_diff = int(rint(delta / dt))
+        source = np.array(np.rint(source / dt), dtype=int)
+        target = np.array(np.rint(target / dt), dtype=int)
+        delta_diff = int(np.rint(delta / dt))
 
     source_length = len(source)
     target_length = len(target)
@@ -353,13 +353,13 @@ def gamma_factor(source, target, delta, normalize=True, dt=None):
 
     if source_length > 1:
         bins = 0.5 * (source[1:] + source[:-1])
-        indices = digitize(target, bins)
+        indices = np.digitize(target, bins)
         diff = abs(target - source[indices])
         matched_spikes = diff <= delta_diff
         coincidences = sum(matched_spikes)
     else:
         indices = [
-            amin(abs(source - target[i])) <= delta_diff for i in xrange(target_length)
+            np.amin(abs(source - target[i])) <= delta_diff for i in np.xrange(target_length)
         ]
         coincidences = sum(indices)
 

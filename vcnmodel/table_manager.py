@@ -79,7 +79,7 @@ class IndexData:
     soundType: str = ""
     fmod: Union[float, None]= None
     SRType: str = ""
-    ANSynapticDepression: Union[int] = 0
+    ANSynapticDepression: int = 0
     elapsed: float = 0.0
     runProtocol: str = ""
     synapsetype: str = ""

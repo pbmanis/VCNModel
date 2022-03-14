@@ -338,7 +338,7 @@ class PlotSims:
             self.parent.textbox.append(text)
             self.parent.textbox.setTextColor(self.parent.QColor("white"))
 
-    def _convert_params(self, d, filemode):
+    def _convert_params(self, d, fns, filemode):
         """
         Capture the parameters in different versions of the files,
         and return as a simple dictionary.
@@ -468,7 +468,7 @@ class PlotSims:
             d = FPM.pickle_load(fh)
         if verbose:
             self.textappend(f"   ...File read, mode={filemode:s}")
-        par = self._convert_params(d, filemode)
+        par = self._convert_params(d, fns, filemode)
         stitle = self._get_scaling(fn, PD, par)
 
         if verbose:
@@ -482,7 +482,7 @@ class PlotSims:
             self.textappend(f"\npgbcivr2: datafile to read: {str(ivdatafile):s}")
         if isinstance(d["Results"], dict):
             if "time" in list(d["Results"].keys()):
-                d["Results"] = self._data_flip(d["Results"])
+                d["Results"] = self._data_flip(d)
         return par, stitle, ivdatafile, filemode, d
 
     @TRC(show=False)
@@ -498,7 +498,7 @@ class PlotSims:
         # unpack x
         par, stitle, ivdatafile, filemode, d = X
         if "time" in list(d["Results"].keys()):
-            d["Results"] = self._data_flip(d["Results"])
+            d["Results"] = self._data_flip(d)
 
         # 2. find spikes
         AR, SP, RMA = self.analyze_data(ivdatafile, filemode, protocol)
@@ -552,14 +552,8 @@ class PlotSims:
         d['Results'] with the data format adjusted.
         """
         # flip order to put trials first (this was an old format)
-        if "runInfo" in list(d.keys()):  # marker for top level
-            data_res = d["Results"]
-        else:
-            data_res = d
-        # if d is None:
-        #     trials = range(len(data_res["somaVoltage"]))
-        # else:
-        #     trials = range(d["runInfo"].nReps)
+        data_res = d["Results"]
+        trials = range(d["runInfo"].nReps)
 
         for tr in trials:
             sv = data_res["somaVoltage"][tr]
@@ -3460,6 +3454,7 @@ def cmdline_display(args, PD):
     """
 
     PS = PlotSims(parent=None)
+    config = toml.load(open("wheres_my_data.toml", "r"))
     args.protocol = args.protocol.upper()
     changetimestamp = get_changetimestamp()
     # PD.gradeA = [cn for cn in args.cell]
@@ -3497,7 +3492,7 @@ def cmdline_display(args, PD):
 
         fng = []
         for ig, gbc in enumerate(PD.gradeA):
-            basefn = f"{self.config['cellDataDirectory']:s}/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
+            basefn = f"{config['cellDataDirectory']:s}/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
             pgbc = f"VCN_c{gbc:02d}"
             allf = list(Path(basefn).glob("*"))
             allfiles = sorted([f for f in allf if f.is_dir()])
@@ -3510,7 +3505,7 @@ def cmdline_display(args, PD):
 
     else:
         for ig, gbc in enumerate(PD.gradeA):
-            basefn = f"{self.config['cellDataDirectory']:s}/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
+            basefn = f"{config['cellDataDirectory']:s}/VCN_c{gbc:02d}/Simulations/{args.protocol:s}/"
             pgbc = f"VCN_c{gbc:02d}"
             if args.protocol == "IV":
                 name_start = f"IV_Result_VCN_c{gbc:02d}_inp=self_{modelName:s}*.p"
@@ -3528,7 +3523,7 @@ def cmdline_display(args, PD):
             print("\nConditions: soma= ", PD.soma_inflate, "  dend=", PD.dend_inflate)
 
             if args.analysis in ["traces", "revcorr"]:
-                fng = select_filenames(fng, args)
+                fng = PS.select_filenames(fng, args)
                 times = np.zeros(len(fng))
                 for i, f in enumerate(fng):
                     times[i] = f.stat().st_mtime
@@ -3610,7 +3605,7 @@ def getCommands():
     #
     #     print("   ... All configuration file variables read OK")
     # now copy into the dataclass
-    PD = self.newPData()
+    PD = PData()
     # for key, value in vargs.items():
     #      if key in parnames:
     #          # print('key: ', key)

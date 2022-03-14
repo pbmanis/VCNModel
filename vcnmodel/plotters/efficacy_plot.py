@@ -525,7 +525,7 @@ class EfficacyPlots(object):
         if self.parent_figure is None:
             sizer = {
                 "A": {
-                    "pos": [1 + x0, 3, 1 + y, 3],
+                    "pos": [1 + x0, 3, 1 + y0, 3],
                     "labelpos": (-0.15, 1.02),
                     "noaxes": False,
                 },

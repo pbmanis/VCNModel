@@ -600,7 +600,7 @@ class SAC(object):
         y = yc[~np.isnan(yc)]  # clean it up.
         return y, spike_count_x, spike_count_y
 
-    def XAC_make_histogram(self, spike_count_x, spike_count_y):
+    def XAC_make_histogram(self, y, spike_count_x, spike_count_y):
         # now calculate the normalized histogram.
         # normalization is N*(N-1)*r^2*deltat*D
         # where N is the number of presentations (lx), r is the rate (sp/sec),
@@ -611,6 +611,8 @@ class SAC(object):
         rate_x = np.sum(spike_count_x) / (self.SPars.nrep * self.SPars.dur)
         rate_y = np.sum(spike_count_y) / (self.SPars.nrep * self.SPars.dur)
         #        print'Mean firing rate: %8.1f' % rate
+        N = spike_count_x
+        M = spike_count_y
         nfac = (
             N
             * M

@@ -1,7 +1,7 @@
 import argparse
 from dataclasses import dataclass, field
 import datetime
-from typing import Union, Type
+from typing import Union, Type, Tuple
 from pathlib import Path
 import re
 import toml
@@ -280,7 +280,7 @@ class MakeStandardAxon:
 
     def make_name(
         self, cell: str, add_standardized_axon: bool = False, AIS_length: float=0.,
-    ) -> (str, Type[Path]):
+    ) -> Tuple[str, Type[Path]]:
         """
         Make a full filename that points to the cell morphology for the "Full" file type
         and for the standardized axon if needed.
@@ -301,7 +301,7 @@ class MakeStandardAxon:
 
     def convert_swc_hoc(
         self, cell: str,
-        ) -> (str, Type[Path]):
+        ) -> Tuple[str, Type[Path]]:
         """
         Wrapper to convert the axon-only swcs to hoc files
         Assumes specific filename structure, and generates the output
@@ -748,7 +748,7 @@ class MakeStandardAxon:
         m = re_find_create_MA.search(hocf)
         return hocf
 
-    def update_create_sections(self, func: object, hocf: str, nsec: int) -> (str, int):
+    def update_create_sections(self, func: object, hocf: str, nsec: int) -> Tuple[str, int]:
         m = func.findall(hocf)
         if len(m) == 0:
             hocf, nrepl = re_find_create_sections.subn(

@@ -1,5 +1,6 @@
 import argparse
 from dataclasses import dataclass, field
+from typing import Union
 from pathlib import Path
 import re
 
@@ -251,7 +252,7 @@ class AdjustAreas:
             freq=1000.0, d_lambda=0.025, minimum=3
         )  # perform d_lambda adjustment on structure
 
-    def sethoc_fromfile(self, fn: [str, Path]):
+    def sethoc_fromfile(self, fn: Union[str, Path]=""):
         """
         Read a reconstruction and set the number of segments using rule
 

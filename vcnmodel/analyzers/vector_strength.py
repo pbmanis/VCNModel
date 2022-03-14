@@ -94,7 +94,7 @@ class VectorStrength():
         line += f"{d.an_vs:.4f},"
         line += f"{d.an_circ_phaseMean:.4f},"
         line += f"{d.an_circ_phaseSD:.4f},"
-        line += f"{amax:.4f},"
+        line += f"{d.amax:.4f},"
         line += f"{d.n_inputs:d}"
         print(line)
 

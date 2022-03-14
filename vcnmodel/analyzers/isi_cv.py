@@ -55,8 +55,8 @@ def CV(spikes):
     """
     if spikes == []:
         return np.nan
-    ISI = diff(spikes)  # interspike intervals
-    return std(ISI) / mean(ISI)
+    ISI = np.diff(spikes)  # interspike intervals
+    return np.std(ISI) / np.mean(ISI)
 
 if __name__ == "__main__":
 

@@ -10,7 +10,7 @@ import re
 import sys
 import time
 import timeit
-from typing import Union
+from typing import Union, Tuple
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
@@ -619,7 +619,7 @@ class ModelRun:
         """
         self.Params.StartTime = starttime
 
-    def mkdir_p(self, path: [str, Path]):
+    def mkdir_p(self, path: Union[str, Path]):
         """
         Make a set of directories along the path if needed to ensure that the
         data has a home
@@ -2106,7 +2106,7 @@ class ModelRun:
         current_value: float = 0.0,
         factors: list = [0.6, 0.3],
         last: int = 0,
-    ) -> (float, int):
+    ) -> Tuple[float, int]:
 
         if current_value > target:
             if last == 1:
