@@ -1,6 +1,7 @@
 from collections import OrderedDict
+from pathlib import Path
 import pickle
-
+from typing import Union
 import pprint
 import vcnmodel.model_params as model_params
 

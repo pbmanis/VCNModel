@@ -5,7 +5,7 @@ import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Union
+from typing import Union, Tuple
 
 from cnmodel import cells
 from cnmodel.decorator import Decorator
@@ -189,7 +189,7 @@ class Render:
         self, view:str="cylinders", mechanism:Union[list, None]=None,
             colormap:Union[str, dict]="viridis",
             backgroundcolor:Union[str, list]="k",
-            )-> (object, object):
+            )-> Tuple[object, object]:
         viewer = HocViewer(self.hf.hr.h, renderer=self.renderer)
         if self.renderer not in ["mpl", "vispy"]:
             viewer.setBackcolor(backgroundcolor)

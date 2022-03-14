@@ -32,7 +32,8 @@ Handles Singleton "sections" in swc file by inserting the last parent segment in
 """
 
 # standard SWC types:
-swc_sectypes = {
+def swc_sectypes():
+    swc_secs = {
   #  0: 'undefined',
     1: 'soma',
     2: 'axon',
@@ -46,10 +47,12 @@ swc_sectypes = {
     12: 'dendrite', # 'hub',
    # 13: 'proximal_dendrite',
     #14: 'distal_dendrite',
-}
+    }
+    return swc_secs
 
 # section types for SBEM data on bushy cells (additional definitions)
-sbem_sectype = {
+def sbem_sectypes():
+    sbem_sectype = {
     #new swc mapping
     0: 'Undefined',
     1: 'Soma',
@@ -71,11 +74,13 @@ sbem_sectype = {
     17: 'Axon_Node',
     18: 'Dendritic_Swelling',
     
-}
+    }
+    return sbem_sectype
 
 # section types for SBEM data on bushy cells (additional definitions)
 # This table is for swcs from Syglassfrom May 2021 (who changed it?)
-sbem2_sectype = {
+def sbem2_sectypes():
+    sbem2_sectype = {
     #new swc mapping
     0: 'Undefined',
     1: 'Soma',
@@ -95,7 +100,8 @@ sbem2_sectype = {
     15: 'Axon_Initial_Segment',
     16: 'Axon_Heminode',
     17: 'Axon_Node',
-}
+    }
+    return sbem2_sectype
 
 # crenaming of cell parts to match cnmodel data tables (temporary)
 renaming = {'basal_dendrite': 'dendrite',
@@ -155,9 +161,9 @@ class SWC(object):
         if secmap == 'swc':
             self.sectypes = swc_sectypes
         elif secmap == 'sbem':
-            self.sectypes = sbem_sectypes
+            self.sectypes = sbem_sectypes()
         elif secmap == 'sbem2':
-            self.sectypes = sbem2_sectypes
+            self.sectypes = sbem2_sectypes()
         else:
             raise ValueError('SWC number map type is not recognized: %s' % secmap)
         
@@ -179,7 +185,7 @@ class SWC(object):
         print(f"Loading: {str(filename):s}")
         self.data = np.loadtxt(filename, dtype=self._dtype)
         if self.scales is not None:
-            self.scale(x=scales['x'], y=scales['y'], z=scales['z'], r=scales['r'])
+            self.scale(x=self.scales['x'], y=self.scales['y'], z=self.scales['z'], r=self.scales['r'])
         
 
     def copy(self):
@@ -304,7 +310,7 @@ class SWC(object):
         if self.scales is None:
             hoc.append(f"// No scaling")
         else:
-            hocappend(f"// Scaling: x: {self.scales['x']:f}, y: {self.scales['y']:f}, z: {self.scales['z']:f}, r: {self.scales['r']:f}")
+            hoc.append(f"// Scaling: x: {self.scales['x']:f}, y: {self.scales['y']:f}, z: {self.scales['z']:f}, r: {self.scales['r']:f}")
         hoc.append('')
         sectypes = self.sectypes.copy()
         print('sectypes: ', sectypes)

@@ -83,7 +83,7 @@ Plot all locations for one stimulus (IV data)
 """
 
 
-def plot_all_locs_IV():
+def plot_all_locs_IV(d):
     # f, ax = mpl.subplots(1,1)
     spines_to_remove = ["top", "right"]
     ax = [ax]
@@ -389,7 +389,7 @@ def write_file():
         re_secdata = re.compile(sec_str + " {(?P<hocs>.*?)}", re.DOTALL)
         line = re.findall(re_secdata, hocdata)
         if line is None:
-            swcmap[secstr] = None
+            swcmap[sec_str] = None
             continue
         swcs = []
 
