@@ -9,6 +9,7 @@ import numpy as np
 from pylibrary.tools import cprint as CP
 import elephant.spike_train_correlation as ESTC
 import elephant.conversion as EC
+import neo
 from vcnmodel.analyzers import spikestatistics as SPKS
 from vcnmodel.analyzers import sttc as STTC
 from vcnmodel.util import trace_calls as TRC
@@ -66,7 +67,7 @@ class RevCorrData:
     C: list = field(default_factory=def_empty_list)  # using Brian 1.4 correlation
     CB: list = field(
         default_factory=def_empty_list
-    )  # using elephant/neo, binned correlation
+    )  # using elephant/ binned correlation
     CBT: list = field(
         default_factory=def_empty_list
     )  # using elephant/neo, binned correlation
@@ -234,6 +235,7 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
 
             nspk_plot += RCD.nsp_avg
         RCD.sv_trials.append(RCD.sv_all)
+        max_spike_time =1e3*(d['runInfo'].pip_duration + d['runInfo'].pip_start)
 
         # Now get reverse  correlation for each input
         for isite in range(RCP.ninputs):  # for each ANF input
@@ -256,23 +258,23 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
                     bin_width=RCP.binw * pq.ms,
                     T=None,
                 )
-            elif revcortype == "RevcorrEleph":
-                nbins = int(width / bw)
+            elif revcorrtype == "RevcorrEleph":
+                nbins = len(np.arange(RCP.minwin, -RCP.minwin, RCP.binw*2))
                 bst_i = EC.BinnedSpikeTrain(
-                    spiketrains=st1.times,
-                    bin_size=bw,
+                    spiketrains=neo.SpikeTrain(stx*pq.ms, t_stop=max_spike_time*pq.s),
+                    bin_size=RCP.binw*pq.ms,
                     n_bins=None,
-                    t_start=tstart * pq.s,
-                    t_stop=tstop * pq.s,
+                    t_start=d['runInfo'].pip_start* pq.s,
+                    t_stop=(d['runInfo'].pip_start+d['runInfo'].pip_duration)* pq.s,
                     tolerance=None,
                     sparse_format="csr",
                 )
                 bst_j = EC.BinnedSpikeTrain(
-                    spiketrains=st2.times,
-                    bin_size=bw,
+                    spiketrains=neo.SpikeTrain(anx*pq.ms, t_stop=max_spike_time*pq.s),
+                    bin_size=RCP.binw*pq.ms,
                     n_bins=None,
-                    t_start=tstart * pq.s,
-                    t_stop=tstop * pq.s,
+                    t_start=d['runInfo'].pip_start* pq.s,
+                    t_stop=(d['runInfo'].pip_start+d['runInfo'].pip_duration)* pq.s,
                     tolerance=None,
                     sparse_format="csr",
                 )
@@ -286,25 +288,29 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
                     method="speed",
                     cross_correlation_coefficient=True,
                 )
-                RCD.C[isite] += cc_result
+                RCD.C[isite] += cc_result.squeeze()[:-1]
             elif revcorrtype == "RevcorrSimple":
+                """
+                The result returned from this version is not corrected
+                for the binning or spike rate
+                """
                 refcorr, npost = reverse_correlation(
                     stx,
                     anx,
                     binwidth=RCP.binw,
-                    datawindow=[RCP.min_time, RCP.max_time],
+                    # datawindow=[RCP.min_time, RCP.max_time], # stx and anx already have this done
                     corrwindow=[RCP.minwin, RCP.maxwin],
                 )
-                RCD.CB[isite] = RCD.CB[isite] + refcorr
+                RCD.CB[isite] = RCD.CB[isite] + refcorr[:len(RCD.CB[isite])]
 
             elif revcorrtype == "RevcorrSTTC":
                 sttccorr.set_spikes(RCP.binw, stx, anx, RCP.binw)
                 refcorr = sttccorr.calc_ccf_sttc(
                     corrwindow=[RCP.minwin, RCP.maxwin], binwidth=RCP.binw
                 )
-                # print(len(refcorr))
-                # print(len(RCD.STTC[isite]))
-                # print(RCD.STTC[isite])
+                print(len(refcorr))
+                print(len(RCD.STTC[isite]))
+                print(RCD.STTC[isite])
                 RCD.STTC[isite] = RCD.STTC[isite] + refcorr
 
             tct = SPKS.total_correlation(anx, stx, width=-RCP.minwin, T=None)
@@ -315,6 +321,7 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
             maxtc = RCD.TC
         else:
             maxtc = 1.0
+
     if RCD.nsp_avg > 0:
         RCD.sv_avg /= RCD.nsp_avg
     RCD.mean_pre_intervals = [0] * RCP.ninputs

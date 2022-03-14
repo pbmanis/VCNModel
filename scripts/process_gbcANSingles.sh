@@ -5,7 +5,7 @@ CONFIG="--configfile singles_multisite_parallel.toml"
 RUNTEXT="running the AN Single protocols Full"
 
 # sequentials:
-CELLNAMES="09" # 02 05 06 09 10 11 13 17 18 30"
+CELLNAMES="10 17 30" # "09" # 02 05 06 09 10 11 13 17 18 30"
 TABLES="data_XM13A_nacncoop_normal" # " data_XM13A_nacncoop_pasdend data_XM13A_nacncoop_actdend"
 DENDRITES="Full" # "NoDend"
 NREPS="5"
@@ -25,7 +25,7 @@ for t in $TABLES
             esac
             echo $f
             # python vcnmodel/model_run2.py VCN_c$f -P initAN -D $d $AXON $CONFIG  --datatable $t
-            python vcnmodel/model_run2.py VCN_c$f -P runANSingles -r $NREPS -D $d $AXON $CONFIG  --datatable $t
+            python vcnmodel/model_run2.py VCN_c$f -P runANSingles --subs 101730 -r $NREPS -D $d $AXON $CONFIG  --datatable $t
          done
     done
 done

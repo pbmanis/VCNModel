@@ -15,7 +15,7 @@ def main():
     sys.path.insert(0, str(path))
 
     # Allow user to audit tests with --audit flag
-    import src.vcnmodel
+    import vcnmodel
     if '--audit' in sys.argv:
         sys.argv.remove('--audit')
         sys.argv.append('-s') # needed for cli-based user interaction

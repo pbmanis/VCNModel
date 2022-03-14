@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import List, Tuple, Union
 
 import lmfit
-import matplotlib.cm
 import matplotlib.colorbar  # type: ignore
 import matplotlib.colors  # type: ignore
 import numpy as np  # type: ignore
@@ -1681,6 +1680,18 @@ class PlotSims:
                 label = "Input {0:2d} N={1:3d}".format(isite, int(RCD.sites[isite]))
                 label = None
                 if isite in range(RCP.ninputs):
+                    if RCP.algorithm == "RevcorrEleph":
+                        linehandles[isite] = ax.plot(
+                            RCD.tx,
+                            RCD.C[isite][:nc],
+                            color=color,
+                            label=label,
+                            linewidth=0.9,
+                            zorder=5,
+                        )
+                        RCD.max_coin_rate = np.max(
+                            (RCD.max_coin_rate, np.max(RCD.C[:nc]))
+                        )
                     if RCP.algorithm == "RevcorrSPKS":
                         linehandles[isite] = ax.plot(
                             RCD.tx,
@@ -1698,7 +1709,7 @@ class PlotSims:
 
                     elif RCP.algorithm == "RevcorrSimple":
                         linehandles[isite] = ax.plot(
-                            RCD.CBT - RCP.maxwin,
+                            RCD.CBT, # - RCP.maxwin,
                             RCD.CB[isite] / float(RCD.npost_spikes),
                             color=color,
                             label=label,
@@ -1831,6 +1842,8 @@ class PlotSims:
             gbc_string = f"VCN_c{int(gbc):02d}"
         elif isinstance(gbc, str) and gbc.startswith("VCN_"):
             gbc_string = gbc
+        elif isinstance(gbc, str) and gbc.startswith("BC"):
+            gbc_string = gbc.replace("BC", "VCN_c")
         syninfo = SC.VCN_Inputs[gbc_string]
         return (SC, syninfo)
 
@@ -1889,7 +1902,6 @@ class PlotSims:
 
         plabels = [f"BC{int(self.parent.cellID):02d}"]
         pgbc = plabels[0]
-
         sizer = {
             "A": {
                 "pos": [0.05, 0.40, 0.52, 0.40],
@@ -1984,7 +1996,6 @@ class PlotSims:
         RCP.si = si
         RCP.ri = ri
         RCP.algorithm = revcorrtype
-        print(ri.SpirouSubs)
         SC, syninfo = self.get_synaptic_info(gbc)
 
         print(f"    compute_revcorr: Preparing for computation for: {str(gbc):s}")
@@ -2583,7 +2594,7 @@ class PlotSims:
             
             # return
             P.axdict["A"].plot(
-                bins,
+                bins[:-1],
                 yh,
                 #   'k-',
                 label=sac_label,
