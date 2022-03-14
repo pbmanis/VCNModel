@@ -56,7 +56,6 @@ def analyze_data(
     SP.analyzeSpikes()
     if spike_shape:
         SP.analyzeSpikeShape()
-    RMA = None
     SP.analysis_summary["pulseDuration"] = 0.1
     if protocol == "IV":
         SP.fitOne(function="fitOneOriginal")
@@ -71,5 +70,5 @@ def analyze_data(
             tgap=tgap,
         )
 
-        RMA = RM.analysis_summary
-    return ReadModel, SP, RMA
+        # RMA = RM.analysis_summary
+    return ReadModel, SP, RM

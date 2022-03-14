@@ -156,10 +156,9 @@ class Figures(object):
         print("Making_figure:", figure_name)
         # dispatch
         dispatch_table = {
-            # "Fig 3 Ephys-1 main": self.Figure3Main,
             "Figure3-Ephys_1_Main": self.Figure3_Main,
-            "Figure3-Supplemental1_VC-KLTCalibration": self.plot_VC_gKLT,
-            "Figure3-Supplemental1_VC_Rin_Taum": self.Figure3_Supplemental1,
+            "Figure3-Supplemental1_ABC_VC-KLTCalibration": self.plot_VC_gKLT,
+            "Figure3-Supplemental1_DEF_VC_Rin_Taum": self.Figure3_Supplemental1,
             "Figure3-Supplemental2_CC": self.Figure3_Supplemental2_CC,
             "Figure3-Supplemental3_Zin": self.Figure3_Supplemental3_Zin,
             "Figure3-Supplemental4_PSTH": self.Figure3_Supplemental4_PSTH,
@@ -167,19 +166,20 @@ class Figures(object):
             "Figure4-Ephys_2_Supplemental1": self.Figure4_Supplmental1,
             "Figure7-Ephys_3_Main": self.Figure7_Main,
             "Figure7-Ephys_3_Supplemental1": self.Figure7_Supplemental1,
-            "Fig M1: IV Figure (Fig_M1)": self.plotIV,
-            "Fig_IV/ All IVs (Fig_IV/IV_cell_VCN_c##)": self.allIVs,
-            "Fig M2: CombinedEffRevCorr (Fig_M2)": self.plot_combined_Eff_Rev,
-            "Fig M2B: Efficacy (Fig_M2_Efficacy_Revcorr)": self.plot_efficacy,
-            "Fig M2 Supp: Efficacy Supplement (Fig_M2_Supplemental_[experiment])": self.plot_efficacy_supplement,
-            "Fig M3: Revcorr Ex (Fig_M3_spont|dBSPL)": self.plot_revcorr,
-            "Fig_Revcorr/ All Revcorrs (Revcorr_VCN_c##)": self.plot_all_revcorr,
-            "Fig M3 Supp1: Revcorr Supplement Spont (Fig_M3_supplemental_Full_Spont)": self.plot_revcorr_supplement_spont,
-            "Fig M3 Supp3: Revcorr Supplement (Fig_M3_supplemental_Full_30dB)": self.plot_revcorr_supplement_30dB,
-            "Fig M3 Supp2: Revcorr Supplement (Fig_M3_supplemental_Full_40dB)": self.plot_revcorr_supplement_40dB,
-            "Fig M4: Revcorr Compare (Fig_M4_Revcorr_Compare)": self.plot_revcorr_compare,
-            "Fig M5: PSTH-FSL (Fig_M5)": self.plot_PSTH,
-            "VS-SAM Tone (no figure file - analysis only)": self.plot_VS_SAM,
+            # Misc figures follow
+            "Figure: IV Figure": self.plotIV,
+            "Figure: All_IVs": self.allIVs,
+            "Figure: CombinedEffRevCorr": self.plot_combined_Eff_Rev,
+            "Figure: Efficacy": self.plot_efficacy,
+            "Figure: Efficacy Supplement": self.plot_efficacy_supplement,
+            "Figure: Revcorr Example": self.plot_revcorr,
+            "Figure: All Revcors": self.plot_all_revcorr,
+            "Figure: Revcorr at Spont": self.plot_revcorr_supplement_spont,
+            "Figure: Revcorr at 30dB": self.plot_revcorr_supplement_30dB,
+            "Figure: Revcorr at 40dB": self.plot_revcorr_supplement_40dB,
+            "Figure: Compare Revcorrs": self.plot_revcorr_compare,
+            "Figure: PSTHs": self.plot_PSTH,
+            "Figure: VS-SAM Tone": self.plot_VS_SAM,
         }
         if figure_name in list(dispatch_table.keys()):
             fig = dispatch_table[figure_name]()
@@ -403,7 +403,6 @@ class Figures(object):
             panel_labels=p3panels,
         )
         ivaxis = self.P2.axarr[0, 0]
-        print("ivaxis: ", ivaxis)
         for iax, iv in enumerate(["pasdend", "normal", "actdend"]):
             if cell is None:
                 dfile = FD.figure_IV[iv]
@@ -515,7 +514,7 @@ class Figures(object):
 
             # PH.show_figure_grid(self.P.figure_handle)
 
-            # get Rin and RMA from all the examples and make a summary distribution plot
+            # get Rin and RM from all the examples and make a summary distribution plot
             rins = {}
             taus = {}
 
@@ -537,7 +536,7 @@ class Figures(object):
                         continue
                     fn = list(sfi.glob("*"))
                     sfi = Path(sfi, fn[0])
-                    AR, SP, RMA = self.parent.PLT.plot_traces(
+                    AR, SP, RM = self.parent.PLT.plot_traces(
                         None,  # self.P.axarr[rax, iax+1],
                         sfi,
                         PD,
@@ -547,8 +546,8 @@ class Figures(object):
                         iax=iax,
                         figure=None,
                     )
-                    rins[k] = {"Cell": iv, "Rin": RMA["Rin"], "dendrites": dendmode}
-                    taus[k] = {"Cell": iv, "taum": RMA["taum"], "dendrites": dendmode}
+                    rins[k] = {"Cell": iv, "Rin": RM.analysis_summary["Rin"], "dendrites": dendmode}
+                    taus[k] = {"Cell": iv, "taum": RM.analysis_summary["taum"], "dendrites": dendmode}
                     k += 1
 
             df_rin = pd.DataFrame.from_dict(rins, orient="index")  # , orient='index')
@@ -2251,7 +2250,7 @@ class Figures(object):
         par, stitle, ivdatafile, filemode, d = X
         axon_name = par["axonExpt"]
         protocol = "runANPSTH"
-        AR, SP, RMA = analyze_data.analyze_data(ivdatafile, filemode, protocol)
+        AR, SP, RM = analyze_data.analyze_data(ivdatafile, filemode, protocol)
         i = 0
         plot_win = (0.4, 0.550)
         psth_binw = 0.0005
@@ -2874,7 +2873,7 @@ class Figures(object):
         par, stitle, ivdatafile, filemode, d = X
         axon_name = par["axonExpt"]
         protocol = "runANPSTH"
-        AR, SP, RMA = analyze_data.analyze_data(
+        AR, SP, RM = analyze_data.analyze_data(
             ivdatafile=ivdatafile, filemode=filemode, protocol=protocol
         )
         ntr = len(AR.MC.traces)  # number of trials
@@ -3213,7 +3212,7 @@ class Figures(object):
             )
             with open(fout, "a") as fth:
                 if firstline:
-                    fth.write(self.parent.PLT.VS_colnames, sac_flag=sac_flag)
+                    fth.write(self.parent.PLT.VS_colnames)
                     fth.write("\n")
                     firstline = False
                 fth.write(self.parent.PLT.VS_line)

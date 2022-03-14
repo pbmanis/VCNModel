@@ -435,7 +435,7 @@ class ReadModel:
             d["Results"] = self._data_flip(d)
 
         # 2. find spikes
-        AR, SP, RMA = analyze_data.analyze_data(ivdatafile, filemode, protocol)
+        AR, SP, RM = analyze_data.analyze_data(ivdatafile, filemode, protocol)
         # set up analysis parameters and result storage
         RCP = RevCorrPars()
         RCD = RevCorrData()
@@ -470,7 +470,7 @@ class ReadModel:
             np.max(RCD.ti) - RCP.min_time
         )  # this window needs to be at least as long as maxwin
         RCD.tx = np.arange(RCP.minwin, 0, RCP.binw)
-        return (d, AR, SP, RMA, RCP, RCD)
+        return (d, AR, SP, RM, RCP, RCD)
 
     def _data_flip(self, d):
         """
