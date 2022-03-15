@@ -1,50 +1,37 @@
 import argparse
-import dataclasses
-import datetime
-import functools
-import itertools
-import operator
-import pickle
 import string
 import sys
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import Union
 
-import lmfit
 import matplotlib.colorbar  # type: ignore
 import matplotlib.colors  # type: ignore
 import numpy as np  # type: ignore
 import pandas as pd
 import pyperclip
 import pyqtgraph as pg  # type: ignore
-import quantities as pq
-import scipy.stats  # type: ignore
+# import quantities as pq
 import seaborn as sns
 import toml
-import vcnmodel.model_params
 import vcnmodel.util.readmodel as readmodel
 from ephys.ephysanalysis import RmTauAnalysis, SpikeAnalysis
 from lmfit import Model  # type: ignore
 from matplotlib import pyplot as mpl  # type: ignore
 from matplotlib import rc  # type: ignore
 from matplotlib import ticker
-from numba import jit  # type: ignore
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.plotting import styler as PLS
 from pylibrary.tools import cprint as CP
-from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
+from pyqtgraph.Qt import QtGui
 from rich.console import Console
-from rich.text import Text
-from vcnmodel import cell_config as cell_config
-from vcnmodel.analyzers import analysis as SPKANA
-from vcnmodel.analyzers import analyze_data
+import vcnmodel.cell_config as cell_config
+
 from vcnmodel.analyzers import reverse_correlation as REVCORR
 from vcnmodel.analyzers import sac as SAC
 from vcnmodel.analyzers import vector_strength as VS
-from vcnmodel.analyzers.reverse_correlation import RevCorrData, RevCorrPars
 from vcnmodel.util import fixpicklemodule as FPM
 from vcnmodel.util import trace_calls
 
@@ -236,15 +223,6 @@ def norm(p: Union[list, np.ndarray], n: int) -> np.ndarray:
     pmax = np.max(p)
     return (p[n] - pmin) / float(pmax - pmin)
 
-
-def get_changetimestamp():
-    # trip filemode based on date of simulatoin
-    changedate = "2020-04-29-12:00"
-    dts = datetime.datetime.strptime(changedate, "%Y-%m-%d-%H:%M")
-    changetimestamp = datetime.datetime.timestamp(dts)
-    return changetimestamp
-
-
 def boltzI(x, gmax, vhalf, k, E):
     return gmax * (x - E) * (1.0 / (1.0 + np.exp(-(x - vhalf) / k)))
 
@@ -414,7 +392,6 @@ class PlotSims:
         xmax: Union[float, None] = None,
         yoffset: float = 0.0,
         iax: Union[int, None] = None,
-        nax: Union[int, None] = None,
         rep: Union[int, list, None] = None,  # which rep : none is for all.
         figure: object = None,
         show_title: bool = True,
@@ -433,6 +410,7 @@ class PlotSims:
         caly2: Union[float, None] = 20.0,
         calt2: Union[float, None] = 10.0,
         calv2: Union[float, None] = 10.0,
+        clipping: bool=False,
         axis_index: int = 0,  # index for axes, to prevent replotting text
     ) -> tuple:
         """Plot traces in a generaly way
@@ -459,8 +437,6 @@ class PlotSims:
             Value to offset Y by with an axis (for stacked traces), by default 0.0
         iax : Union[int, None], optional
             axis number, by default None
-        nax : Union[int, None], optional
-            number of axes (not used), by default None
         rep : Union[int, list, None], optional
             repetition, by default None
         show_title : bool, optional
@@ -505,11 +481,7 @@ class PlotSims:
             noutspikes : number of spikes from the cell
             ninspikes : number of input spikes to the cell
         """        
-        changetimestamp = get_changetimestamp()
-        mtime = Path(fn).stat().st_mtime
-        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
-            "%Y-%m-%d-%H:%M"
-        )
+
         inx = str(fn).find("_Syn")
         synno = None
         if inx > 0:
@@ -519,14 +491,17 @@ class PlotSims:
         elif protocol in ["VC", "runVC"]:
             protocol = "VC"
 
-        d, AR, SP, RM, RCP, RCD = self.ReadModel.get_data(
-            fn, PD=PD, changetimestamp=changetimestamp, protocol=protocol
+        model_data = self.ReadModel.get_data(
+            fn, PD=PD, protocol=protocol
         )
-        si = d["Params"]
-        ri = d["runInfo"]
+        data = model_data.data
+        si = model_data.SI
+        ri = model_data.RI
         if figure is None:  # no figure... just analysis...
-            return AR, SP, RM
-
+            return model_data.AR, model_data.SP, model_data.RM
+        AR = model_data.AR
+        SP = model_data.SP
+        RM = model_data.RM
         cprint("c", "plot_traces: preparing for plot")
         ntr = len(AR.MC.traces)  # number of trials
         v0 = -160.0
@@ -559,7 +534,7 @@ class PlotSims:
         elif not hasattr("ax", "len"):
             ax1 = ax
             ax2 = None
-        for trial, icurr in enumerate(d["Results"]):
+        for trial, icurr in enumerate(data["Results"]):
             if rep is not None and trial != rep:
                 continue
             # cprint('c', f"trial: {trial:d}")
@@ -579,16 +554,16 @@ class PlotSims:
                 linestyle="-",
                 color=trace_color,
                 linewidth=0.5,
-                clip_on=False,
+                clip_on=clipping,
             )
             if ax2 is not None:
                 ax2.plot(AR.MC.time_base[xclip], cmd, linewidth=0.5)
-            if "spikeTimes" in list(d["Results"][icurr].keys()):
+            if "spikeTimes" in list(data["Results"][icurr].keys()):
                 # cprint('r', 'spiketimes from results')
-                # print(d["Results"][icurr]["spikeTimes"])
+                # print(data["Results"][icurr]["spikeTimes"])
                 #  print(si.dtIC)
                 spikeindex = [
-                    int(t * 1e3 / (si.dtIC)) for t in d["Results"][icurr]["spikeTimes"]
+                    int(t * 1e3 / (si.dtIC)) for t in data["Results"][icurr]["spikeTimes"]
                 ]
             else:
                 # cprint('r', 'spikes from SP.spikeIndices')
@@ -616,12 +591,12 @@ class PlotSims:
                 ispikethr = trial
             noutspikes += nspk_in_trial
             if protocol in ["AN", "runANSingles"]:
-                if trial in list(d["Results"].keys()) and "inputSpikeTimes" in list(
-                    d["Results"][icurr].keys()
+                if trial in list(data["Results"].keys()) and "inputSpikeTimes" in list(
+                    data["Results"][icurr].keys()
                 ):
-                    spkt = d["Results"][icurr]["inputSpikeTimes"]
-                elif "inputSpikeTimes" in list(d["Results"].keys()):
-                    spkt = d["Results"]["inputSpikeTimes"][trial]
+                    spkt = data["Results"][icurr]["inputSpikeTimes"]
+                elif "inputSpikeTimes" in list(data["Results"].keys()):
+                    spkt = data["Results"]["inputSpikeTimes"][trial]
                 tr_y = trial * (trstep + len(spkt) * inpstep)
                 if synno is None:
                     for ian in range(len(spkt)):
@@ -785,8 +760,9 @@ class PlotSims:
                 )
             else:
                 PH.noaxes(ax)
-        if RM.analysis_summary is not None:
-            PH.referenceline(ax, RM.analysis_summary["RMP"])
+            print(RM)
+            if RM.analysis_summary is not None:
+                PH.referenceline(ax, RM.analysis_summary["RMP"])
             ax.text(
                 -1.0,
                 RM.analysis_summary["RMP"],
@@ -795,7 +771,7 @@ class PlotSims:
                 horizontalalignment="right",
                 fontsize=9,
             )
-        toptitle += f"\n{timestamp_str:s}"
+        toptitle += f"\n{model_data.timestamp:s}"
         if show_title:
             figure.suptitle(toptitle, fontsize=9)
 
@@ -855,8 +831,10 @@ class PlotSims:
                 calt2=10.0,
                 calv2=20.0,
                 figure=P.figure_handle,
+                clipping=True,
             )
             trace_ax.set_ylim((-1, 15))
+            trace_ax.set_clip_on(True)
             self.analyzeVC(P.axarr[i * 3 + 2, 0], sfi[i], PD, protocol=protocol[i])
             trace_ax.text(
                 0.5,
@@ -939,12 +917,6 @@ class PlotSims:
         PD: dataclass,
         protocol: str,
     ) -> tuple:
-        changetimestamp = get_changetimestamp()
-        # x = self.ReadModel_file(fn, changetimestamp, PD)
-        mtime = Path(fn).stat().st_mtime
-        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
-            "%Y-%m-%d-%H:%M"
-        )
         # if x is None:
         #     self.textappend("No simulation found that matched conditions", color="red")
         #     self.textappend(fn, color="red")
@@ -957,10 +929,12 @@ class PlotSims:
         if protocol in ["VC", "runVC"]:
             protocol = "VC"
         self.textappend(f"Protocol: {protocol:s}")
-        res = self.ReadModel.get_data(fn, PD=PD, changetimestamp=changetimestamp, protocol=protocol)
-        if res is None:
+        model_data = self.ReadModel.get_data(fn, PD=PD, protocol=protocol)
+        if not model_data.success:
             return None
-        (d, AR, SP, RM, RCP, RCD) = res
+        data = model_data.data
+        AR = model_data.AR
+
         tss = [0, 0]
         sr = AR.MC.sample_rate[0]
         tss[0] = int(
@@ -1007,10 +981,12 @@ class PlotSims:
         weights_sel = weights[d_index]
         vss_sel = vss[d_index]
         gss_sel = gss[d_index]
-        result = gmodel.fit(
+        boltz_result = gmodel.fit(
             gss_sel, method="nedler", params=gparams, x=vss_sel, weights=weights_sel
         )
-
+        boltz_x = np.linspace(np.min(vss_sel), np.max(vss_sel), 100, endpoint=True)
+        boltz_fit = gmodel.eval(params=boltz_result.params, x=boltz_x)
+        
         # capacitance transient. Use the single trace nearest to -70 mV for the fit.
         mHypStep = np.argmin(np.fabs(vss - (-0.090)))
         sr = AR.MC.sample_rate[mHypStep]
@@ -1079,14 +1055,15 @@ class PlotSims:
             f"Weighted: Rw={(R0w+R1w)*1e-6:.2f} tauw: {tauw*1e3:.3f} ms, Weighted cm: {cmw*1e12:.1f} pF"
         )
         tfit2 = AR.MC.time_base[t0 : t0 + pts] - AR.MC.time_base[t0]
-        bfit = expmodel.eval(params=exp_result.params, x=tfit2)
+        expfit = expmodel.eval(params=exp_result.params, x=tfit2)
         # ax[0].plot(
         #     tfit2 + AR.MC.time_base[t0], bfit * 1e9, "r-", dashes=[6, 2], linewidth=1
         # )
         # ax[0].plot(tfit+AR.MC.time_base[t0], exp_result.best_fit*1e9, 'r-')
         # ax[0].plot(tfit+AR.MC.time_base[t0], ifit*1e9, 'g--')
+        
         ax.plot(vss_sel * 1e3, gss_sel * 1e9, "ko", markersize=2)
-        ax.plot(vss_sel * 1e3, result.best_fit * 1e9, "r-")
+        ax.plot(boltz_x * 1e3, boltz_fit * 1e9, "r-")
         ax.set_ylim(0, 100.0)
         ax.set_xlim(-100.0, 40.0)
         PH.talbotTicks(
@@ -1100,10 +1077,10 @@ class PlotSims:
         )
         # print('vhalf: ', result.params['vhalf'])
         textstr = r"g$_{max}$  = "
-        textstr += f"{result.params['gmax'].value*1e9:.1f} nS\n"
+        textstr += f"{boltz_result.params['gmax'].value*1e9:.1f} nS\n"
         textstr += r"$V_{0.5}$  = "
-        textstr += f"{result.params['vhalf'].value*1e3:.1f} mV\n"
-        textstr += f"k  = {1e3*result.params['k'].value:.1f}\n"
+        textstr += f"{boltz_result.params['vhalf'].value*1e3:.1f} mV\n"
+        textstr += f"k  = {1e3*boltz_result.params['k'].value:.1f}\n"
         textstr += f"Cm = {cm*1e12:.1f} pF\n"
         textstr += r"$tau_{0}$ = "
         textstr += f"{tau*1e3:.3f} ms"
@@ -1130,17 +1107,12 @@ class PlotSims:
         runProtocol: Union[str, None] = None,
     ):
         movie = False
-        changetimestamp = get_changetimestamp()
-        x = self.ReadModel.get_data_file(filename, PD=PD, changetimestamp=changetimestamp)
-        mtime = Path(filename).stat().st_mtime
-        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
-            "%Y-%m-%d-%H:%M"
-        )
-        if x is None:
+        model_data = self.ReadModel.get_data_file(filename, PD=PD)
+        if not model_data.success:
             print("No simulation found that matched conditions")
             print(filename)
             return
-        # unpack x
+
         inx = str(filename).find("_Syn")
         synno = None
         if inx > 0:
@@ -1149,8 +1121,10 @@ class PlotSims:
             runProtocol = "IV"
         elif runProtocol in ["VC", "runVC"]:
             runProtocol = "VC"
-        par, stitle, ivdatafile, filemode, d = x
-        AR, SP, RM = analyze_data.analyze_data(ivdatafile, filemode, runProtocol)
+        # par, stitle, ivdatafile, filemode, d = x
+        AR = model_data.AR
+        RM = model_data.RM
+        SP = model_data.SP
 
         self.ntr = len(AR.MC.traces)  # number of trials
         self.pwin = None
@@ -1346,6 +1320,7 @@ class PlotSims:
         self,
         P: object,
         PD: dataclass,
+        MD: dataclass,
         RCP: dataclass,
         RCD: dataclass,
         axarray=None,
@@ -1385,8 +1360,8 @@ class PlotSims:
         colors = [None] * RCP.ninputs
         linehandles = [None] * RCP.ninputs
         cmx = sns.color_palette(colormap, as_cmap=True)
-
-        cell_n = int(RCP.si.cellID[-2:])
+ 
+        cell_n = int(MD.SI.cellID[-2:])
         SC, syninfo = self.get_synaptic_info(cell_n)
         syn_ASA = np.array([syninfo[1][isite][0] for isite in range(RCP.ninputs)])
         max_ASA = np.max(syn_ASA)
@@ -1704,7 +1679,6 @@ class PlotSims:
         PD: object = None,
         protocol: str = "",
         revcorrtype: str = "RevcorrSPKS",
-        thr: float = -20.0,
         width: float = 4.0,
     ) -> Union[None, tuple]:
         """
@@ -1726,9 +1700,6 @@ class PlotSims:
         revcorrtype: str
             revcorr algorithm to use. The only valid (tested)
             protocol is RevcorrSPKS
-        thr : float
-            spike detection threshold, in mV (this is ignored
-            if spikes are detected using the Hight and Kalluri method)
         width : width of the revcorr calculation, in msec.
 
         Returns
@@ -1736,21 +1707,19 @@ class PlotSims:
         RCP: updated parameters with results.
         RCD: updated data structure with results.
         """
-        changetimestamp = get_changetimestamp()
+     
         self.allspikes = None
         #
         # 1. Gather data
         #
         print(f"    compute_revcorr  Getting data for gbc: {gbc:s}")
-        res = self.ReadModel.get_data(fn, PD=PD, changetimestamp=changetimestamp, protocol=protocol)
-        if res is None:
+        MD = self.ReadModel.get_data(fn, PD=PD, protocol=protocol)
+        if not MD.success:
             return None
-        (d, AR, SP, RM, RCP, RCD) = res
+        # (d, AR, SP, RM, RCP, RCD) = res
         PD.thiscell = gbc
-        si = d["Params"]
-        ri = d["runInfo"]
-        RCP.si = si
-        RCP.ri = ri
+        RCP = MD.RCP
+        RCD = MD.RCD
         RCP.algorithm = revcorrtype
         SC, syninfo = self.get_synaptic_info(gbc)
 
@@ -1769,21 +1738,21 @@ class PlotSims:
          2. set up parameters
         """
 
-        if isinstance(RCP.si, dict):
+        if isinstance(MD.SI, dict):
             min_time = (
-                RCP.si["pip_start"] + 0.025
+                MD.SI["pip_start"] + 0.025
             ) * 1000.0  # push onset out of the way
-            max_time = (RCP.si["pip_start"] + RCP.si["pip_duration"]) * 1000.0
-            F0 = RCP.si["F0"]
-            dB = (RCP.si["dB"],)
+            max_time = (MD.SI["pip_start"] + MD.SI["pip_duration"]) * 1000.0
+            F0 = MD.SI["F0"]
+            dB = (MD.SI["dB"],)
         else:
-            if isinstance(RCP.ri.pip_start, list):
-                start = RCP.ri.pip_start[0]
+            if isinstance(MD.RI.pip_start, list):
+                start = MD.RI.pip_start[0]
             else:
-                start = RCP.ri.pip_start
+                start = MD.RI.pip_start
             min_time = (start + 0.025) * 1000.0
-            max_time = (start + RCP.ri.pip_duration) * 1000.0
-        expt = RCP.ri.Spirou
+            max_time = (start + MD.RI.pip_duration) * 1000.0
+        expt = MD.RI.Spirou
         print("    compute_revcorr experiment type: ", expt)
 
         RCD.sv_trials = []
@@ -1812,21 +1781,19 @@ class PlotSims:
             RCD.STTC[isite] = np.zeros(ncpts)
 
         """
-        4. Do the calculatoins.
+        4. Do the calculations.
         """
-        RCP, RCD = REVCORR.revcorr(d, AR, RCP, RCD, nbins, revcorrtype)
-        RCP, RCD, self.allspikes = REVCORR.pairwise(
-            d, AR, RCP, RCD
-        )  # get the pairwise data as well
-        if P is None:  # nothing to plot
-            return P, PD, RCP, RCD
-        else:
-            self.plot_revcorr_details(P, PD, RCP, RCD)
+        print(RCP)
+        print(MD.RCP)
+        MD2 = REVCORR.revcorr(MD, nbins, revcorrtype)
+        RCP, RCD, self.allspikes = REVCORR.pairwise(MD) # get the pairwise data as well
+        if P is not None:
+            self.plot_revcorr_details(P, PD, MD2, RCP, RCD)
         return P, PD, RCP, RCD
 
-    def plot_revcorr_details(self, P, PD, RCP, RCD):
+    def plot_revcorr_details(self, P, PD, MD, RCP, RCD):
         ax = P.axdict["B"]
-        summarySiteTC = self.plot_revcorr2(P, PD, RCP, RCD)
+        summarySiteTC = self.plot_revcorr2(P, PD, MD, RCP, RCD)
 
         # ax.set_title(
         #     f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}" +
@@ -1942,9 +1909,9 @@ class PlotSims:
             colorbar=colorbar,  # use the colorbar tick settings instead
         )
         P.figure_handle.suptitle(
-            f"Cell {PD.thiscell:s} {str(RCP.si.shortSimulationFilename):s}\n[{RCP.ri.runTime:s}] dB:{RCP.ri.dB:.1f} Prot: {RCP.ri.runProtocol:s}"
-            + f"\nExpt: {RCP.ri.Spirou:s}  DendMode: {RCP.si.dendriteMode:s} DendExpt: {RCP.si.dendriteExpt:s}"
-            + f"\nDepr: {RCP.si.ANSynapticDepression:d} ANInput: {RCP.si.SRType:s}",
+            f"Cell {PD.thiscell:s} {str(MD.SI.shortSimulationFilename):s}\n[{MD.RI.runTime:s}] dB:{MD.RI.dB:.1f} Prot: {MD.RI.runProtocol:s}"
+            + f"\nExpt: {MD.RI.Spirou:s}  DendMode: {MD.SI.dendriteMode:s} DendExpt: {MD.SI.dendriteExpt:s}"
+            + f"\nDepr: {MD.SI.ANSynapticDepression:d} ANInput: {MD.SI.SRType:s}",
             fontsize=11,
         )
         mpl.show()
@@ -1975,8 +1942,7 @@ class PlotSims:
 
         PD = self.newPData()
         sfi = sorted(selected.files)
-        changetimestamp = get_changetimestamp()
-
+ 
         df = pd.DataFrame(
             index=np.arange(0, nfiles),
             columns=[
@@ -1999,18 +1965,17 @@ class PlotSims:
                 iax=i,
                 figure=P.figure_handle,
             )
-            res = self.ReadModel.get_data(
+            model_data = self.ReadModel.get_data(
                 sfi[i],
                 PD=PD,
-                changetimestamp=changetimestamp,
                 protocol=selected.runProtocol,
             )
-            if res is None:
+            if not model_data.success:
                 return None
-            (d, AR, SP, RM, RCP, RCD) = res
+            
             PD.thiscell = self.parent.cellID
-            si = d["Params"]
-            ri = d["runInfo"]
+            si = model_data.SI
+            ri = model_data.RI
             try:
                 print("Ri: ", ri.SpirouSubs)
             except:
@@ -2051,7 +2016,6 @@ class PlotSims:
     @trace_calls.time_func
     def plot_tuning(self, args, filename=None, filenames=None):
         PD = self.newPData()
-        changetimestamp = get_changetimestamp()
         channel = "nacncoop"
         channel = "klt"
         cols = 3
@@ -2223,7 +2187,6 @@ class PlotSims:
         )
         PD = self.newPData()
         protocol = selected.runProtocol
-        changetimestamp = get_changetimestamp()
         sfi = sorted(selected.files)
         plot_win = [0.1, 1.0]
         plot_dur = np.fabs(np.diff(plot_win))
@@ -2241,20 +2204,19 @@ class PlotSims:
 
             print(f"Getting data for gbc: {gbc:s}")
             SC, syninfo = self.get_synaptic_info(gbc)
-            mtime = Path(fn).stat().st_mtime
-            timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
-                "%Y-%m-%d-%H:%M"
-            )
-
-            changetimestamp = get_changetimestamp()
-
-            res = self.ReadModel.get_data(fn, PD=PD, changetimestamp=changetimestamp, protocol=protocol)
-            if res is None:
+ 
+            model_data = self.ReadModel.get_data(fn, PD=PD, protocol=protocol)
+            if not model_data.success:
                 return None
-            (d, AR, SP, RM, RCP, RCD) = res
+            data = model_data.data
+            AR = model_data.AR
+            SP = model_data.SP
+            RM = model_data.RM
+            RCP = model_data.RCP
+            RCD = model_data.RCD
             PD.thiscell = gbc
-            si = d["Params"]
-            ri = d["runInfo"]
+            si = model_data.SI
+            ri = model_data.RI
             RCP.si = si
             RCP.ri = ri
             (
@@ -2278,7 +2240,7 @@ class PlotSims:
             ntr = len(AR.MC.traces)  # number of trials
             for i in range(ntr):  # for all trials in the measure.
                 time_base = AR.MC.time_base / 1000.0  # convert to seconds
-                trd = d["Results"][i]
+                trd = data["Results"][i]
                 dt = si.dtIC / 1000.0  # convert from msec to seconds
                 idx = (int(plot_win[0] / dt), int(plot_win[1] / dt))
                 if i == 0:
@@ -2469,20 +2431,16 @@ class PlotSims:
             plotflag = False
         else:
             plotflag = True
-        changetimestamp = get_changetimestamp()
-        mtime = Path(fn).stat().st_mtime
-        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
-            "%Y-%m-%d-%H:%M"
-        )
-        d, AR, SP, RM, RCP, RCD = self.ReadModel.get_data(fn, PD, changetimestamp, protocol)
-
+        model_data = self.ReadModel.get_data(fn, PD, protocol)
+        AR = model_data.AR
+        data = model_data.data
         ntr = len(AR.MC.traces)  # number of trials
         v0 = -160.0
         trstep = 25.0 / ntr
         inpstep = 5.0 / ntr
         sz = 50.0 / ntr
-        si = d["Params"]
-        ri = d["runInfo"]
+        si = model_data.SI
+        ri = model_data.RI
         (
             totaldur,
             soundtype,
@@ -2510,7 +2468,6 @@ class PlotSims:
 
         # We must get the units correct here.
         # AR time_base is in milliseconds, so convert to seconds
-        ntr = len(AR.MC.traces)
         all_an_st = []
         all_bu_st = []
         all_bu_st_trials = []
@@ -2525,7 +2482,7 @@ class PlotSims:
             vtrial = AR.MC.traces[i] * 1e3  # convert to mV
             time_base = AR.MC.time_base / 1000.0  # convert to seconds
             dt = si.dtIC / 1000.0  # convert from msec to seconds
-            trd = d["Results"][i]
+            trd = data["Results"][i]
             idx = (int(plot_win[0] / dt), int(plot_win[1] / dt))
             waveform.append(trd["stimWaveform"].tolist())
             stb = trd["stimTimebase"]  # convert to seconds
@@ -2629,7 +2586,7 @@ class PlotSims:
         ]  # accumulate all input spike times for each trial
 
         for i in range(ntr):  # for all trials in the measure.
-            trd = d["Results"][i]  # trial i data
+            trd = data["Results"][i]  # trial i data
             n_inputs = len(trd["inputSpikeTimes"])  # get AN spike time array (by input)
             if i == 0:
                 an_st_by_input = [[] for x in range(n_inputs)]

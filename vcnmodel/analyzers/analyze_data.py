@@ -9,8 +9,8 @@ RM = RmTauAnalysis.RmTauAnalysis()
 
 def analyze_data(
     ivdatafile: Union[Path, str],
-    filemode: str,
-    protocol: str,
+    filemode: str = "",
+    protocol: str = "",
     spike_shape=False,
 ) -> tuple:
     """

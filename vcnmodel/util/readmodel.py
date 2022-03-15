@@ -1,11 +1,9 @@
 import dataclasses
 import datetime
-import pickle
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Union
 
-import matplotlib
 import numpy as np
 import vcnmodel.model_params
 import vcnmodel.util.fixpicklemodule as FPM
@@ -20,6 +18,24 @@ from vcnmodel.util import trace_calls
 TRC = trace_calls.TraceCalls
 cprint = CP.cprint
 
+def defemptydict():
+    return {}
+
+@dataclass
+class ModelData:
+    success: bool = False
+    timestamp: str = ""  # a timestamp string
+    data: dict = field(
+        default_factory=defemptydict
+    )   # the basic model data
+    SI: object = None  # Params
+    RI: object = None  # runInfo
+    AR: object = None  # a readmodel instance
+    SP: object = None  # a spike analysis instance
+    RM: object = None  # a Rm, Tau instance (passive properties)
+    RCP: object = None  # RevCorr Pars
+    RCD: object = None  # RevCorr Data
+
 
 @dataclass
 class Inflate:
@@ -29,14 +45,15 @@ class Inflate:
 
 class ReadModel:
     """read model data files from two different formats, and put the
-    data into a standard format for analysis. The format is similar
+    data into a standard format for analysis. The format is very similar
     to that used by ephys ("AR")
 
     Returns
     -------
     None
 
-    """    
+    """
+
     def __init__(self, parent=None, my_parent=None):
         self.MC = MakeClamps.MakeClamps()
         self.parent = parent
@@ -55,13 +72,13 @@ class ReadModel:
         ValueError
             It is invalid to clear the display if there is
             no specified parent
-        """        
+        """
         if self.parent is None:
             raise ValueError("parent is None")
         else:
             self.parent.textbox.clear()
 
-    def textappend(self, text:str, color="white"):
+    def textappend(self, text: str, color="white"):
         """append text to the console or GUI
 
         Parameters
@@ -84,7 +101,6 @@ class ReadModel:
         filemode: str = "vcnmodel.v0",
         vscale: float = 1e-3,
         iscale: float = 1e-9,
-        plot=False,
     ):
         """
         Read a pickled file; optionally plot the data
@@ -92,13 +108,17 @@ class ReadModel:
 
         Parameters
         ----------
-        filename : str or Path
-            The file to be read
+        datasource : str/path/dict/None (default None)
+            where the data comes from
 
-        mode: str
-            version name
-        plot: Boolean (default: False)
-            Flag to specify plotting the data in a simple mode
+        filemode: str
+            version name for file structure. All contemporary ones are V1.0
+
+        vscale: scaling for voltage
+            float, default=1e-3
+        iscale: scaling for current
+            float, default=1e-9
+       
         """
 
         """
@@ -265,7 +285,7 @@ class ReadModel:
         self.MC.getClampData()
         return self
 
-    def _convert_params(self, d, fns, filemode):
+    def _convert_params(self, data, fns, filemode):
         """
         Capture the parameters in different versions of the files,
         and return as a simple dictionary.
@@ -275,13 +295,16 @@ class ReadModel:
         d : dict from the top level of the file
             Must have 'runInfo' and/or 'Params' as entries
 
+        fns: str filename
+            used to look for inflation information.
+
         filemode : str (no default)
             A string corresponding to the file mode for the file
             Must be either "vcnmodel.v0" or "vcnmodel.v1"
         """
         if filemode in ["vcnmodel.v0"]:
-            # print(d['runInfo'].keys())
-            par = d["runInfo"]
+            # print(data['runInfo'].keys())
+            par = data["runInfo"]
             par["soma_inflation"] = False
             par["dendrite_inflation"] = False
             if fns.find("soma=") > -1:
@@ -292,10 +315,10 @@ class ReadModel:
             par["dendrite_autoinflate"] = False
         elif filemode in ["vcnmodel.v1"]:
             try:
-                par = d["Params"]
+                par = data["Params"]
             except ValueError:
                 try:
-                    par = d["self.Params"]
+                    par = data["self.Params"]
                 except ValueError:
                     raise ValueError("File missing Params; need to re-run")
             if isinstance(par, vcnmodel.model_params.Params):
@@ -312,8 +335,9 @@ class ReadModel:
 
         Parameters
         ----------
+        fn : filename
         PD : Parameter Dataclass (no default)
-        par : parameter list.
+        par_in : parameter list.
         Returns
         -------
         string with the type of scaling applied to the data.
@@ -352,26 +376,33 @@ class ReadModel:
             stitle = "Bare Scaling"
         return "      " + stitle
 
+    def _get_changetimestamp(self):
+        # trip filemode based on date of simulation
+        changedate = "2020-04-29-12:00"
+        dts = datetime.datetime.strptime(changedate, "%Y-%m-%d-%H:%M")
+        changetimestamp = datetime.datetime.timestamp(dts)
+        return changetimestamp
+
     @TRC(show=False)
     def get_data_file(
         self,
         fn: Union[str, Path],
-        changetimestamp: object,
         PD: dataclass,
         verbose=False,
     ) -> Union[None, tuple]:
         """
         Get a data file, and also parse information from the file
-        for display,
+        for display.
+        This routine does not do any analysis.
 
         Parameters
         ----------
         fn : str or Path
             the file to read
-        changetimestamp : object
-            the timestamp associated with this file.
-        PD : dataclass
-
+        PD : Parameter Dataclass (no default)
+            holds information about scaling, passed to _get_scaling
+        verbose: bool
+            whether to print stuff to the terminal
         """
         fnp = Path(fn)
         fns = str(fn)
@@ -384,6 +415,7 @@ class ReadModel:
             else:
                 if verbose:
                     self.textappend(f"   File: {str(fnp):s} OK")
+        changetimestamp = self._get_changetimestamp()
         mtime = fnp.stat().st_mtime
         timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
             "%Y-%m-%d-%H:%M"
@@ -399,10 +431,10 @@ class ReadModel:
         if self.firstline and verbose:
             self.textappend(f"pgbcivr2: file mode: {filemode:s}")
         with (open(fnp, "rb")) as fh:
-            d = FPM.pickle_load(fh)
+            data = FPM.pickle_load(fh)
         if verbose:
             self.textappend(f"   ...File read, mode={filemode:s}")
-        par = self._convert_params(d, fns, filemode)
+        par = self._convert_params(data, fns, filemode)
         stitle = self._get_scaling(fn, PD, par)
 
         if verbose:
@@ -414,21 +446,42 @@ class ReadModel:
 
         if self.firstline and verbose:
             self.textappend(f"\npgbcivr2: datafile to read: {str(ivdatafile):s}")
-        if isinstance(d["Results"], dict):
-            if "time" in list(d["Results"].keys()):
-                d["Results"] = self._data_flip(d)
-        return par, stitle, ivdatafile, filemode, d
+        if isinstance(data["Results"], dict):
+            if "time" in list(data["Results"].keys()):
+                data["Results"] = self._data_flip(data)
+        return par, stitle, ivdatafile, filemode, data
 
     @TRC(show=False)
     def get_data(
-        self, fn: Union[Path, str], PD: dataclass, changetimestamp:object=None, protocol:str="",
-    ) -> Union[None, tuple]:
+        self,
+        fn: Union[Path, str],
+        PD: dataclass,
+        protocol: str = "",
+    ) -> dataclass:
+        """get the data from a particular file
 
-        X = self.get_data_file(fn, changetimestamp, PD)
+        Parameters
+        ----------
+        fn : Union[Path, str]
+            filename
+        PD : dataclass
+            Parameter Dataclass (no default) holds info about the file
+        protocol : str, optional
+            Protocol as a string name by default ""
+
+        Returns
+        -------
+        dataclass
+            model_data dataclass structure
+            model_data.success is True if the data has been read.
+        """
+        model_data = ModelData()  # create data structure for results
+
+        X = self.get_data_file(fn, PD=PD)
         if X is None:
             print("No simulation found that matched conditions")
             print("Looking for file: ", fn)
-            return None
+            return model_data  # success flag will be false
         # unpack x
         par, stitle, ivdatafile, filemode, d = X
         if "time" in list(d["Results"].keys()):
@@ -470,7 +523,21 @@ class ReadModel:
             np.max(RCD.ti) - RCP.min_time
         )  # this window needs to be at least as long as maxwin
         RCD.tx = np.arange(RCP.minwin, 0, RCP.binw)
-        return (d, AR, SP, RM, RCP, RCD)
+        mtime = Path(fn).stat().st_mtime
+        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
+            "%Y-%m-%d-%H:%M"
+        )
+        model_data.success = True
+        model_data.timestamp = timestamp_str
+        model_data.SI = d["Params"]
+        model_data.RI = d["runInfo"]
+        model_data.AR = AR
+        model_data.SP = SP
+        model_data.RM = RM
+        model_data.RCP = RCP
+        model_data.RCD = RCD
+        model_data.data = d
+        return model_data
 
     def _data_flip(self, d):
         """
@@ -516,5 +583,3 @@ class ReadModel:
             del data_res[key]  # but delete top level
         # print("_data_flip: ", data_res.keys())
         return data_res
-    
-    

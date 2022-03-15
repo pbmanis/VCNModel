@@ -11,7 +11,6 @@ import matplotlib
 import matplotlib.pyplot as mpl
 import numpy as np
 import pandas as pd
-import scipy.spatial
 import seaborn as sns
 import toml
 import vcnmodel.util.fixpicklemodule as FPM
@@ -20,8 +19,6 @@ from matplotlib import image as mpimg
 from matplotlib.lines import Line2D
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
-from rich.console import Console
-from rich.text import Text
 from vcnmodel.analyzers import analyze_data
 from vcnmodel.analyzers import isi_cv as ISI
 from vcnmodel.analyzers import sac as SAC
@@ -908,7 +905,6 @@ class Figures(object):
                 xmin=400.0,
                 xmax=900.0,
                 iax=n,
-                nax=len(fn),
                 rep=0,
                 figure=self.P_Eff_SingleInputs.figure_handle,
                 longtitle=True,
@@ -1035,7 +1031,7 @@ class Figures(object):
                     xmax=900.0,
                     yoffset=n * yoffset,
                     iax=n,
-                    nax=len(fn),
+                    # nax=len(fn),
                     rep=0,
                     figure=figure,
                     longtitle=True,
@@ -1047,7 +1043,7 @@ class Figures(object):
                     calx=calxv,
                     caly=calyv,
                     calt=50.0,
-                    calv=20.0,
+                    calv=calv,
                 )
                 axes[ic].annotate(
                     text=f"{n+1:d} ",
@@ -3025,7 +3021,6 @@ class Figures(object):
     def plot_one_CV(
         self,
         cell_number: int,
-        dbSPL: float,
         cv_win: Union[list, tuple] = (0.220, 0.3),
         reftime: float = 0.0,
         t_grace: float = 0.0,
@@ -3144,7 +3139,6 @@ class Figures(object):
             )
             self.plot_one_CV(
                 cell_number=cell_number,
-                dbSPL=dBSPL,
                 cv_win=(0.0, 0.100),
                 cv_ax=P.axarr[i, 3],
                 label_x_axis=show_label,
