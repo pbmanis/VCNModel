@@ -20,8 +20,9 @@ import toml
 
 def list_dirs():
     config = toml.load(open("wheres_my_data.toml", "r"))
-    print("Starting at top directory: ", config["baseDirectory"])
-    alldirs = sorted(list(Path(config["baseDirectory"]).glob("*")))
+
+    print("Starting at top directory: ", config["cellDataDirectory"])
+    alldirs = sorted(list(Path(config["cellDataDirectory"]).glob("*")))
     for d in alldirs:
         if d.is_dir():
             rootDir = Path(d, "Simulations/")

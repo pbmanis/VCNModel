@@ -1,26 +1,35 @@
+"""
+A simple module to allow tracking and timing of calls using decorators.
+
+"""
 import functools
 import sys
 import time
 from functools import wraps
 
-from rich.text import Text
 from rich.console import Console
-console = Console()
-"""
-A simple module to allow tracking and timing of calls using decorators.
+from rich.text import Text
 
-"""
+console = Console()
+
 
 class TraceCalls(object):
-    """ Use as a decorator on functions that should be traced. Several
-        functions can be decorated - they will all be indented according
-        to their call depth.
-        from: https://eli.thegreenplace.net/2012/08/22/easy-tracing-of-nested-function-calls-in-python
+    """Use as a decorator on functions that should be traced. Several
+    functions can be decorated - they will all be indented according to their
+    call depth. from:
+    https://eli.thegreenplace.net/2012/08/22/easy-tracing-of-nested-function-calls-in-python
     """
+
     cur_indent = 0  # define as a class attribute
+
     def __init__(
-        self, stream=sys.stdout, indent_step=2, show_args=False, show_ret=False,
-                show=True):
+        self,
+        stream=sys.stdout,
+        indent_step=2,
+        show_args=False,
+        show_ret=False,
+        show=True,
+    ):
         self.stream = stream
         self.indent_step = indent_step
         self.show_ret = show_ret
@@ -84,8 +93,8 @@ def winprint(func):
 
 def winprint_continuous(func):
     """
-    Wrapper decorator for functions that print to the text area
-    DOES NOT clear the print area first,
+    Wrapper decorator for functions that print to the text area DOES NOT clear
+    the print area first,
     """
 
     @functools.wraps(func)
@@ -101,9 +110,8 @@ def winprint_continuous(func):
 
 def time_func(func):
     """
-    Decorator to ime functions.
-    Place inside (after) winprint if using
-    Output is to terminal.
+    Decorator to ime functions. Place inside (after) winprint if using Output is
+    to terminal.
     """
 
     @functools.wraps(func)

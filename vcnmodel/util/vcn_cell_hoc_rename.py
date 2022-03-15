@@ -1,5 +1,6 @@
 """
-copy the ORIGINAL VCN hoc files to a new name only if the new name does not already exist (prevent overwrite)
+utility to copy the ORIGINAL VCN hoc files to a new name only if the new name
+does not already exist (prevent overwrite)
 
 """
 

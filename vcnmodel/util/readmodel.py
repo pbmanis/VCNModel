@@ -1,3 +1,10 @@
+"""
+Provide tools to read the model data files. All reading should be done through
+this module, as it handles different formats, and retuns a uniform "ModelData"
+data structure
+
+"""
+    
 import dataclasses
 import datetime
 from dataclasses import dataclass, field

@@ -1,7 +1,6 @@
 """
-Display the hoc files with pyqtgraph,
-This is a command-line tool. See the --help message for details
-on the commands.
+Display the hoc files with pyqtgraph, This is a command-line tool. See the
+--help message for details on the commands.
 """
 __author__ = "pbmanis"
 import argparse
@@ -20,10 +19,10 @@ from neuronvis.hoc_viewer import HocViewer
 from pylibrary.tools import cprint as CP
 
 """
-States sets up the display orientation for each cell for an initial view These
-values can be obtained by running render celln Full vispy when you rotate or
-move the cell, the new dict of the position state will be printed. Just copy it
-into this dict to save it.
+The states dictionary sets up the display orientation for each cell for an
+initial view These values can be obtained by running render celln Full vispy
+when you rotate or move the cell, the new dict of the position state will be
+printed. Just copy it into this dict to save it.
 """
 states = {
     2: {

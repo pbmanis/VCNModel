@@ -11,6 +11,8 @@ VCN_c18 = [ [(216.66), 0., 2, np.nan, np.nan, 49.2, 1.222, 'e' ],
 
 Copy the output and paste it into syn_config.py 
 
+This code is probably obselete.
+
 """
 from __future__ import print_function
 

@@ -1,10 +1,13 @@
 """
 Render reconstructions and place them into a 3-D space
 
+Warning: This is currently broken!
+
 """
 import argparse
 import sys
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -42,7 +45,7 @@ def showswc():
         "-n",
         dest="cellnames",
         type=str,
-        default="None",
+        default="",
         nargs="+",
         help="Specificy a single cell name when plotting",
     )
@@ -65,7 +68,7 @@ def showswc():
         "-f",
         "--file",
         type=str,
-        default="None",
+        default="",
         help="just display the specified file in the SWC dataset",
     )
 
@@ -73,7 +76,7 @@ def showswc():
         "-F",
         "--FILENAME",
         type=str,
-        default="None",
+        default="",
         dest="filename",
         help="just display the specified file on the path",
     )
@@ -117,7 +120,8 @@ def showswc():
         h.topology()
         exit()
 
-    if args.file is not "None":
+    if len(args.file) > 0:
+        print("file: ", args.file)
         f = Path(basedir, args.file)
 
         renderer = "mayavi"
@@ -151,12 +155,13 @@ def showswc():
         mlab.show()
         exit()
 
-    if args.filename is not "None":
+    if len(args.filename) > 0:
         f = Path(args.file)
 
         renderer = "mayavi"
         print("args.filename: ")
         fighandle = mlab.figure(bgcolor=(0, 0, 0), fgcolor=(1, 1, 1), size=(800, 800))
+        print("filename: ", args.filename)
         HR.Render(
             display_mode="cylinders",
             display_renderer=renderer,
@@ -262,13 +267,14 @@ def showswc():
         allfiles.extend(morphfiles_nc)
 
     if "s" in mode:  # get SWCs to plot
-        dataPath = Path(config["cellMrophologyDirectory"], "ASA", "CellBodySWCs")
+        print(config)
+        dataPath = Path(config["baseMorphologyDirectory"], "ASA", "CellBodySWCs")
         morphfiles_swc = list(dataPath.glob("*.hoc"))
         allfiles.extend(morphfiles_swc)
 
     if "x" in mode:  # get translated SWCs to plot
         dataPath = Path(
-            config["cellMrophologyDirectory"], "VCNModel", "ASA", "CellBodySWCs"
+            config["baseMorphologyDirectory"], "VCNModel", "ASA", "CellBodySWCs"
         )
         morphfiles_swc = list(dataPath.glob("*_translated.hoc"))
         allfiles.extend(morphfiles_swc)
