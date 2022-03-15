@@ -760,17 +760,17 @@ class PlotSims:
                 )
             else:
                 PH.noaxes(ax)
-            print(RM)
-            if RM.analysis_summary is not None:
-                PH.referenceline(ax, RM.analysis_summary["RMP"])
-            ax.text(
-                -1.0,
-                RM.analysis_summary["RMP"],
-                f"{RM.analysis_summary['RMP']:.1f}",
-                verticalalignment="center",
-                horizontalalignment="right",
-                fontsize=9,
-            )
+            if protocol in ["IV"]:  # only valid for an IV
+                if RM.analysis_summary is not None:
+                    PH.referenceline(ax, RM.analysis_summary["RMP"])
+                ax.text(
+                    -1.0,
+                    RM.analysis_summary["RMP"],
+                    f"{RM.analysis_summary['RMP']:.1f}",
+                    verticalalignment="center",
+                    horizontalalignment="right",
+                    fontsize=9,
+                )
         toptitle += f"\n{model_data.timestamp:s}"
         if show_title:
             figure.suptitle(toptitle, fontsize=9)
@@ -1320,7 +1320,6 @@ class PlotSims:
         self,
         P: object,
         PD: dataclass,
-        MD: dataclass,
         RCP: dataclass,
         RCD: dataclass,
         axarray=None,
@@ -1361,7 +1360,7 @@ class PlotSims:
         linehandles = [None] * RCP.ninputs
         cmx = sns.color_palette(colormap, as_cmap=True)
  
-        cell_n = int(MD.SI.cellID[-2:])
+        cell_n = int(RCP.si.cellID[-2:])
         SC, syninfo = self.get_synaptic_info(cell_n)
         syn_ASA = np.array([syninfo[1][isite][0] for isite in range(RCP.ninputs)])
         max_ASA = np.max(syn_ASA)
@@ -1793,7 +1792,7 @@ class PlotSims:
 
     def plot_revcorr_details(self, P, PD, MD, RCP, RCD):
         ax = P.axdict["B"]
-        summarySiteTC = self.plot_revcorr2(P, PD, MD, RCP, RCD)
+        summarySiteTC = self.plot_revcorr2(P, PD, RCP, RCD)
 
         # ax.set_title(
         #     f"Cell {gbc:s} {str(si.shortSimulationFilename):s}\n[{ri.runTime:s}] dB:{ri.dB:.1f} Prot: {ri.runProtocol:s}" +
