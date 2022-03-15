@@ -1,9 +1,8 @@
 """
-Compute mean input rates for each cell based on the
-revcorr data sets
+Compute mean input rates for each cell based on the revcorr data sets
 """
 from pathlib import Path
-from vcnmodel.util import fixpicklemodule as FPM
+
 import pickle
 
 def get_rates():

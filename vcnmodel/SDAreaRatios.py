@@ -5,9 +5,7 @@ import sys
 import numpy as np
 from pathlib import Path
 from collections import OrderedDict
-import pyqtgraph as pg
 from cnmodel import cells
-from cnmodel.decorator import Decorator
 import adjust_areas
 import toml
 
@@ -50,7 +48,6 @@ def area(fn):
     filename = fn.name
     post_cell = cells.Bushy.create(
         morphology=str(fn),
-        # decorator=Decorator,
         species="mouse",
         modelType="II",
         modelName="XM13",

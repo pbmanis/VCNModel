@@ -7,16 +7,17 @@ import matplotlib
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from lmfit import Model
 import matplotlib.pyplot as mpl
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
+
 # from pylibrary.plotting import styler as STY
 from scipy import stats
 from sklearn.cluster import KMeans
 from sklearn.cluster import AgglomerativeClustering
 import sklearn.metrics as metrics
 from sklearn import preprocessing
+
 # from sklearn.datasets import make_blobs
 
 matplotlib.rcParams["mathtext.fontset"] = "stixsans"
@@ -26,23 +27,27 @@ cprint = CP.cprint
 """
 Plot the efficacy data into an axis
 
-data_original is an old efficacy measurement data set
-plots appeared in some posters. In the original table, cells 2 and 5 have their original reconstructed axons. From runs
-done in 2020.
+data_original is an old efficacy measurement data set plots appeared in some
+posters. In the original table, cells 2 and 5 have their original reconstructed
+axons. From runs done in 2020.
 
-This is superseeded by the dataFull and dataNoDend tables below, from later sets of runs
-where cells 2 and 5 have their "standardized" axons (mean axons/ais/ah) as the axon reconstructions are incomplete.
-All data are from 30 dB SPL stimuli
+This is superseeded by the dataFull and dataNoDend tables below, from later sets
+of runs where cells 2 and 5 have their "standardized" axons (mean axons/ais/ah)
+as the axon reconstructions are incomplete. All data are from 30 dB SPL stimuli
 
-The second set of runs were done on 8/2/2021, runANSingles, Full/NoDend, 1 sec, 5 reps, no depression 
-The table for the efficacy is printed out when the dataset is selected in DataTablesVCN,
-and the 'Singles' analysis is run. The analysis displays the spikes, as well as printing the table in a format
-suitable for pasting into this file
+The second set of runs were done on 8/2/2021, runANSingles, Full/NoDend, 1 sec,
+5 reps, no depression The table for the efficacy is printed out when the dataset
+is selected in DataTablesVCN, and the 'Singles' analysis is run. The analysis
+displays the spikes, as well as printing the table in a format suitable for
+pasting into this file
 
 There are a number of routines in here:
 
-1. eff_ais plots the efficacy versis measured AIS length and against dendritic areas
-2. 
+1. eff_ais plots the efficacy versis measured AIS length and against dendritic
+   areas
+2. Individual fits
+3. clustering to test efficacy groups
+
 """
 
 # data_original = """
@@ -360,6 +365,7 @@ None
 --------------------------------------------------------------------------------
 """
 
+
 def eff_ais(data):
     dataset = data
     eff_ais = np.zeros((10, 2))
@@ -379,21 +385,21 @@ def eff_ais(data):
             df.at[x.index, "DendArea"] = DendAreas[f"{ident:02d}"]
     df0 = df[df["syn#"].values == 0]
     print(df0)
-    
+
     fig = mpl.figure(figsize=(5, 8))
     axd = fig.subplot_mosaic(
         """
         A
         B
         """,
-    gridspec_kw={
-        "bottom": 0.1,
-        "top": 0.9,
-        "left": 0.15,
-        "right": 0.85,
-        "wspace": 0.05,
-        "hspace": 0.8,
-    },
+        gridspec_kw={
+            "bottom": 0.1,
+            "top": 0.9,
+            "left": 0.15,
+            "right": 0.85,
+            "wspace": 0.05,
+            "hspace": 0.8,
+        },
     )
     slope, intercept, r_value, p_value, std_err = stats.linregress(
         df0["DendArea"], df0["Eff"]
@@ -413,16 +419,30 @@ def eff_ais(data):
     ya = xa * slopea + intercepta
     axd["A"].set_clip_on(False)
     pa = sns.scatterplot(
-        x="DendArea", y="Eff", hue="Cell", data=df0, palette="tab10", ax=axd["A"],
-        s=32, clip_on=False,
+        x="DendArea",
+        y="Eff",
+        hue="Cell",
+        data=df0,
+        palette="tab10",
+        ax=axd["A"],
+        s=32,
+        clip_on=False,
     )
-    mpl.setp(axd["A"].get_legend().get_texts(), fontsize='11') # for legend text
+    mpl.setp(axd["A"].get_legend().get_texts(), fontsize="11")  # for legend text
     axd["A"].legend(labelspacing=0.35)
     axd["A"].set_xlabel(r"Dendrite area (${\mu m^2}$)")
     axd["A"].set_ylabel("Efficacy")
     axd["A"].set_xlim(3000, 4800)
     axd["A"].set_ylim(0, 1.0)
-    axd["A"].text(-0.05, 1.05, "A", fontsize=13, fontweight="bold", fontfamily="sans-serif", transform=axd["A"].transAxes)
+    axd["A"].text(
+        -0.05,
+        1.05,
+        "A",
+        fontsize=13,
+        fontweight="bold",
+        fontfamily="sans-serif",
+        transform=axd["A"].transAxes,
+    )
     PH.nice_plot(axd["A"], position=-0.02, direction="outward")
 
     PH.talbotTicks(
@@ -437,11 +457,26 @@ def eff_ais(data):
     axd["A"].plot(x, y, color="k", linewidth=0.5)
 
     axd["B"].set_clip_on(False)
-    axd["B"].text(-0.05, 1.05, "B", fontsize=13, fontweight="bold", fontfamily="sans-serif", transform=axd["B"].transAxes)
-    
+    axd["B"].text(
+        -0.05,
+        1.05,
+        "B",
+        fontsize=13,
+        fontweight="bold",
+        fontfamily="sans-serif",
+        transform=axd["B"].transAxes,
+    )
+
     pb = sns.scatterplot(
-        x="AIS", y="Eff", hue="Cell", data=df0, palette="tab10", ax=axd["B"],
-        legend=False, s=32, clip_on=False
+        x="AIS",
+        y="Eff",
+        hue="Cell",
+        data=df0,
+        palette="tab10",
+        ax=axd["B"],
+        legend=False,
+        s=32,
+        clip_on=False,
     )
     axd["B"].set_xlabel(r"AIS length (${\mu m}$)")
     axd["B"].set_ylabel("Efficacy")
@@ -485,10 +520,11 @@ def boltz_resid(p, x, data):
 
 
 def hill(x, A, vhalf, k):
-    return( A * (1.0/(1.0 + np.power(vhalf/x, k))))
+    return A * (1.0 / (1.0 + np.power(vhalf / x, k)))
+
 
 def hill_resid(p, x, data):
-    return( p["A"] * (1.0/(1.0 + np.power(p["vhalf"]/x, p["k"]))))
+    return p["A"] * (1.0 / (1.0 + np.power(p["vhalf"] / x, p["k"])))
 
 
 class EfficacyPlots(object):
@@ -501,11 +537,11 @@ class EfficacyPlots(object):
         self,
         datasetname: str,
         datasetname_added: Union[str, None] = None,
-        ax: object= None,
+        ax: object = None,
         loc: tuple = (0.0, 0.0, 0.0, 0.0),
-        figuremode:str="full",
-        clean:bool=False,
-        clip_on:bool=False
+        figuremode: str = "full",
+        clean: bool = False,
+        clip_on: bool = False,
     ):
         self.figuremode = figuremode
         self.clean = clean
@@ -531,7 +567,11 @@ class EfficacyPlots(object):
                 },
             }
             self.P = PH.arbitrary_grid(
-                sizer, order="columnsfirst", units="in", figsize=(5, 5), label=True,
+                sizer,
+                order="columnsfirst",
+                units="in",
+                figsize=(5, 5),
+                label=True,
             )
         else:
             self.P = self.parent_figure
@@ -571,20 +611,26 @@ class EfficacyPlots(object):
         )
         mpl.show()
 
-    def fit_dataset(self, df_full, sel_cells:Union[list, None]=None, 
-            max_xfit:float=300.0, ax:object=None, npts:Union[int, None]=None,
-            initial_conditions:Union[dict, None]=None):
-        #gmodel = Model(boltz)
+    def fit_dataset(
+        self,
+        df_full,
+        sel_cells: Union[list, None] = None,
+        max_xfit: float = 300.0,
+        ax: object = None,
+        npts: Union[int, None] = None,
+        initial_conditions: Union[dict, None] = None,
+    ):
+        # gmodel = Model(boltz)
         if sel_cells is not None:
             df = df_full[df_full.Cell.isin(sel_cells)]
         else:
-            df = df_full # everything
-        # only include the original synapses, not "added" ones, so that the 
+            df = df_full  # everything
+        # only include the original synapses, not "added" ones, so that the
         # added ones can be viewed as predictive. As current set up,
         # the "added" inputs are in a separate table, so they would not normally
         # have to be deselected here.
         df = df_full[df_full.added.isin([0])]
-        gmodel = lmfit.models.StepModel(form='logistic')# gmodel = Model(hill)
+        gmodel = lmfit.models.StepModel(form="logistic")  # gmodel = Model(hill)
         # This is from the previous version - now we let lmfit guess
         # the initial parameters and use its own model
         # if initial_conditions is None:
@@ -607,7 +653,7 @@ class EfficacyPlots(object):
         y = df.ASA
         x = df.Eff
 
-        weights = np.ones(len(df.Eff)) # np.array(df.Eff)
+        weights = np.ones(len(df.Eff))  # np.array(df.Eff)
         for meth in resdict.keys():
             result_LM = gmodel.fit(
                 x,
@@ -632,22 +678,24 @@ class EfficacyPlots(object):
             resdict[meth] = result_LM
         return result_LM, resdict, gmodel, xfit, lev_fit
 
-
     def plot_fit(
         self,
         df: object,
-        df_added: object=None,  # added points plotted separately from fit
-        ax: object=None,
-        y0: float=0.,
-        method:str="leastsq",
-        max_x:float = 300.0,
-        cells:list=[],
-        color:str="k-",
-        initial_conditions:Union[dict, None]=None,
+        df_added: object = None,  # added points plotted separately from fit
+        ax: object = None,
+        y0: float = 0.0,
+        method: str = "leastsq",
+        max_x: float = 300.0,
+        cells: list = [],
+        color: str = "k-",
+        initial_conditions: Union[dict, None] = None,
     ):
         result_LM, resdict, gmodel, xfit, yfit = self.fit_dataset(
-            df, sel_cells = cells, ax=ax, initial_conditions=initial_conditions,
-            max_xfit = max_x,
+            df,
+            sel_cells=cells,
+            ax=ax,
+            initial_conditions=initial_conditions,
+            max_xfit=max_x,
         )
         if len(cells) > 0:
             tc = str(cells)
@@ -657,15 +705,15 @@ class EfficacyPlots(object):
         ax.plot(xfit, yfit, color, label=lab, linewidth=1)  # all cells
         print(f"Fitting with model: {gmodel.name:s}")
         if gmodel.name == "Model(step)":
-            A = result_LM.params['amplitude']
-            vh = result_LM.params['center']
-            k = result_LM.params['sigma']
+            A = result_LM.params["amplitude"]
+            vh = result_LM.params["center"]
+            k = result_LM.params["sigma"]
         else:
             pnames = ["A", "vhalf", "k"]
-            A = result_LM.params['A']
-            vh = result_LM.params['vhalf']
-            k = result_LM.params['k']
-            
+            A = result_LM.params["A"]
+            vh = result_LM.params["vhalf"]
+            k = result_LM.params["k"]
+
         if self.figuremode == "full" and not self.clean:
             ax.text(
                 1.1,
@@ -703,12 +751,12 @@ class EfficacyPlots(object):
     def plot_dataset(
         self,
         data,
-        datasetname_added:Union[str, None] = None,
+        datasetname_added: Union[str, None] = None,
         ax: object = None,
         title: str = None,
         gmodel: object = None,
         legend: bool = True,
-        clip_on: bool = False
+        clip_on: bool = False,
     ):
         x, df = prepare_data(data)
         cell_names = [f"BC{c:02d}" for c in df.Cell]
@@ -741,10 +789,10 @@ class EfficacyPlots(object):
             # style="added",
             # markers={0: 'o', 1: '*'},
             size="added",
-            palette = pal,
+            palette=pal,
             sizes={0: 20},
             legend="full",
-            clip_on=clip_on
+            clip_on=clip_on,
         )
         if df_added is not None:
             sns.scatterplot(
@@ -755,11 +803,11 @@ class EfficacyPlots(object):
                 hue=cell_names_added,
                 palette=[pal[4], pal[7], pal[9]],  # specifically selected
                 style="added",
-                markers={1: '*'},
+                markers={1: "*"},
                 size="added",
                 sizes={1: 70},
                 legend="brief",
-                clip_on=clip_on
+                clip_on=clip_on,
             )
         ax.set_xlabel(f"ASA ({uni:s})")
         label = [f"BC{c:02d}" for c in df.Cell]
@@ -770,7 +818,15 @@ class EfficacyPlots(object):
 
         cells1 = [9, 11, 13, 17]
         df1 = df[df.Cell.isin(cells1)]
-        self.plot_fit(df1, ax=ax, y0=0.05, method=method, cells=cells1, max_x=300.0, color='#ff0000')
+        self.plot_fit(
+            df1,
+            ax=ax,
+            y0=0.05,
+            method=method,
+            cells=cells1,
+            max_x=300.0,
+            color="#ff0000",
+        )
 
         cells2 = [2, 5, 6, 10, 30, 18]
         df2 = df[df.Cell.isin(cells2)]
@@ -780,8 +836,8 @@ class EfficacyPlots(object):
             y0=0.1,
             method=method,
             cells=cells2,
-            max_x = 300.0, # 180.0,
-            color='#94c8ff',
+            max_x=300.0,  # 180.0,
+            color="#94c8ff",
             initial_conditions={"A": 1.0, "Vh": 200.0, "k": 10},
         )
 
@@ -815,13 +871,21 @@ class EfficacyPlots(object):
             )
 
 
-def eff_plot(dataname="Full", datasetname_added:Union[str, None] = None):
+def eff_plot(dataname="Full", datasetname_added: Union[str, None] = None):
     sizer = {
-        "A": {"pos": [1, 4, 1, 4], "labelpos": (-0.15, 1.02), "noaxes": False,},
+        "A": {
+            "pos": [1, 4, 1, 4],
+            "labelpos": (-0.15, 1.02),
+            "noaxes": False,
+        },
         # "B": {"pos": [4.0, 3.0, 0.5, 3.0], "labelpos": (-0.15, 1.02)},
     }
     P = PH.arbitrary_grid(
-        sizer, order="columnsfirst", units="in", figsize=(6,6), label=True,
+        sizer,
+        order="columnsfirst",
+        units="in",
+        figsize=(6, 6),
+        label=True,
     )
     EFP = EfficacyPlots(parent_figure=P)
     # EFP.plot_data("B")
@@ -830,23 +894,33 @@ def eff_plot(dataname="Full", datasetname_added:Union[str, None] = None):
 
 
 def fit_individually(
-        max_xfit:float=300.0, ax:object=None, 
-        initial_conditions:Union[dict, None]=None):
+    max_xfit: float = 300.0,
+    ax: object = None,
+    initial_conditions: Union[dict, None] = None,
+):
     all_cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
     ncells = len(all_cells)
-    result_LMs = [None]*ncells
-    resdicts = [None]*ncells
-    gmodels = [None]*ncells
-    xfits = [None]*ncells
-    yfits = [None]*ncells
-    
+    result_LMs = [None] * ncells
+    resdicts = [None] * ncells
+    gmodels = [None] * ncells
+    xfits = [None] * ncells
+    yfits = [None] * ncells
+
     x, df = prepare_data(data_Full)
-    
+
     sizer = {
-        "A": {"pos": [1, 6, 1, 4], "labelpos": (-0.15, 1.02), "noaxes": False,},
+        "A": {
+            "pos": [1, 6, 1, 4],
+            "labelpos": (-0.15, 1.02),
+            "noaxes": False,
+        },
     }
     P = PH.arbitrary_grid(
-        sizer, order="columnsfirst", units="in", figsize=(8, 6), label=True,
+        sizer,
+        order="columnsfirst",
+        units="in",
+        figsize=(8, 6),
+        label=True,
     )
     A_ic = 0.7
     Vh_ic = 100.0
@@ -854,7 +928,7 @@ def fit_individually(
     initial_conditions = {"A": A_ic, "Vh": Vh_ic, "k": k_ic}
     EFP = EfficacyPlots(parent_figure=P)
     ax = P.axdict["A"]
-    color = 'b'
+    color = "b"
     cell_names = [f"BC{c:02d}" for c in df.Cell]
     uni = r"$\mu m^2$"
     resdict = {"leastsq": None}
@@ -869,39 +943,48 @@ def fit_individually(
         size=cell_names,
         sizes=(40, 40),
         legend="full",
-        clip_on=clip_on
+        clip_on=clip_on,
     )
     for i, cell in enumerate(all_cells):
         initial_conditions = {"A": A_ic, "Vh": Vh_ic, "k": k_ic}
-        
-        result_LMs[i], resdicts[i], gmodels[i], xfits[i], yfits[i] = EFP.fit_dataset(df, sel_cells=[cell], initial_conditions=initial_conditions)
+
+        result_LMs[i], resdicts[i], gmodels[i], xfits[i], yfits[i] = EFP.fit_dataset(
+            df, sel_cells=[cell], initial_conditions=initial_conditions
+        )
         # lab = f"BC{cell:02d}"
-        ax.plot(xfits[i], yfits[i], color=colors[i], linewidth=1, label=f"BC{cell:02d}")  # all cells
+        ax.plot(
+            xfits[i], yfits[i], color=colors[i], linewidth=1, label=f"BC{cell:02d}"
+        )  # all cells
     # ax.legend()
     mpl.show()
+
+
 # ---------------------------------------------------------------
 # clustering
 # ---------------------------------------------------------------
-def EffClusters(ax, clip_on: bool=True):
+def EffClusters(ax, clip_on: bool = True):
     data = data_Full
-    x, df, clustering, data_with_clusters = aggcluster(data, ax, clip_on=clip_on, elbow=False)
-    
+    x, df, clustering, data_with_clusters = aggcluster(
+        data, ax, clip_on=clip_on, elbow=False
+    )
 
-def prepare_data(data, eff_crit:float=0.0):
+
+def prepare_data(data, eff_crit: float = 0.0):
     spc = re.compile("[ ;,\t\f\v]+")  # format replacing all spaces with tabs
     dataiter = re.finditer(spc, data)
     data = re.sub(spc, ",", data)
     sio = io.StringIO(data)
     df = pd.read_table(sio, sep=",")
     print(df.head())
-    df.drop(df[df['Eff'] < eff_crit].index, inplace=True)
+    df.drop(df[df["Eff"] < eff_crit].index, inplace=True)
     cell_names = [f"BC{c:02d}" for c in df.Cell]
     uni = r"$\mu m^2$"
     x = df[["ASA", "Eff"]]
-    
+
     return x, df
 
-def plot_cluster(data_with_clusters, ax, clip_on:bool=False, mode=None):
+
+def plot_cluster(data_with_clusters, ax, clip_on: bool = False, mode=None):
     if mode is None:
         ax.scatter(
             data_with_clusters["ASA"],
@@ -911,18 +994,31 @@ def plot_cluster(data_with_clusters, ax, clip_on:bool=False, mode=None):
             clip_on=clip_on,
         )
 
-    if mode == 'id':
+    if mode == "id":
         cells = set(data_with_clusters["Cell"].values)
-        mrks = {2: 'o', 5: 'x', 5: 's', 9: 'd', 10:'+', 11: 'p', 13: 'h', 17: '*', 18: 'v', 30: '3'}
-        cl_cols = {0: 'r', 1: 'b', 2: 'c', 3: 'g', 4: 'y', 5: 'm', -1: 'k'}
-        data_with_clusters['markers'] = data_with_clusters.Cell.replace(mrks)
-        data_with_clusters['colors'] = data_with_clusters.Clusters.replace(cl_cols)
+        mrks = {
+            2: "o",
+            5: "x",
+            5: "s",
+            9: "d",
+            10: "+",
+            11: "p",
+            13: "h",
+            17: "*",
+            18: "v",
+            30: "3",
+        }
+        cl_cols = {0: "r", 1: "b", 2: "c", 3: "g", 4: "y", 5: "m", -1: "k"}
+        data_with_clusters["markers"] = data_with_clusters.Cell.replace(mrks)
+        data_with_clusters["colors"] = data_with_clusters.Clusters.replace(cl_cols)
         print(data_with_clusters["Clusters"].values)
-        for _s, _c, _x, _y, _cl in zip(data_with_clusters["markers"].values, 
-                                  data_with_clusters["colors"].values, 
-                                  data_with_clusters["ASA"].values, 
-                                  data_with_clusters["Eff"].values,
-                                  data_with_clusters["Cell"].values):
+        for _s, _c, _x, _y, _cl in zip(
+            data_with_clusters["markers"].values,
+            data_with_clusters["colors"].values,
+            data_with_clusters["ASA"].values,
+            data_with_clusters["Eff"].values,
+            data_with_clusters["Cell"].values,
+        ):
             print(_x, _y, _s, _c)
             ax.scatter(_x, _y, marker=_s, c=_c, label=_cl)
         #     ax.scatter(
@@ -935,9 +1031,9 @@ def plot_cluster(data_with_clusters, ax, clip_on:bool=False, mode=None):
         # )
         ax.legend()
         mpl.show()
-        
 
-def aggcluster(data, axn, eff_crit:float=0.0, clip_on:bool=False, elbow=True):
+
+def aggcluster(data, axn, eff_crit: float = 0.0, clip_on: bool = False, elbow=True):
     if elbow:
         from yellowbrick.cluster import (
             # InterclusterDistance,
@@ -946,7 +1042,7 @@ def aggcluster(data, axn, eff_crit:float=0.0, clip_on:bool=False, elbow=True):
         )
     x, df = prepare_data(data, eff_crit=eff_crit)
     ax = axn[0]
-    
+
     dx = np.array((x["ASA"].values, x["Eff"].values)).T
     sx = preprocessing.StandardScaler().fit_transform(dx)
     max_cl = len(dx)
@@ -966,17 +1062,17 @@ def aggcluster(data, axn, eff_crit:float=0.0, clip_on:bool=False, elbow=True):
     data_with_clusters["Clusters"] = clustering.labels_
     plot_cluster(data_with_clusters, ax=ax, clip_on=clip_on)
     if elbow:
-        vis = KElbowVisualizer(clustering, k=(3, 15),metric='calinski_harabasz')
+        vis = KElbowVisualizer(clustering, k=(3, 15), metric="calinski_harabasz")
         vis.fit(sx)
         vis.show()
 
     if len(axn) > 1:
         axc = axn[1]
-        axc.plot(range(max_cl), chs, "ro-", clip_on = clip_on)
+        axc.plot(range(max_cl), chs, "ro-", clip_on=clip_on)
     return x, df, clustering, data_with_clusters
 
 
-def kmeans(data, ax, eff_crit:float=0.0, elbow=True):
+def kmeans(data, ax, eff_crit: float = 0.0, elbow=True):
     # we avoid importing this at the top because it messes with the plotting.
     if elbow:
         from yellowbrick.cluster import (
@@ -1006,7 +1102,6 @@ def kmeans(data, ax, eff_crit:float=0.0, elbow=True):
         #  clusters = model.fit_predict(x)
         #  data_with_clusters['Clusters'] = clusters
         #  ax[0].scatter(data_with_clusters['ASA'], data_with_clusters['Eff'], c=data_with_clusters['Clusters'],cmap='rainbow')
-
 
     def km(x, df, n, ax, rs=1):
         kmeans = KMeans(n, random_state=rs)
@@ -1052,14 +1147,15 @@ def kmeans(data, ax, eff_crit:float=0.0, elbow=True):
         ybvis(sx, df, ax)
     mpl.show()
 
-def cluster_dbscan(data=None, eff_crit:float=0.0):
+
+def cluster_dbscan(data=None, eff_crit: float = 0.0):
     import gower
     from sklearn.cluster import DBSCAN
-    
+
     x, df = prepare_data(data, eff_crit=eff_crit)
     xf, dff = prepare_data(data)
-    x["ASA"] = x["ASA"]/np.max(x["ASA"])
-    x["Cpos"] = df["Cell"]/np.max(df["Cell"])  # add the cell id to the mix
+    x["ASA"] = x["ASA"] / np.max(x["ASA"])
+    x["Cpos"] = df["Cell"] / np.max(df["Cell"])  # add the cell id to the mix
     print(x.head)
     distance_matrix = gower.gower_matrix(x)
     dbscan_cluster = DBSCAN(eps=0.2, min_samples=2, metric="precomputed")
@@ -1067,14 +1163,14 @@ def cluster_dbscan(data=None, eff_crit:float=0.0):
     # print(dir(dbscan_cluster))
     x["Clusters"] = dbscan_cluster.labels_
     x["Cell"] = df["Cell"]
-    f, ax = mpl.subplots(1,1)
+    f, ax = mpl.subplots(1, 1)
     print(x)
-    plot_cluster(x, ax, mode='id')
+    plot_cluster(x, ax, mode="id")
     mpl.show()
-    
-    
+
+
 if __name__ == "__main__":
-    #eff_ais()  # generate plot of efficacy vs ais length (supplemental)
+    # eff_ais()  # generate plot of efficacy vs ais length (supplemental)
 
     eff_plot("Full", datasetname_added="Added")  # generate plot of efficay vs ASA
     # fit_individually()
@@ -1088,5 +1184,5 @@ if __name__ == "__main__":
     # aggcluster(data_Full2, ax2, eff_crit=0.02)
     # fig2.suptitle("Aggcluster")
     mpl.show()
-    
+
     # cluster_dbscan(data=data_Full2, eff_crit=0.02)

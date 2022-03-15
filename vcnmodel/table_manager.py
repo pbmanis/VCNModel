@@ -1,4 +1,3 @@
-import dataclasses
 from dataclasses import dataclass, field
 import datetime
 import functools
@@ -22,6 +21,8 @@ Generates index files (pickled python dataclass) that summarize the results.
 
 Set the force flag true to rebuild the pkl files.
 
+This is meant to be called from DataTablesVCN.py
+
 pbm 7/1/2020
 
 """
@@ -29,8 +30,8 @@ pbm 7/1/2020
 cprint = CP.cprint
 PP = pprint.PrettyPrinter(indent=8, width=80)
 
-# Get the git has of he repositories so we know exactly what code was run (assumed the repo
-# was updated and committed ahead of the run)
+# Get the git has of he repositories so we know exactly what code was run
+# (assumed the repo was updated and committed ahead of the run)
 
 process = subprocess.Popen(
     ["git", "rev-parse", "HEAD"], shell=False, stdout=subprocess.PIPE
@@ -51,8 +52,8 @@ def defemptylist():
 
 
 #
-# dataclass for the pkl file. Abstracted information from the main data files
-# to speed up access.
+# dataclass for the pkl file. Abstracted information from the main data files to
+# speed up access.
 #
 @dataclass
 class IndexData:
@@ -90,17 +91,16 @@ class IndexData:
 
 def winprint(func):
     """
-    Wrapper decorator for functions that print to the text area
-    Clears the print area first,
-    and puts a line of '*' when the function returns
+    Wrapper decorator for functions that print to the text area Clears the print
+    area first, and puts a line of '*' when the function returns
     """
 
     @functools.wraps(func)
     def wrapper_print(self, *args, **kwargs):
         self.textclear()
         value = func(self, *args, **kwargs)
-        # end_time = time.perf_counter()      # 2
-        # run_time = end_time - start_time    # 3
+        # end_time = time.perf_counter()      # 2 run_time = end_time -
+        # start_time    # 3
         self.textappend("*" * 80)
         # print(f"Finished {func.__name__!r} in {run_time:.4f} secs")
         return value
@@ -110,16 +110,16 @@ def winprint(func):
 
 def winprint_continuous(func):
     """
-    Wrapper decorator for functions that print to the text area
-    DOES NOT clear the print area first,
+    Wrapper decorator for functions that print to the text area DOES NOT clear
+    the print area first,
     """
 
     @functools.wraps(func)
     def wrapper_print(self, *args, **kwargs):
         value = func(self, *args, **kwargs)
-        # end_time = time.perf_counter()      # 2
-        # run_time = end_time - start_time    # 3
-        # print(f"Finished {func.__name__!r} in {run_time:.4f} secs")
+        # end_time = time.perf_counter()      # 2 run_time = end_time -
+        # start_time    # 3 print(f"Finished {func.__name__!r} in {run_time:.4f}
+        # secs")
         return value
 
     return wrapper_print
@@ -159,11 +159,11 @@ class TableManager:
         
     def find_build_indexfiles(self, indexdir: Union[str, Path], force=False):
         """
-        Given the indexdir, determine:
-        Whether an index file exists for this directory
+        Given the indexdir, determine: Whether an index file exists for this
+        directory
         
-            If it does, read it
-            If it does not, then make one from the data in the directory.
+            If it does, read it If it does not, then make one from the data in
+            the directory.
         
         Parameters
         ----------
@@ -177,11 +177,11 @@ class TableManager:
 
         # cprint('b', indexdir)
         indexfile = self.force_suffix(indexdir)
-        # print("indexfile: ", indexfile)
-        # cprint("c", f"Checking for index file: {str(indexfile):s}")
+        # print("indexfile: ", indexfile) cprint("c", f"Checking for index file:
+        # {str(indexfile):s}")
         if indexfile.is_file() and not force:
-            # cprint("g", f"    Found index file, reading")
-            # print('          indexfile: ', indexfile)
+            # cprint("g", f"    Found index file, reading") print('
+            # indexfile: ', indexfile)
             try:
                 with open(indexfile, "rb") as fh:
                     d = pickle.load(fh, fix_imports=True) # , encoding="latin1")
@@ -196,7 +196,8 @@ class TableManager:
                 # print("fh: ", fh)
             return d
         if force or not indexfile.is_file():
-            # cprint("c", f"Building a NEW .pkl index file for {str(indexdir):s}")
+            # cprint("c", f"Building a NEW .pkl index file for
+            # {str(indexdir):s}")
             dpath = Path(indexfile.parent, indexfile.stem)
             runs = list(dpath.glob("*.p"))
             if len(runs) == 0:
@@ -236,18 +237,15 @@ class TableManager:
             return None
         if "Params" not in list(d.keys()):
             self.textappend('SKIPPING: File is too old (missing "Params"); re-run for new structure', color="red")
-            # print('  Avail keys: ', list(d.keys()))
-            # print(d['Results'][0])
+            # print('  Avail keys: ', list(d.keys())) print(d['Results'][0])
             return None
-        # print(d["Params"])
-        # print(d["runInfo"])
-        # exit()
+        # print(d["Params"]) print(d["runInfo"]) exit()
         return (d["Params"], d["runInfo"], str(datafile.name))  # just the dicts
 
     def get_sim_runtime(self, filename):
         """
-        Switch the time stamp to different format
-        Here the initial value is a string, which we convert to a datetime
+        Switch the time stamp to different format Here the initial value is a
+        string, which we convert to a datetime
       
         """
         try:
@@ -274,9 +272,9 @@ class TableManager:
 
     def make_indexdata(self, params, runinfo, fn=None, indexdir=None):
         """
-        Load up the index data class with selected information
-        from the Param and runInfo data classes in the simulation
-        run files, then write the index file.
+        Load up the index data class with selected information from the Param
+        and runInfo data classes in the simulation run files, then write the
+        index file.
         """
         Index_data = IndexData()
         usedict = False
@@ -327,8 +325,7 @@ class TableManager:
                 Index_data.files.append(str(r))  # get the result file list here
         else:
             Index_data.files = [fn]
-        # print('Params: ' , params)
-        # print('runinfo: ', runinfo)
+        # print('Params: ' , params) print('runinfo: ', runinfo)
         if usedict:  # old style files with dictionaries
             Index_data.cellType = params["cellType"]
             Index_data.modelType = params["modelType"]
@@ -390,8 +387,7 @@ class TableManager:
                     Path(
                         self.basepath,
                         # f"VCN_c{int(self.selvals['Cells'][1]):02d}",
-   #                      "Simulations",
-   #                      self.selvals["Run Type"][1],
+   #                      "Simulations", self.selvals["Run Type"][1],
                     )
                 )    
             try:
@@ -436,8 +432,8 @@ class TableManager:
 
     def read_indexfile(self, indexfilename):
         """
-        Read the index file that we will use to populate the table, and to provide "hidden"
-        information such as the file list, for analyses.
+        Read the index file that we will use to populate the table, and to
+        provide "hidden" information such as the file list, for analyses.
         
         """
         indexfilename = self.force_suffix(indexfilename)
@@ -467,18 +463,15 @@ class TableManager:
         print(Path(indexfilename).is_file())
         if Path(indexfilename).is_file():
             print(f" and index file: {str(indexfilename):s}")
-        # now update the table
-        # print(indexrow)
+        # now update the table print(indexrow)
         ind = self.get_table_data_index(indexrow)
         if ind is None:
             return
         # if ind is not None:
-            # print(ind)
-            # print(self.table_data[ind])
+            # print(ind) print(self.table_data[ind])
             # print(type(self.table_data[ind]))
         self.table.removeRow(ind)
-        # print(dir(self.table))
-        # print(self.table.viewport)
+        # print(dir(self.table)) print(self.table.viewport)
         # print(dir(self.table.viewport()))
         self.table.viewport().update()
         
@@ -514,11 +507,11 @@ class TableManager:
     
     def select_dates(self, rundirs, mode="D"):
         """
-        For every entry in rundirs, see if the date is later than or equal to our limit date
-        if the mode is "D", we treat the directory format
-        if the mode is "F", we treat it as a file (very old format)
-        rundirs is a list of directories - in the case of the old format, just pass a single
-        file as a list...
+        For every entry in rundirs, see if the date is later than or equal to
+        our limit date if the mode is "D", we treat the directory format if the
+        mode is "F", we treat it as a file (very old format) rundirs is a list
+        of directories - in the case of the old format, just pass a single file
+        as a list...
         """
         if self.parent.start_date == "None" and self.parent.end_date == "None":
             return rundirs
@@ -559,9 +552,9 @@ class TableManager:
             force = True
         self.data = []
         self.table.setData(self.data)
-        # cprint('m', self.basepath)
-        # cprint('y', f"VCN_c{int(self.selvals['Cells'][1]):02d}")
-        # cprint('g', self.selvals["Run Type"][1])
+        # cprint('m', self.basepath) cprint('y',
+        # f"VCN_c{int(self.selvals['Cells'][1]):02d}") cprint('g',
+        # self.selvals["Run Type"][1])
         thispath = Path(
             self.basepath,
             f"VCN_c{int(self.selvals['Cells'][1]):02d}",
@@ -588,10 +581,9 @@ class TableManager:
             indexfiles = self.select_dates(indexfiles)
             for i, f in enumerate(indexfiles):
                 indxs.append(self.read_indexfile(f))
-                # if indxs[-1] is None:
-                # cprint('y', f"None in #{i:d} :{str(f):s}")
-                # print('\nfile: ', str(f))
-                # print('     index spriou: ', indxs[i].synapseExperiment)
+                # if indxs[-1] is None: cprint('y', f"None in #{i:d}
+                # :{str(f):s}") print('\nfile: ', str(f)) print('     index
+                # spriou: ', indxs[i].synapseExperiment)
                 try:
                     x = indxs[i].dataTable
                 except:
@@ -658,10 +650,8 @@ class TableManager:
                 ("DendMode", object), # 7
                 ("AxonExpt", object), # 8
                 ("Experiment", object), # 9
-                # ("inputtype", object),
-                # ("modetype", object),
-                # ("scaling", object),
-                # ("Freq", object),
+                # ("inputtype", object), ("modetype", object), ("scaling",
+                # object), ("Freq", object),
                 ('SRType', object), # 10
                 ("Depr", object), # 11
                 ("dBspl", object), # 12
@@ -674,8 +664,7 @@ class TableManager:
                 ("HocFile", object),
                 ('simulation_path', object),
                 ("Filename", object),
-                # ("# files", object),
-                # ("synapsetype", object),
+                # ("# files", object), ("synapsetype", object),
             ],
         )
         self.update_table(self.data)
@@ -697,8 +686,10 @@ class TableManager:
 
     def apply_filter(self,QtCore=None):
         """
-        self.filters = {'Use Filter': False, 'dBspl': None, 'nReps': None, 'Protocol': None,
-                'Experiment': None, 'modelName': None, 'dendMode': None, "dataTable": None,}
+        self.filters = {'Use Filter': False, 'dBspl': None, 'nReps': None,
+        'Protocol': None,
+                'Experiment': None, 'modelName': None, 'dendMode': None,
+                "dataTable": None,}
         """
         if not self.parent.filters['Use Filter']:  # no filter, so update to show whole table
             self.update_table(self.data)
@@ -717,9 +708,9 @@ class TableManager:
             for k, d in enumerate(self.data):
                 for f, v in filters.items():
                     if (v is not None) and (coldict.get(f, False)) and (self.data[k][coldict[f]] == v):
-                        #and f in list(coldict.keys())) and
-                        # if (self.data[k][coldict[f]] == v):
-                        # print("f: ", f, "   v: ", v)
+                        #and f in list(coldict.keys())) and if
+                        # (self.data[k][coldict[f]] == v): print("f: ", f, "
+                        # v: ", v)
                         matchsets[f].add(k)
 
             baseset = set()
@@ -748,8 +739,8 @@ class TableManager:
         
     def get_table_data(self, index_row):
         """
-        Regardless of the sort, read the current index row and
-        map it back to the data in the table.
+        Regardless of the sort, read the current index row and map it back to
+        the data in the table.
         """
         ind = self.get_table_data_index(index_row)
         if ind is not None:
@@ -758,8 +749,6 @@ class TableManager:
             return None
             
         # # print('gettabledata: indexrow: ', index_row, index_row.row())
-        # value = index_row.sibling(index_row.row(), 1).data()
-        # for i, d in enumerate(self.data):
-        #     if self.data[i][1] == value:
-        #         return self.table_data[i]
-        # return None
+        # value = index_row.sibling(index_row.row(), 1).data() for i, d in
+        # enumerate(self.data): if self.data[i][1] == value: return
+        #     self.table_data[i] return None

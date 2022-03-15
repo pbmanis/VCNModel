@@ -28,57 +28,60 @@ import ephys
 
 
 """
-This program provides a graphical interface for model results for the SBEM reconstruction project.
-The display appears as 3 panels: One on the left with controls, one on the top right that is tabbed,
-    showing either the current table, or the traces, and one on the bottom for text output.
+This program provides a graphical interface for model results for the SBEM
+reconstruction project. The display appears as 3 panels: One on the left with
+controls, one on the top right that is tabbed,
+    showing either the current table, or the traces, and one on the bottom for
+    text output.
 The left panel provides a set of organized controls:
     Selections:
-        Run Type (AN, IV) corresponding to auditory nerve input or current injection protocols
-        Cells (from list of cells that are available to model)
-            Selecting one of these will population the simulation table on the right with valid simulations.
+        Run Type (AN, IV) corresponding to auditory nerve input or current
+        injection protocols Cells (from list of cells that are available to
+        model)
+            Selecting one of these will population the simulation table on the
+            right with valid simulations.
         ModelType Mode, Experiment, Analysis, Dendrites: inactive.
     Analysis:
         This provides different fixed kinds of analysis for the model data.
-        Traces: just plot the traces, stacked, for reference.
-        IV : plot current-voltage relationships and calculate Rin, Taum, find spikes.
-        VC : plot current voltage relationships in voltage clamp.
-        Singles: For the "single" AN protocol, where only one input at a time is active, creates stacked plot
-        Trace Viewer : dynamic plot of APs and preceding times for AN inputs in the "Traces" tab
-        RevcorrSPKS : reverse correlation against postsynaptic spikes for each input. Using brian package
-        RevcorrEleph : reverse correlation using the elephant pacakge.
-        RevcorrSimple : Simple reverse correlation calculation. 
-        RevcorrSTTC : not implemented.
-        PSTH : Plot PSTH, raster, for bu cell and AN input; also compute phase locking to AM if needed.
+        Traces: just plot the traces, stacked, for reference. IV : plot
+        current-voltage relationships and calculate Rin, Taum, find spikes. VC :
+        plot current voltage relationships in voltage clamp. Singles: For the
+        "single" AN protocol, where only one input at a time is active, creates
+        stacked plot Trace Viewer : dynamic plot of APs and preceding times for
+        AN inputs in the "Traces" tab RevcorrSPKS : reverse correlation against
+        postsynaptic spikes for each input. Using brian package RevcorrEleph :
+        reverse correlation using the elephant pacakge. RevcorrSimple : Simple
+        reverse correlation calculation. RevcorrSTTC : not implemented. PSTH :
+        Plot PSTH, raster, for bu cell and AN input; also compute phase locking
+        to AM if needed.
     Filters:
-        This provides data selection in the table. Most entries provide a drop-down list. The values that are not 
-            None are applied with "and" logic. The filters are not applied until the Apply button is pressed;
-            The filters are cleared by the Clear button.
+        This provides data selection in the table. Most entries provide a
+        drop-down list. The values that are not 
+            None are applied with "and" logic. The filters are not applied until
+            the Apply button is pressed; The filters are cleared by the Clear
+            button.
     Options:
-        These are options for the TraceViewer mode.
-        Nubmer of traces
-        Plot Vm or dVm/dt
-        Movie button generates a movie through time.
-        Frame interval sets the time between frames in the movie, in msec.
+        These are options for the TraceViewer mode. Nubmer of traces Plot Vm or
+        dVm/dt Movie button generates a movie through time. Frame interval sets
+        the time between frames in the movie, in msec.
     Figures:
-        Interface to figure generation. Figures are generated from the model data directly as much as possible.
-        Some figures are generated from analysis data that is either compiled manually, or using a script.
+        Interface to figure generation. Figures are generated from the model
+        data directly as much as possible. Some figures are generated from
+        analysis data that is either compiled manually, or using a script.
     Tools:
-        Reload: for all modules under DataTables, reload the code. Mostly used during development.
-        View IndexFile: Print the index file in the text window.
-        Print File Info: Prints the file info for the selected entries into the text window.
-        Delete Selected Sim : for deleting simulations that are broken (or stopped early). 
+        Reload: for all modules under DataTables, reload the code. Mostly used
+        during development. View IndexFile: Print the index file in the text
+        window. Print File Info: Prints the file info for the selected entries
+        into the text window. Delete Selected Sim : for deleting simulations
+        that are broken (or stopped early). 
     Quit:
         Exit the program.
+ß Uses pyqtgraph tablewidget to build a table showing simulation files/runs and
+enabling analysis via a GUI
 
-
-
-
-Uses pyqtgraph tablewidget to build a table showing simulation
-files/runs and enabling analysis via a GUI
-
-    Supported primarily by R01DC015901 (Spirou, Manis, Ellisman),
-    Early development: R01 DC004551 (Manis, until 2019)
-    Later development: R01 DC019053 (Manis, 2020-2025)
+    Supported primarily by R01DC015901 (Spirou, Manis, Ellisman), Early
+    development: R01 DC004551 (Manis, until 2019) Later development: R01
+    DC019053 (Manis, 2020-2025)
 
 """
 
@@ -123,13 +126,12 @@ cellvalues = [
     13,
     17,
     18,
-    # 24,
-    # 29,
+    # 24, 29,
     30,
 ]
 
-# model types known to use - These define the decoration patterns.
-# The data in the paper uses XM13A_nacncoop
+# model types known to use - These define the decoration patterns. The data in
+# the paper uses XM13A_nacncoop
 modeltypes = [
     "None",
     "XM13_nacncoop",
@@ -241,8 +243,7 @@ class DataTablesVCN:
         self.app = pg.mkQApp()
         self.app.setStyle("fusion")
 
-        # Define the table style for various parts
-        # dark scheme
+        # Define the table style for various parts dark scheme
         from pyqtgraph.Qt import QtCore
 
         dark_palette = QtGui.QPalette()
@@ -282,9 +283,11 @@ class DataTablesVCN:
         self.dockArea.addDock(self.Dock_Table, "right", self.Dock_Params)
         self.dockArea.addDock(self.Dock_Traces, "below", self.Dock_Table)
         self.dockArea.addDock(self.Dock_Report, "bottom", self.Dock_Table)
-        # self.dockArea.addDock(self.Dock_Traces_Slider, 'below', self.Dock_Traces)
+        # self.dockArea.addDock(self.Dock_Traces_Slider, 'below',
+        # self.Dock_Traces)
 
-        # self.Dock_Traces.addContainer(type=pg.QtGui.QGridLayout, obj=self.trace_layout)
+        # self.Dock_Traces.addContainer(type=pg.QtGui.QGridLayout,
+        # obj=self.trace_layout)
         self.table = pg.TableWidget(sortable=True)
         self.Dock_Table.addWidget(self.table)
         self.Dock_Table.raiseDock()
@@ -311,10 +314,10 @@ class DataTablesVCN:
             "Cells": [cellvalues, self.cellID],
             "Start Date": [run_dates, self.start_date],
             "End Date": [run_dates, self.end_date],
-            # "Mode": [modetypes, self.modetype],
-            # "Experiment": [experimenttypes, self.experimenttype],
-            # "Analysis": [analysistypes, self.analysistype],
-            # "Dendrites": [dendriteChoices, self.dendriteChoices],
+            # "Mode": [modetypes, self.modetype], "Experiment":
+            # [experimenttypes, self.experimenttype], "Analysis":
+            # [analysistypes, self.analysistype], "Dendrites": [dendriteChoices,
+            # self.dendriteChoices],
         }
         self.filters = {
             "Use Filter": False,
@@ -339,10 +342,11 @@ class DataTablesVCN:
         self.frame_interval = self.frame_intervals[3]
         self.target_figure = "Fig M0: VC-KLTCalibration (Fig_M0_VC_Adjustment)"
         
-        # We use pyqtgraph's ParameterTree to set up the menus/buttons.
-        # This defines the layout.
+        # We use pyqtgraph's ParameterTree to set up the menus/buttons. This
+        # defines the layout.
         self.params = [
-            # {"name": "Pick Cell", "type": "list", "values": cellvalues, "value": cellvalues[0]},
+            # {"name": "Pick Cell", "type": "list", "values": cellvalues,
+            # "value": cellvalues[0]},
             {"name": "Scan Runs", "type": "action"},
             {"name": "Update Runs", "type": "action"},
             {
@@ -374,34 +378,24 @@ class DataTablesVCN:
                         "value": run_dates[0],
                     },
                      # {
-                    #     "name": "ModelType",
-                    #     "type": "list",
-                    #     "values": modeltypes,
-                    #     "value": modeltypes[0],
+                    #     "name": "ModelType", "type": "list", "values":
+                    #     modeltypes, "value": modeltypes[0],
                     # },
                     # {
-                    #     "name": "Mode",
-                    #     "type": "list",
-                    #     "values": modetypes,
+                    #     "name": "Mode", "type": "list", "values": modetypes,
                     #     "value": modetypes[0],
                     # },
                     # {
-                    #     "name": "Experiment",
-                    #     "type": "list",
-                    #     "values": experimenttypes,
-                    #     "value": experimenttypes[0],
+                    #     "name": "Experiment", "type": "list", "values":
+                    #     experimenttypes, "value": experimenttypes[0],
                     # },
                     # {
-                    #     "name": "Analysis",
-                    #     "type": "list",
-                    #     "values": analysistypes,
-                    #     "value": analysistypes[0],
+                    #     "name": "Analysis", "type": "list", "values":
+                    #     analysistypes, "value": analysistypes[0],
                     # },
                     # {
-                    #     "name": "Dendrites",
-                    #     "type": "list",
-                    #     "values": dendriteChoices,
-                    #     "value": dendriteChoices[0],
+                    #     "name": "Dendrites", "type": "list", "values":
+                    #     dendriteChoices, "value": dendriteChoices[0],
                     # },
                 ],
             },
@@ -554,9 +548,9 @@ class DataTablesVCN:
                     },
                 ],
             },
-            # The figure names here are froman early organization, and do not have a 1:1
-            # correspondence to the figures in the paper. 
-            # Some figures are 
+            # The figure names here are froman early organization, and do not
+            # have a 1:1 correspondence to the figures in the paper. Some
+            # figures are 
             #
             {
                 "name": "Figures",
@@ -668,14 +662,14 @@ class DataTablesVCN:
         )
         self.table.clicked.connect(functools.partial(self.on_Single_Click, self.table))
         self.ptreedata.sigTreeStateChanged.connect(self.command_dispatcher)
-        # Ok, we are in the loop - anything after this is menu-driven and handled
-        # either as part of the TableWidget, the Traces widget, or through the
-        # CommandDispatcher.
+        # Ok, we are in the loop - anything after this is menu-driven and
+        # handled either as part of the TableWidget, the Traces widget, or
+        # through the CommandDispatcher.
 
     def setPaths(self, stimtype="AN", cell=11):
         """
-        Set the data paths for a given stimulus type - lets us look into
-        the data directory hierarchy
+        Set the data paths for a given stimulus type - lets us look into the
+        data directory hierarchy
         """
         where_is_data = Path("wheres_my_data.toml")
         if where_is_data.is_file():
@@ -700,30 +694,27 @@ class DataTablesVCN:
         self.selected_index_rows = selrows
         if len(selrows) == 0:
             self.selected_index_rows = None
-        # for index in selrows:
-        #     self.selected_index_row = index.row()
+        # for index in selrows: self.selected_index_row = index.row()
         #     self.analyze_from_table(index.row())
 
     def handleSortIndicatorChanged(self, index, order):
         """
-        Currently, this does nothing
-        It might change the sort if it was implemented.
+        Currently, this does nothing It might change the sort if it was
+        implemented.
         """
         # print(dir(self.table.model()))
         pass
         # if index != 0:
 
-    #           self.table.horizontalHeader().setSortIndicator(
-    #               0, self.table.model().sortOrder()
-    #           )
+    #           self.table.horizontalHeader().setSortIndicator( 0,
+    #               self.table.model().sortOrder() )
 
     def command_dispatcher(self, param, changes):
         """
-        Dispatcher for the commands from parametertree
-        path[0] will be the command name
-        path[1] will be the parameter (if there is one)
-        path[2] will have the subcommand, if there is one
-        data will be the field data (if there is any)
+        Dispatcher for the commands from parametertree path[0] will be the
+        command name path[1] will be the parameter (if there is one) path[2]
+        will have the subcommand, if there is one data will be the field data
+        (if there is any)
         """
         for param, change, data in changes:
             path = self.ptreedata.childPath(param)
@@ -823,8 +814,8 @@ class DataTablesVCN:
             if path[0] == "Tools":
                 if path[1] == "Reload":
                     print("reloading...")
-                    # get the current list selection - first put tabke in 
-                    # the same order we will see later
+                    # get the current list selection - first put tabke in the
+                    # same order we will see later
                     self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)  # by date
                     selected_rows = self.table.selectionModel().selectedRows()
                     selection_model = self.table.selectionModel()
@@ -905,8 +896,7 @@ class DataTablesVCN:
         Parameters
         ----------
         colors : list of 2 elements
-            colors[0] is for odd rows (RGB, Hex)
-            colors[1] is for even rows
+            colors[0] is for odd rows (RGB, Hex) colors[1] is for even rows
         """
         for j in range(self.table.rowCount()):
             if j % 2:
@@ -927,9 +917,8 @@ class DataTablesVCN:
 
     def _get_row_selection(self):
         """
-        Find the selected rows in the table, and if
-        there is a valid selection, return the index to the first
-        row and the data from that row
+        Find the selected rows in the table, and if there is a valid selection,
+        return the index to the first row and the data from that row
         """
         self.selected_index_rows = self.table.selectionModel().selectedRows()
         if self.selected_index_rows is None:
@@ -942,8 +931,8 @@ class DataTablesVCN:
             else:
                 return index_row, selected
 
-    # Next we provide dispatches for a few specific actions.
-    # These are mostly routines in plot_sims.py
+    # Next we provide dispatches for a few specific actions. These are mostly
+    # routines in plot_sims.py
     
     def analyze_singles(self, ana_name=None):
         """
@@ -965,9 +954,8 @@ class DataTablesVCN:
         nfiles = len(selected.files)
         print(" nfiles: ", nfiles)
         print("selected files: ", selected.files)
-        # if nfiles > 1:
-        #     self.PLT.textappend('Please select only one file to view')
-        # else:
+        # if nfiles > 1: self.PLT.textappend('Please select only one file to
+        #     view') else:
         PD = plot_sims.PData()
         self.PLT.trace_viewer(selected.files[0], PD, selected.runProtocol)
 
@@ -1043,7 +1031,8 @@ class DataTablesVCN:
 
     def analyze_revcorr(self, ana_name):
         """
-        Analyze the reverse correlation between cell spikes and each input spike train.
+        Analyze the reverse correlation between cell spikes and each input spike
+        train.
         """
         index_row, selected = self._get_row_selection()
         if selected is None:
@@ -1071,9 +1060,8 @@ class DataTablesVCN:
 
 
 def main():
-    # Entry point.
-    # Why do I do this ? 
-    # It keeps sphinxdoc from running the code...
+    # Entry point. Why do I do this ? It keeps sphinxdoc from running the
+    # code...
     D = DataTablesVCN()  # must retain a pointer to the class, else we die!
     if (sys.flags.interactive != 1) or not hasattr(QtCore, "PYQT_VERSION"):
         QtGui.QApplication.instance().exec_()
