@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import numpy as np
+import warnings  # suppress nan of empty array on 2d-np arrays.
 
 
 @dataclass
@@ -17,13 +18,14 @@ def isi_cv(
     tgrace: float = 0.0,
     ARP: float = 0.0007,
 ):
-    """compute the cv and regularity according to Young et al., J. Neurophys, 60: 1, 1988.
-        Analysis is limited to isi's starting at or after t0 but before t1, and ending completely
-        before t1 + tgrace(to avoid end effects). t1 should correspond to the
-        the end of the stimulus
-        Version using a list of numpy arrays for cvisi
-        The ARP is the "Absolute Refractory Period" (see Rothman et al. 1993; Rothman and Manis, 2003c)
-        The default value used is typically 0.7 msec. this is used as a correction factor for comparision
+    """compute the cv and regularity according to Young et al., J. Neurophys,
+        60: 1, 1988.
+        Analysis is limited to isi's starting at or after t0 but before t1, and
+        ending completely before t1 + tgrace(to avoid end effects). t1 should
+        correspond to the the end of the stimulus Version using a list of numpy
+        arrays for cvisi The ARP is the "Absolute Refractory Period" (see
+        Rothman et al. 1993; Rothman and Manis, 2003c) The default value used is
+        typically 0.7 msec. this is used as a correction factor for comparision
         with those papers and others that use this value.
 
     Parameters
@@ -67,13 +69,20 @@ def isi_cv(
                 continue
             if (
                 (spike < t0) or (spike > t1 + tgrace) or (spkt[j + 1] > t1 + tgrace)
-            ):  # first spike of the pair is outside the window
+            ):  # first spike of the pair is outside the window or second spike is outside
                 continue
             spkindex = int(np.floor(spike / binwidth))
             cvisi[trial, spkindex] = isii[j]
             bincount[spkindex] += 1
-    cvmn = np.nanmean(cvisi, axis=0) - ARP
-    cvsd = np.nanstd(cvisi, axis=0)
+    # Suppress some warnings that are can occur here because sometimes the array is empty...
+    # but that is ok
+    with warnings.catch_warnings():
+        warnings.filterwarnings(action="ignore", message="Mean of empty slice")
+        warnings.filterwarnings(
+            action="ignore", message="Degrees of freedom <= 0 for slice"
+        )
+        cvmn = np.nanmean(cvisi, axis=0) - ARP
+        cvsd = np.nanstd(cvisi, axis=0)
     cvt = cvisit
 
     return cvisit, cvisi, cvt, cvmn, cvsd
