@@ -1,12 +1,22 @@
+"""
+This code is for "breaking the dendrites" from cells.
+Mostly it just allows us to remove the dendrites from a hoc file.
+This is run as a script from the command line. Run with
+python break_dendrites.py --help to see the command arguments.
+
+Note: replaced by compare_hoc.py. 
+"""
 import argparse
 from dataclasses import dataclass
-from typing import Union
 from pathlib import Path
+from typing import Union
+
 import numpy as np
+import toml
 from neuron import h
 from neuronvis import hoc_reader as HR
 from neuronvis import swc_to_hoc
-import toml
+
 config = toml.load(open("wheres_my_data.toml", "r"))
 
 known_names = ['Axon_Hillock', 'Axon_Initial_Segment',
@@ -111,7 +121,7 @@ if __name__ == '__main__':
         action="store_true",
         dest="prunedistal",
         default=False,
-        help="Prune all dendrite sections beyong proximal from the hoc output",
+        help="Prune all dendrite sections proximal from the hoc output",
     )
     parser.add_argument(
         "--pruneaxon",
