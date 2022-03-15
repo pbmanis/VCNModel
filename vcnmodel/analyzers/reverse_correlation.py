@@ -1,4 +1,3 @@
-import dataclasses
 import datetime
 import quantities as pq
 from dataclasses import dataclass, field
@@ -12,7 +11,6 @@ import elephant.conversion as EC
 import neo
 from vcnmodel.analyzers import spikestatistics as SPKS
 from vcnmodel.analyzers import sttc as STTC
-from vcnmodel.util import trace_calls as TRC
 
 cprint = CP.cprint
 
@@ -152,8 +150,8 @@ def reverse_correlation(
     # @trace_calls.time_func
 
 
-def _count_spikes_in_window(d, trial, site, s, RCP, pre_w):
-    an_i = d["Results"][trial]["inputSpikeTimes"][
+def _count_spikes_in_window(data, trial, site, s, RCP, pre_w):
+    an_i = data["Results"][trial]["inputSpikeTimes"][
         site
     ]  # input spike times for one input
     an_i = an_i[
@@ -173,9 +171,13 @@ def _count_spikes_in_window(d, trial, site, s, RCP, pre_w):
     return npre_i, pre_times
 
 
-def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
+def revcorr(model_data:object=None, nbins: int = 0, revcorrtype: str = ""):
     maxtc = 0
     nspk_plot = 0
+    data = model_data.data
+    AR = model_data.AR
+    RCP = model_data.RCP
+    RCD = model_data.RCD
     post_intervals = []
     pre_intervals = [[] for x in range(RCP.ninputs)]
     start_time = datetime.datetime.now()
@@ -183,7 +185,7 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
         sttccorr = STTC.STTC()
 
     srate = (
-        RCP.si.dtIC * 1e-3
+        model_data.SI.dtIC * 1e-3
     )  # this needs to be adjusted by the date of the run, somewhere...
     # for runs prior to spring 2021, the 1e-3 is NOT needed.
     # for runs after that, the value is held in milliseconds, so needs to be
@@ -193,9 +195,10 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
     #
     # print("starting loop")
     RCD.sv_trials = []
+    RCD.npost_spikes = 0
     for trial in range(RCP.ntrials):  # sum across trials
         # spiketimes is in msec, so leave si.dtIC in msec
-        spikeindex = [int(t / (srate)) for t in d["Results"][trial]["spikeTimes"]]
+        spikeindex = [int(t / (srate)) for t in data["Results"][trial]["spikeTimes"]]
         stx = AR.MC.time_base[spikeindex]
         stx = stx[  # get postsynaptic spikes and trim to analysis window
             (stx > RCP.min_time) & (stx < RCP.max_time)
@@ -205,7 +208,6 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
         RCD.npost_spikes += len(stx)
         post_intervals.extend(np.diff(stx))
         # accumulate spikes and calculate average spike
-
         for n in range(len(stx)):  # for all the spikes that were detected
             reltime = np.around(RCD.ti * 1e3, 5) - np.around(stx[n], 5)
             areltime = np.argwhere(
@@ -213,7 +215,7 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
             ).squeeze()
 
             if RCD.nsp_avg == 0:  # init arrays
-                RCD.sv_avg = d["Results"][trial]["somaVoltage"][areltime]
+                RCD.sv_avg = data["Results"][trial]["somaVoltage"][areltime]
                 RCD.nsp_avg = 1
                 RCD.ti_avg = 1e3 * RCD.ti[0 : len(areltime)] + RCP.minwin
             else:
@@ -229,18 +231,18 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
                 RCD.sv_all = np.zeros(
                     (len(stx), RCD.ti_avg.shape[0])
                 )  # initialize the array
-                RCD.sv_avg += d["Results"][trial]["somaVoltage"][areltime]
+                RCD.sv_avg += data["Results"][trial]["somaVoltage"][areltime]
                 RCD.nsp_avg += 1
-            RCD.sv_all[n, :] = d["Results"][trial]["somaVoltage"][areltime]
+            RCD.sv_all[n, :] = data["Results"][trial]["somaVoltage"][areltime]
 
             nspk_plot += RCD.nsp_avg
         RCD.sv_trials.append(RCD.sv_all)
-        max_spike_time =1e3*(d['runInfo'].pip_duration + d['runInfo'].pip_start)
+        max_spike_time =1e3*(data['runInfo'].pip_duration + data['runInfo'].pip_start)
 
         # Now get reverse  correlation for each input
         for isite in range(RCP.ninputs):  # for each ANF input
-            # print(len( d["Results"][trial]["inputSpikeTimes"]), isite)
-            anx = d["Results"][trial]["inputSpikeTimes"][
+            # print(len( data["Results"][trial]["inputSpikeTimes"]), isite)
+            anx = data["Results"][trial]["inputSpikeTimes"][
                 isite
             ]  # get input AN spikes and trim list to window
             anx = anx[(anx > RCP.min_time) & (anx < RCP.max_time)]
@@ -264,8 +266,8 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
                     spiketrains=neo.SpikeTrain(stx*pq.ms, t_stop=max_spike_time*pq.s),
                     bin_size=RCP.binw*pq.ms,
                     n_bins=None,
-                    t_start=d['runInfo'].pip_start* pq.s,
-                    t_stop=(d['runInfo'].pip_start+d['runInfo'].pip_duration)* pq.s,
+                    t_start=data['runInfo'].pip_start* pq.s,
+                    t_stop=(data['runInfo'].pip_start+data['runInfo'].pip_duration)* pq.s,
                     tolerance=None,
                     sparse_format="csr",
                 )
@@ -273,8 +275,8 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
                     spiketrains=neo.SpikeTrain(anx*pq.ms, t_stop=max_spike_time*pq.s),
                     bin_size=RCP.binw*pq.ms,
                     n_bins=None,
-                    t_start=d['runInfo'].pip_start* pq.s,
-                    t_stop=(d['runInfo'].pip_start+d['runInfo'].pip_duration)* pq.s,
+                    t_start=data['runInfo'].pip_start* pq.s,
+                    t_stop=(data['runInfo'].pip_start+data['runInfo'].pip_duration)* pq.s,
                     tolerance=None,
                     sparse_format="csr",
                 )
@@ -308,9 +310,9 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
                 refcorr = sttccorr.calc_ccf_sttc(
                     corrwindow=[RCP.minwin, RCP.maxwin], binwidth=RCP.binw
                 )
-                print(len(refcorr))
-                print(len(RCD.STTC[isite]))
-                print(RCD.STTC[isite])
+                # print(len(refcorr))
+                # print(len(RCD.STTC[isite]))
+                # print(RCD.STTC[isite])
                 RCD.STTC[isite] = RCD.STTC[isite] + refcorr
 
             tct = SPKS.total_correlation(anx, stx, width=-RCP.minwin, T=None)
@@ -332,11 +334,15 @@ def revcorr(d, AR, RCP, RCD, nbins: int = 0, revcorrtype: str = ""):
     RCD.mean_post_intervals = np.mean(post_intervals)
     elapsed_time = datetime.datetime.now() - start_time
     print(f"    Time for calculation: {str(elapsed_time):s}")
-    return RCP, RCD
+    return model_data
 
 
-def pairwise(d, AR, RCP, RCD):
+def pairwise(model_data):
     allspikes = []
+    data = model_data.data
+    AR = model_data.AR
+    RCP = model_data.RCP
+    RCD = model_data.RCD
     RCD.pairwise = np.zeros((RCP.ninputs, RCP.ninputs))
     RCD.participation = np.zeros(RCP.ninputs)
     pre_spike_counts = np.zeros(
@@ -344,7 +350,7 @@ def pairwise(d, AR, RCP, RCD):
     )  # there could be 0, or up to RCP.ninputs pre spikes
     pre_solo_spikes = np.zeros(RCP.ninputs + 1)
     srate = (
-        RCP.si.dtIC * 1e-3
+        model_data.SI.dtIC * 1e-3
     )  # this needs to be adjusted by the date of the run, somewhere...
     # for runs prior to spring 2021, the 1e-3 is NOT needed.
     # for runs after that, the value is held in milliseconds, so needs to be
@@ -374,7 +380,7 @@ def pairwise(d, AR, RCP, RCD):
 
     for trial in range(RCP.ntrials):  # accumulate across all trials
         # spiketimes is in msec, so si.dtIC should be in msec
-        spikeindex = [int(t / (srate)) for t in d["Results"][trial]["spikeTimes"]]
+        spikeindex = [int(t / (srate)) for t in data["Results"][trial]["spikeTimes"]]
         spks = AR.MC.time_base[spikeindex]  # get postsynaptic spikes for the trial
         for n, s in enumerate(spks):  # for each postsynaptic spike
             if (
@@ -387,7 +393,7 @@ def pairwise(d, AR, RCP, RCD):
             ).squeeze()
             spikedata = SpikeData()  # store spike waveform using a dataclass
             spikedata.trial = trial
-            spikedata.waveform = d["Results"][trial]["somaVoltage"][areltime]
+            spikedata.waveform = data["Results"][trial]["somaVoltage"][areltime]
 
             spikedata.time_index = n
             spikedata.prespikes = [[np.nan] for x in range(RCP.ninputs)]
@@ -402,7 +408,7 @@ def pairwise(d, AR, RCP, RCD):
                 if not sellist[isite]:
                     continue
                 npre_i, pre_times = _count_spikes_in_window(
-                    d, trial, isite, s, RCP, RCD.pre_w
+                    data, trial, isite, s, RCP, RCD.pre_w
                 )
                 n_active_inputs += min(1, npre_i)  # only count once
                 if npre_i > 0:
@@ -419,7 +425,7 @@ def pairwise(d, AR, RCP, RCD):
                         isite + 1, RCP.ninputs
                     ):  # now do for joint combinations with other remaining inputs
                         npre_j, pre_times = _count_spikes_in_window(
-                            d, trial, jsite, s, RCP, RCD.pre_w
+                            data, trial, jsite, s, RCP, RCD.pre_w
                         )
                         # print(npre_j)
                         if npre_j > 0:  # accumulate if coincident for this pair
