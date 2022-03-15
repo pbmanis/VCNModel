@@ -566,7 +566,7 @@ class DataTablesVCN:
                     "values":  [
                                 "-------Figure 3-------",
                                 "Figure3-Ephys_1_Main",
-                                "Figure3-Supplemental1_ABC_VC-KLTCalibration"
+                                "Figure3-Supplemental1_ABC_VC-KLTCalibration",
                                 "Figure3-Supplemental1_DEF_VC_Rin_Taum",
                                 "Figure3-Supplemental2_CC",
                                 "Figure3-Supplemental3_Zin",
