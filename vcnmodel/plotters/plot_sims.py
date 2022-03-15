@@ -2859,16 +2859,16 @@ class PlotSims:
                         for i_an in range(n_inputs):
                             if i_an == 0:
                                 P.axdict[sac_panel].plot(
-                                    an_sacbins, an_sac[i_an], "r-", label="AN"
+                                    an_sacbins[:-1], an_sac[i_an], "r-", label="AN"
                                 )
                             else:
                                 P.axdict[sac_panel].plot(
-                                    an_sacbins,
+                                    an_sacbins[:-1],
                                     an_sac[i_an],
                                     "r-",
                                 )
 
-                        P.axdict[sac_panel].plot(bu_sacbins, bu_sac, "b-", label="BU")
+                        P.axdict[sac_panel].plot(bu_sacbins[:-1], bu_sac, "b-", label="BU")
                         if soundtype in ["SAM"]:
                             P.axdict[sac_panel].set_xlim(
                                 (-2.0 / ri.fmod, 2.0 / ri.fmod)

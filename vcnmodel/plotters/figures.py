@@ -227,7 +227,6 @@ class Figures(object):
             "g",
             f"Saving to: {str(Path(self.config['baseDataDirectory'])):s}, Figures: {str(fig.filename):s}",
         )
-        cprint("g", f"   Figure title: {fig.title['title']:s}")
         mpl.savefig(
             Path(self.config["baseDataDirectory"], "Figures", fig.filename),
             metadata={
@@ -1095,8 +1094,8 @@ class Figures(object):
                 showgrid=False,
                 parent_figure=None,
             )
-            EFP.parent_figure.figure_handle.set_size_inches((8.0, 8.0))
             EFP = EF.EfficacyPlots(parent_figure=self.P)  # , cols=1, rows=1)
+            EFP.parent_figure.figure_handle.set_size_inches((8.0, 8.0))
         else:
             EFP = EF.EfficacyPlots(parent_figure=parent_figure)
 
@@ -1164,7 +1163,6 @@ class Figures(object):
                         xmax=900.0,
                         yoffset=n * yoffset,
                         iax=n,
-                        nax=len(fn),
                         rep=0,
                         figure=P_Eff.figure_handle,
                         longtitle=True,
@@ -1515,10 +1513,11 @@ class Figures(object):
         rc_datafile = Path(
             self.newPData().revcorrpath, f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl"
         )
-        cprint("c", f"Rcdatafile: {str(rc_datafile):s}")
+        cprint("c", f"RevCorr datafile: {str(rc_datafile):s}")
         if rc_datafile.is_file() and not recompute:
             with open(rc_datafile, "rb") as fh:
                 all_RCD_RCP = FPM.pickle_load(fh)
+                
             RCD = all_RCD_RCP[cell_number][0]
             RCP = all_RCD_RCP[cell_number][1]
             PD = self.newPData()
@@ -1565,7 +1564,7 @@ class Figures(object):
             cell_number = cellN
             example = FD.figure_revcorr[cell_number]
 
-        P, PD, RCP, RCD = self._get_revcorr(cell_number=cellN, dBSPL="Spont")
+        P, PD, RCP, RCD = self._get_revcorr(cell_number=cell_number, dBSPL="Spont")
         dBSPL = RCP.ri.dB
         if PD is None:
             return  # unable to get the revcorr
@@ -1689,13 +1688,17 @@ class Figures(object):
             # pointSize=7,
         )
 
-        if dBSPL == "Spont":
+        if dBSPL in ["Spont", 0.0]:
             if cellN is None:
                 save_file = "Fig_M3.pdf"
             else:
                 save_file = f"Fig_Revcorr/Revcorr_VCN_c{cell_number:02d}.pdf"
         else:
-            save_file = f"Fig_M3_{dBSPL:s}.pdf"
+            if isinstance(dBSPL, float):
+                db = f"{int(dBSPL):d}"
+            else:
+                db = dBSPL
+            save_file = f"Fig_M3_{db:s}.pdf"
         title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
         # save_file = "Fig_M2_Efficacy_Revcorr.pdf"
         fig = FigInfo()
@@ -1709,15 +1712,15 @@ class Figures(object):
         return fig
 
     def plot_revcorr_supplement_spont(self):
-        fig = self.plot_revcorr_supplement("Spont")
+        fig = self.plot_revcorr_supplement("Spont", supplemental1=True)
         return fig
 
     def plot_revcorr_supplement_30dB(self):
-        fig = self.plot_revcorr_supplement("30dB")
+        fig = self.plot_revcorr_supplement("30dB", supplemental1=True)
         return fig
 
     def plot_revcorr_supplement_40dB(self):
-        fig = self.plot_revcorr_supplement("40dB")
+        fig = self.plot_revcorr_supplement("40dB", supplemental1=True)
         return fig
 
     def plot_revcorr_supplement(
@@ -1735,20 +1738,27 @@ class Figures(object):
         ncells = len(cells)
 
         if parent_figure is None:
+            panel_labels = []
+            chars = string.ascii_uppercase
+            for cn in range(4):
+                for r in range(len(cells)):
+                    panel_labels.append(f"{chars[cn]:s}{r+1:d}")
+
             P = PH.regular_grid(
                 rows=4,
                 cols=len(cells),
-                order="columnsfirst",
-                figsize=(8, 10),
+                order="rowsfirst",
+                figsize=(14, 11),
                 # showgrid=True,
                 margins={
                     "bottommargin": 0.1,
-                    "leftmargin": 0.125,
-                    "rightmargin": 0.1,
+                    "leftmargin": 0.08,
+                    "rightmargin": 0.05,
                     "topmargin": 0.1,
                 },
                 verticalspacing=0.03,
-                horizontalspacing=0.08,
+                horizontalspacing=0.03,
+                panel_labels=panel_labels
             )
             P.figure_handle.text(
                 0.175,
@@ -1992,7 +2002,7 @@ class Figures(object):
                 verticalspacing=0.03,
                 horizontalspacing=0.1,
             )
-            axes = P.axarray[0, :]
+            axes = P.axarr[0, :]
         else:
             if axlist is None:
                 raise ValueError(
@@ -2570,7 +2580,7 @@ class Figures(object):
         else:
             save_file = f"All_PSTH/PSTH_VCN_c{cell_number:02d}.png"
         title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
-        title = ("SBEM Project Figure 3 Modeling : PSTH Summary",)
+        title = ("SBEM Project Figure 3 Modeling : PSTH Summary")
         # save_file = f"Fig_M5_supplemental_Full_{dBSPL:s}.pdf"
         fig = FigInfo()
         fig.P = P
