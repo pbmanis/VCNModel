@@ -2023,8 +2023,6 @@ class Figures(object):
             r_keys = list(R.keys())
             sns.set_palette("tab10", len(r_keys))
             palette = sns.color_palette(palette="tab10", n_colors=len(r_keys))
-            print(len(r_keys))
-            print("palette in G: ", palette)
             for c, cell_number in enumerate(r_keys):
                 RCD = R[cell_number][0]
                 RCP = R[cell_number][1]
@@ -2232,52 +2230,54 @@ class Figures(object):
             return
 
         fn = sorted(list(sfi.glob("*")))[0]
-        changetimestamp = get_changetimestamp()
-        X = self.ReadModel.get_data_file(fn, changetimestamp, PD)
-        mtime = Path(fn).stat().st_mtime
-        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
-            "%Y-%m-%d-%H:%M"
-        )
-        if X is None:
+        MD = self.ReadModel.get_data(fn, PD)
+        # mtime = Path(fn).stat().st_mtime
+        # timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
+        #     "%Y-%m-%d-%H:%M"
+        # )
+        if not MD.success:
             print("No simulation found that matched conditions")
             print(fn)
             return
         # unpack x
-        par, stitle, ivdatafile, filemode, d = X
-        axon_name = par["axonExpt"]
+        # par, stitle, ivdatafile, filemode, d = X
+        axon_name = MD.SI.axonExpt
+        AR = MD.AR
+        SP = MD.SP
+        RM = MD.RM
         protocol = "runANPSTH"
-        AR, SP, RM = analyze_data.analyze_data(ivdatafile, filemode, protocol)
+        # AR, SP, RM = analyze_data.analyze_data(ivdatafile, filemode, protocol)
         i = 0
         plot_win = (0.4, 0.550)
         psth_binw = 0.0005
         i = 0  # Voltage for first trial
-        self.plot_voltage(ax=P.axdict[pan[0]], ntrace=i, d=d, AR=AR, time_win=plot_win)
+        self.plot_voltage(ax=P.axdict[pan[0]], ntrace=i, d=MD.data, AR=AR, time_win=plot_win)
         self.plot_stim_waveform(
-            ax=P.axdict[pan[6]], ntrace=i, d=d, AR=AR, stim_win=plot_win
+            ax=P.axdict[pan[6]], ntrace=i, d=MD.data, AR=AR, stim_win=plot_win
         )
-        all_bu_st = self.get_bu_spikearray(AR, d)
+        all_bu_st = self.get_bu_spikearray(AR, MD.data)
         self.plot_spiketrain_raster(all_bu_st, ax=P.axdict[pan[1]], plot_win=plot_win)
         self.plot_psth_psth(
             ax=P.axdict[pan[2]],
             data=all_bu_st,
-            ri=d["runInfo"],
+            ri=MD.RI,
             psth_binw=psth_binw,
             ntr=len(all_bu_st),
             psth_win=plot_win,
         )
 
-        an_st_by_input, all_an_st, an_st_grand = self.get_an_spikearray(AR, d)
+        an_st_by_input, all_an_st, an_st_grand = self.get_an_spikearray(AR, MD.data)
         ninputs = len(an_st_by_input)
 
         self.plot_stacked_spiketrain_rasters(
-            an_st_by_input, ax=P.axdict[pan[3]], si=d["Params"], plot_win=plot_win
+            an_st_by_input, ax=P.axdict[pan[3]], si=MD.SI, plot_win=plot_win
         )
         P.axdict[pan[3]].set_xlabel("Time (s)")
 
         self.plot_psth_psth(
             ax=P.axdict[pan[4]],
             data=all_an_st,
-            ri=d["runInfo"],
+            ri=MD.RI,
             psth_binw=psth_binw,
             psth_win=plot_win,
             ntr=len(all_an_st),
@@ -2285,8 +2285,8 @@ class Figures(object):
         )
         P.axdict[pan[4]].set_xlabel("Time (sec)")
         P.axdict[pan[4]].set_title("AN")
-        ri = d["runInfo"]
-        si = d["Params"]
+        ri = MD.RI
+        si = MD.SI
         (
             totaldur,
             soundtype,
@@ -2855,12 +2855,11 @@ class Figures(object):
             return
 
         fn = sorted(list(sfi.glob("*")))[0]
-        changetimestamp = get_changetimestamp()
-        X = self.ReadModel.get_data_file(fn, changetimestamp, PD)
-        mtime = Path(fn).stat().st_mtime
-        timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
-            "%Y-%m-%d-%H:%M"
-        )
+        X = self.ReadModel.get_data_file(fn, PD)
+        # mtime = Path(fn).stat().st_mtime
+        # timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
+        #     "%Y-%m-%d-%H:%M"
+        # )
         if X is None:
             print("No simulation found that matched conditions")
             print(fn)
