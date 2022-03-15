@@ -1,3 +1,8 @@
+"""
+Display the hoc files with pyqtgraph,
+This is a command-line tool. See the --help message for details
+on the commands.
+"""
 __author__ = "pbmanis"
 import argparse
 import importlib
@@ -5,24 +10,21 @@ import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Union, Tuple
-
-from cnmodel import cells
-from cnmodel.decorator import Decorator
+from typing import Tuple, Union
 
 import pyqtgraph as pg
+import toml
+from cnmodel import cells
+from cnmodel.decorator import Decorator
 from neuronvis.hoc_viewer import HocViewer
 from pylibrary.tools import cprint as CP
 
 """
-States sets up the display orientation for each cell 
-for an initial view 
-These values can be obtained by running
-render celln Full vispy
-when you rotate or move the cell, the new dict of the position
-state will be printed. Just copy it into this dict to save it.
+States sets up the display orientation for each cell for an initial view These
+values can be obtained by running render celln Full vispy when you rotate or
+move the cell, the new dict of the position state will be printed. Just copy it
+into this dict to save it.
 """
-
 states = {
     2: {
         "scale_factor": 148.5,
@@ -134,11 +136,11 @@ sbem_sectypes = {
 
 
 class Render:
-    def __init__(self, cell_number:int, hf:object, renderer:str):
+    def __init__(self, cell_number: int, hf: object, renderer: str):
         self.cell_number = int(cell_number)
         self.renderer = renderer
         self.hf = hf
-        self.section_colors = { # colors are xkcd color palette
+        self.section_colors = {  # colors are xkcd color palette
             "axon": "spring green",
             "hillock": "red",
             "initialsegment": "lilac",
@@ -148,12 +150,12 @@ class Render:
             "soma": "black",
             "Axon_Hillock": "red",
             "Axon_Initial_Segment": "baby blue",
-            "Myelinated_Axon": "dark red", # "spring green",
+            "Myelinated_Axon": "dark red",  # "spring green",
             "Unmyelinated_Axon": "lilac",
-            "Proximal_Dendrite": "medium purple", # "cyan",
+            "Proximal_Dendrite": "medium purple",  # "cyan",
             "Dendritic_Hub": "royal blue",
             "Dendritic_Swelling": "gold",
-            "Distal_Dendrite": "dark magenta", # "sky blue",
+            "Distal_Dendrite": "dark magenta",  # "sky blue",
             # terminals (calyx of Held):
             "heminode": "green",
             "stalk": "yellow",
@@ -164,8 +166,8 @@ class Render:
             "parentaxon": "orange",
             "synapse": "k",
         }
-
-    def get_hoc_file(self)->None:
+    
+    def get_hoc_file(self) -> None:
         if self.hf.file_loaded is False:
             exit()
         self.section_list = self.hf.get_section_prefixes()
@@ -186,25 +188,33 @@ class Render:
                 self.clist.append([n1, None])
 
     def render(
-        self, view:str="cylinders", mechanism:Union[list, None]=None,
-            colormap:Union[str, dict]="viridis",
-            backgroundcolor:Union[str, list]="k",
-            )-> Tuple[object, object]:
+        self,
+        view: str = "cylinders",
+        mechanism: Union[list, None] = None,
+        colormap: Union[str, dict] = "viridis",
+        backgroundcolor: Union[str, list] = "k",
+    ) -> Tuple[object, object]:
         viewer = HocViewer(self.hf.hr.h, renderer=self.renderer)
         if self.renderer not in ["mpl", "vispy"]:
             viewer.setBackcolor(backgroundcolor)
-        print('render: renderer: ', self.renderer, view)
-        if self.renderer == 'pyqtgraph':
-            
+        print("render: renderer: ", self.renderer, view)
+        if self.renderer == "pyqtgraph":
+
             if view in ["line", "graph"]:
                 g = viewer.draw_graph()
-                g.set_group_colors(self.section_colors, mechanism=mechanism, colormap=colormap)
+                g.set_group_colors(
+                    self.section_colors, mechanism=mechanism, colormap=colormap
+                )
             elif view == "surface":
                 g = viewer.draw_surface()
-                g.set_group_colors(self.section_colors, mechanism=mechanism, colormap=colormap)
+                g.set_group_colors(
+                    self.section_colors, mechanism=mechanism, colormap=colormap
+                )
             elif view == "cylinders":
                 g = viewer.draw_cylinders()
-                g.set_group_colors(self.section_colors, mechanism=mechanism, colormap=colormap)
+                g.set_group_colors(
+                    self.section_colors, mechanism=mechanism, colormap=colormap
+                )
             elif view == "volume":
                 #            volume = render.draw_volume(resolution = 1.0, max_size=1e9)
                 g = viewer.draw_volume()
@@ -245,9 +255,7 @@ def set_table_and_cells(
     changes = None
     nach = None  # uses default
     if dataTable == "":
-        table_name = (
-            f"vcnmodel.model_data.data_{modelName:s}{dmodes[dendriteMode]:s}"
-        )
+        table_name = f"vcnmodel.model_data.data_{modelName:s}{dmodes[dendriteMode]:s}"
     else:
         table_name = f"vcnmodel.model_data.{dataTable:s}"
         CP.cprint("r", f"**** USING SPECIFIED DATA TABLE: {str(table_name):s}")
@@ -288,7 +296,8 @@ def set_table_and_cells(
         data.report_changes(changes_c)
     else:
         CP.cprint("g", "No changes to data tables")
-
+    
+    
     post_cell = cells.Bushy.create(
         morphology=str(filename),
         decorator=Decorator,
@@ -301,6 +310,19 @@ def set_table_and_cells(
 
 
 def main():
+     # find out where our files live
+    where_is_data = Path("wheres_my_data.toml")
+    if where_is_data.is_file():
+        datapaths = toml.load("wheres_my_data.toml")
+    else:
+        datapaths = {
+            "cellDataDirectory": Path("../VCN-SBEM-Data", "VCN_Cells")
+        }
+    baseDirectory = datapaths["cellDataDirectory"]
+    morphDirectory = "Morphology"
+    initDirectory = "Initialization"
+    simDirectory = "Simulations"
+
     parser = argparse.ArgumentParser(description="VCN Cell Morphology Renderer")
     parser.add_argument(
         "-n",
@@ -322,7 +344,10 @@ def main():
         dest="parts",
         type=str,
         default="Full",
-        choices=["Full", "NoDend", ],
+        choices=[
+            "Full",
+            "NoDend",
+        ],
         help="select hoc files with parts removed",
     )
     parser.add_argument(
@@ -350,12 +375,14 @@ def main():
         choices=["None", "klt", "kht", "ihvcn", "nacncoop", "ka", "kif", "kis"],
         help="Mechanism to render density",
     )
-    
+
     args = parser.parse_args()
     if args.cellnumber > 0:
         hocfile = f"VCN_c{int(args.cellnumber):02d}_Full_MeshInflate.hoc"
         cell_dir = f"VCN_c{int(args.cellnumber):02d}"
-        filename = Path("../VCN-SBEM-Data", "VCN_Cells", cell_dir, "Morphology", hocfile)
+        filename = Path(
+            baseDirectory, cell_dir, morphDirectory, hocfile
+        )
         fnum = args.cellnumber
     elif args.filename != "None":
         filename = Path(args.filename)
@@ -364,6 +391,8 @@ def main():
     else:
         raise ValueError("Need either -n cell number or -f filename")
 
+
+   
     post_cell = set_table_and_cells(
         filename=filename,
         dataTable="data_XM13A_nacncoop_normal",
@@ -383,13 +412,12 @@ def main():
     )
     if R.renderer in ["mpl"]:
         return None
-    elif R.renderer in ["vispy"]:  
+    elif R.renderer in ["vispy"]:
         # vispy and pyqtgraph use qt
         viewer.close()
     elif R.renderer in ["pyqtgraph"]:
-       if sys.flags.interactive == 0:
+        if sys.flags.interactive == 0:
             pg.Qt.QtGui.QApplication.exec_()
-        
 
 
 if __name__ == "__main__":
