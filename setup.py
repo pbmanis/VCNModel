@@ -1,4 +1,5 @@
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
+import numpy
 
 """
 This module is part of *vcnmodel*.
@@ -13,17 +14,21 @@ Support::
 Paul B. Manis, 2014-2022
 """
 
-version = '0.9.1'
+version = '0.9.3'
 
 setup(name='vcnmodel',
       version=version,
       description='VCN SBEM Cell modeling',
-      url='http://github.com/pbmanis/VCN_Model',
+      url='http://github.com/pbmanis/VCNModel',
       author='Paul B. Manis',
       author_email='pmanis@med.unc.edu',
       license='MIT',
       packages=find_packages(include=['vcnmodel*']),
-      python_requires='>=3.7',
+      ext_modules=[
+          Extension("sttc_cython", ["vcnmodel/analyzers/sttc_cython.c"],
+                    include_dirs=[numpy.get_include()]),
+          ],
+      python_requires='>=3.8',
       # install_requires=['matplotlib>=3.0', 'numpy>=1.1',
 #           ],
       zip_safe=False,
@@ -49,4 +54,3 @@ setup(name='vcnmodel',
              "Topic :: Computational Modeling :: Neuroscience",
              ],
     )
-      
