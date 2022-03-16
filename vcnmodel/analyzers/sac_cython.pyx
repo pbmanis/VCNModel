@@ -26,7 +26,7 @@ def sac_cython(
                     x0 = X[n,i]  # major speedup pulling this up to here!
                     for j in range(int(event_lengths[m])):
                         xd = X[m,j] - x0
-                        if (xd > t0) & (xd < t1):
+                        if (xd >= t0) & (xd < t1):
                             yout[ns] = xd  # store
                             ns = ns + 1  # keep track of storage location*/
         return yout, ns
