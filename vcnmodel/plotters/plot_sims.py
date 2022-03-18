@@ -1360,7 +1360,11 @@ class PlotSims:
         linehandles = [None] * RCP.ninputs
         cmx = sns.color_palette(colormap, as_cmap=True)
  
-        cell_n = int(RCP.si.cellID[-2:])
+        if isinstance(self.parent.cellID, int):
+            cell_n = self.parent.cellID
+        else:
+            cell_n = int(self.parent.cellID[-2:])
+
         SC, syninfo = self.get_synaptic_info(cell_n)
         syn_ASA = np.array([syninfo[1][isite][0] for isite in range(RCP.ninputs)])
         max_ASA = np.max(syn_ASA)
@@ -1515,7 +1519,7 @@ class PlotSims:
                 PH.showaxes(secax)
         if yaxis_label:
             secax.set_ylabel("Postsynaptic Voltage", fontsize=9, x=0.5)
-        print(f"Total spikes: {RCD.nsp_avg:d}")
+        print(f"Total spikes in voltage trace: {RCD.nsp_avg:d}")
 
         # finally, put up a legend that shows which inputs map to what colors
         # # the colors are in the legend
@@ -1782,9 +1786,13 @@ class PlotSims:
         """
         4. Do the calculations.
         """
-        print(RCP)
-        print(MD.RCP)
-        MD2 = REVCORR.revcorr(MD, nbins, revcorrtype)
+        syn_ASA = np.array([syninfo[1][isite][0] for isite in range(RCP.ninputs)])
+        revcorr_params = {"deselect": self.parent.deselect_flag,
+                        "threshold": self.parent.deselect_threshold,
+                        "window": self.parent.revcorr_window,
+                        "ASAs": syn_ASA,
+                        }
+        MD2, filtered_stx_by_trial = REVCORR.revcorr(MD, nbins, revcorrtype, ASAs=syn_ASA, revcorr_params=revcorr_params)
         RCP, RCD, self.allspikes = REVCORR.pairwise(MD) # get the pairwise data as well
         if P is not None:
             self.plot_revcorr_details(P, PD, MD2, RCP, RCD)
@@ -1835,7 +1843,7 @@ class PlotSims:
             vmax = 1
         vmin = 0
         # sax['B'].plot(np.arange(RCP.ninputs)+1, participation/nspikes, 'gx')
-        sax["E"].plot(RCD.sites, RCD.participation / RCD.nspikes, "gx")
+        sax["E"].plot(RCD.sites, RCD.participation / RCD.npost_spikes, "gx")
 
         axcbar = PLS.create_inset_axes(
             [0.8, 0.05, 0.05, 0.5], sax["D"], label=str(P.axdict["D"])

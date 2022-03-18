@@ -125,7 +125,6 @@ class Figures(object):
             open("wheres_my_data.toml", "r")
         )  # sorry, have to reload it here.
         self.axis_offset = -0.02
-        config = toml.load(open("wheres_my_data.toml", "r"))
         self.ReadModel = readmodel.ReadModel()
         self.ReadModel.set_parent(
             parent=self.parent, my_parent=self
@@ -211,7 +210,9 @@ class Figures(object):
             verticalalignment="top",
         )
 
-        if hasattr(fig, 'title2'):  # ggplot figures do not have a title or title2 attribute
+        if hasattr(
+            fig, "title2"
+        ):  # ggplot figures do not have a title or title2 attribute
             if fig.title2["title"] is not None or len(fig.title2["title"]) > 0:
                 fig.P.figure_handle.text(
                     fig.title2["x"],
@@ -542,8 +543,16 @@ class Figures(object):
                         iax=iax,
                         figure=None,
                     )
-                    rins[k] = {"Cell": iv, "Rin": RM.analysis_summary["Rin"], "dendrites": dendmode}
-                    taus[k] = {"Cell": iv, "taum": RM.analysis_summary["taum"], "dendrites": dendmode}
+                    rins[k] = {
+                        "Cell": iv,
+                        "Rin": RM.analysis_summary["Rin"],
+                        "dendrites": dendmode,
+                    }
+                    taus[k] = {
+                        "Cell": iv,
+                        "taum": RM.analysis_summary["taum"],
+                        "dendrites": dendmode,
+                    }
                     k += 1
 
             df_rin = pd.DataFrame.from_dict(rins, orient="index")  # , orient='index')
@@ -593,9 +602,14 @@ class Figures(object):
         fig = FigInfo()
         fig.P = self.P
         if cell is None:
-            fig.filename = "Fig_M1.pdf"
+            fig.filename = Path(
+                self.config["figureIntermediateDirectory"], "Fig_M1.pdf"
+            )
         else:
-            fig.filename = f"Fig_IV/IV_cell_VCN_c{cellN:02d}.pdf"
+            fig.filename = Path(
+                self.config["figureIntermediateDirectory"],
+                f"Fig_IV/IV_cell_VCN_c{cellN:02d}.pdf",
+            )
         fig.title["title"] = "SBEM Project Figure 1 Modeling (Main)"
         # self.save_figure(self.P, save_file, title)
         return fig
@@ -633,7 +647,7 @@ class Figures(object):
         P2 = self.plotIV(parent_figure=figp1.P, loc=(0, 8, 0.0, 4.0))
         fig = FigInfo()
         fig.P = self.P2
-        fig.filename = f"Figure3/Figure3-Supplemental1_VC_Rin_Taum.pdf"
+        fig.filename = "Figure3/Figure3_supp/Figure3-Supplemental1_VC_Rin_Taum.pdf"
         fig.title["title"] = "SBEM Project Figure4 Supplemental Figure 1 VC_Rin_Taum"
         return fig
 
@@ -937,7 +951,9 @@ class Figures(object):
             horizontalalignment="right",
             verticalalignment="bottom",
         )
-        save_file = "Fig_M2_Efficacy_Revcorr.pdf"
+        save_file = Path(
+            self.config["figureIntermediateDirectory"], "Fig_M2_Efficacy_Revcorr.pdf"
+        )
         fig = FigInfo()
         fig.P = EFP.P
         fig.filename = save_file
@@ -1197,9 +1213,11 @@ class Figures(object):
                             },
                         )
 
-        save_file = f"Fig_M2_Supplemental_{simulation_experiment:s}.pdf"
         title = "SBEM Project Figure 2 Modeling : Efficacy, Supplemental"
-        save_file = "Fig_M2_Efficacy_Supplement.pdf"
+        save_file = Path(
+            self.config["figureIntermediateDirectory"],
+            f"Fig_M2_Supplemental_{simulation_experiment:s}.pdf",
+        )
         fig = FigInfo()
         if traces:
             fig.P = self.P
@@ -1517,7 +1535,7 @@ class Figures(object):
         if rc_datafile.is_file() and not recompute:
             with open(rc_datafile, "rb") as fh:
                 all_RCD_RCP = FPM.pickle_load(fh)
-                
+
             RCD = all_RCD_RCP[cell_number][0]
             RCP = all_RCD_RCP[cell_number][1]
             PD = self.newPData()
@@ -1690,15 +1708,22 @@ class Figures(object):
 
         if dBSPL in ["Spont", 0.0]:
             if cellN is None:
-                save_file = "Fig_M3.pdf"
+                save_file = Path(
+                    self.config["figureIntermediateDirectory"], "Fig_M3.pdf"
+                )
             else:
-                save_file = f"Fig_Revcorr/Revcorr_VCN_c{cell_number:02d}.pdf"
+                save_file = Path(
+                    self.config["figureIntermediateDirectory"],
+                    f"Fig_Revcorr/Revcorr_VCN_c{cell_number:02d}.pdf",
+                )
         else:
             if isinstance(dBSPL, float):
                 db = f"{int(dBSPL):d}"
             else:
                 db = dBSPL
-            save_file = f"Fig_M3_{db:s}.pdf"
+            save_file = Path(
+                self.config["figureIntermediateDirectory"], f"Fig_M3_{db:s}.pdf"
+            )
         title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
         # save_file = "Fig_M2_Efficacy_Revcorr.pdf"
         fig = FigInfo()
@@ -1758,7 +1783,7 @@ class Figures(object):
                 },
                 verticalspacing=0.03,
                 horizontalspacing=0.03,
-                panel_labels=panel_labels
+                panel_labels=panel_labels,
             )
             P.figure_handle.text(
                 0.175,
@@ -1974,14 +1999,14 @@ class Figures(object):
         title = (
             "SBEM Project Supplemental Figure 3 Modeling : Reverse Correlation Summary",
         )
-        save_file = f"Fig_M3_supplemental_Full_{dBSPL:s}.pdf"
+        save_file = Path("Figure3_supp", f"Fig_M3_supplemental_Full_{dBSPL:s}.pdf")
         fig = FigInfo()
         fig.P = P
         fig.filename = save_file
         # fig.title["title"] = title
         return fig
 
-    def plot_revcorr_compare(
+    def plot_revcorr_compare(  # x)
         self,
         parent_figure=None,
         axlist: Union[list, None] = None,
@@ -2090,7 +2115,10 @@ class Figures(object):
             # ax.set_title(dBSPL)
 
         if parent_figure is None:
-            save_file = f"Fig_M4_Revcorr_Compare.pdf"
+            save_file = Path(
+                self.config["figureIntermediateDirectory"],
+                f"Fig_M4_Revcorr_Compare.pdf",
+            )
             fig = FigInfo()
             fig.P = P
             fig.filename = save_file
@@ -2261,7 +2289,9 @@ class Figures(object):
         plot_win = (0.4, 0.550)
         psth_binw = 0.0005
         i = 0  # Voltage for first trial
-        self.plot_voltage(ax=P.axdict[pan[0]], ntrace=i, d=MD.data, AR=AR, time_win=plot_win)
+        self.plot_voltage(
+            ax=P.axdict[pan[0]], ntrace=i, d=MD.data, AR=AR, time_win=plot_win
+        )
         self.plot_stim_waveform(
             ax=P.axdict[pan[6]], ntrace=i, d=MD.data, AR=AR, stim_win=plot_win
         )
@@ -2576,11 +2606,14 @@ class Figures(object):
         )
 
         if cellN is None:
-            save_file = f"Fig_M5.pdf"
+            save_file = Path(self.config["figureIntermediateDirectory"], f"Fig_M5.pdf")
         else:
-            save_file = f"All_PSTH/PSTH_VCN_c{cell_number:02d}.png"
+            save_file = Path(
+                self.config["figureIntermediateDirectory"],
+                f"All_PSTH/PSTH_VCN_c{cell_number:02d}.png",
+            )
         title2 = {"title": f"Cell {cell_number:d}", "x": 0.99, "y": 0.01}
-        title = ("SBEM Project Figure 3 Modeling : PSTH Summary")
+        title = "SBEM Project Figure 3 Modeling : PSTH Summary"
         # save_file = f"Fig_M5_supplemental_Full_{dBSPL:s}.pdf"
         fig = FigInfo()
         fig.P = P
@@ -3052,7 +3085,7 @@ class Figures(object):
 
         PH.nice_plot(cv_ax, direction="outward", ticklength=3.0)
         cv_ax.set_ylim(0, 1.2)
-        cv_ax.set_xlim(0, 1e3 * (cv_win[1] - cv_win[0])- 20.0)
+        cv_ax.set_xlim(0, 1e3 * (cv_win[1] - cv_win[0]) - 20.0)
         PH.talbotTicks(
             cv_ax,
             axes="xy",
@@ -3063,7 +3096,7 @@ class Figures(object):
             floatAdd={"x": 2, "y": 1},
         )
         # compute the mean CV from 10-60 msec for display on the plot
-        itwin = np.where(((cvt - reftime) > 0.01) &( (cvt - reftime) < 0.06))[0]
+        itwin = np.where(((cvt - reftime) > 0.01) & ((cvt - reftime) < 0.06))[0]
         CVp = np.nanmean(cvs[itwin] / cvm[itwin])
         cvlabel = r"$CV\prime$"
         cv_ax.text(
@@ -3072,8 +3105,8 @@ class Figures(object):
             f"{cvlabel:s}: {CVp:4.2f}",
             transform=cv_ax.transAxes,
             fontsize=7,
-            horizontalalignment='right',
-            verticalalignment='top',
+            horizontalalignment="right",
+            verticalalignment="top",
         )
         cv_ax.set_ylabel("CV")
         if label_x_axis:
@@ -3318,7 +3351,9 @@ class Figures(object):
         P = self.parent.PLT.plot_VC(
             sfi=sfi, show=False, parent_figure=parent_figure, loc=loc
         )
-        save_file = f"Fig_M0_VC_Adjustment.pdf"
+        save_file = Path(
+            self.config["figureIntermediateDirectory"], f"Fig_M0_VC_Adjustment.pdf"
+        )
         fig = FigInfo()
         fig.P = P
 

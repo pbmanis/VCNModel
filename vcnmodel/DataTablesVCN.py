@@ -341,7 +341,10 @@ class DataTablesVCN:
         self.frame_intervals = [0.033, 0.05, 0.1, 0.2, 0.3, 0.5, 1.0, 2.0]
         self.frame_interval = self.frame_intervals[3]
         self.target_figure = "Fig M0: VC-KLTCalibration (Fig_M0_VC_Adjustment)"
-        
+        self.deselect_flag = False
+        self.deselect_threshold = 180. # um2
+        self.revcorr_window = [-2.7, -0.5]
+
         # We use pyqtgraph's ParameterTree to set up the menus/buttons. This
         # defines the layout.
         self.params = [
@@ -426,10 +429,41 @@ class DataTablesVCN:
                     {"name": "PSTH", "type": "action"},
                     {"name": "Trace Viewer", "type": "action",},
                     {"name": "RevcorrSPKS", "type": "action"},
-                    {"name": "RevcorrEleph", "type": "action"},
-                    {"name": "RevcorrSimple", "type": "action"},
-                    {"name": "RevcorrSTTC", "type": "action"},
+                    # {"name": "RevcorrEleph", "type": "action"}, # removed as not being used
+                    # {"name": "RevcorrSimple", "type": "action"},
+                    # {"name": "RevcorrSTTC", "type": "action"},
                     {"name": "SAC", "type": "action"}
+                ],
+            },
+            {
+                "name": "Parameters",
+                "type": "group",
+                "children": [
+                    {
+                        "name": "Revcorr Deselect",
+                        "type": "bool",
+                        "value": self.deselect_flag,
+                    },
+                    {   "name": "Deselect ASAs >",
+                        "type": "float",
+                        "value": self.deselect_threshold,
+                        "suffix": "um^2",
+                        "limits": [0, 300.],
+                    },
+                    {
+                        "name": "Revcorr Win Start",
+                        "type": "float",
+                        "value": self.revcorr_window[0],
+                        "suffix": "ms",
+                        "limits": [-100., 0.0], 
+                    },
+                    {
+                        "name": "Revcorr Win End",
+                        "type": "float",
+                        "value": self.revcorr_window[1],
+                        "suffix": "ms",
+                        "limits": [-100., 0.0], 
+                    },
                 ],
             },
             {
@@ -574,7 +608,7 @@ class DataTablesVCN:
                                 "---------Misc-----------",
                                 "Figure: IV Figure",
                                 "Figure: All_IVs",
-                                "Figure: CombinedEffRevCorr"
+                                "Figure: CombinedEffRevCorr",
                                 "Figure: Efficacy",
                                 "Figure: Efficacy Supplement",
                                 "Figure: Revcorr Example",
@@ -583,7 +617,6 @@ class DataTablesVCN:
                                 "Figure: Revcorr at 30dB",
                                 "Figure: Revcorr at 40dB",
                                 "Figure: Compare Revcorrs", 
-                                "Fig M5: PSTH-FSL (Fig_M5)",
                                 "Figure: PSTHs",
                                 "Figure: VS-SAM Tone",
 
@@ -749,6 +782,18 @@ class DataTablesVCN:
                     "Trace Viewer": self.trace_viewer,
                 }
                 analyze_map[path[1]](path[1])  # call the analysis function
+            if path[0] == "Parameters":
+                if path[1] == "Revcorr Deselect":
+                    self.deselect_flag = data
+                elif path[1] == "Deselect ASAs >":
+                    self.deselect_threshold = float(data)
+                elif path[1] == "Revcorr Win Start":
+                    self.revcorr_window[0] = float(data)
+                elif path[1] == "Revcorr Win End":
+                    self.revcorr_window[1] = float(data)
+                else:
+                    cprint('r', f"Parameters not recognized: {path[1]:s}")
+                    print(data)
 
             if path[0] == "Filters":
                 if path[1] == "Use Filter":  # currently not an option

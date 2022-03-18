@@ -1,31 +1,28 @@
 import datetime
-import quantities as pq
 from dataclasses import dataclass, field
 from typing import List, Tuple, Union
 
-import numpy as np
-
-from pylibrary.tools import cprint as CP
-import elephant.spike_train_correlation as ESTC
 import elephant.conversion as EC
+import elephant.spike_train_correlation as ESTC
 import neo
+import numpy as np
+import quantities as pq
+from pylibrary.tools import cprint as CP
 from vcnmodel.analyzers import spikestatistics as SPKS
 from vcnmodel.analyzers import sttc as STTC
 
 cprint = CP.cprint
 
 """
-Compute the reverse correlation between two spike trains
-For all of the spikes in st1, compute the time difference
-with each spike in st2, find where the difference is within a
-time window we are interested in, then get and return the indices
-for all of those spikes.
+Compute the reverse correlation between two spike trains For all of the spikes
+in st1, compute the time difference with each spike in st2, find where the
+difference is within a time window we are interested in, then get and return the
+indices for all of those spikes.
 
-We define 3 data structures first:
-RevCorrPars are the parameters for the calculations, and inlcude
-the stimulus and runinfo parameters from the simulations.
-RevCorrData holds the results of the calculations.
-SpikeData holds information about the individual postsynaptic spikes.
+We define 3 data structures first: RevCorrPars are the parameters for the
+calculations, and inlcude the stimulus and runinfo parameters from the
+simulations. RevCorrData holds the results of the calculations. SpikeData holds
+information about the individual postsynaptic spikes.
 
 reverse_correlation is the python implementation
 
@@ -53,7 +50,9 @@ class RevCorrPars:
     min_time: float = 10.0  # msec to allow the system to settlt  # this window needs to be at least as long as minwin
     max_time: float = 250.0  # this window needs to be at least as long as maxwin
     binw: float = 0.1  # binwidth, ms
-    minwin: float = -5.0  # start of revcorr display/calculation, ms relative to reference event
+    minwin: float = (
+        -5.0
+    )  # start of revcorr display/calculation, ms relative to reference event
     maxwin: float = 2.5  # end of display/calculation relative to reference event
     amax: float = 0.0  # peak amplitude
     si: dict = field(default_factory=def_empty_dict)  # stimulus parameters
@@ -122,7 +121,7 @@ def reverse_correlation(
     """
     Basic reverse correlation between two sets of event times
     Bins are set up so that the center bin straddles 0 time
-    
+
     """
 
     if st1 is None or st2 is None:
@@ -150,28 +149,66 @@ def reverse_correlation(
     # @trace_calls.time_func
 
 
-def _count_spikes_in_window(data, trial, site, s, RCP, pre_w):
-    an_i = data["Results"][trial]["inputSpikeTimes"][
-        site
-    ]  # input spike times for one input
-    an_i = an_i[
-        (an_i > RCP.min_time) & (an_i < RCP.max_time)
-    ]  # restrict to those only within the response window
-    an_i = an_i - s  # get relative latency from spike to it's inputs
-    # print('ani: ', ani)
-    pre_indx = np.asarray((an_i >= pre_w[0]) & (an_i <= pre_w[1])).nonzero()[0]
-    pre_times = [an_i[k] for k in pre_indx]
-    if len(pre_times) > 0:
-        # print("pre times, prewindow: ", pre_times, pre_w)
+def _remove_spikes(stx, anx, win=[-2.7, -0.5]):
+    """Remove spikes from the input spike train (anx) that occur in the window
+    specified relative to the postsynaptic spike train (stx)
 
-        npre_i = len(pre_times)
-    else:
-        npre_i = 0
-        pre_times = []
-    return npre_i, pre_times
+    Parameters
+    ----------
+    stx : list
+        postsynaptic spike times
+    anx : list
+        2D list of spike times, by input
+    win : list, optional
+        window prior to post spikes where, if the selected pre spike sources
+        are present, the postspikes will be removed.
+        default window = [-2.7, -0.5]
+    """
+    new_stx = []
+    for i, x in enumerate(stx):
+        ds = anx - x
+        rmv = np.argwhere((ds >= win[0]) & (ds <= win[1]))
+        if len(rmv) == 0:
+            new_stx.append(x)
+    #         if len(rmv) > 0 :
+    #         anx[rmv] = np.nan
+    # anx = anx[np.argwhere(~np.isnan(anx))]
+    return new_stx
 
 
-def revcorr(model_data:object=None, nbins: int = 0, revcorrtype: str = ""):
+def revcorr(
+    model_data: object = None,
+    nbins: int = 0,
+    revcorrtype: str = "",
+    ASAs: list = [],
+    revcorr_params: Union[dict, None] = None,
+):
+    """compute a reverse correlation, optinally with
+    removal of selected postsynaptic spikes if certain inputs
+    are active (e.g., > a minimum ASA)
+
+    Parameters
+    ----------
+    model_data : object, optional
+        the model_data returned from readmodel, default None
+    nbins : int, optional
+        number of bins in the revcorr by default 0
+    revcorrtype : str, optional
+        one of the possible types: "RevCorr SPKS" (from Brian1.4),
+        "RevCorr Eleph" (from elephant),
+        "RevCorr Simple" (dumb implementation), by default ""
+    ASAs : list of floats, optional
+        The ASAs in an ordered list, largest to smallest, for deselection, by default []
+    revcorr_params : Union[dict, None], optional
+        A few parameters: identifies deselection criterion by ASA threshold,
+        whether deseleciton will be done, and the window used to count inputs
+        and deselect them, by default None
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
     maxtc = 0
     nspk_plot = 0
     data = model_data.data
@@ -184,6 +221,20 @@ def revcorr(model_data:object=None, nbins: int = 0, revcorrtype: str = ""):
     if RCP.algorithm == "RevcorrSTTC":
         sttccorr = STTC.STTC()
 
+    if revcorr_params is None:  # set some defaults
+        revcorr_params = {
+            "deselect": False,
+            "threshold": 500.0,
+            "window": [-2.7, -0.5],
+        }
+
+    if revcorr_params["deselect"]:
+        deselect_sites = [
+            (asa > revcorr_params["threshold"]) for i, asa in enumerate(ASAs)
+        ]
+    else:
+        deselect_sites = [False] * len(ASAs)
+    print("ASAs: ", ASAs)
     srate = (
         model_data.SI.dtIC * 1e-3
     )  # this needs to be adjusted by the date of the run, somewhere...
@@ -192,8 +243,10 @@ def revcorr(model_data:object=None, nbins: int = 0, revcorrtype: str = ""):
     # converted to seconds
 
     # sum across trials, and sort by inputs
-    #
-    # print("starting loop")
+    filtered_stx_by_trial = [
+        []
+    ] * RCP.ntrials  # postsynaptic spikes after filtering against inputs
+
     RCD.sv_trials = []
     RCD.npost_spikes = 0
     for trial in range(RCP.ntrials):  # sum across trials
@@ -237,15 +290,26 @@ def revcorr(model_data:object=None, nbins: int = 0, revcorrtype: str = ""):
 
             nspk_plot += RCD.nsp_avg
         RCD.sv_trials.append(RCD.sv_all)
-        max_spike_time =1e3*(data['runInfo'].pip_duration + data['runInfo'].pip_start)
+        max_spike_time = 1e3 * (
+            data["runInfo"].pip_duration + data["runInfo"].pip_start
+        )
+        an_spikes = [[]] * RCP.ninputs
+        for isite in range(RCP.ninputs):  # for each ANF input
+            anx = np.array(
+                data["Results"][trial]["inputSpikeTimes"][isite]
+            )  # get input AN spikes for this trial and input, and trim list to window
+            anx = anx[np.argwhere((anx > RCP.min_time) & (anx < RCP.max_time))]
+            an_spikes[isite] = anx
+            # check if we want to examine postspikes without specific inputs
+            if revcorr_params["deselect"] and deselect_sites[isite]:
+                stx = _remove_spikes(stx, anx, revcorr_params["window"])
+        filtered_stx_by_trial[trial] = stx  # save for later
 
         # Now get reverse  correlation for each input
         for isite in range(RCP.ninputs):  # for each ANF input
             # print(len( data["Results"][trial]["inputSpikeTimes"]), isite)
-            anx = data["Results"][trial]["inputSpikeTimes"][
-                isite
-            ]  # get input AN spikes and trim list to window
-            anx = anx[(anx > RCP.min_time) & (anx < RCP.max_time)]
+            anx = an_spikes[isite]
+            # anx = anx[(anx > RCP.min_time) & (anx < RCP.max_time)]
             if len(anx) == 0:
                 continue
             RCD.npre_spikes += len(anx)  # count up pre spikes.
@@ -261,22 +325,28 @@ def revcorr(model_data:object=None, nbins: int = 0, revcorrtype: str = ""):
                     T=None,
                 )
             elif revcorrtype == "RevcorrEleph":
-                nbins = len(np.arange(RCP.minwin, -RCP.minwin, RCP.binw*2))
+                nbins = len(np.arange(RCP.minwin, -RCP.minwin, RCP.binw * 2))
                 bst_i = EC.BinnedSpikeTrain(
-                    spiketrains=neo.SpikeTrain(stx*pq.ms, t_stop=max_spike_time*pq.s),
-                    bin_size=RCP.binw*pq.ms,
+                    spiketrains=neo.SpikeTrain(
+                        stx * pq.ms, t_stop=max_spike_time * pq.s
+                    ),
+                    bin_size=RCP.binw * pq.ms,
                     n_bins=None,
-                    t_start=data['runInfo'].pip_start* pq.s,
-                    t_stop=(data['runInfo'].pip_start+data['runInfo'].pip_duration)* pq.s,
+                    t_start=data["runInfo"].pip_start * pq.s,
+                    t_stop=(data["runInfo"].pip_start + data["runInfo"].pip_duration)
+                    * pq.s,
                     tolerance=None,
                     sparse_format="csr",
                 )
                 bst_j = EC.BinnedSpikeTrain(
-                    spiketrains=neo.SpikeTrain(anx*pq.ms, t_stop=max_spike_time*pq.s),
-                    bin_size=RCP.binw*pq.ms,
+                    spiketrains=neo.SpikeTrain(
+                        anx * pq.ms, t_stop=max_spike_time * pq.s
+                    ),
+                    bin_size=RCP.binw * pq.ms,
                     n_bins=None,
-                    t_start=data['runInfo'].pip_start* pq.s,
-                    t_stop=(data['runInfo'].pip_start+data['runInfo'].pip_duration)* pq.s,
+                    t_start=data["runInfo"].pip_start * pq.s,
+                    t_stop=(data["runInfo"].pip_start + data["runInfo"].pip_duration)
+                    * pq.s,
                     tolerance=None,
                     sparse_format="csr",
                 )
@@ -303,7 +373,7 @@ def revcorr(model_data:object=None, nbins: int = 0, revcorrtype: str = ""):
                     # datawindow=[RCP.min_time, RCP.max_time], # stx and anx already have this done
                     corrwindow=[RCP.minwin, RCP.maxwin],
                 )
-                RCD.CB[isite] = RCD.CB[isite] + refcorr[:len(RCD.CB[isite])]
+                RCD.CB[isite] = RCD.CB[isite] + refcorr[: len(RCD.CB[isite])]
 
             elif revcorrtype == "RevcorrSTTC":
                 sttccorr.set_spikes(RCP.binw, stx, anx, RCP.binw)
@@ -334,213 +404,328 @@ def revcorr(model_data:object=None, nbins: int = 0, revcorrtype: str = ""):
     RCD.mean_post_intervals = np.mean(post_intervals)
     elapsed_time = datetime.datetime.now() - start_time
     print(f"    Time for calculation: {str(elapsed_time):s}")
-    return model_data
+    return model_data, filtered_stx_by_trial
 
 
-def pairwise(model_data):
-    allspikes = []
-    data = model_data.data
-    AR = model_data.AR
-    RCP = model_data.RCP
-    RCD = model_data.RCD
-    RCD.pairwise = np.zeros((RCP.ninputs, RCP.ninputs))
-    RCD.participation = np.zeros(RCP.ninputs)
-    pre_spike_counts = np.zeros(
-        RCP.ninputs + 1
-    )  # there could be 0, or up to RCP.ninputs pre spikes
-    pre_solo_spikes = np.zeros(RCP.ninputs + 1)
-    srate = (
-        model_data.SI.dtIC * 1e-3
-    )  # this needs to be adjusted by the date of the run, somewhere...
-    # for runs prior to spring 2021, the 1e-3 is NOT needed.
-    # for runs after that, the value is held in milliseconds, so needs to be
-    # converted to seconds
-    nperspike = []
-    nfilt_spikes = 0
-    nfilt2_spikes = 0
-    filttable = []
-    filttable2 = []
-    RCD.nspikes = 0
-    sellist = [True] * RCP.ninputs
-    # if ri.Spirou == "largestonly":
-    #     for i in range(1, len(sellist)):
-    #         sellist[i] = False
-    # elif ri.Spirou == "twolargest":
-    #     for i in range(2, len(sellist)):
-    #         sellist[i] = False
-    # elif ri.Spirou == "removelargest":
-    #     sellist[0] = False
-    print("RCP.ninputs: ", RCP.ninputs, RCD.sites)
-    lack_largest = 0
-    lack_two_largest = 0
-    lack_three_largest = 0
-    only_largest = 0
-    only_two_largest = 0
-    only_three_largest = 0
+##########################################################################
+# Pairwise input interaction analysis
+##########################################################################
 
-    for trial in range(RCP.ntrials):  # accumulate across all trials
-        # spiketimes is in msec, so si.dtIC should be in msec
-        spikeindex = [int(t / (srate)) for t in data["Results"][trial]["spikeTimes"]]
-        spks = AR.MC.time_base[spikeindex]  # get postsynaptic spikes for the trial
-        for n, s in enumerate(spks):  # for each postsynaptic spike
-            if (
-                s < RCP.min_time or s > RCP.max_time
-            ):  # restrict post spikes to those only in a response window
-                continue
-            reltime = np.around(RCD.ti, 5) - np.around(s, 5)
-            areltime = np.argwhere(
-                (RCP.minwin <= reltime) & (reltime <= RCP.maxwin)
-            ).squeeze()
-            spikedata = SpikeData()  # store spike waveform using a dataclass
-            spikedata.trial = trial
-            spikedata.waveform = data["Results"][trial]["somaVoltage"][areltime]
 
-            spikedata.time_index = n
-            spikedata.prespikes = [[np.nan] for x in range(RCP.ninputs)]
-            RCD.nspikes += 1  # number of post spikes evaluated
-            n_active_inputs = (
-                0  # number of active inputs associated with this post spike
-            )
-            spike_pattern = np.zeros(RCP.ninputs)
-            solo = np.zeros(RCP.ninputs)
-            # the 0'th site is the largest site.....
-            for isite in range(RCP.ninputs):  # examine each input
-                if not sellist[isite]:
-                    continue
-                npre_i, pre_times = _count_spikes_in_window(
-                    data, trial, isite, s, RCP, RCD.pre_w
+def _count_spikes_in_window(
+    spike: float,
+    data: dict,
+    trial: int = 0,
+    isite: int = 0,
+    pre_w: list = [-2.7, -0.5],
+    RCP: Union[object, None] = None,
+):
+    """Count presynaptic spikes in a window before a postsynaptic site
+
+    Parameters
+    ----------
+    spike : float
+        Time of the reference (postsynaptic) spike
+    data : dict
+        model data dictionary to access input spikes
+    trial : int
+        trial to look for input data
+    isite : int
+        input site number
+    pre_w : list (len = 2)
+        window before spike to look for input spikes
+    RCP : object
+        parameters for analysis - use to get time into the trace
+
+    Returns
+    -------
+    npre_i : int
+        number of presynaptic spikes that met criteria
+    pre_times: a list of the presynaptic spikes that met criteria.
+    """
+    an_i = data["Results"][trial]["inputSpikeTimes"][
+        isite
+    ]  # get input spike times for one input in one trial
+    an_i = an_i[
+        (an_i > RCP.min_time) & (an_i < RCP.max_time)
+    ]  # restrict to those only within the response window
+    an_i = an_i - spike  # get relative latency from spike to it's inputs
+    pre_indx = np.asarray((an_i >= pre_w[0]) & (an_i <= pre_w[1])).nonzero()[0]
+    pre_times = [an_i[k] for k in pre_indx]
+    if len(pre_times) > 0:
+        npre_i = len(pre_times)
+    else:
+        npre_i = 0
+        pre_times = []
+    return npre_i, pre_times
+
+
+def _get_spike_pattern(
+    spike: float,
+    data: dict,
+    trial: int = 0,
+    selected_inputs: list = [],
+    RCP: object = None,
+    RCD: object = None,
+):
+    """Compute the pattern of input spikes associated with an individual
+     postsynaptic spike.
+
+     Return the pattern (list, by input)
+
+     Parameters
+     ----------
+     data : _type_
+         _description_
+     trial : _type_
+         _description_
+     selected_inputs : _type_
+         _description_
+     spikedata : _type_
+         _description_
+     RCP : _type_
+         _description_
+     RCD : _type_
+         _description_
+
+     Returns
+     -------
+     spike_pattern: A list by trial of lists by input of inputs
+         that were associated with a postsynaptic spike
+    pair_wise: A list by trial of 2D matrices indicating the
+         paired occurance of inputs for a given postsynaptic spike
+     total_pre: int. Total count of presynaptic spikes tested.
+    """
+    n_active_inputs = 0
+    total_pre = 0
+    pair_wise = np.zeros((RCP.ninputs, RCP.ninputs))
+    spike_pattern = np.zeros(RCP.ninputs)
+    # the 0'th site is the largest site.....
+    for isite, site_flag in enumerate(selected_inputs):  # examine each input
+        npre_i, pre_times = _count_spikes_in_window(
+            spike,
+            data=data,
+            trial=trial,
+            isite=isite,
+            pre_w=RCD.pre_w,
+            RCP=RCP,
+        )
+        total_pre += npre_i
+        n_active_inputs += min(1, npre_i)  # only count once
+        if npre_i > 0:
+            spike_pattern[isite] += 1
+            for jsite in range(
+                isite + 1, RCP.ninputs
+            ):  # now do for joint combinations with other remaining inputs
+                npre_j, pre_times = _count_spikes_in_window(
+                    spike,
+                    data=data,
+                    trial=trial,
+                    isite=jsite,
+                    pre_w=RCD.pre_w,
+                    RCP=RCP,
                 )
-                n_active_inputs += min(1, npre_i)  # only count once
-                if npre_i > 0:
+                if npre_j > 0:  # accumulate if coincident for this pair
+                    pair_wise[isite, jsite] += 1
+    return spike_pattern, pair_wise, total_pre
 
-                    spikedata.prespikes[isite] = pre_times[
-                        0
-                    ]  # save all event times even if more than one
-                    RCD.participation[
-                        isite
-                    ] += 1  # any spikes in the window = participation (but only count as 1)
-                    spike_pattern[isite] += 1
-                    # print(' spk: ', s, 'isite: ', isite)
-                    for jsite in range(
-                        isite + 1, RCP.ninputs
-                    ):  # now do for joint combinations with other remaining inputs
-                        npre_j, pre_times = _count_spikes_in_window(
-                            data, trial, jsite, s, RCP, RCD.pre_w
-                        )
-                        # print(npre_j)
-                        if npre_j > 0:  # accumulate if coincident for this pair
-                            RCD.pairwise[isite, jsite] += 1
 
-            # increment the number of times there were npre_spikes input to this post spike
-            pre_spike_counts[n_active_inputs] += 1
+def _spike_filter(RCP, spks):
+    # filter to analysis window.
+    spks = spks[(spks >= RCP.min_time) & (spks < RCP.max_time)]
+    return spks
 
-            # check for different spike patterns (# of inputs, ordered)
-            if np.sum(spike_pattern) == 1:  # only one input was active
-                which_input = np.where(spike_pattern == 1)[0]
-                pre_solo_spikes[which_input] += 1
-            if spike_pattern[0] == 0 and np.sum(spike_pattern) >= 1:
-                lack_largest += 1
-            if np.sum(spike_pattern[0:2]) == 0 and np.sum(spike_pattern) >= 1:
-                lack_two_largest += 1
-            if np.sum(spike_pattern[0:3]) == 0 and np.sum(spike_pattern) >= 1:
-                lack_three_largest += 1
 
-            if np.sum(spike_pattern[0:1]) == 1 and np.sum(spike_pattern) == 1:
-                only_largest += 1
-            if np.sum(spike_pattern[0:2]) == 2 and np.sum(spike_pattern) == 2:
-                only_two_largest += 1
-            if np.sum(spike_pattern[0:3]) == 3 and np.sum(spike_pattern) == 3:
-                only_three_largest += 1
+def _spike_pattern_analysis(
+    spikes: Union[list, np.ndarray], spike_pattern: list, ninputs: int
+):
+    """_summary_
 
-            if sum(spike_pattern[0:5]) == 0:
-                cprint(
-                    "magenta",
-                    f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
-                )
-                nfilt_spikes += 1
-                filttable.append(spike_pattern)
-            elif sum(spike_pattern[0:4]) == 0:
-                cprint(
-                    "cyan", f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
-                )
-                nfilt_spikes += 1
-                filttable.append(spike_pattern)
-            elif sum(spike_pattern[0:3]) == 0:
-                cprint(
-                    "blue", f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
-                )
-                nfilt_spikes += 1
-                filttable.append(spike_pattern)
-            elif sum(spike_pattern[0:2]) == 0:
-                cprint(
-                    "green", f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
-                )
-                nfilt_spikes += 1
-                filttable.append(spike_pattern)
-                if spike_pattern[2] == 1:
-                    filttable2.append(spike_pattern)
-                    nfilt2_spikes += 1
-            # elif spike_pattern[0]== 0:
-            #     cprint('yellow', f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}")
-            # nfilt_spikes += 1
-            # filttable.append(spike_pattern)
-            else:
-                pass
-                # cprint("w", f"{str(spike_pattern):s}, {which_input[0]:d}")
+    Parameters
+    ----------
+    spikes : Union[list, np.ndarray]
+        the list of all spike times (do we need this?)
+    spike_pattern : list
+        The pattern of presynaptic spikes for all of the spikes
+    ninputs : int
+        The number of inputs in the spike_pattern
 
-            allspikes.append(spikedata)
+    Returns
+    -------
+    patterns : dict
+        The patterns dictionary that was used, with the values
+        filled in.
+    solo spikes: list
+        A summary of which input gave rise on it's own to a postsynaptic spike 
+        
+    """
+    pre_spike_counts = np.zeros(ninputs + 1)
+    # there could be 0, or up to RCP.ninputs pre spikes
+    pre_solo_spikes = np.zeros(ninputs + 1)
+    # patterns are [bitmask, count lack input, count have_input]
+    patterns = {
+        "1_largest": [0x01, 0, 0, 0],  # define pattern as bits, largest input in lowest position.
+        "2_largest": [0x03, 0, 0, 0],
+        "3_largest": [0x07, 0, 0, 0],
+        "0_largest": [0x07, 0, 0, 1],
+    }
+    b_spk = 0
+    for i, spk in enumerate(spike_pattern):
+        if spk == 1:
+            b_spk |= 2**i
 
-    print("\nPairwise matrix: \n", RCD.pairwise)
-    print(
-        "Total prespikes: \n", sum(pre_spike_counts), [int(p) for p in pre_spike_counts]
-    )
-    print("\nTotal post spikes: ", RCD.nspikes)
-    print("Windowd post spikes: ", RCD.npost_spikes)
-    print("\nPre solo drive: ", pre_solo_spikes)
-    print("\nFiltered Spikes: ", nfilt_spikes)
-    print(
-        f"Postspikes without the largest input active:      {lack_largest:5d} ({100.*lack_largest/RCD.nspikes:4.1f}%)"
-    )
-    print(
-        f"Postspikes with only the largest input active:    {only_largest:5d} ({100.*only_largest/RCD.nspikes:4.1f}%)"
-    )
-    print(
-        f"Postspikes without two largest inputs active:     {lack_two_largest:5d} ({100.*lack_two_largest/RCD.nspikes:4.1f}%)"
-    )
-    print(
-        f"Postspikes with only two largest inputs active:   {only_two_largest:5d} ({100.*only_two_largest/RCD.nspikes:4.1f}%)"
-    )
-    print(
-        f"Postspikes without three largest inputs active:   {lack_three_largest:5d} ({100.*lack_three_largest/RCD.nspikes:4.1f}%)"
-    )
-    print(
-        f"Postspikes with only three largest inputs active: {only_three_largest:5d} ({100.*only_three_largest/RCD.nspikes:4.1f}%)"
-    )
-    print(
-        f"Mean presynaptic rate: {np.mean([1./RCD.mean_pre_intervals[k] for k in range(len(RCD.mean_pre_intervals))]):f}"
-    )
-    print(f"Mean postsynaptic rate: {1./RCD.mean_post_intervals:f}")
-    print(f"RCP min/max time: {RCP.min_time:8.3f} {RCP.max_time:8.3f}")
+    for n, spike in enumerate(spikes):  # for each postsynaptic spike
+        n_active_inputs = 0  # number of active inputs associated with this post spike
+        # increment the number of times there were npre_spikes for this post spike
+        pre_spike_counts[n_active_inputs] += 1
+        #
+        # check for different spike patterns (# of inputs, ordered)
+        if b_spk == 0:  # nothing in the input
+            continue
+        if b_spk & (b_spk-1) == 0:  # only one input was active (bspk is a power of 2)
+            which_input = int(np.log2(b_spk))
+            pre_solo_spikes[which_input] += 1
+        for pkey in patterns:  # now check for specific patterns of inputs
+            pat = patterns[pkey]
+            if pat[3] == 0:
+                if b_spk == pat[0]:  # has exact pattern of input(s) only
+                    pat[1] += 1
+                else:
+                    pat[2] += 1  # had largest input(s) only
+            else:  # flip the logic
+                if not (b_spk & pat[0]): # only if not the pattern is seen do we mark
+                    pat[1] += 1
+                else:
+                    pat[2] += 1
+    return patterns, pre_solo_spikes
+
+def test_spike_patterns():
+    spikes = [64]*1
+    spike_patterns = [
+        [1, 0, 0, 0, 0, 0, 0, 0],  # largest only
+        [0, 1, 0, 0, 0, 0, 0, 0],  # second only
+        [0, 0, 1, 0, 0, 0, 0, 0],  # 3rd only
+        [0, 0, 0, 1, 0, 0, 0, 0],  # 4th only
+        [1, 1, 0, 0, 0, 0, 0, 0],  # 2 largest
+        [1, 1, 1, 0, 0, 0, 0, 0],  # 3largest
+        [1, 1, 0, 0, 1, 0, 0, 0],  # 2 largest and a smaller one
+        [0, 0, 0, 1, 0, 0, 0, 0],  # 4th one solo. Should pass 0 largest
+        [0, 0, 0, 1, 1, 0, 0, 0],  # 4th and 5th  Should pass 0 largest
+        [0, 0, 1, 1, 1, 0, 0, 0],  # 3-5 (should fail the "not largest 3 test", or 0 largest)
+        [0, 0, 0, 0, 0, 1, 1, 1],  # bunch of little ones - pass 0 largest
+        [0, 0, 0, 0, 0, 0, 0, 0],  # no inputs - should fail all 
+    ]
+    ninputs = 5
+    for sp in spike_patterns:
+        r, solo = _spike_pattern_analysis(spikes, sp, ninputs)
+        print('r: ', r)
+        print('s: ', solo)
+    return
+
+        # if spike_pattern[0] == 0 and np.sum(spike_pattern) >= 1:
+        #     lack_largest += 1
+        # if np.sum(spike_pattern[0:2]) == 0 and np.sum(spike_pattern) >= 1:
+        #     lack_two_largest += 1
+        # if np.sum(spike_pattern[0:3]) == 0 and np.sum(spike_pattern) >= 1:
+        #     lack_three_largest += 1
+
+        # if np.sum(spike_pattern[0:1]) == 1 and np.sum(spike_pattern) == 1:
+        #     only_largest += 1
+        # if np.sum(spike_pattern[0:2]) == 2 and np.sum(spike_pattern) == 2:
+        #     only_two_largest += 1
+        # if np.sum(spike_pattern[0:3]) == 3 and np.sum(spike_pattern) == 3:
+        #     only_three_largest += 1
+        # print_patterns = False
+        # if sum(spike_pattern[0:5]) == 0:
+        #     if print_patterns:
+        #         cprint(
+        #         "magenta",
+        #         f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
+        #     )
+        #     filter_table1.append(spike_pattern)
+        # elif sum(spike_pattern[0:4]) == 0:
+        #     if print_patterns:
+        #         cprint(
+        #         "cyan", f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
+        #         )
+
+        #     filter_table2.append(spike_pattern)
+        # elif sum(spike_pattern[0:3]) == 0:
+        #     if print_patterns:
+        #         cprint(
+        #         "blue", f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
+        #     )
+        #     filter_table1.append(spike_pattern)
+        # elif sum(spike_pattern[0:2]) == 0:
+        #     if print_patterns:
+        #         cprint(
+        #         "green", f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
+        #     )
+        #     filter_table2.append(spike_pattern)
+        # if spike_pattern[2] == 1:
+        #         filter_table2.append(spike_pattern)
+        # # elif spike_pattern[0]== 0:
+        # #     cprint('yellow', f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}")
+        # # nfilt_spikes += 1
+        # # filttable.append(spike_pattern)
+        # else:
+        #     pass
+        #     # cprint("w", f"{str(spike_pattern):s}, {which_input[0]:d}")
+
+    # return patterns  # , filter_table1, filter_table2
+
+    # def print_pairwise(RCD, RCP, PAT):
+    #     print("\nPairwise matrix: \n", RCD.pairwise)
+    #     print(
+    #         "Total prespikes: \n", sum(pre_spike_counts), [int(p) for p in pre_spike_counts]
+    #     )
+    #     print("\nTotal post spikes: ", RCD.nspikes)
+    #     print("Windowd post spikes: ", RCD.npost_spikes)
+    #     print("\nPre solo drive: ", PAT.pre_solo_spikes)
+    #     print("\nFiltered Spikes: ", nfilt_spikes)
+    #     print(
+    #         f"Postspikes without the largest input active:      {lack_largest:5d} ({100.*lack_largest/RCD.nspikes:4.1f}%)"
+    #     )
+    #     print(
+    #         f"Postspikes with only the largest input active:    {only_largest:5d} ({100.*only_largest/RCD.nspikes:4.1f}%)"
+    #     )
+    #     print(
+    #         f"Postspikes without two largest inputs active:     {lack_two_largest:5d} ({100.*lack_two_largest/RCD.nspikes:4.1f}%)"
+    #     )
+    #     print(
+    #         f"Postspikes with only two largest inputs active:   {only_two_largest:5d} ({100.*only_two_largest/RCD.nspikes:4.1f}%)"
+    #     )
+    #     print(
+    #         f"Postspikes without three largest inputs active:   {lack_three_largest:5d} ({100.*lack_three_largest/RCD.nspikes:4.1f}%)"
+    #     )
+    #     print(
+    #         f"Postspikes with only three largest inputs active: {only_three_largest:5d} ({100.*only_three_largest/RCD.nspikes:4.1f}%)"
+    #     )
+    #     print(
+    #         f"Mean presynaptic rate: {np.mean([1./RCD.mean_pre_intervals[k] for k in range(len(RCD.mean_pre_intervals))]):f}"
+    #     )
+    #     print(f"Mean postsynaptic rate: {1./RCD.mean_post_intervals:f}")
+    #     print(f"RCP min/max time: {RCP.min_time:8.3f} {RCP.max_time:8.3f}")
 
     # print('filttable: \n', filttable)
-    filttable = np.array(filttable)
-    filttable2 = np.array(filttable2)
-    print("Counts: ", filttable.sum(axis=0))
-    if filttable.shape[0] > 0:
-        print("\nFilt Spike Proportions: ", filttable.sum(axis=0) / nfilt_spikes)
-        fs1 = np.array(filttable)[:, 2:].sum(axis=0) / nfilt_spikes
+    # filttable = np.array(filttable)
+    # filttable2 = np.array(filttable2)
+    # print("Counts: ", filttable.sum(axis=0))
+    # if filttable.shape[0] > 0:
+    #     print("\nFilt Spike Proportions: ", filttable.sum(axis=0) / nfilt_spikes)
+    #     fs1 = np.array(filttable)[:, 2:].sum(axis=0) / nfilt_spikes
 
-    fsa = np.array(RCD.sites[2:]) / np.sum(RCD.sites[2:])
-    print("Input Proportions: ", fsa)
+    # fsa = np.array(RCD.sites[2:]) / np.sum(RCD.sites[2:])
+    # print("Input Proportions: ", fsa)
 
-    filttable2 = np.array(filttable2)
-    # print('filttable 2 shape: ', filttable2.shape)
-    if filttable2.shape[0] > 0:
-        print(
-            "\nFilt Spike Proportions on input #3: ",
-            filttable2.sum(axis=0) / nfilt2_spikes,
-        )
-        fs2 = np.array(filttable2)[:, 2:].sum(axis=0) / nfilt2_spikes
+    # filttable2 = np.array(filttable2)
+    # # print('filttable 2 shape: ', filttable2.shape)
+    # if filttable2.shape[0] > 0:
+    #     print(
+    #         "\nFilt Spike Proportions on input #3: ",
+    #         filttable2.sum(axis=0) / nfilt2_spikes,
+    #     )
+    #     fs2 = np.array(filttable2)[:, 2:].sum(axis=0) / nfilt2_spikes
 
     # if filttable.shape[0] > 0:
     #     f=mpl.figure()
@@ -557,10 +742,6 @@ def pairwise(model_data):
     #     ax.plot(self.allspikes[i].prespikes, y)
     # mpl.show()
     # print(self.allspikes)
-    npartipating = np.sum(RCD.participation)
-    RCD.s_pair = np.sum(RCD.pairwise)
-    if RCD.s_pair > 0.0:
-        RCD.pairwise /= RCD.s_pair
 
     # print(np.unique(nperspike, return_counts=True))
     # nperspike = [n for n in nperspike if n != 0]
@@ -581,3 +762,233 @@ def pairwise(model_data):
 
     RCD.ynspike = np.cumsum(pre_spike_counts[1:]) / np.sum(pre_spike_counts[1:])
     return RCP, RCD, allspikes
+
+
+@dataclass()
+class Patterns:
+    selected_inputs: field(default_factory=def_empty_list)
+    event_spike_pattern: field(default_factory=def_empty_list)
+    event_pair_wise: field(default_factory=def_empty_list)
+    filter_table: field(default_factory=def_empty_list)
+    filter_table2: field(default_factory=def_empty_list)
+    all_spikes: field(default_factory=def_empty_list)
+    n_post: int = 0
+    n_pre: int = 0
+    lack_largest: int = 0
+    lack_two_largest: int = 0
+    lack_three_largest: int = 0
+    only_largest: int = 0
+    only_two_largest: int = 0
+    only_three_largest: int = 0
+
+
+def pairwise(model_data):
+
+    data = model_data.data
+    AR = model_data.AR
+    RCP = model_data.RCP
+    RCD = model_data.RCD
+    RCD.pairwise = np.zeros((RCP.ninputs, RCP.ninputs))
+    RCD.participation = np.zeros(RCP.ninputs)
+
+    srate = (
+        model_data.SI.dtIC * 1e-3
+    )  # this needs to be adjusted by the date of the run, somewhere...
+    # for runs prior to spring 2021, the 1e-3 is NOT needed.
+    # for runs after that, the value is held in milliseconds, so needs to be
+    # converted to seconds
+    PAT = Patterns
+    PAT.selected_inputs = [True] * RCP.ninputs  # all inputs
+    PAT.event_spike_pattern = []
+    PAT.event_pair_wise = []
+    PAT.n_post = np.zeros(RCP.ntrials)
+    PAT.n_pre = np.zeros(RCP.ntrials)
+    PAT.filttable = []
+    PAT.filttable2 = []
+    PAT.all_spikes = []
+    for trial in range(RCP.ntrials):  # accumulate across all trials
+
+        spikeindex = [int(t / (srate)) for t in data["Results"][trial]["spikeTimes"]]
+        spikes = AR.MC.time_base[spikeindex]  # get postsynaptic spikes for the trial
+        spikes = _spike_filter(RCP, spikes)
+        PAT.n_post[trial] = len(spikes)
+        for _, spike in enumerate(spikes):  # for each spike, get the input pattern
+            spike_pattern, pair_wise, total_pre = _get_spike_pattern(
+                spike=spike,
+                data=data,
+                trial=trial,
+                selected_inputs=PAT.selected_inputs,
+                RCP=RCP,
+                RCD=RCD,
+            )
+            PAT.n_pre[trial] = total_pre
+            PAT.event_spike_pattern.append(spike_pattern)
+            PAT.event_pair_wise.append(pair_wise)
+            PAT.all_spikes.append(spike)  # match up the spike with the pattern
+            patterns = _spike_pattern_analysis(spikes, spike_pattern, RCP.ninputs)
+            PAT.filttable.append(patterns)
+    print(
+        "sum of spikes: ",
+        np.sum(PAT.event_spike_pattern, axis=0),
+        np.sum(PAT.event_spike_pattern),
+    )
+    RCD.participation = np.sum(PAT.event_spike_pattern, axis=0) / np.sum(
+        PAT.event_spike_pattern
+    )
+    print(f"Participation: {str(RCD.participation):s}")
+    nparticipating = np.sum(RCD.participation)
+    print("n participating: ", nparticipating)
+    print("PAT.n_post and PAT.n_pre: ", PAT.n_post, PAT.n_pre)
+    RCD.s_pair = np.sum(RCD.pairwise)
+    if RCD.s_pair > 0.0:
+        RCD.pairwise /= RCD.s_pair
+
+    # print(np.unique(nperspike, return_counts=True))
+    # nperspike = [n for n in nperspike if n != 0]
+    # nperspike = scipy.stats.itemfreq(nperspike).T
+    # print('nperspike counts: ', nperspike)
+    # nperspike = np.array(np.unique(nperspike, return_counts=True))/nspikes
+    # properly fill out output
+    # xnspike = np.arange(RCP.ninputs)
+    # ynspike = np.zeros(RCP.ninputs)
+    # for j, i in enumerate(nperspike[0]):
+    #     # print(i, j, nperspike[1,j])
+    #     ynspike[i - 1] = nperspike[1, j]
+
+    # ynspike = np.cumsum(ynspike / nspikes)
+    cprint("r", f"prespikecounts: {np.sum(PAT.n_pre[1:]):f}")
+    if np.sum(PAT.n_pre[1:]) == 0:
+        return RCP, RCD, PAT.allspikes
+
+    RCD.ynspike = np.cumsum(np.sum(PAT.n_pre[1:]) / np.sum(PAT.n_pre[1:]))
+    return RCP, RCD, PAT.all_spikes
+
+
+# def pairwise_old(model_data):
+#     allspikes = []
+#     data = model_data.data
+#     AR = model_data.AR
+#     RCP = model_data.RCP
+#     RCD = model_data.RCD
+#     RCD.pairwise = np.zeros((RCP.ninputs, RCP.ninputs))
+#     RCD.participation = np.zeros(RCP.ninputs)
+#     pre_spike_counts = np.zeros(
+#         RCP.ninputs + 1
+#     )  # there could be 0, or up to RCP.ninputs pre spikes
+#     pre_solo_spikes = np.zeros(RCP.ninputs + 1)
+#     srate = (
+#         model_data.SI.dtIC * 1e-3
+#     )  # this needs to be adjusted by the date of the run, somewhere...
+#     # for runs prior to spring 2021, the 1e-3 is NOT needed.
+#     # for runs after that, the value is held in milliseconds, so needs to be
+#     # converted to seconds
+#     nperspike = []
+#     nfilt_spikes = 0
+#     nfilt2_spikes = 0
+#     filttable = []
+#     filttable2 = []
+#     RCD.nspikes = 0
+#     sellist = [True] * RCP.ninputs
+
+#     print(f"RCP.ninputs {RCP.ninputs:d}", "sites: ", RCD.sites)
+#     for trial in range(RCP.ntrials):  # accumulate across all trials
+#         # spiketimes is in msec, so si.dtIC should be in msec
+#         spikeindex = [int(t / (srate)) for t in data["Results"][trial]["spikeTimes"]]
+#         spks = AR.MC.time_base[spikeindex]  # get postsynaptic spikes for the trial
+#         allspikes = _spike_filter(data, spks)
+
+#     print("\nPairwise matrix: \n", RCD.pairwise)
+#     print(
+#         "Total prespikes: \n", sum(pre_spike_counts), [int(p) for p in pre_spike_counts]
+#     )
+#     print("\nTotal post spikes: ", RCD.nspikes)
+#     print("Windowd post spikes: ", RCD.npost_spikes)
+#     print("\nPre solo drive: ", pre_solo_spikes)
+#     print("\nFiltered Spikes: ", nfilt_spikes)
+#     print(
+#         f"Postspikes without the largest input active:      {lack_largest:5d} ({100.*lack_largest/RCD.nspikes:4.1f}%)"
+#     )
+#     print(
+#         f"Postspikes with only the largest input active:    {only_largest:5d} ({100.*only_largest/RCD.nspikes:4.1f}%)"
+#     )
+#     print(
+#         f"Postspikes without two largest inputs active:     {lack_two_largest:5d} ({100.*lack_two_largest/RCD.nspikes:4.1f}%)"
+#     )
+#     print(
+#         f"Postspikes with only two largest inputs active:   {only_two_largest:5d} ({100.*only_two_largest/RCD.nspikes:4.1f}%)"
+#     )
+#     print(
+#         f"Postspikes without three largest inputs active:   {lack_three_largest:5d} ({100.*lack_three_largest/RCD.nspikes:4.1f}%)"
+#     )
+#     print(
+#         f"Postspikes with only three largest inputs active: {only_three_largest:5d} ({100.*only_three_largest/RCD.nspikes:4.1f}%)"
+#     )
+#     print(
+#         f"Mean presynaptic rate: {np.mean([1./RCD.mean_pre_intervals[k] for k in range(len(RCD.mean_pre_intervals))]):f}"
+#     )
+#     print(f"Mean postsynaptic rate: {1./RCD.mean_post_intervals:f}")
+#     print(f"RCP min/max time: {RCP.min_time:8.3f} {RCP.max_time:8.3f}")
+
+#     # print('filttable: \n', filttable)
+#     filttable = np.array(filttable)
+#     filttable2 = np.array(filttable2)
+#     print("Counts: ", filttable.sum(axis=0))
+#     if filttable.shape[0] > 0:
+#         print("\nFilt Spike Proportions: ", filttable.sum(axis=0) / nfilt_spikes)
+#         fs1 = np.array(filttable)[:, 2:].sum(axis=0) / nfilt_spikes
+
+#     fsa = np.array(RCD.sites[2:]) / np.sum(RCD.sites[2:])
+#     print("Input Proportions: ", fsa)
+
+#     filttable2 = np.array(filttable2)
+#     # print('filttable 2 shape: ', filttable2.shape)
+#     if filttable2.shape[0] > 0:
+#         print(
+#             "\nFilt Spike Proportions on input #3: ",
+#             filttable2.sum(axis=0) / nfilt2_spikes,
+#         )
+#         fs2 = np.array(filttable2)[:, 2:].sum(axis=0) / nfilt2_spikes
+
+#     # if filttable.shape[0] > 0:
+#     #     f=mpl.figure()
+#     #     mpl.plot(fs1, fsa)
+#     #     mpl.show()
+#     # print('pre spike_count associated with a post spike: ', pre_spike_counts)
+#     # plot the position of the prespikes for every trial as determined by the
+#     # second trial loop above.
+#     # f, ax = mpl.subplots(1,1)
+#     # for i in range(len(self.allspikes)):
+#     #     y = i*np.ones(len(self.allspikes[i].prespikes))
+#     #     print(list(self.allspikes[i].prespikes))
+#     #     print(y)
+#     #     ax.plot(self.allspikes[i].prespikes, y)
+#     # mpl.show()
+#     # print(self.allspikes)
+#     npartipating = np.sum(RCD.participation)
+#     RCD.s_pair = np.sum(RCD.pairwise)
+#     if RCD.s_pair > 0.0:
+#         RCD.pairwise /= RCD.s_pair
+
+#     # print(np.unique(nperspike, return_counts=True))
+#     # nperspike = [n for n in nperspike if n != 0]
+#     # nperspike = scipy.stats.itemfreq(nperspike).T
+#     # print('nperspike counts: ', nperspike)
+#     # nperspike = np.array(np.unique(nperspike, return_counts=True))/nspikes
+#     # properly fill out output
+#     # xnspike = np.arange(RCP.ninputs)
+#     # ynspike = np.zeros(RCP.ninputs)
+#     # for j, i in enumerate(nperspike[0]):
+#     #     # print(i, j, nperspike[1,j])
+#     #     ynspike[i - 1] = nperspike[1, j]
+
+#     # ynspike = np.cumsum(ynspike / nspikes)
+#     cprint("r", f"prespikecounts: {np.sum(pre_spike_counts[1:]):f}")
+#     if np.sum(pre_spike_counts[1:]) == 0:
+#         return RCP, RCD, allspikes
+
+#     RCD.ynspike = np.cumsum(pre_spike_counts[1:]) / np.sum(pre_spike_counts[1:])
+#     return RCP, RCD, allspikes
+
+
+if __name__ == "__main__":
+    test_spike_patterns()
