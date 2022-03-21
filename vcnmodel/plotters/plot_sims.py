@@ -1793,7 +1793,7 @@ class PlotSims:
                         "ASAs": syn_ASA,
                         }
         MD2, filtered_stx_by_trial = REVCORR.revcorr(MD, nbins, revcorrtype, ASAs=syn_ASA, revcorr_params=revcorr_params)
-        RCP, RCD, self.allspikes = REVCORR.pairwise(MD) # get the pairwise data as well
+        RCP, RCD, self.allspikes = REVCORR.spike_pattern_analysis(MD) # perfrom an analysis of input spike patters
         if P is not None:
             self.plot_revcorr_details(P, PD, MD2, RCP, RCD)
         return P, PD, RCP, RCD
