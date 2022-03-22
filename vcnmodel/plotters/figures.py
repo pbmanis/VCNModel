@@ -1042,7 +1042,7 @@ class Figures(object):
                     protocol="runANSingles",
                     ymin=ymin,
                     ymax=ymax,
-                    xmin=400.0,
+                    xmin=400.0,  # in msec
                     xmax=900.0,
                     yoffset=n * yoffset,
                     iax=n,
@@ -1525,7 +1525,6 @@ class Figures(object):
         Get the revcorr data associated with the cell number
         and the stimulus level (dbSPL, as a string)
         """
-        cprint("c", "Calling _get_revcorr")
         cell_revcorr = FD.figure_revcorr[cell_number]
         run_calcs = False
         rc_datafile = Path(
@@ -1541,7 +1540,7 @@ class Figures(object):
             PD = self.newPData()
             P = None
         else:
-            print(
+            cprint("r",
                 "You must run revcorr_supplement plot first, then the data file we need will be present"
             )
             run_calcs = True
@@ -1643,7 +1642,7 @@ class Figures(object):
         sax3 = sax[p_labels[3]]
 
         summarySiteTC = self.parent.PLT.plot_revcorr2(
-            P, PD, RCP, RCD, start_letter=p_labels[0], colormap=colormap
+            P, PD, RCP, RCD, cell_number=cell_number, start_letter=p_labels[0], colormap=colormap
         )
         # sax1.set_xlim(-5, 0)
 
@@ -1822,12 +1821,12 @@ class Figures(object):
         else:
             P = parent_figure
 
-        # run_calcs = True
+        run_calcs = False
         # P, PD, RCP, RCD = self._get_revcorr(cell_number=cellN, dBSPL = "Spont")
         rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
-        # if rc_datafile.is_file() and not run_calcs:
-        #     with open(rc_datafile, "rb") as fh:
-        #         all_RCD_RCP = FPM.pickle_load(fh)
+        if rc_datafile.is_file() and not run_calcs:
+            with open(rc_datafile, "rb") as fh:
+                all_RCD_RCP = FPM.pickle_load(fh)
         # else:
         #     print(
         #         "Must run revcorr_supplement plot first, then the file we need will be present"
@@ -1845,7 +1844,9 @@ class Figures(object):
             if PD is None:
                 cprint("r", "PD is none in plot_revcorr_supplement")
                 continue
-            # rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
+ 
+            all_RCD_RCP[cell_number] = [RCD, RCP]
+             # rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
             # if rc_datafile.is_file() and not run_calcs:
             #     with open(rc_datafile, "rb") as fh:
             #         all_RCD_RCP = FPM.pickle_load(fh)
@@ -1876,51 +1877,51 @@ class Figures(object):
                 else:
                     synlabel = False
 
-            all_RCD_RCP[cell_number] = [RCD, RCP]
             ax_top_row_name, ax_bot_row_name = self.Figure4_assign_panel(
                 supplemental1, index=i_plot + 1
             )
             ax_top_row = P.axdict[ax_top_row_name]
             ax_bot_row = P.axdict[ax_bot_row_name]
-            if cell_number in cells:
-                if parent_figure is None:
-                    axlist = P.axarr[0:2, i_plot]
-                else:
-                    axlist = [
-                        ax_top_row,
-                        ax_bot_row,
-                        None,
-                    ]
-                summarySiteTC = self.parent.PLT.plot_revcorr2(
-                    P,
-                    PD,
-                    RCP,
-                    RCD,
-                    axarray=axlist,
-                    calbar_show=tcal,
-                    calbar_fontsize=7,
-                    yaxis_label=False,
-                    synlabel=synlabel,
-                    colormap=colormap,
-                )
 
-                print(
-                    f"  Mean pre: {np.mean(RCD.mean_pre_intervals):5.3f} ms  ({1./np.mean(RCD.mean_pre_intervals):7.3f} Hz)"
-                )
-                print(
-                    f"  Mean Post: {RCD.mean_post_intervals:5.3f} ms  ({1./RCD.mean_post_intervals:7.3f} Hz)"
-                )
-                # if parent_figure is None:
-                ax_top_row.text(
-                    0.5,
-                    1.0,
-                    f"BC{cell_number:02d}",
-                    fontsize=9,
-                    color="k",
-                    transform=ax_top_row.transAxes,
-                    horizontalalignment="center",
-                )
-                i_plot += 1
+            if parent_figure is None:
+                axlist = P.axarr[0:2, i_plot]
+            else:
+                axlist = [
+                    ax_top_row,
+                    ax_bot_row,
+                    None,
+                ]
+            summarySiteTC = self.parent.PLT.plot_revcorr2(
+                P,
+                PD,
+                RCP,
+                RCD,
+                cell_number=cell_number,
+                axarray=axlist,
+                calbar_show=tcal,
+                calbar_fontsize=7,
+                yaxis_label=False,
+                synlabel=synlabel,
+                colormap=colormap,
+            )
+
+            print(
+                f"  Mean Pre:  {np.mean(RCD.mean_pre_intervals):7.3f} ms  ({1e3/np.mean(RCD.mean_pre_intervals):7.1f} Hz)"
+            )
+            print(
+                f"  Mean Post: {RCD.mean_post_intervals:7.3f} ms  ({1e3/RCD.mean_post_intervals:7.1f} Hz)"
+            )
+            # if parent_figure is None:
+            ax_top_row.text(
+                0.5,
+                1.0,
+                f"BC{cell_number:02d}",
+                fontsize=9,
+                color="k",
+                transform=ax_top_row.transAxes,
+                horizontalalignment="center",
+            )
+            i_plot += 1
 
             maxp = np.max(RCD.pairwise)
             psh = RCD.pairwise.shape

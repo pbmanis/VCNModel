@@ -557,24 +557,27 @@ class PatternData:
 
     name: str = ""
     mask: int = 0
-    logic: str = 'exact' # set to 'exact' to require mask match
-                         # 'except' for selected inputs to be *inactive*
-                         # 'atleast' for for selected inputs to be active (but others are ok too)
+    logic: str = "exact"  # set to 'exact' to require mask match
+    # 'except' for selected inputs to be *inactive*
+    # 'atleast' for for selected inputs to be active (but others are ok too)
     sumtrue: int = 0  # given the logic, this counts those that match
     sumfalse: int = 0  # and those that do not match
 
 
-def _print_pattern(name, pat):
+def print_pattern(name, pat):
     mask = f"{pat.mask:016b}"[::-1]
-    pct = 100.*pat.sumtrue/(pat.sumtrue+pat.sumfalse)
+    pct = 100.0 * pat.sumtrue / (pat.sumtrue + pat.sumfalse)
     print(
-        f"    Pattern name: {name:32s} mask: {mask:16s}  Logic: {str(pat.logic):8s}" +
-        f"  True: {pat.sumtrue:5d}  False: {pat.sumfalse:5d}  percent: {pct:7.1f}"
+        f"    Pattern name: {name:32s} mask: {mask:16s}  Logic: {str(pat.logic):8s}"
+        + f"  True: {pat.sumtrue:5d}  False: {pat.sumfalse:5d}  percent: {pct:7.1f}"
     )
 
 
 def _spike_pattern_analysis(
-    spikes: Union[list, np.ndarray], spike_pattern: list, test_patterns: dict, ninputs: int
+    spikes: Union[list, np.ndarray],
+    spike_pattern: list,
+    test_patterns: dict,
+    ninputs: int,
 ):
     """_summary_
 
@@ -602,7 +605,7 @@ def _spike_pattern_analysis(
     pre_spike_counts = np.zeros(ninputs + 1)
     # there could be 0, or up to RCP.ninputs pre spikes
     pre_solo_spikes = np.zeros(ninputs + 1)
-   
+
     for n, spike in enumerate(spikes):  # for each postsynaptic spike
         b_spk = 0
         for i, spk in enumerate(spike_pattern[n]):
@@ -619,63 +622,80 @@ def _spike_pattern_analysis(
             pre_solo_spikes[which_input] += 1
         # now check the specific input patterns.
         for patname, pat in test_patterns.items():
-            if pat.logic == 'exact':  # check case in which the selected inputs are active
+            if (
+                pat.logic == "exact"
+            ):  # check case in which the selected inputs are active
                 if b_spk == pat.mask:  # has exact pattern of input(s) only
                     pat.sumtrue += 1
                 else:
-                    pat.sumfalse += 1  # other inputs perhaps... 
-            elif pat.logic == 'except':  # evaluate the case in which the zeroed inputs are NOT active
+                    pat.sumfalse += 1  # other inputs perhaps...
+            elif (
+                pat.logic == "except"
+            ):  # evaluate the case in which the zeroed inputs are NOT active
                 if b_spk & pat.mask:  # any active input is ok, except the 0'd ones.
                     pat.sumfalse += 1
                 else:
                     pat.sumtrue += 1
-            elif pat.logic == 'atleast':
+            elif pat.logic == "atleast":
                 combo = b_spk & pat.mask
-                if combo >= pat.mask:  # any combination will 
+                if combo >= pat.mask:  # any combination will
                     pat.sumtrue += 1
                 else:
                     pat.sumfalse += 1
             else:
-                raise ValueError(f"Logic must be one of: 'exact', 'except' or 'atleast', got: {pat.logic:s}")
-    
+                raise ValueError(
+                    f"Logic must be one of: 'exact', 'except' or 'atleast', got: {pat.logic:s}"
+                )
+
     return test_patterns, pre_solo_spikes
+
 
 def _assert_patterns(sp, spike_patterns, r):
     n_fails = 0
     n_successes = 0
     for pattern in spike_patterns:
         if pattern == sp:
-            if r[pattern].logic == 'exact':
+            if r[pattern].logic == "exact":
                 try:
                     assert r[pattern].sumtrue == 1 and r[pattern].sumfalse == 0
                     n_successes += 1
                 except AssertionError:
-                    cprint('r', "    Assert failed for selected pattern with exact")
-                    cprint('r', f"       sp: {sp:s}   vs {pattern:s}")
-                    _print_pattern(pattern, r[pattern])
+                    cprint("r", "    Assert failed for selected pattern with exact")
+                    cprint("r", f"       sp: {sp:s}   vs {pattern:s}")
+                    print_pattern(pattern, r[pattern])
                     print("      ", r[pattern])
                     n_fails += 1
-            elif r[pattern].logic == 'except':
+            elif r[pattern].logic == "except":
                 try:
                     assert r[pattern].sumfalse == 1 and r[pattern].sumtrue == 0
                     n_successes += 1
                 except AssertionError:
-                    cprint('c', "    Assert failed for non-selected pattern with except")
-                    cprint('c', f"       sp: {sp:s}   vs {pattern:s}  with logic: {r[pattern].logic:s}")
-                    _print_pattern(pattern, r[pattern])
+                    cprint(
+                        "c", "    Assert failed for non-selected pattern with except"
+                    )
+                    cprint(
+                        "c",
+                        f"       sp: {sp:s}   vs {pattern:s}  with logic: {r[pattern].logic:s}",
+                    )
+                    print_pattern(pattern, r[pattern])
                     n_fails += 1
-            elif r[pattern].logic == 'atleast':
+            elif r[pattern].logic == "atleast":
                 try:
                     assert r[pattern].sumtrue == 1 and r[pattern].sumfalse == 0
                     n_successes += 1
                 except AssertionError:
-                    cprint('m', "    Assert failed for non-selected pattern with except")
-                    cprint('m', f"       sp: {sp:s}   vs {pattern:s}  with logic: {r[pattern].logic:s}")
-                    _print_pattern(pattern, r[pattern])
+                    cprint(
+                        "m", "    Assert failed for non-selected pattern with except"
+                    )
+                    cprint(
+                        "m",
+                        f"       sp: {sp:s}   vs {pattern:s}  with logic: {r[pattern].logic:s}",
+                    )
+                    print_pattern(pattern, r[pattern])
                     n_fails += 1
     if n_fails > 0:
-    #     cprint("g", f"     Asserts passed for {sp:s} with {n_successes:d}")
-    # else:
+        #     cprint("g", f"     Asserts passed for {sp:s} with {n_successes:d}")
+        # else:
         cprint("r", f"     {n_fails:d} Asserts failed for {sp:s}")
     return n_fails
 
@@ -694,30 +714,36 @@ def test_spike_patterns():
         "4+5+6": [0, 0, 0, 1, 1, 1, 0, 0],
         "6+7+8": [0, 0, 0, 0, 0, 1, 1, 1],  # bunch of little ones - pass 0 largest
         "None": [0, 0, 0, 0, 0, 0, 0, 0],
-        "not_1_largest": [1, 0, 0, 0, 0, 0, 0, 0],  # to test the ones we are against... 
+        "not_1_largest": [1, 0, 0, 0, 0, 0, 0, 0],  # to test the ones we are against...
         "not_2_largest": [1, 1, 0, 0, 0, 0, 0, 0],
         "not_3_largest": [1, 1, 1, 0, 0, 0, 0, 0],
         "at_least": [1, 0, 1, 0, 1, 0, 1, 0],
         "at_least2": [1, 1, 1, 0, 1, 0, 1, 0],
     }
-     # patterns are [bitmask(largest input in lowest/LSB position), logic, counts lack input, count have_input]
+    # patterns are [bitmask(largest input in lowest/LSB position), logic, counts lack input, count have_input]
     patterns = {  # some patterns to match conditions
-        "1_largest": PatternData(mask=0x01, logic='exact'),
-        "2_largest": PatternData(mask=0x03, logic='exact'),
-        "3_largest": PatternData(mask=0x07, logic='exact'),
-        "2nd_largest": PatternData(mask=0x02, logic='exact'),
-        "3rd_largest": PatternData(mask=0x04, logic='exact'),
-        "4th_largest": PatternData(mask=0x08, logic='exact'),
-        "1+2+5": PatternData(mask=0b00010011, logic='exact'),
-        "4+5": PatternData(mask=  0b00011000, logic='exact'),
-        "4+5+6": PatternData(mask=0b00111000, logic='exact'),
-        "6+7+8": PatternData(mask=0b11100000, logic='exact'),
-        "None": PatternData(mask=0x00, logic='exact'),
-        "not_1_largest": PatternData(mask=0x01, logic='except'), # not the largest
-        "not_2_largest": PatternData(mask=0x03, logic='except'), # none of the 2 largest
-        "not_3_largest": PatternData(mask=0x07, logic='except'), # none of the 3 largest
-        "at_least": PatternData(mask=0x55, logic='atleast'),  # at least some in a pattern
-        "at_least2": PatternData(mask=0x07, logic='atleast'),  # at least the 3 largest
+        "1_largest": PatternData(mask=0x01, logic="exact"),
+        "2_largest": PatternData(mask=0x03, logic="exact"),
+        "3_largest": PatternData(mask=0x07, logic="exact"),
+        "2nd_largest": PatternData(mask=0x02, logic="exact"),
+        "3rd_largest": PatternData(mask=0x04, logic="exact"),
+        "4th_largest": PatternData(mask=0x08, logic="exact"),
+        "1+2+5": PatternData(mask=0b00010011, logic="exact"),
+        "4+5": PatternData(mask=0b00011000, logic="exact"),
+        "4+5+6": PatternData(mask=0b00111000, logic="exact"),
+        "6+7+8": PatternData(mask=0b11100000, logic="exact"),
+        "None": PatternData(mask=0x00, logic="exact"),
+        "not_1_largest": PatternData(mask=0x01, logic="except"),  # not the largest
+        "not_2_largest": PatternData(
+            mask=0x03, logic="except"
+        ),  # none of the 2 largest
+        "not_3_largest": PatternData(
+            mask=0x07, logic="except"
+        ),  # none of the 3 largest
+        "at_least": PatternData(
+            mask=0x55, logic="atleast"
+        ),  # at least some in a pattern
+        "at_least2": PatternData(mask=0x07, logic="atleast"),  # at least the 3 largest
     }
     ninputs = 8
     for sp in spike_patterns:
@@ -727,7 +753,6 @@ def test_spike_patterns():
         print("solo: ", solo)
 
     return
-
 
     # if spike_pattern[0] == 0 and np.sum(spike_pattern) >= 1:
     #     lack_largest += 1
@@ -893,7 +918,7 @@ class Patterns:
     # only_three_largest: int = 0
 
 
-def spike_pattern_analysis(model_data):
+def spike_pattern_analysis(model_data, printflag=False):
     """Analyze input spike patterns prior to postsynaptic spike
 
     Parameters
@@ -931,19 +956,30 @@ def spike_pattern_analysis(model_data):
     PAT.all_spikes = []
 
     test_patterns = {  # some patterns to match conditions
-            "1st_largest_alone": PatternData(mask=0x01, logic='exact'),
-            "2nd_largest_alone": PatternData(mask=0x02, logic='exact'),
-            "2_largest_alone": PatternData(mask=0x03, logic='exact'),
-            "3_largest_alone": PatternData(mask=0x07, logic='exact'),
-            "1st_largest_plus_others": PatternData(mask=0x01, logic='atleast'),  # at least some in a pattern
-            "2nd_largest_plus_others": PatternData(mask=0x02, logic='atleast'),  # at least the two largest
-            "2_largest_plus_others": PatternData(mask=0x03, logic='atleast'),  # at least the two largest
-            "3_largest_plus_others": PatternData(mask=0x07, logic='atleast'),  # at least the two largest
-            "not_largest": PatternData(mask=0x01, logic='except'), # not the largest
-            "not_2_largest": PatternData(mask=0x03, logic='except'), # none of the 2 largest
-            "not_3_largest": PatternData(mask=0x07, logic='except'), # none of the 3 largest
-        }
-    
+        "1st_largest_alone": PatternData(mask=0x01, logic="exact"),
+        "2nd_largest_alone": PatternData(mask=0x02, logic="exact"),
+        "2_largest_alone": PatternData(mask=0x03, logic="exact"),
+        "3_largest_alone": PatternData(mask=0x07, logic="exact"),
+        "1st_largest_plus_others": PatternData(
+            mask=0x01, logic="atleast"
+        ),  # at least some in a pattern
+        "2nd_largest_plus_others": PatternData(
+            mask=0x02, logic="atleast"
+        ),  # at least the two largest
+        "2_largest_plus_others": PatternData(
+            mask=0x03, logic="atleast"
+        ),  # at least the two largest
+        "3_largest_plus_others": PatternData(
+            mask=0x07, logic="atleast"
+        ),  # at least the two largest
+        "not_largest": PatternData(mask=0x01, logic="except"),  # not the largest
+        "not_2_largest": PatternData(
+            mask=0x03, logic="except"
+        ),  # none of the 2 largest
+        "not_3_largest": PatternData(
+            mask=0x07, logic="except"
+        ),  # none of the 3 largest
+    }
 
     for trial in range(RCP.ntrials):  # accumulate across all trials
 
@@ -960,35 +996,44 @@ def spike_pattern_analysis(model_data):
                 RCP=RCP,
                 RCD=RCD,
             )
-            PAT.n_pre[trial] = total_pre
+            PAT.n_pre[trial] += total_pre
             PAT.event_spike_pattern.append(spike_pattern)
             PAT.event_pair_wise.append(pair_wise)
             PAT.all_spikes.append(spike)  # match up the spike with the pattern
-    print(f"\nTotal # postsynaptic spikes: {len(PAT.all_spikes):6d}")
-    pattern_out, solo = _spike_pattern_analysis(PAT.all_spikes, PAT.event_spike_pattern, test_patterns, RCP.ninputs)
+    pattern_out, solo = _spike_pattern_analysis(
+        PAT.all_spikes, PAT.event_spike_pattern, test_patterns, RCP.ninputs
+    )
     PAT.filttable = pattern_out
-    print(f"Presynaptic spikes in the test window: : {str(np.sum(PAT.event_spike_pattern, axis=0)):s}" + 
-        f"  Total presynaptic: {int(np.sum(PAT.event_spike_pattern)):7d}"
-    )
-    
-    for t in PAT.filttable.keys():
-        _print_pattern(t, PAT.filttable[t])
-    print("Solo drivers: (by input) ", solo)
-
-
+ 
+    # compute participation by input in preceding output spikes
     RCD.participation = np.sum(PAT.event_spike_pattern, axis=0) / np.sum(
-        PAT.event_spike_pattern
+        len(PAT.all_spikes)
     )
+    nparticipating = np.sum(np.sum(PAT.event_spike_pattern, axis=0))
+    # compute cumulative curve of inputs driving spikes
+    RCD.ynspike = np.sum(PAT.event_spike_pattern, axis=0)/np.sum(PAT.event_spike_pattern)
 
+    if printflag:
+        print(f"\nTotal # postsynaptic spikes: {len(PAT.all_spikes):6d}")
+        print(
+            f"Presynaptic spikes in the test window: : {str(np.sum(PAT.event_spike_pattern, axis=0)):s}"
+            + f"  Total presynaptic: {int(np.sum(PAT.event_spike_pattern)):7d}"
+            )
+        for t in PAT.filttable.keys():
+            print_pattern(t, PAT.filttable[t])
+        print("Solo drivers: (by input) ", solo, "\n    total solos: ", int(np.sum(solo)),  "\n    percent solo: ", 100.*np.sum(solo)/len(PAT.all_spikes))
+        print(f"Participation: {str(RCD.participation):s}")
+        print(f"Participation: {str(RCD.participation):s}")
+        print("n participating: ", nparticipating)
 
-    print(f"Participation: {str(RCD.participation):s}")
-    nparticipating = np.sum(RCD.participation)
-    print("n participating: ", nparticipating)
-    print("PAT.n_post and PAT.n_pre: ", PAT.n_post, PAT.n_pre)
+        print('RCD.ynspike: ', RCD.ynspike)
+        print('sum: ', np.sum(RCD.ynspike))
+        cprint("r", f"prespikecounts: {np.sum(PAT.n_pre):f}")
+
     RCD.s_pair = np.sum(RCD.pairwise)
     if RCD.s_pair > 0.0:
         RCD.pairwise /= RCD.s_pair
-
+    
     # print(np.unique(nperspike, return_counts=True))
     # nperspike = [n for n in nperspike if n != 0]
     # nperspike = scipy.stats.itemfreq(nperspike).T
@@ -1002,12 +1047,8 @@ def spike_pattern_analysis(model_data):
     #     ynspike[i - 1] = nperspike[1, j]
 
     # ynspike = np.cumsum(ynspike / nspikes)
-    cprint("r", f"prespikecounts: {np.sum(PAT.n_pre[1:]):f}")
-    if np.sum(PAT.n_pre[1:]) == 0:
-        return RCP, RCD, PAT.allspikes
-
-    RCD.ynspike = np.cumsum(np.sum(PAT.n_pre[1:]) / np.sum(PAT.n_pre[1:]))
-    return RCP, RCD, PAT.all_spikes
+ 
+    return RCP, RCD, PAT
 
 
 # def pairwise_old(model_data):
