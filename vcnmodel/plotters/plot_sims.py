@@ -9,6 +9,7 @@ from typing import Union
 
 import matplotlib.colorbar  # type: ignore
 import matplotlib.colors  # type: ignore
+import mplcursors
 import numpy as np  # type: ignore
 import pandas as pd
 import pyperclip
@@ -16,6 +17,7 @@ import pyqtgraph as pg  # type: ignore
 # import quantities as pq
 import seaborn as sns
 import toml
+import vcnmodel.cell_config as cell_config
 import vcnmodel.util.readmodel as readmodel
 from ephys.ephysanalysis import RmTauAnalysis, SpikeAnalysis
 from lmfit import Model  # type: ignore
@@ -27,8 +29,6 @@ from pylibrary.plotting import styler as PLS
 from pylibrary.tools import cprint as CP
 from pyqtgraph.Qt import QtGui
 from rich.console import Console
-import vcnmodel.cell_config as cell_config
-
 from vcnmodel.analyzers import reverse_correlation as REVCORR
 from vcnmodel.analyzers import sac as SAC
 from vcnmodel.analyzers import vector_strength as VS
@@ -223,6 +223,7 @@ def norm(p: Union[list, np.ndarray], n: int) -> np.ndarray:
     pmax = np.max(p)
     return (p[n] - pmin) / float(pmax - pmin)
 
+
 def boltzI(x, gmax, vhalf, k, E):
     return gmax * (x - E) * (1.0 / (1.0 + np.exp(-(x - vhalf) / k)))
 
@@ -285,8 +286,7 @@ class PlotSims:
 
     def textclear(self):
         if self.parent is None:
-            print("parent is None")
-            raise ValueError()
+            return
         else:
             self.parent.textbox.clear()
 
@@ -299,8 +299,6 @@ class PlotSims:
             self.parent.textbox.setTextColor(self.parent.QColor("white"))
 
     @trace_calls.time_func
- 
-
     def simple_plot_traces(
         self, rows=1, cols=1, width=5.0, height=4.0, stack=True, ymin=-120.0, ymax=0.0
     ):
@@ -410,7 +408,7 @@ class PlotSims:
         caly2: Union[float, None] = 20.0,
         calt2: Union[float, None] = 10.0,
         calv2: Union[float, None] = 10.0,
-        clipping: bool=False,
+        clipping: bool = False,
         axis_index: int = 0,  # index for axes, to prevent replotting text
     ) -> tuple:
         """Plot traces in a generaly way
@@ -480,8 +478,9 @@ class PlotSims:
             synno : number of synapses on this cell
             noutspikes : number of spikes from the cell
             ninspikes : number of input spikes to the cell
-        """        
+        """
 
+        print(xmin, xmax)
         inx = str(fn).find("_Syn")
         synno = None
         if inx > 0:
@@ -491,9 +490,7 @@ class PlotSims:
         elif protocol in ["VC", "runVC"]:
             protocol = "VC"
 
-        model_data = self.ReadModel.get_data(
-            fn, PD=PD, protocol=protocol
-        )
+        model_data = self.ReadModel.get_data(fn, PD=PD, protocol=protocol)
         data = model_data.data
         si = model_data.SI
         ri = model_data.RI
@@ -519,9 +516,6 @@ class PlotSims:
         if xmax is None and protocol not in ["IV", "VC"]:
             xmax = 1e3 * (ri.pip_start + ri.pip_duration)
             xmin = 1e3 * ri.pip_start
-        else:
-            xmin = 0
-            xmax = np.max(AR.MC.time_base)
         if isinstance(ax, list):
             ax1 = ax[0]
             ax2 = ax[1]
@@ -563,7 +557,8 @@ class PlotSims:
                 # print(data["Results"][icurr]["spikeTimes"])
                 #  print(si.dtIC)
                 spikeindex = [
-                    int(t * 1e3 / (si.dtIC)) for t in data["Results"][icurr]["spikeTimes"]
+                    int(t * 1e3 / (si.dtIC))
+                    for t in data["Results"][icurr]["spikeTimes"]
                 ]
             else:
                 # cprint('r', 'spikes from SP.spikeIndices')
@@ -620,6 +615,7 @@ class PlotSims:
             else:
                 ax1.set_ylim(ymin, ymax)
                 if xmin is None:
+                    cprint("r", "2. xmin is None")
                     xmin = 0.050
                 if xmax is None:
                     xmax = np.max(AR.MC.time_base)
@@ -634,9 +630,7 @@ class PlotSims:
             toptitle = si.dendriteExpt
         if protocol in ["IV"]:
             cprint("r", f"RM analysis taum: {RM.analysis_summary['taum']:.2f}")
-            toptitle += (
-                f"\nRin={RM.analysis_summary['Rin']:.1f} M$\Omega$  $\\tau_m$={RM.analysis_summary['taum']:.2f} ms"
-            )
+            toptitle += f"\nRin={RM.analysis_summary['Rin']:.1f} M$\Omega$  $\\tau_m$={RM.analysis_summary['taum']:.2f} ms"
 
             if iax is not None and calx is not None:
                 PH.calbar(
@@ -654,7 +648,7 @@ class PlotSims:
             else:
                 PH.noaxes(ax)
             # insert IV curve
- 
+
             if ivaxis is None:
                 secax = PLS.create_inset_axes(
                     [0.45, -0.05, 0.3, 0.3], ax, label=str(ax)
@@ -986,7 +980,7 @@ class PlotSims:
         )
         boltz_x = np.linspace(np.min(vss_sel), np.max(vss_sel), 100, endpoint=True)
         boltz_fit = gmodel.eval(params=boltz_result.params, x=boltz_x)
-        
+
         # capacitance transient. Use the single trace nearest to -70 mV for the fit.
         mHypStep = np.argmin(np.fabs(vss - (-0.090)))
         sr = AR.MC.sample_rate[mHypStep]
@@ -1061,7 +1055,7 @@ class PlotSims:
         # )
         # ax[0].plot(tfit+AR.MC.time_base[t0], exp_result.best_fit*1e9, 'r-')
         # ax[0].plot(tfit+AR.MC.time_base[t0], ifit*1e9, 'g--')
-        
+
         ax.plot(vss_sel * 1e3, gss_sel * 1e9, "ko", markersize=2)
         ax.plot(boltz_x * 1e3, boltz_fit * 1e9, "r-")
         ax.set_ylim(0, 100.0)
@@ -1322,10 +1316,12 @@ class PlotSims:
         PD: dataclass,
         RCP: dataclass,
         RCD: dataclass,
+        cell_number: Union[int, None] = None,
         axarray=None,
         calbar_show=True,
         calbar_fontsize=11,
         yaxis_label=True,
+        reflevel_show=False,
         start_letter="A",
         colormap="Set3",
         show_average: bool = False,
@@ -1359,8 +1355,10 @@ class PlotSims:
         colors = [None] * RCP.ninputs
         linehandles = [None] * RCP.ninputs
         cmx = sns.color_palette(colormap, as_cmap=True)
- 
-        if isinstance(self.parent.cellID, int):
+
+        if cell_number is not None:
+            cell_n = cell_number
+        elif isinstance(self.parent.cellID, int):
             cell_n = self.parent.cellID
         else:
             cell_n = int(self.parent.cellID[-2:])
@@ -1495,6 +1493,7 @@ class PlotSims:
                         unitNames={"x": "ms", "y": "mV"},
                         fontsize=calbar_fontsize,
                     )
+                if reflevel_show:
                     secax.text(
                         -5.25,
                         -60.0,
@@ -1525,24 +1524,6 @@ class PlotSims:
         # # the colors are in the legend
         PH.nice_plot(ax, position=self.axis_offset, direction="outward")
 
-        if synlabel:
-            self.axins = PH.make_colorbar(
-                ax,
-                bbox=[0.05, 0.6, 0.8, 0.2],
-                vmin=0,
-                vmax=300.0,
-                nticks=4,
-                palette=colormap,
-            )
-            self.axins.tick_params(axis="x", length=2, labelsize=6)
-            self.axins.text(
-                x=0.5,
-                y=1.02,
-                s=r"Input ASA (${\mu m^2}$)",
-                horizontalalignment="center",
-            )
-            # transform=self.axins.transAxes)
-
         if yaxis_label:
             ax.set_ylabel("Coinc. Rate (Hz)")
         # ax.set_xlabel("T (ms)")
@@ -1566,6 +1547,25 @@ class PlotSims:
             floatAdd={"x": 1, "y": 1},
             axrange={"x": (-5.0, 2.5), "y": (0, 0.8)},
         )
+        if synlabel:
+            self.axins = PH.make_colorbar(
+                ax,
+                bbox=[0.01, 0.9, 0.35, 0.15],
+                vmin=0,
+                vmax=300.0,
+                nticks=4,
+                palette=colormap,
+            )
+            self.axins.tick_params(axis="x", length=2, labelsize=6)
+            self.axins.text(
+                x=0.5,
+                y=1.25,
+                s=r"Input ASA (${\mu m^2}$)",
+                horizontalalignment="center",
+                fontsize=8,
+            )
+            # transform=self.axins.transAxes)
+
         return summarySiteTC
 
     def get_synaptic_info(self, gbc: str, add_inputs="none") -> tuple:
@@ -1639,15 +1639,15 @@ class PlotSims:
         pgbc = plabels[0]
         sizer = {
             "A": {
-                "pos": [0.05, 0.40, 0.52, 0.40],
+                "pos": [0.05, 0.35, 0.52, 0.40],
                 "labelpos": (0.02, 1.00),
                 "noaxes": True,
             },
-            "B": {"pos": [0.05, 0.40, 0.08, 0.35], "labelpos": (0.02, 1.00)},
-            "C": {"pos": [0.52, 0.20, 0.52, 0.28], "labelpos": (-0.15, 1.00)},
-            "D": {"pos": [0.52, 0.20, 0.08, 0.28], "labelpos": (-0.15, 1.00)},
-            "E": {"pos": [0.78, 0.20, 0.52, 0.28], "labelpos": (-0.15, 1.00)},
-            "F": {"pos": [0.78, 0.20, 0.08, 0.28], "labelpos": (-0.15, 1.00)},
+            "B": {"pos": [0.05, 0.35, 0.08, 0.35], "labelpos": (0.02, 1.00)},
+            "C": {"pos": [0.45, 0.20, 0.52, 0.28], "labelpos": (-0.15, 1.00)},
+            "D": {"pos": [0.45, 0.20, 0.08, 0.28], "labelpos": (-0.15, 1.00)},
+            "E": {"pos": [0.70, 0.20, 0.52, 0.28], "labelpos": (-0.15, 1.00)},
+            "F": {"pos": [0.70, 0.20, 0.08, 0.28], "labelpos": (-0.15, 1.00)},
         }  # dict pos elements are [left, width, bottom, height] for the axes in the plot. gr = [(a, a+1, 0, 1) for a in range(0, 8)] # just generate subplots - shape do not matter axmap = OrderedDict(zip(sizer.keys(), gr))
         P = PH.arbitrary_grid(
             sizer,
@@ -1710,7 +1710,7 @@ class PlotSims:
         RCP: updated parameters with results.
         RCD: updated data structure with results.
         """
-     
+
         self.allspikes = None
         #
         # 1. Gather data
@@ -1728,6 +1728,7 @@ class PlotSims:
 
         print(f"    compute_revcorr: Preparing for computation for: {str(gbc):s}")
         RCP.ninputs = len(syninfo[1])
+        print("ninputs from syninfo: ", RCP.ninputs)
         self.ninputs = RCP.ninputs  # save for trace viewer.
         RCD.sites = np.zeros(RCP.ninputs)
         for isite in range(RCP.ninputs):  # precompute areas
@@ -1735,7 +1736,7 @@ class PlotSims:
             if area > RCP.amax:
                 RCP.amax = area
             RCD.sites[isite] = int(np.around(area * SC.synperum2))
-        print("    compute_revcorr # of inputs: ", RCP.ninputs)
+        cprint("g", f"    compute_revcorr # of inputs: {RCP.ninputs:d}")
 
         """
          2. set up parameters
@@ -1787,13 +1788,28 @@ class PlotSims:
         4. Do the calculations.
         """
         syn_ASA = np.array([syninfo[1][isite][0] for isite in range(RCP.ninputs)])
-        revcorr_params = {"deselect": self.parent.deselect_flag,
-                        "threshold": self.parent.deselect_threshold,
-                        "window": self.parent.revcorr_window,
-                        "ASAs": syn_ASA,
-                        }
-        MD2, filtered_stx_by_trial = REVCORR.revcorr(MD, nbins, revcorrtype, ASAs=syn_ASA, revcorr_params=revcorr_params)
-        RCP, RCD, self.allspikes = REVCORR.spike_pattern_analysis(MD) # perfrom an analysis of input spike patters
+        if self.parent is not None:
+            revcorr_params = {
+                "deselect": self.parent.deselect_flag,
+                "threshold": self.parent.deselect_threshold,
+                "window": self.parent.revcorr_window,
+                "ASAs": syn_ASA,
+            }
+        else:
+            revcorr_params = {
+                "deselect": False,
+                "threshold": 400.0,
+                "window": [-2.7, -0.5],
+                "ASAs": syn_ASA,
+            }
+
+        MD2, filtered_stx_by_trial = REVCORR.revcorr(
+            MD, nbins, revcorrtype, ASAs=syn_ASA, revcorr_params=revcorr_params
+        )
+        RCP, RCD, PAT = REVCORR.spike_pattern_analysis(
+            MD, printflag=True
+        )  # perfrom an analysis of input spike patters
+        self.allspikes = PAT.allspikes
         if P is not None:
             self.plot_revcorr_details(P, PD, MD2, RCP, RCD)
         return P, PD, RCP, RCD
@@ -1843,7 +1859,7 @@ class PlotSims:
             vmax = 1
         vmin = 0
         # sax['B'].plot(np.arange(RCP.ninputs)+1, participation/nspikes, 'gx')
-        sax["E"].plot(RCD.sites, RCD.participation / RCD.npost_spikes, "gx")
+        E_plot = sax["E"].plot(RCD.sites, RCD.participation, "gx")
 
         axcbar = PLS.create_inset_axes(
             [0.8, 0.05, 0.05, 0.5], sax["D"], label=str(P.axdict["D"])
@@ -1858,7 +1874,9 @@ class PlotSims:
         ticks = [int(p) for p in np.arange(1, RCP.ninputs + 0.5, 1)]
 
         # PH.nice_plot(sax['C'], position=-0.2)
-        sax["F"].plot(np.arange(len(RCD.ynspike)) + 1, RCD.ynspike, "m^-")
+        F_plot = sax["F"].plot(
+            np.arange(len(RCD.ynspike)) + 1, np.cumsum(RCD.ynspike), "m^-"
+        )
 
         sax["C"].set_ylim(bottom=0)
         sax["E"].set_ylim((0, 1.0))
@@ -1921,9 +1939,20 @@ class PlotSims:
             + f"\nDepr: {MD.SI.ANSynapticDepression:d} ANInput: {MD.SI.SRType:s}",
             fontsize=11,
         )
+        self.F_cursor = mplcursors.cursor(F_plot, hover=2)
+        self.E_cursor = mplcursors.cursor(E_plot, hover=2)
+
+        @self.F_cursor.connect("add")
+        def on_add_F(select):
+            select.annotation.set(text=f"Y={RCD.ynspike[int(select.index)]:6.3f}")
+
+        @self.E_cursor.connect("add")
+        def on_add(select):
+            select.annotation.set(text=f"Y={RCD.participation[int(select.index)]:6.3f}")
+
         mpl.show()
 
-        return (summarySiteTC, RCD.sites)
+        return summarySiteTC, RCD.sites, sax
 
     def analyze_singles(self, index_row, selected):
         nfiles = len(selected.files)
@@ -1949,7 +1978,7 @@ class PlotSims:
 
         PD = self.newPData()
         sfi = sorted(selected.files)
- 
+
         df = pd.DataFrame(
             index=np.arange(0, nfiles),
             columns=[
@@ -1979,7 +2008,7 @@ class PlotSims:
             )
             if not model_data.success:
                 return None
-            
+
             PD.thiscell = self.parent.cellID
             si = model_data.SI
             ri = model_data.RI
@@ -2211,7 +2240,7 @@ class PlotSims:
 
             print(f"Getting data for gbc: {gbc:s}")
             SC, syninfo = self.get_synaptic_info(gbc)
- 
+
             model_data = self.ReadModel.get_data(fn, PD=PD, protocol=protocol)
             if not model_data.success:
                 return None
@@ -2876,7 +2905,9 @@ class PlotSims:
                                     "r-",
                                 )
 
-                        P.axdict[sac_panel].plot(bu_sacbins[:-1], bu_sac, "b-", label="BU")
+                        P.axdict[sac_panel].plot(
+                            bu_sacbins[:-1], bu_sac, "b-", label="BU"
+                        )
                         if soundtype in ["SAM"]:
                             P.axdict[sac_panel].set_xlim(
                                 (-2.0 / ri.fmod, 2.0 / ri.fmod)
