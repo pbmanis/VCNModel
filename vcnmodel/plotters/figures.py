@@ -298,8 +298,8 @@ class Figures(object):
 
         """
         if cell is None:
-            cellN = FD.figure_IV["Cell"]
-            d1 = FD.figure_IV["normal"]
+            cellN = FD.figure_IV.keys()[0]  # there will be only one
+            d1 = FD.figure_IV[cellN]["normal"]
         else:
             cellN = cell
             d1 = FD.figure_AllIVs[cellN]["normal"]
@@ -964,6 +964,7 @@ class Figures(object):
         self,
         cells=None,
         figure=None,
+        show_title=True,
         axes: Union[list, None] = None,
         calxp: float = 800.0,
         calv: float = 20.0,
@@ -1273,7 +1274,7 @@ class Figures(object):
                 # "C": {"pos": [9.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
                 # "F": {"pos": [6.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
                 # "G": {"pos": [9.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
-                "B": {"pos": [xl, xw, 0.5, 2.5], "labelpos": (-0.15, 1.02)},
+                "B": {"pos": [xl, xw, 0.5, 2.5], "labelpos": (-0.15, 1.05)},
                 "C": {
                     "pos": [xl + 2.75, xw, 0.5, 2.5],
                     "labelpos": (-0.15, 1.02),
@@ -1303,8 +1304,8 @@ class Figures(object):
             yh1 = 3.75
         else:
             yh2 = 1.2
-            yb2 = 3.5 + 2.5
-            yb3 = 3.5 + 0.5
+            yb2 = 3.5 + 2.7
+            yb3 = 3.5 + 0.6
             yb1 = 3.25
             yh1 = 4.25
         for j in range(len(example_cells)):
@@ -1325,12 +1326,12 @@ class Figures(object):
             }
             sizer[pan_rev] = {  # reverse correlatoin
                 "pos": [xl2, xw2, yb2, yh2],
-                "labelpos": (-0.15, 1.05),
+                "labelpos": (-0.25, 1.2),
                 # "noaxes": True,
             }
             sizer[pan_vm] = {
                 "pos": [xl2, xw2, yb3, yh2],
-                "labelpos": (-0.15, 1.05),
+                "labelpos": (-0.25, 1.2),
                 "noaxes": True,
             }
         # dict pos elements are [left, width, bottom, height] for the axes in the plot. gr = [(a, a+1, 0, 1) for a in range(0, 8)] # just generate subplots - shape do not matter axmap = OrderedDict(zip(sizer.keys(), gr))
@@ -1348,7 +1349,7 @@ class Figures(object):
         if not supplemental1:
             EFP = EF.EfficacyPlots(parent_figure=P)
             EFP.plot_efficacy(
-                "Full", datasetname_added="Added", ax=P.axdict["C"], clean=True
+                "Full", datasetname_added="Added", ax=P.axdict["B"], clean=True
             )
 
         synperum2 = 0.7686  # taken from cell_config.py, line 127 (11/15/2021)
@@ -1421,13 +1422,15 @@ class Figures(object):
         # Traces
         axl = [P.axdict[axi] for axi in trace_axes]
         self.plot_stacked_traces(
-            cells=example_cells, figure=P.figure_handle, axes=axl, maxstack=10
+            cells=example_cells, figure=P.figure_handle, axes=axl, maxstack=10,
+            show_title=False,
+            
         )
 
         dB = 30
         if not supplemental1:
-            # clusters
-            plot_clustering(P.axdict["B"])
+            # clusters  MOVE to supplemental 2
+            # plot_clustering(P.axdict["B"])
 
             # participation
             ds = self._load_rcdata("Spont")
@@ -1437,17 +1440,17 @@ class Figures(object):
             for i, c in enumerate(ds.keys()):
                 # plot_participation(P.axdictax[0], c, ds, drc, dB=dB, color=palette[i])
                 plot_diff_participation(
-                    P.axdict["F"], c, ds, drc, dB=dB, color=palette[i], legend=False
+                    P.axdict["C"], c, ds, drc, dB=dB, color=palette[i], legend=False
                 )
 
             # Cumulative plots
             self.plot_revcorr_compare(
                 parent_figure=P,
-                axlist=[P.axdict["G"]],  # P.axdict["G"]],
+                axlist=[P.axdict["F"]],
                 dBSPLs=["Spont", "30dB"],
                 legend=False,
             )
-            PH.nice_plot(P.axdict["G"], position=self.axis_offset, direction="outward")
+            PH.nice_plot(P.axdict["F"], position=self.axis_offset, direction="outward")
             synlabel_num = 5
         else:
             synlabel_num = 2
@@ -1459,6 +1462,7 @@ class Figures(object):
             supplemental1=supplemental1,
             dBSPL="30dB",
             synlabel_num=synlabel_num,
+            show_title=False,
         )
         # self.plot_efficacy_supplement(cells=example_cells, parent_figure=P, traces=False)
 
@@ -1753,6 +1757,7 @@ class Figures(object):
         cells=None,
         parent_figure=None,
         supplemental1=False,
+        show_title=True,
         synlabel_num: int = 0,
         colormap: str = "magma",  # default color map
         save_calcs: bool = False,  # set to True if need to update.
@@ -1996,7 +2001,7 @@ class Figures(object):
         if save_calcs:
             with open(rc_datafile, "wb") as fh:
                 pickle.dump(all_RCD_RCP, fh)
-
+        P.figure_handle.suptitle("")  # remove title.
         title = (
             "SBEM Project Supplemental Figure 3 Modeling : Reverse Correlation Summary",
         )

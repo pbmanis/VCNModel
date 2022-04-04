@@ -4,26 +4,27 @@ Figure data: a dict of which simulations are in which figures
 """
 
 figure_IV = {
-    "Cell": 17,
-    "normal": "runIV-all-2021-07-27.12-18-24",
+    17:
+    {"normal": "runIV-all-2021-07-27.12-18-24",
     "pasdend": "runIV-all-2021-07-27.12-23-27",
     "actdend": "runIV-all-2021-07-27.12-28-28",
     "Z_normal": "VCN_c17_Full_MeshInflate_normal_Z.pkl",
     "Z_passive": "VCN_c17_Full_MeshInflate_pasdend_Z.pkl",
     "Z_active": "VCN_c17_Full_MeshInflate_actdend_Z.pkl",
+    }
 }
 
 """
 Updated 8/1/2021 with runs from 7/27/2021, 12:14-12:29pm
 """
 figure_AllIVs = {
-    # using standard axon ******
+    # using standard axon ******************
     2: {
         "normal": "runIV-all-2021-08-01.13-47-29",
         "pasdend": "runIV-all-2021-08-01.13-52-43",
         "actdend": "runIV-all-2021-08-01.13-57-57",
     },
-     # using standard axon ******************
+    # using standard axon ******************
     5: {
          "normal": "runIV-all-2021-08-01.13-48-01",
          "pasdend": "runIV-all-2021-08-01.13-53-16",
@@ -222,11 +223,10 @@ figure_revcorr = {
 
 
 figure_VClamp = {
-    17: [
-        "runVC-all-2020-07-29.10-36-59",
-        "runVC-all-2020-07-29.10-30-30",
-        "runVC-all-2020-07-29.12-17-13",
-    ],
+    17: {'passive': "runVC-all-2020-07-29.10-36-59",
+         "normal": "runVC-all-2020-07-29.10-30-30",
+         "active": "runVC-all-2020-07-29.12-17-13",
+    },
 }
 
 # figure_psth = {
@@ -337,17 +337,17 @@ figure_SAM_SAC = {
     ],
 }
 
-all_figures = [
-    figure_psth,
-    figure_VClamp,
-    figure_revcorr,
-    figure_revcorr_example,
-    figure_efficacy_supplement,
-    figure_IV,
-    figure_AllIVs,
-    figure_SAC,
-    figure_SAM_SAC,
-]
+all_figures = {
+    "AN_PSTH": figure_psth,
+    "VC_ex": figure_VClamp,
+    "AN_revcorr": figure_revcorr,
+    "AN_ex_revcorr": figure_revcorr_example,
+    "AN_efficacy": figure_efficacy_supplement,
+    "IV_ex": figure_IV,
+    "IV_all": figure_AllIVs,
+    "AN_SAC": figure_SAC,
+    "AN_SAM_SAC": figure_SAM_SAC,
+}
 
 
 if __name__ == '__main__':
