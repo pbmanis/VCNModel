@@ -27,11 +27,13 @@ cprint = CP.cprint
 
 PSC = PS.PlotSims(parent=None)
 
+
 def grAList() -> list:
     """
     Return a list of the 'grade A' cells from the SBEM project
     """
     return [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+
 
 @dataclass
 class PData:
@@ -179,9 +181,10 @@ def get_pattern_data():
     basepath = datapaths["cellDataDirectory"]
     fig_data = FD.figure_revcorr
     db = "Spont"
-    group = {"Drivers": [9, 11, 13, 17], "Coincidence": [2, 5, 6, 10, 18, 30]}
+    #    group = {"First-in": [9, 11, 13, 17], "Coincidence": [2, 5, 6, 10, 18, 30]}
+    group = {"First-in": [9, 11, 13, 17, 18], "Coincidence": [2, 5, 6, 10, 30]}
 
-    compares = pd.DataFrame(columns=['Cell', 'PatternName', 'Percent', 'Group'])
+    compares = pd.DataFrame(columns=["Cell", "PatternName", "Percent", "Group"])
     for gbc in grAList():
         BC = f"VCN_c{gbc:02d}"
         cprint("g", f"\nBushy cell: {BC:s}")
@@ -202,31 +205,105 @@ def get_pattern_data():
         #     protocol="runANPSTH",
         #     revcorrtype="RevcorrSPKS",
         # )
-        if gbc in group["Drivers"]:
-            gname = "Drivers"
+        if gbc in group["First-in"]:
+            gname = "First-in"
         else:
             gname = "Coincidence"
-        RCP, RCD, PAT = revcorr(gbc, pklf.files[0], PD = PData())
+        RCP, RCD, PAT = revcorr(gbc, pklf.files[0], PD=PData())
         for t in PAT.filttable.keys():
             pat = PAT.filttable[t]
             REVCORR.print_pattern(t, pat)
             pct = 100.0 * pat.sumtrue / (pat.sumtrue + pat.sumfalse)
-            df = pd.DataFrame([{'Cell': gbc, 'PatternName': t, 'Percent': pct, 'Group': gname}])
+            df = pd.DataFrame(
+                [{"Cell": gbc, "PatternName": t, "Percent": pct, "Group": gname}]
+            )
             compares = pd.concat([compares, df], ignore_index=True)
     return compares
 
-# compares = get_pattern_data()
-# compares.to_pickle('compares.pkl')
 
-compares = pd.read_pickle('compares.pkl')
-print(compares.head(10))
-f, ax = mpl.subplots(5, 1)
+compares = get_pattern_data()
+compares.to_pickle('compares.pkl')
+
+compares = pd.read_pickle("compares.pkl")
+# print(compares.head(10))
+f, ax = mpl.subplots(4, 3)
 f.set_size_inches(5, 8)
 ax = ax.ravel()
-pats = ['1st_largest_alone', '1st_largest_plus_others', 'not_largest', 'not_2_largest']
+pats = [
+    "1st_largest_alone",
+    "1st_largest+others",
+    "1st+2nd_alone",
+    "2nd_largest_alone",
+    "2nd_largest+others",
+    "1st+2nd+others",
+    "3rd_largest_alone",
+    "3rd_largest+others",
+    "1st+2nd+3rd+others",
+    "not_largest",
+    "not_2_largest",
+    "not_3_largest",
+]
+pnames = sorted(set(pats))
+pdatanames = sorted(set(compares["PatternName"].values))
+assert pnames == pdatanames
+
+# create your own color array
+bar_colors = [(0.8, 0.8, 0.8, 0.2), (0.0, 0.0, 1.0, 0.5)]
+
+# add color array to set_palette
+# function of seaborn
+sns.set_palette(bar_colors, desat=0.2)
+
 for i, axl in enumerate(pats):
-    sns.boxplot(data=compares[compares['PatternName'] == pats[i]], x='Group', y='Percent',  ax = ax[i])
-    sns.swarmplot(data=compares[compares['PatternName'] == pats[i]], x='Group', y='Percent', ax = ax[i], color='black')
-    ax[i].set_title(pats[i])
+    # with sns.set_palette(bar_colors):
+    axt = sns.boxplot(
+        data=compares[compares["PatternName"] == pats[i]],
+        x="Group",
+        y="Percent",
+        width=0.5,
+        ax=ax[i],
+    )
+    # # adding transparency to colors
+    # for patch in axt.artists:
+    #     r, g, b, a = patch.get_facecolor()
+    #     # patch.set_facecolor((r, g, b, 0.3))
+    #     patch.set(alpha=None, facecolor=((r,g,b,0.3)))
+
+    swp = sns.swarmplot(
+        data=compares[compares["PatternName"] == pats[i]],
+        x="Group",
+        y="Percent",
+        hue="Cell",
+        ax=ax[i],
+        size=3,
+        # color="black",
+    )
+    # print(dir(swp))
+    # print(dir(swp.legend_))
+    if i < len(pats) - 1:
+        swp.legend_.remove()
+    else:
+        # print(dir(swp.legend_))
+        swp.legend(labelspacing=0.18, fontsize=6.5)
+        for lh in swp.legend_.legendHandles:
+            lh.set_alpha(1)
+            lh._sizes = [10]
+            # print(dir(lh_label))
+    ax[i].set_title(pats[i], fontsize=9)
+    ax[i].set_ylim(0, 100)
 mpl.tight_layout()
+where_is_data = Path("wheres_my_data.toml")
+if where_is_data.is_file():
+    datapaths = toml.load("wheres_my_data.toml")
+else:
+    raise ValueError()
+mpl.savefig(
+    Path(
+        datapaths["baseDataDirectory"],
+        datapaths["figureDirectory"],
+        "Figure4",
+        "Figure4_supp",
+        "Figure4-Supplemental3_Patterns.pdf",
+    )
+)
 mpl.show()
