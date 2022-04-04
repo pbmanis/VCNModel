@@ -624,10 +624,11 @@ class PlotSims:
         ip = ftname.find("_II_") + 4
         ftname = ftname[:ip] + "...\n" + ftname[ip:]
         toptitle = ""
-        if longtitle:
+        if longtitle and show_title:
             toptitle = f"{ftname:s}"
         else:
-            toptitle = si.dendriteExpt
+            if show_title:
+                toptitle = si.dendriteExpt
         if protocol in ["IV"]:
             cprint("r", f"RM analysis taum: {RM.analysis_summary['taum']:.2f}")
             toptitle += f"\nRin={RM.analysis_summary['Rin']:.1f} M$\Omega$  $\\tau_m$={RM.analysis_summary['taum']:.2f} ms"
