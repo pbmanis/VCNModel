@@ -25,19 +25,19 @@ import argparse
 import re
 from pathlib import Path
 
-re_section = re.compile("\s*(sections\[)([0-9]*)\]\s*{")
+re_section = re.compile(r"\s*(sections\[)([0-9]*)\]\s*{")
 re.compile(
-    "\s*(pt3dadd\()([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)"
+    r"\s*(pt3dadd\()([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)"
 )
-re_section = re.compile("\s*(sections\[)([0-9]*)\]\s*{")
-re_access = re.compile("\s*(access)\s*(sections\[)([0-9]*)\]\s*")
-re_append = re.compile("\s*([a-z]*)(.append\(\))")
+re_section = re.compile(r"\s*(sections\[)([0-9]*)\]\s*{")
+re_access = re.compile(r"\s*(access)\s*(sections\[)([0-9]*)\]\s*")
+re_append = re.compile(r"\s*([a-z]*)(.append\(\))")
 re_connect = re.compile(
-    "\s*(connect)\s*(sections\[)([0-9]*)\](\([0-9]*\)),\s*(sections\[)([0-9]*)\](\([0-9]*\))"
+    r"\s*(connect)\s*(sections\[)([0-9]*)\](\([0-9]*\)),\s*(sections\[)([0-9]*)\](\([0-9]*\))"
 )
 
-re_seg = re.compile("(seg\=)([\d]*)")  # '([d+])$')
-re_endsec = re.compile("^}")
+re_seg = re.compile(r"(seg\=)([\d]*)")  # '([d+])$')
+re_endsec = re.compile(r"^}")
 
 
 def make_map(fn):
