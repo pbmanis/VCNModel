@@ -1,3 +1,20 @@
+"""
+Provides basic spike detection, spike shape analysis, and IV analysis if
+appropriate. We use readmodel (ReadModel) to read the pickled data file into
+acq4 format, then we can use the ephys analysis tools to analyze the data
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2020 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+"""
 from pathlib import Path
 from typing import Union
 from ephys.ephysanalysis import RmTauAnalysis, SpikeAnalysis
@@ -14,12 +31,8 @@ def analyze_data(
     spike_shape=False,
 ) -> tuple:
     """
-    Provides basic spike detection, spike shape analysis, and
-    IV analysis if appropriate.
-    We use readmodel (ReadModel) to read the pickled data
-    file into acq4 format, then we can use the ephys
-    analysis tools to analyze the data
-
+    Perform analysis of psike times and IVs from model data.
+    
     Parameters
     ----------
     ivdatafile : path or str path to file

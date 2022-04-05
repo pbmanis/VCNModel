@@ -1,12 +1,22 @@
+""" Compute the cv and regularity according to Young et al., J. Neurophys,
+    60: 1, 1988.
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2020 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+"""
+import warnings  # suppress nan of empty array on 2d-np arrays.
 from dataclasses import dataclass
 
 import numpy as np
-import warnings  # suppress nan of empty array on 2d-np arrays.
-
-
-@dataclass
-class Regularity:
-    pass
 
 
 def isi_cv(
@@ -18,7 +28,7 @@ def isi_cv(
     tgrace: float = 0.0,
     ARP: float = 0.0007,
 ):
-    """compute the cv and regularity according to Young et al., J. Neurophys,
+    """Compute the cv and regularity according to Young et al., J. Neurophys,
         60: 1, 1988.
         Analysis is limited to isi's starting at or after t0 but before t1, and
         ending completely before t1 + tgrace(to avoid end effects). t1 should

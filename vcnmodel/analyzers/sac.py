@@ -1,4 +1,48 @@
-# import datetime
+""" Shuffled autocorrelation function
+
+Based on Louage et al., 2004. X is an array of N responses x length(t) points in
+time. The times are in msec. Since the number of spikes in X may vary from trial
+to trial, X is assumed to be a cell array of spike times. The autocorrelation is
+calculated for every event in X that is not within is not within a single spike
+train. twin is the time window for the autocorrelation to be calculated (in
+msec) binw is the bin width for the histogram, in msec. delay is the delay to
+the start of measurement in X; in msec. dur is the duration of the measurement
+window in X; in msec. (these last two parameters allow you to pass a response
+and only analyze the portion that is relevant).
+
+y is the output autocorrelation function. It consists of a list of the
+correlation intervals, not corrected at all.
+
+yh is the histogram bin amplitudes, with bin width hx. This histogram is
+normalized. mr is the mean rate
+
+10/5/04 Paul B. Manis, Ph.D. 10/5/04 some fixes for an spike trains. Note:
+calling the routine with letters as the first argument will generate the
+specific plots Replicates Figure 2 of Louage et al. J. Neurophysiol. 2004.
+
+Python version, adapted from Matlab version, 6/16/2015 pbm.
+
+Updated 12/13/2021, using numba and cython. as cython is faster, we stick with
+that. see sac_cython for implementations of sac and xac in cython. SAC tested
+against original python and numba - all produce the same result. (No numba
+version for xac was coded). Revised to use matplotlib, and verify all routines
+yield same result. 
+3/13/2022. pbm
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2004/2021 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+"""
+
+
 import functools
 import time
 from dataclasses import dataclass
@@ -16,45 +60,7 @@ from numba.typed import List
 pyximport.install()
 from vcnmodel.analyzers import sac_cython
 
-"""
-Shuffled autocorrelation function
-Based on Louage et al., 2004
-X is an array of N responses x length(t) points in time. The times are in
-msec. Since the number of spikes in X may vary from trial to trial,
-X is assumed to be a cell array of spike times.
-The autocorrelation is calculated for every event in X that is not within
-is not within a single spike train.
-twin is the time window for the autocorrelation to be calculated (in
-msec)
-binw is the bin width for the histogram, in msec.
-delay is the delay to the start of measurement in X; in msec.
-dur is the duration of the measurement window in X; in msec.
-(these last two parameters allow you to pass a response and only analyze
-the portion that is relevant).
 
-y is the output autocorrelation function. It consists of a list of
-the correlation intervals, not corrected at all.
-
-yh is the histogram bin amplitudes, with bin width hx.
-This histogram is normalized.
-mr is the mean rate
-
-10/5/04 Paul B. Manis, Ph.D.
-10/5/04 some fixes for an spike trains.
-Note: calling the routine with letters as the first argument will
-generate the specific plots
-Replicates Figure 2 of Louage et al. J. Neurophysiol. 2004.
-
-Python version, adapted from Matlab version, 6/16/2015 pbm.
-
-Updated 12/13/2021, using numba and cython.
-as cython is faster, we stick with that.
-see sac_cython for implementations of sac and xac in cython.
-SAC tested against original python and numba - all produce
-the same result. (No numba version for xac was coded).
-Revised to use matplotlib, and verify all routines yield same result. 
-3/13/2022. pbm
-"""
 
 
 @dataclass

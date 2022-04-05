@@ -1,5 +1,23 @@
+""" vector_strength.py - calculate standard vector strength
+
+Calculates vector strength and related parameters from a spike train, for the specified frequency
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2021- Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+"""
+
 import dataclasses
 from dataclasses import dataclass, field
+
 import matplotlib.pyplot as mpl
 import numpy as np
 import scipy.stats

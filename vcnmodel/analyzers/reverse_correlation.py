@@ -1,3 +1,25 @@
+""" Compute the reverse correlation between two spike trains For all of the spikes
+in st1, compute the time difference with each spike in st2, find where the
+difference is within a time window we are interested in, then get and return the
+indices for all of those spikes.
+
+We define 3 data structures first: RevCorrPars are the parameters for the
+calculations, and inlcude the stimulus and runinfo parameters from the
+simulations. RevCorrData holds the results of the calculations. SpikeData holds
+information about the individual postsynaptic spikes.
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2021- Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+"""
 import datetime
 from dataclasses import dataclass, field
 from lib2to3.pygram import pattern_symbols
@@ -13,21 +35,6 @@ from vcnmodel.analyzers import spikestatistics as SPKS
 from vcnmodel.analyzers import sttc as STTC
 
 cprint = CP.cprint
-
-"""
-Compute the reverse correlation between two spike trains For all of the spikes
-in st1, compute the time difference with each spike in st2, find where the
-difference is within a time window we are interested in, then get and return the
-indices for all of those spikes.
-
-We define 3 data structures first: RevCorrPars are the parameters for the
-calculations, and inlcude the stimulus and runinfo parameters from the
-simulations. RevCorrData holds the results of the calculations. SpikeData holds
-information about the individual postsynaptic spikes.
-
-reverse_correlation is the python implementation
-
-"""
 
 
 def def_empty_np():
@@ -691,7 +698,9 @@ def _spike_pattern_analysis(
     return test_patterns, pre_solo_spikes
 
 
-def _assert_patterns(pattern_name:str, spike_patterns:dict, pattern_results:dict)->int:
+def _assert_patterns(
+    pattern_name: str, spike_patterns: dict, pattern_results: dict
+) -> int:
     """Test the results against the input spike patterns
 
     Parameters
@@ -707,33 +716,42 @@ def _assert_patterns(pattern_name:str, spike_patterns:dict, pattern_results:dict
     -------
     int
         number of comparisions that failed.
-    """    
+    """
     n_fails = 0
     n_successes = 0
     print(f"\nPattern Name: {pattern_name:s}")
-    exceptions = {("1_largest", "exact"): ["at_least1"],
-                  ("2_largest", "exact"): ["at_least1", 'at_least2'],
-                  ("3_largest", "exact"): ["at_least1", 'at_least2', 'at_least3'],
-                  ("2nd_largest", "exact"): ["not_1_largest"],
-                  ("3rd_largest", "exact"): ["not_1_largest", "not_2_largest"],
-                  ("4th_largest", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
-                  ("1+2+5", "exact"): ["at_least1", 'at_least2'],
-                  ("4+5", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
-                  ("4+5+6", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
-                  ("6+7+8", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
-                  ("None", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
-                  ("not_1_largest", "except"): ["at_least1", "1_largest", "not_1_largest"],
-                  ("not_2_largest", "except"): ["at_least1", "2_largest", "at_least2"],
-                  ("not_3_largest", "except"): ["at_least1", "3_largest", "at_least2", "at_least3"],
-                  ("at_least", "atleast"): ["at_least1"],
-                  ("at_least1", "atleast"): ["at_least"],
-                  ("at_least2", "atleast"): ["at_least1"],
-                  ("at_least3", "atleast"): ["at_least1", "at_least2"],
-            }
+    exceptions = {
+        ("1_largest", "exact"): ["at_least1"],
+        ("2_largest", "exact"): ["at_least1", "at_least2"],
+        ("3_largest", "exact"): ["at_least1", "at_least2", "at_least3"],
+        ("2nd_largest", "exact"): ["not_1_largest"],
+        ("3rd_largest", "exact"): ["not_1_largest", "not_2_largest"],
+        ("4th_largest", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
+        ("1+2+5", "exact"): ["at_least1", "at_least2"],
+        ("4+5", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
+        ("4+5+6", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
+        ("6+7+8", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
+        ("None", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
+        ("not_1_largest", "except"): ["at_least1", "1_largest", "not_1_largest"],
+        ("not_2_largest", "except"): ["at_least1", "2_largest", "at_least2"],
+        ("not_3_largest", "except"): [
+            "at_least1",
+            "3_largest",
+            "at_least2",
+            "at_least3",
+        ],
+        ("at_least", "atleast"): ["at_least1"],
+        ("at_least1", "atleast"): ["at_least"],
+        ("at_least2", "atleast"): ["at_least1"],
+        ("at_least3", "atleast"): ["at_least1", "at_least2"],
+    }
     logic = pattern_results[pattern_name].logic
     if logic == "exact":
         try:
-            assert pattern_results[pattern_name].sumtrue == 1 and pattern_results[pattern_name].sumfalse == 0
+            assert (
+                pattern_results[pattern_name].sumtrue == 1
+                and pattern_results[pattern_name].sumfalse == 0
+            )
             n_successes += 1
             cprint("c", f"  Assert success for exact with  {pattern_name:s} (match)")
         except AssertionError:
@@ -747,7 +765,10 @@ def _assert_patterns(pattern_name:str, spike_patterns:dict, pattern_results:dict
                         assert pattern_results[p].sumtrue == 1
                     else:
                         assert pattern_results[p].sumfalse == 1
-                    cprint("c", f"  Assert success for exact with pattern  {p:s} (should not match, and did not)  Cross-check")
+                    cprint(
+                        "c",
+                        f"  Assert success for exact with pattern  {p:s} (should not match, and did not)  Cross-check",
+                    )
                 except AssertionError:
                     cprint("r", f"      Cross-check Assert failed for {p:s} with exact")
                     pattern_results[p].print()
@@ -755,9 +776,15 @@ def _assert_patterns(pattern_name:str, spike_patterns:dict, pattern_results:dict
 
     if logic == "except":
         try:
-            assert pattern_results[pattern_name].sumfalse == 1 and pattern_results[pattern_name].sumtrue == 0
+            assert (
+                pattern_results[pattern_name].sumfalse == 1
+                and pattern_results[pattern_name].sumtrue == 0
+            )
             n_successes += 1
-            cprint("c", f"  Assert success for except with pattern  {pattern_name:s} (match)")
+            cprint(
+                "c",
+                f"  Assert success for except with pattern  {pattern_name:s} (match)",
+            )
         except AssertionError:
             cprint("r", f"      Assert failed for except with {pattern_name:s}")
             pattern_results[pattern_name].print()
@@ -770,16 +797,27 @@ def _assert_patterns(pattern_name:str, spike_patterns:dict, pattern_results:dict
                         assert pattern_results[p].sumtrue == 1
                     else:
                         assert pattern_results[p].sumfalse == 1
-                    cprint("c", f"  Assert success for except with pattern {p:s} (should not match, and did not)  Cross-Check")
+                    cprint(
+                        "c",
+                        f"  Assert success for except with pattern {p:s} (should not match, and did not)  Cross-Check",
+                    )
                 except AssertionError:
-                    cprint("r", f"      Cross-check Assert failed for {p:s} with except")
+                    cprint(
+                        "r", f"      Cross-check Assert failed for {p:s} with except"
+                    )
                     pattern_results[p].print()
                     n_fails += 1
     if logic == "atleast":
         try:
-            assert pattern_results[pattern_name].sumtrue == 1 and pattern_results[pattern_name].sumfalse == 0
+            assert (
+                pattern_results[pattern_name].sumtrue == 1
+                and pattern_results[pattern_name].sumfalse == 0
+            )
             n_successes += 1
-            cprint("c", f"  Assert success for atleast with pattern  {pattern_name:s} (match)")
+            cprint(
+                "c",
+                f"  Assert success for atleast with pattern  {pattern_name:s} (match)",
+            )
         except AssertionError:
             cprint("r", f"      Assert failed for atleast with {pattern_name:s}")
             pattern_results[pattern_name].print()
@@ -791,9 +829,14 @@ def _assert_patterns(pattern_name:str, spike_patterns:dict, pattern_results:dict
                         assert pattern_results[p].sumtrue == 1
                     else:
                         assert pattern_results[p].sumfalse == 1
-                    cprint("c", f"  Assert success for atleast with pattern  {p:s} (should not match, and did not)  Cross-check")
+                    cprint(
+                        "c",
+                        f"  Assert success for atleast with pattern  {p:s} (should not match, and did not)  Cross-check",
+                    )
                 except AssertionError:
-                    cprint("r", f"      Cross-check Assert failed for {p:s} with atleast")
+                    cprint(
+                        "r", f"      Cross-check Assert failed for {p:s} with atleast"
+                    )
                     pattern_results[p].print()
                     n_fails += 1
     if n_fails > 0:
@@ -802,7 +845,8 @@ def _assert_patterns(pattern_name:str, spike_patterns:dict, pattern_results:dict
         cprint("r", f"     {n_fails:d} Asserts failed for {pattern_name:s}")
     return n_fails
 
-def make_patterns()->dict:
+
+def make_patterns() -> dict:
     patterns = {  # some patterns to match conditions
         "1_largest": PatternData(name="1_largest", mask=0x01, logic="exact"),
         "2_largest": PatternData(name="2_largest", mask=0x03, logic="exact"),
@@ -839,6 +883,7 @@ def make_patterns()->dict:
     }
     return patterns
 
+
 def test_spike_patterns():
     spikes = [64] * 1
     spike_patterns = {  # some test spike patterns
@@ -873,7 +918,11 @@ def test_spike_patterns():
             test_patterns=patterns,
             ninputs=ninputs,
         )
-        _assert_patterns(pattern_name=pattern_name, spike_patterns=spike_patterns, pattern_results=pattern_results)
+        _assert_patterns(
+            pattern_name=pattern_name,
+            spike_patterns=spike_patterns,
+            pattern_results=pattern_results,
+        )
 
         # print("solo: ", solo, "\n")
 

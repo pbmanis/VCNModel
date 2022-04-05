@@ -1,3 +1,19 @@
+"""
+Provides analysis and display for several formats of model_run results
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2020- Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+
+"""
 import argparse
 import os.path
 import pickle
@@ -18,7 +34,6 @@ from pylibrary.plotting import plothelpers as PH
 from pylibrary.plotting import pyqtgraph_plothelpers as pgh
 from pylibrary.tools import utility as pu  # access to spike finder routine
 from pyqtgraph.Qt import QtGui
-
 from vcnmodel import cell_config as CFG
 from vcnmodel.analyzers import analyze_run as analyze_run
 from vcnmodel.analyzers import analyze_run as ar
@@ -42,24 +57,19 @@ synIOfile_template = "AN_Result_{0:s}_{1:4s}_SynIO{2:03d}_N{3:03d}_030db_400.0_{
 all_cells = ["09", "09h", "09nd", "17", "18", "19", "20", "21", "22"]
 
 
-"""
-Provides analysis and display for several formats of model_run results
-"""
-
-
 def clean_spiketimes(spikeTimes, mindT=0.7):
     """
     Clean up spike time array, removing all less than mindT
-    
+
     Parameters
     ----------
     spikeTimes : list or numpy array (1-D)
         array of the spike times
-    
+
     mindT : float (default : 0.7)
         minimum time between spikes, in the same units as spikeTimes
         (normally this will be in milliseconds)
-    
+
     Return
     ------
     spikeTimes : list or numpy array (1-D)
@@ -81,16 +91,16 @@ def clean_spiketimes(spikeTimes, mindT=0.7):
 def readFile(filename, cmd):
     """
     Read the result file and extract and return relevant arrays
-    
+
     Parameters
     ----------
-    filename : str 
+    filename : str
         name of result file to read
-    
+
     cmd : dict
         commands - here we look for "respike", which forces a reanalysis of spike
         times
-    
+
     Returns
     -------
     tuple
@@ -192,7 +202,7 @@ def CNfspike(spikes, stime, nReps, fsl_win: Union[None, tuple] = None):
             )
         )
     else:
-        print('   No FSL data (no spikes)')
+        print("   No FSL data (no spikes)")
 
     if len(sl2) > 0:
         print(
@@ -204,7 +214,7 @@ def CNfspike(spikes, stime, nReps, fsl_win: Union[None, tuple] = None):
             )
         )
     else:
-        print('   No SSL data (no SSL spikes)')
+        print("   No SSL data (no SSL spikes)")
     return (sl1, sl2)
 
 
@@ -564,10 +574,10 @@ def readIVFile(filename):
     )
     #    print arun.IVResult.keys()
     order = np.argsort(arun.IVResult["I"])
-    utau = u"\u03C4"
+    utau = "\u03C4"
     print(
-        u"   {:^7s} {:^8s} {:^9s}{:^9}".format(
-            "I (nA)", u"\u03C4 (ms)", "Vss (mV)", "Vmin (mV)"
+        "   {:^7s} {:^8s} {:^9s}{:^9}".format(
+            "I (nA)", "\u03C4 (ms)", "Vss (mV)", "Vmin (mV)"
         )
     )
     # print arun.IVResult['taus'].keys()

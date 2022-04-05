@@ -1,12 +1,23 @@
+""" Test routine for pytest
+Vector Strength routine testing
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2021- Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+"""
 import numpy as np
 import vcnmodel.analyzers.vector_strength as vector_strength
 from numpy.random import default_rng
 from vcnmodel.util.user_tester import UserTester
 
-"""
-Test routine for pytest
-Vector Strength routine testing
-"""
 plot_flag = False
 VS = vector_strength.VectorStrength()
 
@@ -14,14 +25,20 @@ VS = vector_strength.VectorStrength()
 def test_vector_strength():
     VectorStrengthTester(key="VectorStrength")
 
-def compute_vs_data(freq=100., nsp=1000., sd=0.0, rg=None):
+
+def compute_vs_data(freq=100.0, nsp=1000.0, sd=0.0, rg=None):
     if sd <= 1:
-        sdn = (2.0/freq)+sd*rg.standard_normal(size=nsp)  +np.pi# just express in temrs of time
-    else:  
-        sdn = (1./freq) * rg.uniform(size=nsp)  # uniform across the interval
-    spikes = np.cumsum(np.ones(nsp)*(1./freq))+sdn  # locked spike train with jitter
-    phsp = 2*np.pi*freq*np.fmod(spikes, 1./freq)
-    return(spikes, phsp)
+        sdn = (
+            (2.0 / freq) + sd * rg.standard_normal(size=nsp) + np.pi
+        )  # just express in temrs of time
+    else:
+        sdn = (1.0 / freq) * rg.uniform(size=nsp)  # uniform across the interval
+    spikes = (
+        np.cumsum(np.ones(nsp) * (1.0 / freq)) + sdn
+    )  # locked spike train with jitter
+    phsp = 2 * np.pi * freq * np.fmod(spikes, 1.0 / freq)
+    return (spikes, phsp)
+
 
 class VectorStrengthTester(UserTester):
     def __init__(self, key):
@@ -30,10 +47,27 @@ class VectorStrengthTester(UserTester):
     def run_test(self, plotflag=False):
         # neuron_reset.reset(raiseError=False)
         rg = default_rng(12345)
-        freq = 100.
+        freq = 100.0
         nsp = 1000
-        sd = 0.002 # in seconds, unles > 1 then is uniform
-        x = np.array([0.,0.00005, 0.0001, 0.0002, 0.0003, 0.0005, 0.00075, 0.001, 0.002, 0.003, 0.004, 0.0050, 0.0075, 2])
+        sd = 0.002  # in seconds, unles > 1 then is uniform
+        x = np.array(
+            [
+                0.0,
+                0.00005,
+                0.0001,
+                0.0002,
+                0.0003,
+                0.0005,
+                0.00075,
+                0.001,
+                0.002,
+                0.003,
+                0.004,
+                0.0050,
+                0.0075,
+                2,
+            ]
+        )
         y = np.zeros_like(x)
         ph = np.zeros_like(x)
         vs = np.zeros_like(x)
@@ -43,7 +77,7 @@ class VectorStrengthTester(UserTester):
             y[i] = vsd.circ_timeSD
             vs[i] = vsd.vs
             ph[i] = vsd.circ_phaseSD
-        x[x==2] = 0.020
+        x[x == 2] = 0.020
         self.x = x
         self.y = y
         self.vs = vs
@@ -54,20 +88,20 @@ class VectorStrengthTester(UserTester):
 
         info = dict(
             circ_SD=y,
-            vs = vs,
+            vs=vs,
             phase=ph,
-            )
+        )
         return info
-    
 
     def show_result(self):
         import matplotlib.pyplot as mpl
+
         fig, ax = mpl.subplots(3, 1)
         ax = ax.ravel()
-        ax[0].plot(self.x, self.y, 'o')
-        ax[0].plot([0, np.max(self.x)], [0, np.max(self.x)], '--k', alpha=0.5)
-        ax[1].plot(self.x, self.vs, 'x-')
-        ax[2].plot(self.x, self.ph, 's-')
+        ax[0].plot(self.x, self.y, "o")
+        ax[0].plot([0, np.max(self.x)], [0, np.max(self.x)], "--k", alpha=0.5)
+        ax[1].plot(self.x, self.vs, "x-")
+        ax[2].plot(self.x, self.ph, "s-")
         mpl.show()
         return
 
@@ -84,12 +118,12 @@ class VectorStrengthTester(UserTester):
         # mpl.hist(vsd.circ_phase, bins)
         # mpl.show()
 
-
     def assert_test_info(self, *args, **kwds):
         try:
             super(VectorStrengthTester, self).assert_test_info(*args, **kwds)
         finally:
             pass
+
 
 if __name__ == "__main__":
     test_vector_strength()

@@ -1,6 +1,5 @@
-#!/usr/bin/env python
-"""
-Spike time tiling calculation, from:
+"""Spike time tiling calculation
+from:
 Cutts, C.S. and Eglen, S.J., "Detecting Pairwise Correlations in Spike Trains:
 An Objective Comparison of Methods and Application to the Study of
 Retinal Waves", The Journal of Neuroscience, October 22, 2014,
@@ -12,18 +11,29 @@ November, 2017
 The cython version does not work corectly. The python version, surpisingly, is
 the fastest (compared to cython and numba)
 
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2021- Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
 """
 import functools
-import numpy as np
-import matplotlib.pyplot as mpl
-from numba import jit
-import pyximport
-from typing import Union
 import time
+from typing import Union
 
+import matplotlib.pyplot as mpl
+import numpy as np
+import pyximport
+from numba import jit
 
 # The cython version is not correct. Since the python version
-# is actually faster, we ditched it.
+# is actually faster, we ditched the cython version.
 # from vcnmodel.analyzers import sttc_cython
 # pyximport.install()
 
@@ -37,7 +47,7 @@ def time_func(func):
 
     @functools.wraps(func)
     def wrapper_timer(self, *args, **kwargs):
-        #print(f"Starting : {func.__name__!r}")
+        # print(f"Starting : {func.__name__!r}")
         start_time = time.perf_counter()  # 1
         value = func(self, *args, **kwargs)
         end_time = time.perf_counter()  # 2
@@ -50,7 +60,8 @@ def time_func(func):
 
 # @time_func
 @jit(
-    nopython=True, cache=True,
+    nopython=True,
+    cache=True,
 )
 def nb_tiletimes(times, st, rate, itile):
     npts = times.shape[0]
@@ -174,7 +185,9 @@ class STTC:
 
     def tests(
         self,
-        i, j, axes,
+        i,
+        j,
+        axes,
         distribution="exp",
         pdelete=0.0,
         independent=True,
@@ -187,7 +200,7 @@ class STTC:
         assert distribution in ["exp", "exponential", "poisson", "regular"]
         print("setting up: ", distribution, independent)
         samplerate = 0.0001  # seconds
-        nspikes = int(spikerate*duration)
+        nspikes = int(spikerate * duration)
         print(f"nspikes: {nspikes:d}")
         if distribution in ["exp", "exponential"]:
             print("exp")
@@ -195,9 +208,7 @@ class STTC:
             st1 = np.cumsum(st1)
         elif distribution == "regular":
             print("regular")
-            st1 = np.linspace(
-                1. / samplerate, duration, int(spikerate*duration)
-            )
+            st1 = np.linspace(1.0 / samplerate, duration, int(spikerate * duration))
         elif distribution == "poisson":
             print("poisson")
             st1 = np.random.poisson(1.0 / spikerate, nspikes)
@@ -206,11 +217,17 @@ class STTC:
         if independent:
             print("indepdent", independent)
             if distribution == "regular":
-                st2 = np.linspace(
-                    int(1.0 / samplerate), duration, int(spikerate*duration)
-                ) +0.005
+                st2 = (
+                    np.linspace(
+                        int(1.0 / samplerate), duration, int(spikerate * duration)
+                    )
+                    + 0.005
+                )
             elif distribution in ["exp", "exponential"]:
-                st2 = np.random.exponential(1.0 / spikerate, nspikes,)
+                st2 = np.random.exponential(
+                    1.0 / spikerate,
+                    nspikes,
+                )
                 st2 = np.cumsum(st2)
             elif distribution in ["poisson"]:
                 st2 = np.random.poisson(1.0 / spikerate, nspikes)
@@ -232,10 +249,12 @@ class STTC:
         else:
             assert not np.array_equal(st1, st2)
         print("passed independent test of either equality or inequality")
-        print('len st1, st2: ', len(st1), len(st2), np.max(st1), np.max(st2))
+        print("len st1, st2: ", len(st1), len(st2), np.max(st1), np.max(st2))
 
         self.set_spikes(samplerate, st1, st2, tilewindow=tilewindow)
-        sttc_ccf, wins_ccf = self.calc_ccf_sttc(corrwindow=[0, tilewindow], binwidth=0.001)
+        sttc_ccf, wins_ccf = self.calc_ccf_sttc(
+            corrwindow=[0, tilewindow], binwidth=0.001
+        )
         sttc = self.calc_sttc()
         print(
             "# of spikes in spike train 1: {0:d}, in spike train 2: {1:d} ".format(
@@ -247,13 +266,13 @@ class STTC:
 
     def plot_sttc(self, st1, st2, sttc_ccf, wins_ccf, i, j, axes):
         axes[i, j].eventplot(
-            [st1,  st2],
+            [st1, st2],
             linelengths=[0.75, 0.75],
             lineoffsets=[0, 1],
             colors=["b", "m"],
         )
 
-        axes[i+1, j].plot(wins_ccf, sttc_ccf, 'k-')
+        axes[i + 1, j].plot(wins_ccf, sttc_ccf, "k-")
 
 
 if __name__ == "__main__":
@@ -261,10 +280,12 @@ if __name__ == "__main__":
     distributions = ["regular", "poisson", "exponential"]
     fig, axes = mpl.subplots(6, 3)
     for i, dist in enumerate(distributions):
-        for j, eng in enumerate(['python', 'numba']):
+        for j, eng in enumerate(["python", "numba"]):
             S = STTC(seed=0, engine=eng)
             S.tests(
-                i*2, j, axes,
+                i * 2,
+                j,
+                axes,
                 distribution=dist,
                 pdelete=0.0,
                 independent=True,
@@ -276,6 +297,6 @@ if __name__ == "__main__":
             if i == 0:
                 axes[i, j].set_title(eng)
             if j == 0:
-                axes[i*2, j].set_ylabel(dist)
+                axes[i * 2, j].set_ylabel(dist)
 
     mpl.show()

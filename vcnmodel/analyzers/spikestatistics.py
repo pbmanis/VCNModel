@@ -11,6 +11,7 @@ See the public archive on github at::
     at brian/brian/tools/statistics.py (renamed here to be more 
     descriptive of the functions)
 
+See original source for license.
 """
 from __future__ import print_function
 import numpy as np

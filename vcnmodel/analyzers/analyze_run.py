@@ -1,3 +1,24 @@
+"""
+Perform analysis of IVs pip from model_run
+Provides basic analysis for::
+
+    1. Current clamp IV
+    2. Voltage clamp IV
+    3. Count spikes and get FI
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2017- Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+"""
+
 import os
 import pickle
 from typing import Union
@@ -8,16 +29,6 @@ from lmfit.models import ExponentialModel
 from pylibrary.tools import utility as pu
 
 verbose = True
-
-"""
-Perform analysis of IVs pip from model_run
-Provides basic analysis for::
-
-    1. Current clamp IV
-    2. Voltage clamp IV
-    3. Count spikes and get FI
-
-"""
 
 
 class AnalyzeRun:
@@ -110,7 +121,7 @@ class AnalyzeRun:
         ----------
         spikeTimes : list or numpy array (1-D)
             array of the spike times
-        
+
         mindT : float (default : 0.7)
             minimum time between spikes, in the same units as spikeTimes
             (normally this will be in milliseconds)
