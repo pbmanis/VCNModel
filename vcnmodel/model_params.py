@@ -5,26 +5,37 @@ Define data structures used for:
     *Specifying model parameters (general)
     *Specifying runInfo (run instance) parameters
 
+The aspiration is that all parameters that we vary between runs are defined 
+in either the Params dataclass or the RunInfo dataclass, and are stored along
+with the simulation results. In theory, the dataclasses can be retrieved from
+the simulation result file and used to re-run the simulation.
+In addition, some of these parameters are exposed by DataTablesVCN.py when
+examining the data and performing some analyses or plotting simulation results.
+
+
 This module is part of *vcnmodel*.
 
 Support::
 
     NIH grants:
-    DC R01DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
     DC R01 DC004551 (Manis, 2013-2019, Early development)
     DC R01 DC019053 (Manis, 2020-2025, Later development)
 
+Copyright 2019 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+
 """
 
-import time
-from pathlib import Path
 import argparse
-from dataclasses import dataclass, field
-from typing import Union
-import numpy as np
 import json
-import toml
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Union
 
+import numpy as np
+import toml
 
 display_orient_cells = {
     "VCN_c02": [140.0, 0.0, -144.0],
@@ -193,7 +204,8 @@ class Params:
     ]  # runs 0-2, not starting at 0    # same as CmcChoices
     SRType: str = CmdChoices.SRChoices[2]
     inputPattern: Union[
-        str, None,
+        str,
+        None,
     ] = None  # ID of cellinput pattern (same as cellID): for substitute input patterns.
     synno: Union[int, None] = None  # for selection of single synaptic inputs
 

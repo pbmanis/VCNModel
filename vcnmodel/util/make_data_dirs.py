@@ -1,15 +1,23 @@
 """make_data_dirs.py
-Create a directory structure based on figure_data.py (in the plotters subdirectory)
-and populate it with all of the simulation files and intermediate analyses needed
-to regenerate the figures using DataTablesVCN.py
+Create a directory structure based on figure_data.py (in the plotters
+subdirectory) and populate it with all of the simulation files and intermediate
+analyses needed to regenerate the figures using DataTablesVCN.py This also
+populates the Morphology directory for each cell with the .hoc and .swc
+morphology files.
+
+The directory created by this routine was compressed (zip) and uploaded
+to figshare:
+Private link: https://figshare.com/s/2f87300f58e1c1e9270c
+(DOI: 10.6084/m9.figshare.19520041)
 
 """
 import shutil
 from pathlib import Path
 
 import toml
-from vcnmodel.plotters import \
-    figure_data as FD  # table of simulation runs used for plotting figures
+from vcnmodel.plotters import (
+    figure_data as FD,
+)  # table of simulation runs used for plotting figures
 
 config = toml.load(open("wheres_my_data.toml", "r"))
 sourcepath = Path(config["baseDataDirectory"])
@@ -56,15 +64,20 @@ def copy_morphology(allcells):
         source_morph = list(Path(sdirs[cn], "Morphology").glob("*.hoc"))
         source_morph.extend(list(Path(sdirs[cn], "Morphology").glob("*.swc")))
         dest_morph = Path(cdirs[cn], "Morphology")
-        # print("morph copy from: ", source_morph)
-        # print(" to: ", dest_morph)
         for f in source_morph:
-            if not f.is_file():  # only copy if not already there
+            dest_file = Path(dest_morph, f.name)
+            print(f"File to copy: {str(dest_file):s}")
+            if not dest_file.is_file():  # only copy if not already there
                 print("copying ", f, " to ", dest_morph)
                 shutil.copy2(f, dest_morph)
+            else:
+                print(f"Morphology file {cell_id:s}  {str(f):s}  already present")
+                print("    dest file was: ", dest_file)
 
 
 copy_morphology(allcells)
+
+exit()
 
 for fig in FD.all_figures:
     figd = FD.all_figures[fig]
@@ -73,7 +86,7 @@ for fig in FD.all_figures:
             cell = mk_cellid(cell_id)
             sourcedir = Path(sdirs[cell_id], "Simulations", fig[:2])
             targetdir = Path(cdirs[cell_id], "Simulations", fig[:2])
-            print("\n", "="*80, "\n", fig, ' target dir: ', targetdir)
+            print("\n", "=" * 80, "\n", fig, " target dir: ", targetdir)
             for expt in figd[cell_id].keys():  # for each expt in the list
                 print("   expt: ", expt)
                 sourcefile = Path(sourcedir, figd[cell_id][expt])
@@ -84,6 +97,34 @@ for fig in FD.all_figures:
                         shutil.copy2(sourcefile, Zin_dest_dir)
 
                 elif sourcefile.is_dir():  # make and fill the subdirectory
+                    targetsubdir = Path(targetdir, sourcefile.name)
+                    targetsubdir.mkdir(exist_ok=True)
+                    sourcefiles = sourcefile.glob("*.p")
+                    for f in sourcefiles:
+                        print("   data copying ", f, " to ", targetsubdir)
+                        shutil.copy2(f, targetsubdir)
+                elif sourcefile.is_file and sourcefile.suffix == ".pkl":
+                    print("   suffix: ", sourcefile.suffix)
+                    print("   pkl copying ", sourcefile, " to ", targetdir)
+                    shutil.copy2(sourcefile, targetdir)
+    elif fig in [
+        "AN_PSTH",
+        "AN_revcorr",
+        "AN_ex_revcorr",
+        "AN_efficacy",
+        "AN_SAC",
+        "AN_SAM_SAC",
+    ]:
+        for cell_id in list(figd.keys()):
+            cell = mk_cellid(cell_id)
+            sourcedir = Path(sdirs[cell_id], "Simulations", fig[:2])
+            targetdir = Path(cdirs[cell_id], "Simulations", fig[:2])
+            print("\n", "=" * 80, "\n", fig, " target dir: ", targetdir)
+            for expt in figd[cell_id].keys():  # for each expt in the list
+                print("   expt: ", expt)
+                sourcefile = Path(sourcedir, figd[cell_id][expt])
+
+                if sourcefile.is_dir():  # make and fill the subdirectory
                     targetsubdir = Path(targetdir, sourcefile.name)
                     targetsubdir.mkdir(exist_ok=True)
                     sourcefiles = sourcefile.glob("*.p")

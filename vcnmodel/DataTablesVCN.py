@@ -1,32 +1,3 @@
-# -*- coding: utf-8 -*-
-import functools
-import importlib
-import sys
-from pathlib import Path
-from collections import OrderedDict
-
-import numpy as np
-import pandas as pd
-import pyqtgraph as pg
-import toml
-from pylibrary.plotting import plothelpers as PH
-from pyqtgraph.parametertree import Parameter, ParameterTree
-import pyqtgraph.dockarea as PGD
-from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
-from vcnmodel import table_manager as table_manager
-from vcnmodel import cell_config
-from vcnmodel.plotters import plot_sims
-from vcnmodel.plotters import figures
-from vcnmodel.plotters import figure_data
-from vcnmodel.plotters import plot_z
-from vcnmodel.plotters import SAM_VS_vplots
-from vcnmodel.plotters import efficacy_plot
-from pylibrary.tools import cprint as CP
-# import vcnmodel.correlation_calcs
-import vcnmodel.analyzers.spikestatistics
-import ephys
-
-
 """
 This program provides a graphical interface for model results for the SBEM
 reconstruction project. The display appears as 3 panels: One on the left with
@@ -76,14 +47,52 @@ The left panel provides a set of organized controls:
         that are broken (or stopped early). 
     Quit:
         Exit the program.
-ß Uses pyqtgraph tablewidget to build a table showing simulation files/runs and
+Uses pyqtgraph tablewidget to build a table showing simulation files/runs and
 enabling analysis via a GUI
 
-    Supported primarily by R01DC015901 (Spirou, Manis, Ellisman), Early
-    development: R01 DC004551 (Manis, until 2019) Later development: R01
-    DC019053 (Manis, 2020-2025)
 
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2019 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
 """
+
+import functools
+import importlib
+import sys
+from pathlib import Path
+from collections import OrderedDict
+
+import numpy as np
+import pandas as pd
+import pyqtgraph as pg
+import toml
+from pylibrary.plotting import plothelpers as PH
+from pyqtgraph.parametertree import Parameter, ParameterTree
+import pyqtgraph.dockarea as PGD
+from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
+from vcnmodel import table_manager as table_manager
+from vcnmodel import cell_config
+from vcnmodel.plotters import plot_sims
+from vcnmodel.plotters import figures
+from vcnmodel.plotters import figure_data
+from vcnmodel.plotters import plot_z
+from vcnmodel.plotters import SAM_VS_vplots
+from vcnmodel.plotters import efficacy_plot
+from pylibrary.tools import cprint as CP
+# import vcnmodel.correlation_calcs
+import vcnmodel.analyzers.spikestatistics
+import ephys
+
+
+
 
 
 cprint = CP.cprint

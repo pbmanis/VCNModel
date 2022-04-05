@@ -1,14 +1,27 @@
-#!/usr/bin/python
 """
-Compute soma and dendrite areas and ratios"""
-import sys
-import numpy as np
-from pathlib import Path
-from collections import OrderedDict
-from cnmodel import cells
-import adjust_areas
-import toml
+Compute soma and dendrite areas and ratios
 
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2017-2022 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation.
+"""
+import sys
+from collections import OrderedDict
+from pathlib import Path
+
+import numpy as np
+import toml
+from cnmodel import cells
+
+import adjust_areas
 
 AdjA = adjust_areas.AdjustAreas()
 
@@ -16,8 +29,7 @@ gradeA = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
 
 all_cell_nos = range(1, 32)
 allcells = [f"{c:02d}" for c in all_cell_nos]
-# print(allcells)
-__author__ = "pbmanis"
+
 
 def sum_area(areamap):
     """
@@ -54,7 +66,7 @@ def area(fn):
     )
     # post_cell.list_sections()
     post_cell.distances()
-    post_cell.computeAreas(source='seg')
+    post_cell.computeAreas(source="seg")
     secareas = {}
     # print('soma: ', post_cell.areaMap['soma'])
     for am in list(post_cell.areaMap.keys()):
@@ -83,22 +95,22 @@ def area(fn):
 
 if __name__ == "__main__":
 
-
-    config = toml.load(open("wheres_my_data.toml", "r"))    
+    config = toml.load(open("wheres_my_data.toml", "r"))
     ar = OrderedDict()
     for i, fn in enumerate(allcells):
         basefilename = (
             "VCN_c" + fn
         )  # os.path.join('VCN_Cells', 'VCN_c'+fn, 'Morphology', 'VCN_c'+fn+'.hoc')
-        expts = ["_Full_MeshInflate.hoc", 
-                 "_Full_MeshInflate_standardized_axon.hoc",
-                 "_NoUninnervated_MeshInflate.hoc",
-                 "_NoDend_Meshinflate.hoc",
-                 "_NoDend.hoc",
-                 ]
+        expts = [
+            "_Full_MeshInflate.hoc",
+            "_Full_MeshInflate_standardized_axon.hoc",
+            "_NoUninnervated_MeshInflate.hoc",
+            "_NoDend_Meshinflate.hoc",
+            "_NoDend.hoc",
+        ]
         for expt in expts:
             filename = Path(
-                config['cellDataDirectory'],
+                config["cellDataDirectory"],
                 basefilename,
                 "Morphology",
                 basefilename + expt,
@@ -106,17 +118,17 @@ if __name__ == "__main__":
             if i + 1 in gradeA:
                 if filename.is_file():
                     print("getting area for fn: ", filename)
-                    ar[basefilename+expt] = area(filename)
+                    ar[basefilename + expt] = area(filename)
                 else:
                     print("cant find: ", filename)
-                    ar[basefilename+expt] = {"soma": np.nan, "dendrite": np.nan}
-            
+                    ar[basefilename + expt] = {"soma": np.nan, "dendrite": np.nan}
+
     print("")
     hdrstr = [
         "Cell",
         "Somatic area",
         "Dendritic area",
-        "Ratio", 
+        "Ratio",
         "Hillock Area",
         "Unmyel Area",
         "Myelin Area",

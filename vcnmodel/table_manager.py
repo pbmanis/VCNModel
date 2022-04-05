@@ -1,20 +1,3 @@
-from dataclasses import dataclass, field
-import datetime
-import functools
-import pickle
-import pprint
-import subprocess
-import sys
-from collections import OrderedDict
-from pathlib import Path
-from typing import  List, Union
-
-import cnmodel
-import numpy as np
-from pylibrary.tools import cprint as CP
-# import vcnmodel.util.fixpicklemodule as FPM
-
-
 """
 Fill in a table using pyqtgrph that summarizes the data in a directory.
 Generates index files (pickled python dataclass) that summarize the results.
@@ -23,9 +6,35 @@ Set the force flag true to rebuild the pkl files.
 
 This is meant to be called from DataTablesVCN.py
 
-pbm 7/1/2020
+This module is part of *vcnmodel*.
 
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2014- Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
 """
+import datetime
+import functools
+import pickle
+import pprint
+import subprocess
+import sys
+from collections import OrderedDict
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import List, Union
+
+import cnmodel
+import numpy as np
+from pylibrary.tools import cprint as CP
+
+# import vcnmodel.util.fixpicklemodule as FPM
+
 
 cprint = CP.cprint
 PP = pprint.PrettyPrinter(indent=8, width=80)
@@ -46,7 +55,6 @@ process = subprocess.Popen(
 cnmodel_git_hash = process.communicate()[0].strip()
 
 
-
 def defemptylist():
     return []
 
@@ -62,9 +70,9 @@ class IndexData:
     cellType: str = ""
     modelType: str = ""
     modelName: str = ""
-    dendriteExpt: str=""
-    dendriteMode: str=""
-    axonExpt: str=""
+    dendriteExpt: str = ""
+    dendriteMode: str = ""
+    axonExpt: str = ""
     command_line: str = ""
     changed_data: Union[None, str] = None  # changed_data
     cnmodel_hash: str = cnmodel_git_hash  # save hash for the model code
@@ -78,7 +86,7 @@ class IndexData:
     nReps: int = 0
     pipDur: float = 0.0
     soundType: str = ""
-    fmod: Union[float, None]= None
+    fmod: Union[float, None] = None
     SRType: str = ""
     ANSynapticDepression: int = 0
     elapsed: float = 0.0
@@ -86,7 +94,7 @@ class IndexData:
     synapsetype: str = ""
     synapseExperiment: str = ""
     dataTable: str = ""
-    hocfile: str=""
+    hocfile: str = ""
 
 
 def winprint(func):
@@ -126,7 +134,14 @@ def winprint_continuous(func):
 
 
 class TableManager:
-    def __init__(self, parent=None, table:object=None, basepath:Union[str, Path]="", selvals:dict={}, altcolormethod:object=None):
+    def __init__(
+        self,
+        parent=None,
+        table: object = None,
+        basepath: Union[str, Path] = "",
+        selvals: dict = {},
+        altcolormethod: object = None,
+    ):
         assert parent is not None
         self.parent = parent
         self.table = table
@@ -149,27 +164,27 @@ class TableManager:
             self.parent.textbox.append(text)
             self.parent.textbox.setTextColor(self.parent.QColor("white"))
 
-    def force_suffix(self, filename, suffix='.pkl'):
+    def force_suffix(self, filename, suffix=".pkl"):
         fn = Path(filename)
         if fn.suffix != suffix:
             fn = str(fn)
             fn = fn + suffix
             fn = Path(fn)
         return fn
-        
+
     def find_build_indexfiles(self, indexdir: Union[str, Path], force=False):
         """
         Given the indexdir, determine: Whether an index file exists for this
         directory
-        
+
             If it does, read it If it does not, then make one from the data in
             the directory.
-        
+
         Parameters
         ----------
         indexdir : (str or Path)
             The directory to check.
-        
+
         Returns
         ------
         Contents of the index file.
@@ -184,15 +199,18 @@ class TableManager:
             # indexfile: ', indexfile)
             try:
                 with open(indexfile, "rb") as fh:
-                    d = pickle.load(fh, fix_imports=True) # , encoding="latin1")
+                    d = pickle.load(fh, fix_imports=True)  # , encoding="latin1")
             except:
                 try:
                     import vcnmodel.util.fixpicklemodule as FPM
+
                     with open(indexfile, "rb") as fh:
-                            d = FPM.pickle_load(fh) # , fix_imports=True) # , encoding="latin1")
+                        d = FPM.pickle_load(
+                            fh
+                        )  # , fix_imports=True) # , encoding="latin1")
                 except:
                     raise ValueError(f"Unable to read index file: {str(fh):s}")
-                        
+
                 # print("fh: ", fh)
             return d
         if force or not indexfile.is_file():
@@ -208,7 +226,7 @@ class TableManager:
                     return None
                 else:
                     pars, runinfo, indexfile = p
-            cprint('m', f"     ... to build indexdir: {str(indexdir):s}")
+            cprint("m", f"     ... to build indexdir: {str(indexdir):s}")
             indexdata = self.write_indexfile(pars, runinfo, indexdir)
             return indexdata
 
@@ -217,26 +235,37 @@ class TableManager:
         """
         Reads the Params and runinfo entry from the simulation data file
         """
-        self.textappend(f"Reading pfile: {str(datafile.name):s}", color='white')
+        self.textappend(f"Reading pfile: {str(datafile.name):s}", color="white")
         try:
             with open(datafile, "rb") as fh:
-                    d = pickle.load(fh, fix_imports=True, encoding="latin1")
+                d = pickle.load(fh, fix_imports=True, encoding="latin1")
         except:
             import vcnmodel.util.fixpicklemodule as FPM
+
             try:
                 with open(datafile, "rb") as fh:
-                    d = FPM.pickle_load(fh) # , fix_imports=True) # , encoding="latin1")
-            except(ModuleNotFoundError, IOError, pickle.UnpicklingError):
-                self.textappend('SKIPPING: File is too old; re-run for new structure', color="red")
+                    d = FPM.pickle_load(
+                        fh
+                    )  # , fix_imports=True) # , encoding="latin1")
+            except (ModuleNotFoundError, IOError, pickle.UnpicklingError):
+                self.textappend(
+                    "SKIPPING: File is too old; re-run for new structure", color="red"
+                )
                 self.textappend(f"File: {str(datafile):s}", color="red")
                 return None
-            
-        if 'runInfo' not in list(d.keys()):
-            self.textappend('SKIPPING: File is too old (missing "runinfo"); re-run for new structure', color="red")
+
+        if "runInfo" not in list(d.keys()):
+            self.textappend(
+                'SKIPPING: File is too old (missing "runinfo"); re-run for new structure',
+                color="red",
+            )
             # print('  Avail keys: ', list(d.keys()))
             return None
         if "Params" not in list(d.keys()):
-            self.textappend('SKIPPING: File is too old (missing "Params"); re-run for new structure', color="red")
+            self.textappend(
+                'SKIPPING: File is too old (missing "Params"); re-run for new structure',
+                color="red",
+            )
             # print('  Avail keys: ', list(d.keys())) print(d['Results'][0])
             return None
         # print(d["Params"]) print(d["runInfo"]) exit()
@@ -246,28 +275,31 @@ class TableManager:
         """
         Switch the time stamp to different format Here the initial value is a
         string, which we convert to a datetime
-      
+
         """
         try:
             with open(filename, "rb") as fh:
                 d = FPM.pickle_load(fh, fix_imports=True, encoding="latin1")
         except:
             import vcnmodel.util.fixpicklemodule as FPM
+
             try:
                 with open(filename, "rb") as fh:
                     d = FPM.pickle_load(fh)
-            except(ModuleNotFoundError, IOError, pickle.UnpicklingError):
-                self.textappend('SKIPPING: File is too old; re-run for new structure', color="red")
+            except (ModuleNotFoundError, IOError, pickle.UnpicklingError):
+                self.textappend(
+                    "SKIPPING: File is too old; re-run for new structure", color="red"
+                )
                 self.textappend(f"File: {str(filename):s}", color="red")
                 return None
-        if d['runInfo'] is None:
-            cprint('r', f"runinfo is None? file = {str(filename):s}")
+        if d["runInfo"] is None:
+            cprint("r", f"runinfo is None? file = {str(filename):s}")
             return None
-        if isinstance(d['runInfo'], dict):
-            ts = d['runInfo']['runTime']
+        if isinstance(d["runInfo"], dict):
+            ts = d["runInfo"]["runTime"]
         else:
-            ts = d['runInfo'].runTime
-        times = datetime.datetime.strptime(ts,"%a %b %d %H:%M:%S %Y") 
+            ts = d["runInfo"].runTime
+        times = datetime.datetime.strptime(ts, "%a %b %d %H:%M:%S %Y")
         return times
 
     def make_indexdata(self, params, runinfo, fn=None, indexdir=None):
@@ -299,23 +331,24 @@ class TableManager:
                 "Simulations",
                 self.selvals["Run Type"][1],
             )
-        )        
+        )
         # cprint('r', f"simulation path: {str(Index_data.simulation_path):s}")
         if Index_data.filetype == "F":
             runtime = self.get_sim_runtime(Path(Index_data.simulation_path, fn))
         elif Index_data.filetype == "D":
             # get the first tile in the directory
-            ddir = list(Path(Index_data.simulation_path, indexdir).glob('*.p'))
+            ddir = list(Path(Index_data.simulation_path, indexdir).glob("*.p"))
             if len(ddir) > 0:
                 runtime = self.get_sim_runtime(ddir[0])
             else:
                 timestamp_str = "No Valid Data Files Found"
         if runtime is not None:
-            timestamp_str = datetime.datetime.strftime(runtime, "%F-%T") # "%Y-%m-%d-%H:%M:%S")
+            timestamp_str = datetime.datetime.strftime(
+                runtime, "%F-%T"
+            )  # "%Y-%m-%d-%H:%M:%S")
         else:
             timestamp_str = "No Valid Data Files Found"
         Index_data.datestr = timestamp_str
-
 
         Index_data.threshold = None
         Index_data.elapsed = 0.0
@@ -337,31 +370,33 @@ class TableManager:
             Index_data.SRType = params["SRType"]
             Index_data.soundType = params["soundtype"]
             Index_data.fmod = params["fmod"]
-            Index_data.hocfile = params['hocfile']
+            Index_data.hocfile = params["hocfile"]
 
             try:
                 Index_data.ANSynapticDepression = params["ANSynapticDepression"]
             except:
                 Index_data.ANSynapticDepression = 0
-                
+
             try:
                 Index_data.dt = params["dt"]
             except:
                 Index_data.dt = 20e-6
             try:
-                Index_data.temperature = params["Celsius"] #  Not always in the file information we retrieve
+                Index_data.temperature = params[
+                    "Celsius"
+                ]  #  Not always in the file information we retrieve
             except:
-                Index_data.temperature = 0. # mark if missing
+                Index_data.temperature = 0.0  # mark if missing
             try:
-                Index_data.dataTable = params['dataTable']
+                Index_data.dataTable = params["dataTable"]
             except:
                 Index_data.dataTable = params["modelName"]
-                cprint('r', 'Inserted dataTable with usedict')
+                cprint("r", "Inserted dataTable with usedict")
             try:
-                Index_data.pipDur = params['pip_duration']
+                Index_data.pipDur = params["pip_duration"]
             except:
 
-                cprint('r', 'cant find pipdur')
+                cprint("r", "cant find pipdur")
                 print(params)
                 return
 
@@ -379,17 +414,17 @@ class TableManager:
             Index_data.nReps = runinfo.nReps
             Index_data.pipDur = runinfo.pip_duration
             Index_data.SRType = params.SRType
-            
+
             Index_data.soundType = runinfo.soundtype
             Index_data.fmod = runinfo.fmod
             Index_data.temperature = params.celsius
             Index_data.simulation_path = str(
-                    Path(
-                        self.basepath,
-                        # f"VCN_c{int(self.selvals['Cells'][1]):02d}",
-   #                      "Simulations", self.selvals["Run Type"][1],
-                    )
-                )    
+                Path(
+                    self.basepath,
+                    # f"VCN_c{int(self.selvals['Cells'][1]):02d}",
+                    #                      "Simulations", self.selvals["Run Type"][1],
+                )
+            )
             try:
                 Index_data.stimVC = runinfo.stimVC
             except:
@@ -398,7 +433,7 @@ class TableManager:
                 Index_data.dataTable = params.dataTable
             except:
                 Index_data.dataTable = params.modelName
-                cprint('r', 'Inserted dataTable with dataclasses')
+                cprint("r", "Inserted dataTable with dataclasses")
             try:
                 Index_data.dendriteExpt = params.dendriteExpt
             except:
@@ -415,14 +450,14 @@ class TableManager:
             try:
                 Index_data.dt = params.dt
             except:
-                if runinfo.postMode == 'CC':
+                if runinfo.postMode == "CC":
                     Index_data.dt = params.dtIC
-                elif runinfo.postMode == 'VC':
+                elif runinfo.postMode == "VC":
                     Index_data.dt = params.dtVC
                 else:
-                    raise ValueError('Rininfo postmode not known: ', runinfo.postMode)
+                    raise ValueError("Rininfo postmode not known: ", runinfo.postMode)
         return Index_data
-        
+
     def write_indexfile(self, params, runinfo, indexdir):
         Index_data = self.make_indexdata(params, runinfo, indexdir=indexdir)
         indexfile = self.force_suffix(indexdir)
@@ -434,23 +469,26 @@ class TableManager:
         """
         Read the index file that we will use to populate the table, and to
         provide "hidden" information such as the file list, for analyses.
-        
+
         """
         indexfilename = self.force_suffix(indexfilename)
         with open(indexfilename, "rb") as fh:
             try:
-                indexdata = pickle.load(fh, fix_imports=True) #
+                indexdata = pickle.load(fh, fix_imports=True)  #
             except:
                 try:
                     import vcnmodel.util.fixpicklemodule as FPM
-                    indexdata = FPM.pickle_load(fh) # , encoding="latin1")
+
+                    indexdata = FPM.pickle_load(fh)  # , encoding="latin1")
                 except:
                     raise ValueError(f"Unable to read index file: {str(fh):s}")
         return indexdata
 
     def remove_table_entry(self, indexrow):
         if len(indexrow) != 1:
-            self.parent.error_message("Selection Error: Can only delete one row at a time")
+            self.parent.error_message(
+                "Selection Error: Can only delete one row at a time"
+            )
             return
         indexrow = indexrow[0]
         data = self.get_table_data(indexrow)
@@ -468,43 +506,43 @@ class TableManager:
         if ind is None:
             return
         # if ind is not None:
-            # print(ind) print(self.table_data[ind])
-            # print(type(self.table_data[ind]))
+        # print(ind) print(self.table_data[ind])
+        # print(type(self.table_data[ind]))
         self.table.removeRow(ind)
         # print(dir(self.table)) print(self.table.viewport)
         # print(dir(self.table.viewport()))
         self.table.viewport().update()
-        
-        
 
     def print_indexfile(self, indexrow):
         """
         Print the values in the index file
         """
-        print('='*80)
-        print('\nIndex file and data file params')
-        cprint('c', f"Index row: {str(indexrow.row):s}")
+        print("=" * 80)
+        print("\nIndex file and data file params")
+        cprint("c", f"Index row: {str(indexrow.row):s}")
         data = self.get_table_data(indexrow)
-        print('Data: ', data)
+        print("Data: ", data)
         for f in data.files:
             with open(f, "rb") as fh:
-                fdata = pickle.load(fh, fix_imports=True) # FPM.pickle_load(fh) # , encoding="latin1")
-                print('*'*80)
-                cprint('c', f)
-                cprint('y', 'File Data Keys')
+                fdata = pickle.load(
+                    fh, fix_imports=True
+                )  # FPM.pickle_load(fh) # , encoding="latin1")
+                print("*" * 80)
+                cprint("c", f)
+                cprint("y", "File Data Keys")
                 print(fdata.keys())
                 # print(dir(fdata['Params']))
-                cprint('y', 'Parameters')
-                PP.pprint(fdata['Params'].__dict__) # , sort_dicts=True)
-                print('-'*80)
-                cprint('y', 'RunInfo')
-                PP.pprint(fdata['runInfo'].__dict__) # , sort_dicts=True
-                print('-'*80)
-                cprint('y', 'ModelPars')
-                PP.pprint(fdata['modelPars']) # , sort_dicts=True
-                
-                print('*'*80)
-    
+                cprint("y", "Parameters")
+                PP.pprint(fdata["Params"].__dict__)  # , sort_dicts=True)
+                print("-" * 80)
+                cprint("y", "RunInfo")
+                PP.pprint(fdata["runInfo"].__dict__)  # , sort_dicts=True
+                print("-" * 80)
+                cprint("y", "ModelPars")
+                PP.pprint(fdata["modelPars"])  # , sort_dicts=True
+
+                print("*" * 80)
+
     def select_dates(self, rundirs, mode="D"):
         """
         For every entry in rundirs, see if the date is later than or equal to
@@ -517,11 +555,11 @@ class TableManager:
             return rundirs
 
         if self.parent.start_date != "None":
-            sd = int(self.parent.start_date.replace('-', ""))
+            sd = int(self.parent.start_date.replace("-", ""))
         else:
             sd = 0
         if self.parent.end_date != "None":
-            ed = int(self.parent.end_date.replace('-', ""))
+            ed = int(self.parent.end_date.replace("-", ""))
         else:
             ed = 30000000
         sel_runs = []
@@ -530,25 +568,25 @@ class TableManager:
             if mode == "D":
                 dname = d.stem
                 if d.is_dir():
-                    fdate = dname[-10:].replace('-', "")
+                    fdate = dname[-10:].replace("-", "")
                 else:
-                    fdate = dname[-19:-9].replace('-', "")  # extract the date
-            elif mode == 'F':
-                fdate = d.datestr[-19:-9].replace('-', "")
+                    fdate = dname[-19:-9].replace("-", "")  # extract the date
+            elif mode == "F":
+                fdate = d.datestr[-19:-9].replace("-", "")
             else:
                 raise ValueError("table manager select_dates: bad mode in call: ", mode)
             if fdate[:4] not in ["2020", "2021", "2022"]:
-                continue 
+                continue
             idate = int(fdate)
             if idate >= sd and idate <= ed:
                 sel_runs.append(d)
         return sel_runs
-    
+
     @winprint_continuous
     def build_table(self, mode="scan"):
-        if mode == 'scan':
+        if mode == "scan":
             force = False
-        if mode == 'update':
+        if mode == "update":
             force = True
         self.data = []
         self.table.setData(self.data)
@@ -563,7 +601,7 @@ class TableManager:
         )
         # cprint('c', thispath)
         rundirs = list(thispath.glob("*"))
-        
+
         rundirs = self.select_dates(rundirs)
         indxs = []
         # first build elements with directories
@@ -590,7 +628,7 @@ class TableManager:
                     indxs[i]
         else:
             cprint("c", "No Indexable Directories were found.")
-            
+
         runfiles = list(thispath.glob("*.p"))
         dfiles = sorted(list(runfiles))  # regular data files
         valid_dfiles = []
@@ -602,7 +640,7 @@ class TableManager:
             else:
                 params, runinfo, fn = p  # ok to unpack
                 index_file_data = self.make_indexdata(params, runinfo, fn)
-                fd = self.select_dates([index_file_data], mode='F')
+                fd = self.select_dates([index_file_data], mode="F")
                 if len(fd) > 0:
                     indxs.append(index_file_data)
                     valid_dfiles.append(f)  # keep track of accepted files
@@ -627,7 +665,7 @@ class TableManager:
                     indxs[i].SRType,
                     indxs[i].ANSynapticDepression,
                     indxs[i].dBspl,
-                    indxs[i].nReps, # command_line["nReps"],
+                    indxs[i].nReps,  # command_line["nReps"],
                     indxs[i].pipDur,
                     indxs[i].soundType,
                     indxs[i].fmod,
@@ -640,36 +678,36 @@ class TableManager:
                 for i in range(len(indxs))
             ],
             dtype=[
-                ("type", object), # 0
-                ("date", object), # 1
-                ("cell", object), # 2
-                ("modelType", object), # 3
-                ("modelName", object), # 4
-                ("Protocol", object), # 5
-                ("DendExpt", object), # 6
-                ("DendMode", object), # 7
-                ("AxonExpt", object), # 8
-                ("Experiment", object), # 9
+                ("type", object),  # 0
+                ("date", object),  # 1
+                ("cell", object),  # 2
+                ("modelType", object),  # 3
+                ("modelName", object),  # 4
+                ("Protocol", object),  # 5
+                ("DendExpt", object),  # 6
+                ("DendMode", object),  # 7
+                ("AxonExpt", object),  # 8
+                ("Experiment", object),  # 9
                 # ("inputtype", object), ("modetype", object), ("scaling",
                 # object), ("Freq", object),
-                ('SRType', object), # 10
-                ("Depr", object), # 11
-                ("dBspl", object), # 12
-                ("nReps", object), # 13
-                ("pipDur", object), # 14
-                ("soundType", object), # 15
-                ("fmod", object), # 16
-                ("# Files", object), # 17
-                ("DataTable", object), # 18
+                ("SRType", object),  # 10
+                ("Depr", object),  # 11
+                ("dBspl", object),  # 12
+                ("nReps", object),  # 13
+                ("pipDur", object),  # 14
+                ("soundType", object),  # 15
+                ("fmod", object),  # 16
+                ("# Files", object),  # 17
+                ("DataTable", object),  # 18
                 ("HocFile", object),
-                ('simulation_path', object),
+                ("simulation_path", object),
                 ("Filename", object),
                 # ("# files", object), ("synapsetype", object),
             ],
         )
         self.update_table(self.data)
         cprint("g", "Finished updating index files")
-        
+
     def update_table(self, data, QtCore=None):
         self.table.setData(data)
         style = "section:: {font-size: 4pt; color:black; font:TimesRoman;}"
@@ -684,47 +722,64 @@ class TableManager:
         self.current_table_data = data
         self.parent.Dock_Table.raiseDock()
 
-    def apply_filter(self,QtCore=None):
+    def apply_filter(self, QtCore=None):
         """
         self.filters = {'Use Filter': False, 'dBspl': None, 'nReps': None,
         'Protocol': None,
                 'Experiment': None, 'modelName': None, 'dendMode': None,
                 "dataTable": None,}
         """
-        if not self.parent.filters['Use Filter']:  # no filter, so update to show whole table
+        if not self.parent.filters[
+            "Use Filter"
+        ]:  # no filter, so update to show whole table
             self.update_table(self.data)
-        
+
         else:
             self.filter_table(self.parent.filters, QtCore)
-        
-    def filter_table(self, filters, QtCore):
-            
-            coldict = {'modelName': 4, 'Protocol': 5, 'dendMode': 7, 
-                        'dendExpt':6, 'Experiment': 9, 'SRType': 10,
-                        'Depr':11,'dBspl': 12, 'nReps': 13,
-                         "pipDur": 14, "soundType": 15, "fmod": 16, "DataTable": 18,}
-            filtered_table = self.data.copy()
-            matchsets = dict([(x, set()) for x in filters.keys() if x != 'Use Filter'])
-            for k, d in enumerate(self.data):
-                for f, v in filters.items():
-                    if (v is not None) and (coldict.get(f, False)) and (self.data[k][coldict[f]] == v):
-                        #and f in list(coldict.keys())) and if
-                        # (self.data[k][coldict[f]] == v): print("f: ", f, "
-                        # v: ", v)
-                        matchsets[f].add(k)
 
-            baseset = set()
-            for k, v in matchsets.items():
-                if len(v) > 0:
-                    baseset = v
-                    break
-            # and logic:
-            finds = [v for k, v in matchsets.items() if len(v) > 0]
-            keep_index = baseset.intersection(*finds)
-            self.keep_index = keep_index  # we might want this later!
-            # print('Filter index: ', keep_index)
-            filtered_table = [filtered_table[ft] for ft in keep_index]
-            self.update_table(filtered_table, QtCore)
+    def filter_table(self, filters, QtCore):
+
+        coldict = {
+            "modelName": 4,
+            "Protocol": 5,
+            "dendMode": 7,
+            "dendExpt": 6,
+            "Experiment": 9,
+            "SRType": 10,
+            "Depr": 11,
+            "dBspl": 12,
+            "nReps": 13,
+            "pipDur": 14,
+            "soundType": 15,
+            "fmod": 16,
+            "DataTable": 18,
+        }
+        filtered_table = self.data.copy()
+        matchsets = dict([(x, set()) for x in filters.keys() if x != "Use Filter"])
+        for k, d in enumerate(self.data):
+            for f, v in filters.items():
+                if (
+                    (v is not None)
+                    and (coldict.get(f, False))
+                    and (self.data[k][coldict[f]] == v)
+                ):
+                    # and f in list(coldict.keys())) and if
+                    # (self.data[k][coldict[f]] == v): print("f: ", f, "
+                    # v: ", v)
+                    matchsets[f].add(k)
+
+        baseset = set()
+        for k, v in matchsets.items():
+            if len(v) > 0:
+                baseset = v
+                break
+        # and logic:
+        finds = [v for k, v in matchsets.items() if len(v) > 0]
+        keep_index = baseset.intersection(*finds)
+        self.keep_index = keep_index  # we might want this later!
+        # print('Filter index: ', keep_index)
+        filtered_table = [filtered_table[ft] for ft in keep_index]
+        self.update_table(filtered_table, QtCore)
 
     def setColortoRow(self, rowIndex, color):
         for j in range(self.table.columnCount()):
@@ -736,7 +791,7 @@ class TableManager:
             if self.data[i][1] == value:
                 return i
         return None
-        
+
     def get_table_data(self, index_row):
         """
         Regardless of the sort, read the current index row and map it back to
@@ -747,7 +802,7 @@ class TableManager:
             return self.table_data[ind]
         else:
             return None
-            
+
         # # print('gettabledata: indexrow: ', index_row, index_row.row())
         # value = index_row.sibling(index_row.row(), 1).data() for i, d in
         # enumerate(self.data): if self.data[i][1] == value: return

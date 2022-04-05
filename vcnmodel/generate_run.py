@@ -1,3 +1,31 @@
+"""
+GenerateRun is a class that sets up for a run after the cell has been decorated with channels.
+It requires the celltype, and a section where the electrode will be inserted.
+The stimulus in current clamp can consist of single pulses or pulse trains. cd is the
+channelDecorator, which is also used to set the current range level for IV's.
+Code for reading externally generated spike trains from a file is also included.
+Methods:
+    
+    * do_run(filename) will execute the run. The resulting plot will have the filename text at the top.
+    * do_run calls 3 private methods, _prepare_run, _initializeRun, and _execute_run, which respectively,
+    * set up the stimuli, initialize the state of the model, and then run the model, generating a plot.
+
+Original version: February 2014, Paul B. Manis UNC Chapel Hill.
+    
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2014- Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+"""
+
 import copy
 import csv
 import dataclasses
@@ -21,8 +49,6 @@ from pyqtgraph.Qt import QtGui
 from vcnmodel import NoiseTrainingGen as NG
 from vcnmodel import cellInitialization as cellInit
 from vcnmodel.analyzers import analyze_run as ar
-
-# from NoiseTrainingGen.NoiseGen import generator
 from vcnmodel.plotters import IVPlots as IVP
 
 __author__ = "pbmanis"
@@ -33,34 +59,29 @@ cprint = CP.cprint
 
 
 class GenerateRun:
-    """
-    GenerateRun is a class that sets up for a run after the cell has been decorated with channels.
-    It requires the celltype, and a section where the electrode will be inserted.
-    The stimulus in current clamp can consist of single pulses or pulse trains. cd is the
-    channelDecorator, which is also used to set the current range level for IV's.
-    Code for reading externally generated spike trains from a file is also included.
-    Methods:
-        
-        * do_run(filename) will execute the run. The resulting plot will have the filename text at the top.
-        * do_run calls 3 private methods, _prepare_run, _initializeRun, and _execute_run, which respectively,
-        * set up the stimuli, initialize the state of the model, and then run the model, generating a plot.
-    
-    February 2014, Paul B. Manis UNC Chapel Hill.
-    
-    This module is part of *vcnmodel*.
-
-    Support::
-
-        NIH grants:
-        DC R01DC015901 (Spirou, Manis, Ellisman),
-        DC R01 DC004551 (Manis, 2013-2019, Early development)
-        DC R01 DC019053 (Manis, 2020-2025, Later development)
-
-    """
-
     def __init__(
-        self, Params, RunInfo, cell, idnum=0, starttime=None,
+        self,
+        Params,
+        RunInfo,
+        cell,
+        idnum=0,
+        starttime=None,
     ):
+        """Set up for a simulation run
+
+        Parameters
+        ----------
+        Params : dataclass
+            General parameters for the run, defined in model_params.py
+        RunInfo : dataclass
+            Specific parameters for a simulation run, defined in model_params.py
+        cell : object
+            cnmodel cell instance that will be used as the scaffold.
+        idnum : int, optional
+            a run id number, by default 0
+        starttime : datetime, optional
+            starting time for the run for timing, by default None
+        """    
         self.run_initialized = False
         self.Params = Params  # make available to the rest of the classself.RunInfo.
         self.RunInfo = RunInfo
@@ -152,14 +173,14 @@ class GenerateRun:
 
     def _make_filename(self, filename=None, subdir=None):
         """
-        Make the filename and a storage directory for the data 
-        
+        Make the filename and a storage directory for the data
+
         Parameters
         ----------
         filename : str default=None
             The base name of the file to create
         subdir : subdirectory name
-        
+
         Returns
         -------
         nothing
@@ -410,7 +431,7 @@ class GenerateRun:
         initfile: Union[str, Path, None] = None,
     ):
         """
-        Perform the run/simulation. 
+        Perform the run/simulation.
         """
         self._clean_neuron_objects()
         cprint("w", f"do_run: {self.RunInfo.postMode:s}")
