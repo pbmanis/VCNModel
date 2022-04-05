@@ -10,6 +10,17 @@ to figshare:
 Private link: https://figshare.com/s/2f87300f58e1c1e9270c
 (DOI: 10.6084/m9.figshare.19520041)
 
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2014- Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
 """
 import shutil
 from pathlib import Path

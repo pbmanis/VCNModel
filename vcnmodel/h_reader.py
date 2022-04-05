@@ -1,25 +1,40 @@
-from __future__ import print_function
-__author__ = 'pbmanis'
-from pathlib import Path
+"""
+h_reader.py - Read hoc files
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2019 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+"""
 import collections
-import numpy as np
 import os
 import re
+from pathlib import Path
+
+import numpy as np
 
 try:
-    from neuron import h
     import neuron
-    HAVE_NEURON=True
-except:
-    HAVE_NEURON=False
+    from neuron import h
 
+    HAVE_NEURON = True
+except:
+    HAVE_NEURON = False
 
 
 try:
-  basestring
+    basestring
 except NameError:
-  basestring = str
- 
+    basestring = str
+
+
 class HocReader(object):
     """
     Provides useful methods for reading hoc structures.
@@ -28,20 +43,25 @@ class HocReader(object):
     ----------
         hoc: a hoc object or a "xxx.hoc" file name.
     """
+
     def __init__(self, hoc):
         self.file_loaded = False
         if isinstance(hoc, basestring):
             fullfile = Path(os.getcwd(), hoc)
-            neuron.h.hoc_stdout('/dev/null')  # prevent junk from printing while reading the file
+            neuron.h.hoc_stdout(
+                "/dev/null"
+            )  # prevent junk from printing while reading the file
             success = neuron.h.load_file(str(fullfile))
             neuron.h.hoc_stdout()
-            if success == 0: # indicates failure to read the file
-                raise NameError("Found file, but NEURON load failed: %s" % (str(fullfile)))
+            if success == 0:  # indicates failure to read the file
+                raise NameError(
+                    "Found file, but NEURON load failed: %s" % (str(fullfile))
+                )
 
             self.file_loaded = True
-            self.h = h # save a copy of the hoc object itself.
+            self.h = h  # save a copy of the hoc object itself.
         elif isinstance(hoc, object):
-            self.h = hoc # just use the passed argument
+            self.h = hoc  # just use the passed argument
             self.file_loaded = True
         else:
             raise ValueError("HocReader(h_reader): require filename or hoc object")
@@ -67,7 +87,6 @@ class HocReader(object):
         sec_lists = self.get_section_lists()
         sec_prefixes = self.get_section_prefixes()
 
-
         # Add groupings by section list if possible:
         if len(sec_lists) > 1:
             self.add_groups_by_section_list(sec_lists)
@@ -77,20 +96,18 @@ class HocReader(object):
             for group, sections in sec_prefixes.items():
                 self.add_section_group(group, sections)
 
-
     def update(self):
         """
         Update information on sections after external changes
         """
         self._read_section_info()
 
-
     def get_section(self, sec_name):
         """
         Parameters
         ----------
         sec_name: str (no default)
-        
+
         Returns
         -------
         the hoc Section object with the given name.
@@ -99,7 +116,6 @@ class HocReader(object):
             return self.sections[sec_name]
         except KeyError:
             raise KeyError("No section named '%s'" % sec_name)
-
 
     def get_section_prefixes(self):
         """
@@ -115,15 +131,14 @@ class HocReader(object):
         """
         prefixes = {}
 
-        regex = re.compile('(?P<prefix>\w+)\[(\d*)\]')
+        regex = re.compile("(?P<prefix>\w+)\[(\d*)\]")
         for sec_name in self.sections:
             g = regex.match(sec_name)
             if g is None:
                 continue
-            prefix = g.group('prefix')
+            prefix = g.group("prefix")
             prefixes.setdefault(prefix, []).append(sec_name)
         return prefixes
-
 
     def get_mechanisms(self, section):
         """
@@ -131,17 +146,16 @@ class HocReader(object):
         Parameters
         ----------
         section (hoc object)
-        
+
         Returns
         -------
         set of mechanism names
-        
+
         Side-effects
         ------------
         None
         """
         return self.mechanisms[section]
-
 
     def get_density(self, section, mechanism):
         """
@@ -151,7 +165,7 @@ class HocReader(object):
         kind of 'gbarname' than 'gbar<name>_mechname'
         returns the average of the conductance density, as that may range across different
         values in a section (e.g., can vary by segments)
-        
+
         Parameters
         ----------
         section (hoc object)
@@ -167,31 +181,29 @@ class HocReader(object):
         gmech = []
         for seg in section:
             try:
-                x =  getattr(seg,  mechanism[0])
-                mecbar = '%s_%s' % (mechanism[1], mechanism[0])
+                x = getattr(seg, mechanism[0])
+                mecbar = "%s_%s" % (mechanism[1], mechanism[0])
                 if mecbar in dir(x):
                     gmech.append(getattr(x, mechanism[1]))
                 else:
-                    print('hoc_reader:get_density did not find the mechanism in dir x')
+                    print("hoc_reader:get_density did not find the mechanism in dir x")
             except NameError:
-                return(0.)
+                return 0.0
             except:
-                print('hoc_reader:get_density failed to evaluate the mechanisms... ')
+                print("hoc_reader:get_density failed to evaluate the mechanisms... ")
                 raise
-
 
         # print(gmech)
         if len(gmech) == 0:
-            gmech = 0.
+            gmech = 0.0
         return np.mean(gmech)
-
 
     def get_sec_info(self, section):
         """
         Get the info of the given section
         modified from: neuronvisio
         """
-        info = "<b>Section Name:</b> %s<br/>" %section.name()
+        info = "<b>Section Name:</b> %s<br/>" % section.name()
         info += "<b>Length [um]:</b> %f<br/>" % section.L
         info += "<b>Diameter [um]:</b> %f<br/>" % section.diam
         info += "<b>Membrane Capacitance:</b> %f<br/>" % section.cm
@@ -201,7 +213,7 @@ class HocReader(object):
         for seg in section:
             for mech in seg:
                 mechs.append(mech.name())
-        mechs = set(mechs) # Excluding the repeating ones
+        mechs = set(mechs)  # Excluding the repeating ones
 
         mech_info = "<b>Mechanisms in the section</b><ul>"
         for mech_name in mechs:
@@ -211,10 +223,9 @@ class HocReader(object):
         info += mech_info
         return info
 
-
     def _read_section_info(self):
         # Collect list of all sections and their mechanism names.
-        self.sec_index=collections.OrderedDict()
+        self.sec_index = collections.OrderedDict()
         self.sections = collections.OrderedDict()
         self.mechanisms = collections.OrderedDict()
         for i, sec in enumerate(self.h.allsec()):
@@ -226,25 +237,28 @@ class HocReader(object):
                     mechs.add(mech.name())
             self.mechanisms[sec.name()] = mechs
 
-
     def hoc_namespace(self):
         """
         Return a dict of the HOC namespace {'variable_name': hoc_object}.
         NOTE: this method requires NEURON >= 7.3
         """
         names = {}
-        for hvar in dir(self.h): # look through the whole list, no other way
+        for hvar in dir(self.h):  # look through the whole list, no other way
             try:
                 # some variables can't be pointed to...
-                if hvar in ['nseg', 'diam_changed', 'nrn_shape_changed_',
-                            'secondorder', 'stoprun']:
+                if hvar in [
+                    "nseg",
+                    "diam_changed",
+                    "nrn_shape_changed_",
+                    "secondorder",
+                    "stoprun",
+                ]:
                     continue
                 u = getattr(self.h, hvar)
                 names[hvar] = u
             except:
                 continue
         return names
-
 
     def find_hoc_hname(self, regex):
         """
@@ -261,14 +275,12 @@ class HocReader(object):
                 continue
         return objs
 
-
-            # m = sid.match(hname)
-            # sections=[]
-            # if m is not None:
-            #     for v in getattr(self.h, hvar):
-            #         sections.append(v)
-            #     self.add_section_group(hvar, sections)
-
+        # m = sid.match(hname)
+        # sections=[]
+        # if m is not None:
+        #     for v in getattr(self.h, hvar):
+        #         sections.append(v)
+        #     self.add_section_group(hvar, sections)
 
     def add_section_group(self, name, sections, overwrite=False):
         """
@@ -282,7 +294,9 @@ class HocReader(object):
 
         """
         if name in self.sec_groups and not overwrite:
-            raise Exception("Group name %s is already used (use overwrite=True)." % name)
+            raise Exception(
+                "Group name %s is already used (use overwrite=True)." % name
+            )
 
         group = set()
         for sec in sections:
@@ -290,7 +304,6 @@ class HocReader(object):
                 sec = sec.name()
             group.add(sec)
         self.sec_groups[name] = group
-
 
     def get_section_group(self, name):
         """
@@ -307,15 +320,14 @@ class HocReader(object):
             if secname in secs:
                 return group
         return None
-        
+
     def get_section_lists(self):
         """
         Search through all of the hoc variables to find those that are "SectionLists"
         """
-        return self.find_hoc_hname(regex=r'SectionList\[')
-        #ns = self.hoc_namespace()
-        #return [name for name in ns if ns[name].hname().startswith('SectionList[')]
-
+        return self.find_hoc_hname(regex=r"SectionList\[")
+        # ns = self.hoc_namespace()
+        # return [name for name in ns if ns[name].hname().startswith('SectionList[')]
 
     def add_groups_by_section_list(self, names):
         """
@@ -335,21 +347,20 @@ class HocReader(object):
         # if a list is supplied, then the names of groups to create are
         # exactly the same as the names of hoc lists.
         if not isinstance(names, dict):
-            names = {name:name for name in names}
+            names = {name: name for name in names}
         for hoc_name, group_name in names.items():
             var = getattr(self.h, hoc_name)
             self.add_section_group(group_name, list(var))
-
 
     def get_geometry(self):
         """
         modified from:neuronvisio
         Generate structures that describe the geometry of the sections and their segments (all segments are returned)
-        
+
         Parameters
         ----------
         None
-        
+
         Returns
         -------
         vertexes: record array containing {pos: (x,y,z), dia, sec_id}
@@ -376,26 +387,24 @@ class HocReader(object):
         for secid, sec in enumerate(self.sections.values()):
             x_sec, y_sec, z_sec, d_sec = self.retrieve_coordinate(sec)
 
-            for i,xi in enumerate(x_sec):
+            for i, xi in enumerate(x_sec):
                 vertexes.append(((x_sec[i], y_sec[i], z_sec[i]), d_sec[i], secid))
                 indx_geom_seg = len(vertexes) - 1
                 if len(vertexes) > 1 and i > 0:
-                    connections.append([indx_geom_seg, indx_geom_seg-1])
+                    connections.append([indx_geom_seg, indx_geom_seg - 1])
 
         self.edges = np.array(connections)
-        self.vertexes = np.empty(len(vertexes), dtype=[
-            ('pos', float, 3),
-            ('dia', float),
-            ('sec_index', int)])
+        self.vertexes = np.empty(
+            len(vertexes), dtype=[("pos", float, 3), ("dia", float), ("sec_index", int)]
+        )
         self.vertexes[:] = vertexes
         return self.vertexes, self.edges
-
 
     def retrieve_coordinate(self, sec):
         """Retrieve the coordinates of the section avoiding duplicates"""
 
         sec.push()
-        x, y, z, d = [],[],[],[]
+        x, y, z, d = [], [], [], []
 
         tot_points = 0
         connect_next = False
@@ -407,17 +416,16 @@ class HocReader(object):
             d_i = self.h.diam3d(i)
             # Avoiding duplicates in the sec
             if x_i in x:
-                ind = len(x) - 1 - x[::-1].index(x_i) # Getting the index of last value
+                ind = len(x) - 1 - x[::-1].index(x_i)  # Getting the index of last value
                 if y_i == y[ind]:
                     if z_i == z[ind]:
                         present = True
 
             if not present:
-                k =(x_i, y_i, z_i)
+                k = (x_i, y_i, z_i)
                 x.append(x_i)
                 y.append(y_i)
                 z.append(z_i)
                 d.append(d_i)
         self.h.pop_section()
-        return (np.array(x),np.array(y),np.array(z),np.array(d))
-
+        return (np.array(x), np.array(y), np.array(z), np.array(d))
