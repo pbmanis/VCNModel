@@ -18,12 +18,24 @@ indicate an origin (soma).
 Python 3 version only 3-27-2019 pbm Handles Singleton "sections" in swc file by
 inserting the last parent segment information.
 
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2017-2022 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
 """
 
 import argparse
-import numpy as np
-from pathlib import Path
 import datetime
+from pathlib import Path
+
+import numpy as np
 
 
 # standard SWC types:

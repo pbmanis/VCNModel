@@ -1,6 +1,6 @@
 """
 Params.py
-A clsss to create parameter structures
+A classs to create parameter structures
 First version: Paul Manis on 2014-01-31.
 Distributed under MIT/X11 license. See license.txt for more infofmation.
 
@@ -11,6 +11,10 @@ It is included here because past simulations may have had Params objects
 stored in the simulation result files, so this is needed to access
 the data in those blocks. 
 
+This was taken from somewhere on the web years ago before dataclasses
+existed, and has been modified over time. Apologies to whoever first
+created it. 
+ 
 """
 
 from __future__ import print_function
@@ -18,12 +22,10 @@ from __future__ import print_function
 
 class Params(object):
     """
-    utility class to create parameter lists...
-    create like: p = Params(abc=2.0, defg = 3.0, lunch='sandwich')
-    reference like p.abc, p.defg, etc.
-    Supports getting the keys, finding whether a key exists, returning
-    the strucure as a simple dictionary, and printing (show) the
-    parameter structure.
+    Utility class to create parameter lists... create like: p = Params(abc=2.0,
+    defg = 3.0, lunch='sandwich') reference like p.abc, p.defg, etc. Supports
+    getting the keys, finding whether a key exists, returning the strucure as a
+    simple dictionary, and printing (show) the parameter structure.
     """
 
     def __init__(self, **kwds):

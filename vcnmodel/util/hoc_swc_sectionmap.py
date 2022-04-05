@@ -7,8 +7,17 @@ is associated with each hoc pt3dadd call.
 The result is a text file that looks like: hocsectionname : 1,3,5,7,9 where the
 numbers are the swc elements.
 
-Paul B. Manis
-2019-2020
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2021, 2022 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
 
 """
 

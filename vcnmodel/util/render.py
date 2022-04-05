@@ -1,8 +1,20 @@
 """
 Display the hoc files with pyqtgraph, This is a command-line tool. See the
 --help message for details on the commands.
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2017-2022 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+
 """
-__author__ = "pbmanis"
 import argparse
 import importlib
 import os
@@ -165,7 +177,7 @@ class Render:
             "parentaxon": "orange",
             "synapse": "k",
         }
-    
+
     def get_hoc_file(self) -> None:
         if self.hf.file_loaded is False:
             exit()
@@ -295,8 +307,7 @@ def set_table_and_cells(
         data.report_changes(changes_c)
     else:
         CP.cprint("g", "No changes to data tables")
-    
-    
+
     post_cell = cells.Bushy.create(
         morphology=str(filename),
         decorator=Decorator,
@@ -309,14 +320,12 @@ def set_table_and_cells(
 
 
 def main():
-     # find out where our files live
+    # find out where our files live
     where_is_data = Path("wheres_my_data.toml")
     if where_is_data.is_file():
         datapaths = toml.load("wheres_my_data.toml")
     else:
-        datapaths = {
-            "cellDataDirectory": Path("../VCN-SBEM-Data", "VCN_Cells")
-        }
+        datapaths = {"cellDataDirectory": Path("../VCN-SBEM-Data", "VCN_Cells")}
     baseDirectory = datapaths["cellDataDirectory"]
     morphDirectory = "Morphology"
     initDirectory = "Initialization"
@@ -379,9 +388,7 @@ def main():
     if args.cellnumber > 0:
         hocfile = f"VCN_c{int(args.cellnumber):02d}_Full_MeshInflate.hoc"
         cell_dir = f"VCN_c{int(args.cellnumber):02d}"
-        filename = Path(
-            baseDirectory, cell_dir, morphDirectory, hocfile
-        )
+        filename = Path(baseDirectory, cell_dir, morphDirectory, hocfile)
         fnum = args.cellnumber
     elif args.filename != "None":
         filename = Path(args.filename)
@@ -390,8 +397,6 @@ def main():
     else:
         raise ValueError("Need either -n cell number or -f filename")
 
-
-   
     post_cell = set_table_and_cells(
         filename=filename,
         dataTable="data_XM13A_nacncoop_normal",

@@ -1,2 +1,12 @@
 Copied from github.com/campagnola/pyqtgraph datatree-arrays branch; this gives us DiffTreeWidget.
 This file can be removed if DiffTreeWidget has been merged into pyqtgraph.
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC004551 (Manis, 2013-2019)
+
+Copyright 2014- Luke Campagnola
+Distributed under MIT/X11 license. See license.txt for more infomation. 

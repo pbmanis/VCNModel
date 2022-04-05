@@ -1,8 +1,20 @@
-""" 
-pattern_summary:
+""" pattern_summary:
 Compute the input patterns, and generate a summary figure
 breaking the cells down by 'drivers' and 'coincidence'
 for different input patterns
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2022 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+
 """
 
 import pickle
