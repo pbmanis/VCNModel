@@ -1,15 +1,34 @@
+"""
+Plot the impedances as seen from the soma for VCN cells
+for different dendritic configurations
+Assumes that the analysis has already been done, and that the
+location of that data is given in the 'wheres_my_data.toml' file
+Generates: Figure3_Supplemental3_Zin.pdf
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2017-2022 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+
+"""
 import pickle
 from pathlib import Path
 
 import matplotlib
-from matplotlib import rc
 import numpy as np
 import pyqtgraph as pg
 import seaborn as sns
-from matplotlib import pyplot as mpl
-from pylibrary.plotting import plothelpers as PH
-
 import toml
+from matplotlib import pyplot as mpl
+from matplotlib import rc
+from pylibrary.plotting import plothelpers as PH
 
 rc("text", usetex=True)
 rc("text.latex", preamble=r"\usepackage{xcolor}")
@@ -17,15 +36,6 @@ rc("mathtext", fontset="stixsans")
 
 sns.set_style(rc={"pdf.fonttype": 42})
 mpl.style.use("~/.matplotlib/figures.mplstyle")
-
-
-"""
-Plot the impedances as seen from the soma for VCN cells
-for different dendritic configurations
-Assumes that the analysis has already been done, and that the
-location of that data is given in the 'wheres_my_data.toml' file
-Generates: Figure3_Supplemental3_Zin.pdf
-"""
 
 
 class PlotZ:
@@ -187,7 +197,7 @@ class PlotZ:
         mpl.show()
 
     def plot_col(self, col, f, P, axonly_scale=3000.):
-#        import matplotlib.scale as MPLS
+        import matplotlib.scale as MPLS
         import matplotlib.ticker
         
         ax = P.axarr

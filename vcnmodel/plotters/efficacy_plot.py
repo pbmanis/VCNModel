@@ -1,29 +1,3 @@
-import io
-import re
-from typing import Union
-
-import lmfit
-import matplotlib
-import numpy as np
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as mpl
-from pylibrary.plotting import plothelpers as PH
-from pylibrary.tools import cprint as CP
-
-# from pylibrary.plotting import styler as STY
-from scipy import stats
-from sklearn.cluster import KMeans
-from sklearn.cluster import AgglomerativeClustering
-import sklearn.metrics as metrics
-from sklearn import preprocessing
-
-# from sklearn.datasets import make_blobs
-
-matplotlib.rcParams["mathtext.fontset"] = "stixsans"
-
-cprint = CP.cprint
-
 """
 Plot the efficacy data into an axis
 
@@ -48,7 +22,43 @@ There are a number of routines in here:
 2. Individual fits
 3. clustering to test efficacy groups
 
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2017-2022 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
 """
+import io
+import re
+from typing import Union
+
+import lmfit
+import matplotlib
+import matplotlib.pyplot as mpl
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import sklearn.metrics as metrics
+from pylibrary.plotting import plothelpers as PH
+from pylibrary.tools import cprint as CP
+
+# from pylibrary.plotting import styler as STY
+from scipy import stats
+from sklearn import preprocessing
+from sklearn.cluster import AgglomerativeClustering, KMeans
+
+# from sklearn.datasets import make_blobs
+
+matplotlib.rcParams["mathtext.fontset"] = "stixsans"
+
+cprint = CP.cprint
+
 
 # data_original = """
 # ASA    Eff    Cell    SDRatio
@@ -1036,10 +1046,8 @@ def plot_cluster(data_with_clusters, ax, clip_on: bool = False, mode=None):
 def aggcluster(data, axn, eff_crit: float = 0.0, clip_on: bool = False, elbow=True):
     if elbow:
         from yellowbrick.cluster import (
-            # InterclusterDistance,
             KElbowVisualizer,
-            # SilhouetteVisualizer,
-        )
+        )  # InterclusterDistance,; SilhouetteVisualizer,
     x, df = prepare_data(data, eff_crit=eff_crit)
     ax = axn[0]
 
@@ -1076,10 +1084,8 @@ def kmeans(data, ax, eff_crit: float = 0.0, elbow=True):
     # we avoid importing this at the top because it messes with the plotting.
     if elbow:
         from yellowbrick.cluster import (
-            # InterclusterDistance,
             KElbowVisualizer,
-            # SilhouetteVisualizer,
-        )
+        )  # InterclusterDistance,; SilhouetteVisualizer,
 
     x, df = prepare_data(data, eff_crit=eff_crit)
     # f, ax = mpl.subplots(2, 1)

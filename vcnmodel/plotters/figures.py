@@ -1,3 +1,25 @@
+
+"""figures.py - generate figures for the paper
+This class generates final figures for the SBEM manuscript by reaching back to
+the original simulation data, including, in some cases, refitting. Both primary
+"examplar" figures, and supplemental figures, are generated. The figures are
+made consistent by using both sns.set_style and mpl.style for figures.mplstyle,
+which overrides some defaults in mpl. The resulting figures are editable in
+Illustrator without any missing fonts.
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2017-2022 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+"""
+
 import datetime
 import importlib
 import pickle
@@ -24,9 +46,8 @@ from vcnmodel.analyzers import isi_cv as ISI
 from vcnmodel.analyzers import sac as SAC
 from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot as EF
-from vcnmodel.plotters import (
-    figure_data as FD,
-)  # table of simulation runs used for plotting figures
+from vcnmodel.plotters import \
+    figure_data as FD  # table of simulation runs used for plotting figures
 from vcnmodel.plotters import plot_z as PZ
 
 from . import plot_functions as PF
@@ -53,7 +74,6 @@ title_text = {
 }
 font_colors = {"passive": "c", "normal": "k", "active": "m"}
 spike_colors = {"passive": "r", "normal": "r", "active": "r"}
-
 
 
 def get_changetimestamp():
@@ -98,23 +118,20 @@ class FigInfo:
 
 class Figures(object):
     """
-    This class generates final figures for the SBEM manuscript by reaching back to the
-    original simulation data, including, in some cases, refitting.
-    Both primary "examplar" figures, and supplemental figures, are generated.
-    The figures are made consistent by using both sns.set_style and
-    mpl.style for figures.mplstyle, which overrides some defaults in mpl.
-    The resulting figures are editable in Illustrator without any missing fonts.
+    This class generates final figures for the SBEM manuscript by reaching back
+    to the original simulation data, including, in some cases, refitting. Both
+    primary "examplar" figures, and supplemental figures, are generated. The
+    figures are made consistent by using both sns.set_style and mpl.style for
+    figures.mplstyle, which overrides some defaults in mpl. The resulting
+    figures are editable in Illustrator without any missing fonts.
 
-    This is overall ugly code, but it gets the job done.
-    Note that some plots are modifications of what is present in plot_sims,
-    and also that plot_sims is used here, accessed through self.parent.PLT.
-    Some plotting routines have been moved into plot_functions.
+    This is overall ugly code, but it gets the job done. Note that some plots
+    are modifications of what is present in plot_sims, and also that plot_sims
+    is used here, accessed through self.parent.PLT. Some plotting routines have
+    been moved into plot_functions.
 
-    This is part of the DataTablesVCN interactive analysis tool for the simulations
-    in the SBEM project.
-    Supported primarily by R01DC015901 (Spirou, Manis, Ellisman),
-    Early development: R01 DC004551 (Manis, until 2019)
-    Later development: R01 DC019053 (Manis, 2020-2025)
+    This is part of the DataTablesVCN interactive analysis tool for the
+    simulations in the SBEM project. 
 
     """
 

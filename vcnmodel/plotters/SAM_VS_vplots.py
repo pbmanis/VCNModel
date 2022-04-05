@@ -1,3 +1,21 @@
+"""
+Plot responses to SAM stimuli and the vector strengths
+Assumes that the analysis has already been done, and that the
+location of that data is given in the 'wheres_my_data.toml' file
+
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2017-2022 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
+
+"""
 import importlib
 import io
 import os
@@ -9,15 +27,12 @@ import pandas as pd
 import seaborn as sns
 
 sys.path.insert(0, os.path.abspath("nb"))
+import plotnine as PN
+import toml
 import VS_data_30dB as VS_data
 from matplotlib import pyplot as mpl
-from pylibrary.plotting import plothelpers as PH
-
-import toml
-
-
-import plotnine as PN
 from matplotlib import ticker
+from pylibrary.plotting import plothelpers as PH
 
 
 def reset_style():
@@ -153,13 +168,19 @@ class VS_Plots:
                 x="Frequency (Hz)", y="Vector Strength", color="Synapse Configuration"
             )
             + PN.geom_line(
-                PN.aes(x="factor(frequency)", y=plotwhat,),
+                PN.aes(
+                    x="factor(frequency)",
+                    y=plotwhat,
+                ),
                 position=PN.positions.position_dodge2(width=1),
                 alpha=1,
                 color="grey",
             )
             + PN.geom_line(
-                PN.aes(x="factor(frequency)", y=anpt,),
+                PN.aes(
+                    x="factor(frequency)",
+                    y=anpt,
+                ),
                 position=PN.positions.position_dodge2(width=1),
                 alpha=1,
                 color="red",
@@ -167,25 +188,55 @@ class VS_Plots:
             + PN.scales.scale_colour_brewer(type="qual", palette="Dark2")
             + PN.facet_wrap("Cell", labeller=getCell, nrow=5, ncol=2, dir="v")
             + PN.theme_minimal()  # (style='whitegrid')
-            + PN.theme(text=PN.element_text(family="Arial",))
+            + PN.theme(
+                text=PN.element_text(
+                    family="Arial",
+                )
+            )
             + PN.themes.theme(panel_grid_minor=PN.element_blank())
             + PN.themes.theme(panel_grid_major=PN.element_blank())
-            + PN.themes.theme(panel_spacing_x=0.5,)
-            + PN.themes.theme(panel_spacing_y=0.25,)
+            + PN.themes.theme(
+                panel_spacing_x=0.5,
+            )
+            + PN.themes.theme(
+                panel_spacing_y=0.25,
+            )
             + PN.themes.theme(axis_line=PN.element_rect())
             + PN.themes.theme(axis_line=PN.element_rect())
-            + PN.themes.theme(axis_ticks_length=20,)
-            + PN.themes.theme(axis_ticks_length_minor=0,)
-            + PN.themes.theme(axis_ticks_length_major=3,)
+            + PN.themes.theme(
+                axis_ticks_length=20,
+            )
+            + PN.themes.theme(
+                axis_ticks_length_minor=0,
+            )
+            + PN.themes.theme(
+                axis_ticks_length_major=3,
+            )
             + PN.themes.theme(axis_ticks_direction="in")
-            + PN.themes.theme(axis_ticks=PN.element_line(size=1),)
-            + PN.themes.theme(axis_ticks_pad=20,)
-            + PN.themes.theme(axis_ticks_major=PN.element_line(color="k"),)
-            + PN.themes.theme(axis_ticks_major_x=PN.element_line(size=1),)
-            + PN.themes.theme(axis_ticks_major_y=PN.element_line(color="k"),)
-            + PN.themes.theme(axis_ticks_minor=PN.element_line(color="k"),)
-            + PN.themes.theme(axis_ticks_minor_x=PN.element_line(size=0),)
-            + PN.themes.theme(axis_ticks_minor_y=PN.element_line(color="k"),)
+            + PN.themes.theme(
+                axis_ticks=PN.element_line(size=1),
+            )
+            + PN.themes.theme(
+                axis_ticks_pad=20,
+            )
+            + PN.themes.theme(
+                axis_ticks_major=PN.element_line(color="k"),
+            )
+            + PN.themes.theme(
+                axis_ticks_major_x=PN.element_line(size=1),
+            )
+            + PN.themes.theme(
+                axis_ticks_major_y=PN.element_line(color="k"),
+            )
+            + PN.themes.theme(
+                axis_ticks_minor=PN.element_line(color="k"),
+            )
+            + PN.themes.theme(
+                axis_ticks_minor_x=PN.element_line(size=0),
+            )
+            + PN.themes.theme(
+                axis_ticks_minor_y=PN.element_line(color="k"),
+            )
             + PN.themes.theme(axis_text_x=PN.element_text(angle=45))
             #       + PN.scale_x_discrete(labels=labels)
             + PN.scales.ylim(yscale)
@@ -224,7 +275,7 @@ class VS_Plots:
         )
 
         fig.filename = save_file
-        if hasattr(fig, 'title'):
+        if hasattr(fig, "title"):
             fig.title["title"] = title
         return fig
 

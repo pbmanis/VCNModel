@@ -4,13 +4,25 @@ Figure data: a dict of which simulations are in which figures
 The dictionaries all should have the same basic structure: top level keys are
 the cell number/ID. Second level keys relate to the experimental conditions. The
 data in the second level key is either the name of the directory that holds the
-simulation data file, or the name of a pickled file that holds some intermediate results
+simulation data file, or the name of a pickled file that holds some intermediate
+results
 
-This file is used both for plotting, and for extracting the original data for plots into
-a new directory structure for general release. Plotting is controlled by
-plot_sims.py and figures.py. Data extraction is controlled by util/make_data_dirs.py.
+This file is used both for plotting, and for extracting the original data for
+plots into a new directory structure for general release. Plotting is controlled
+by plot_sims.py and figures.py. Data extraction is controlled by
+util/make_data_dirs.py.
 
+This module is part of *vcnmodel*.
 
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2017-2022 Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
 """
 
 figure_IV = {
