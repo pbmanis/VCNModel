@@ -54,7 +54,6 @@ title_text = {
 font_colors = {"passive": "c", "normal": "k", "active": "m"}
 spike_colors = {"passive": "r", "normal": "r", "active": "r"}
 
-print(FD)
 
 
 def get_changetimestamp():
@@ -149,7 +148,6 @@ class Figures(object):
 
     def make_figure(self, figure_name: Union[str, None] = None):
         self.reset_style()
-        print("Making_figure:", figure_name)
         # dispatch
         dispatch_table = {
             "Figure3-Ephys_1_Main": self.Figure3_Main,
@@ -298,7 +296,7 @@ class Figures(object):
 
         """
         if cell is None:
-            cellN = FD.figure_IV.keys()[0]  # there will be only one
+            cellN = list(FD.figure_IV.keys())[0]  # there will be only one
             d1 = FD.figure_IV[cellN]["normal"]
         else:
             cellN = cell
@@ -401,10 +399,7 @@ class Figures(object):
         )
         ivaxis = self.P2.axarr[0, 0]
         for iax, iv in enumerate(["pasdend", "normal", "actdend"]):
-            if cell is None:
-                dfile = FD.figure_IV[iv]
-            else:
-                dfile = FD.figure_AllIVs[cellN][iv]
+            dfile = FD.figure_AllIVs[cellN][iv]
             sfi = Path(cellpath, Path(dfile).name)
             if not sfi.is_dir():
                 print("Missing file: sfi 1: ", sfi)
@@ -421,6 +416,7 @@ class Figures(object):
                 protocol="IV",
                 ymin=ymin,
                 ymax=ymax,
+                xmax=150.0,
                 iax=iax,
                 figure=self.P.figure_handle,
                 ivaxis=ivaxis,  # accumulate IV's in bottom left plot
@@ -529,7 +525,7 @@ class Figures(object):
                         FD.figure_AllIVs[iv][dendm],
                     )
                     if not sfi.is_dir():
-                        print("sfi is not a dir")
+                        print(f"File '{str(sfi):s}' is not a directory")
                         continue
                     fn = list(sfi.glob("*"))
                     sfi = Path(sfi, fn[0])
@@ -738,6 +734,7 @@ class Figures(object):
                     protocol="IV",
                     ymin=ymin,
                     ymax=ymax,
+                    xmax=150.0,
                     iax=iax,
                     figure=self.P.figure_handle,
                     show_title=False,
@@ -863,7 +860,6 @@ class Figures(object):
         if not sfi.is_dir():
             return
         fn = sorted(list(sfi.glob("*")))
-        print("plot_efficacy fn: ", fn)
         PD = self.newPData()
         calx = 800.0
         if parent_figure is None:
@@ -902,7 +898,6 @@ class Figures(object):
         calx = 800.0
         for n in range(nfiles):
             sfile = Path(sfi, fn[n])
-            print(n, sfile)
             if n == nfiles - 1:
                 calxv = calx
             else:
@@ -996,7 +991,6 @@ class Figures(object):
         trace_ht = 80  # mV
 
         simulation_experiment = "Full"
-        print("Cells: ", cells)
         for ic, cellN in enumerate(cells):
             # if ic > 0:  # for quick tests
             #               continue
@@ -1013,7 +1007,6 @@ class Figures(object):
             if not sfiles.is_dir():
                 return
             fn = sorted(list(sfiles.glob("*")))
-            # print("files to plot: ", fn)
             PD = self.newPData()
 
             nfn = len(fn)
@@ -1163,7 +1156,6 @@ class Figures(object):
                     ymax = 40.0
                 yoffset = -60.0
                 ymin = nfn * -60.0
-                print("ymin, ymax: ", ymin, ymax)
                 for n in range(len(fn)):
                     if n == nfn - 1:
                         calxv = calxp
@@ -1236,7 +1228,6 @@ class Figures(object):
         )
         with open(rc_datafile, "rb") as fh:
             d = FPM.pickle_load(fh)
-        # print(d.keys())
         return d
 
     def Figure4_Supplmental1(self):
@@ -2255,10 +2246,9 @@ class Figures(object):
         fig.title["title"] = "SBEM Project Figure 7 Modeling: SAM, SAC"
         title2 = {"title": f"", "x": 0.99, "y": 0.01}
         fig.title2 = title2
-        print("returnin fig: ", fig)
         return fig
 
-    def Figure7_one_column(self, mode, cell_number, dataset, P, pan):
+    def Figure7_one_column(self, mode:str, cell_number:int, dataset:dict, P:object, pan:object):
 
         PD = self.newPData()
         cellpath = Path(
@@ -2267,10 +2257,13 @@ class Figures(object):
             "Simulations",
             "AN",
         )
-
-        sfi = Path(cellpath, Path(dataset[mode][0]).name)
+        # print('dataset: ', dataset)
+        # print('mode: ', mode)
+        # print('cellpath: ', cellpath)
+        # print('dataset[mode]: ', dataset[mode])
+        sfi = Path(cellpath, Path(dataset[cell_number][mode]).name)
         if not sfi.is_dir():
-            print("file not found: ", str(sfi))
+            print(f"File is not a directory: {str(sfi):s}")
             return
 
         fn = sorted(list(sfi.glob("*")))[0]
@@ -2281,7 +2274,7 @@ class Figures(object):
         # )
         if not MD.success:
             print("No simulation found that matched conditions")
-            print(fn)
+            print("File was: ", fn)
             return
         # unpack x
         # par, stitle, ivdatafile, filemode, d = X
@@ -3334,7 +3327,7 @@ class Figures(object):
             fh.write(f'"""\n')  # close the data text.
         cprint("g", "The VS_data file {str(fout):s} has been generated.")
 
-    def plot_VC_gKLT(self, parent_figure=None, loc: Union[None, tuple] = None):
+    def plot_VC_gKLT(self, parent_figure=None, loc: Union[None, tuple] = None)->object:
         cell_number = 17
         dataset = FD.figure_VClamp[cell_number]
 
@@ -3344,10 +3337,11 @@ class Figures(object):
             "Simulations",
             "VC",
         )
+        # print(cellpath)
         sfi = []
         for i, ds in enumerate(dataset):
             # print("figures:klt:i, ds: ", i, ds)
-            sfd = Path(cellpath, Path(ds).name)
+            sfd = Path(cellpath, Path(dataset[ds]).name)
             # print(sfd)
             if not sfd.is_dir():
                 print("Directory not found: ", str(sfd))

@@ -1,63 +1,20 @@
-import argparse
-import string
-import sys
-import time
-from collections import OrderedDict
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Union
-
-import matplotlib.colorbar  # type: ignore
-import matplotlib.colors  # type: ignore
-import mplcursors
-import numpy as np  # type: ignore
-import pandas as pd
-import pyperclip
-import pyqtgraph as pg  # type: ignore
-# import quantities as pq
-import seaborn as sns
-import toml
-import vcnmodel.cell_config as cell_config
-import vcnmodel.util.readmodel as readmodel
-from ephys.ephysanalysis import RmTauAnalysis, SpikeAnalysis
-from lmfit import Model  # type: ignore
-from matplotlib import pyplot as mpl  # type: ignore
-from matplotlib import rc  # type: ignore
-from matplotlib import ticker
-from pylibrary.plotting import plothelpers as PH
-from pylibrary.plotting import styler as PLS
-from pylibrary.tools import cprint as CP
-from pyqtgraph.Qt import QtGui
-from rich.console import Console
-from vcnmodel.analyzers import reverse_correlation as REVCORR
-from vcnmodel.analyzers import sac as SAC
-from vcnmodel.analyzers import vector_strength as VS
-from vcnmodel.util import fixpicklemodule as FPM
-from vcnmodel.util import trace_calls
-
-from . import plot_functions as PF
-
-TRC = trace_calls.TraceCalls
-
-cprint = CP.cprint
-console = Console()
 """
-Functions to compute some results and plot the
-simulation results from model_run2
-Reads the new format filenames
+Functions to compute some results and plot the simulation results from
+model_run2. Reads the new format filenames.
 
-This is written as a set of functions that can be called
-from elsewhere.
-Included is a parser so that the plots
-can be called from the command line as well.
+This is written as a class with a set of methods that can be called from
+elsewhere. Typically, these will be called from within DataTablesVCN.py, which
+provides graphical table-based access to the simulation results. Included at the
+end is a parser so that the plots can be called from the command line as well,
+but this is discouraged.
 
-Some of the parameters must be instantiated by creating an instance
-of PData that is passed into the routnines.
+Some of the parameters must be instantiated by creating an instance of PData
+that is passed into the routnines.
 
 Wrapper for various analysis functions, handles multiple cells.
 
 
-Command line usage:
+Command line usage (discouraged):
 
 usage: plot_sims.py [-h] [-p {AN,an,IO,IV,iv,gifnoise}]
                     [-a {traces,PSTH,revcorr,SAC,tuning,singles}]
@@ -98,17 +55,71 @@ optional arguments:
   -c, --check           Just check selection criteria and return
 
 
-    Supported primarily by R01DC015901 (Spirou, Manis, Ellisman),
-    Early development: R01 DC004551 (Manis, until 2019)
-    Later development: R01 DC019053 (Manis, 2020-2025)
+This module is part of *vcnmodel*.
+
+Support::
+
+    NIH grants:
+    DC R01 DC015901 (Spirou, Manis, Ellisman),
+    DC R01 DC004551 (Manis, 2013-2019, Early development)
+    DC R01 DC019053 (Manis, 2020-2025, Later development)
+
+Copyright 2017- Paul B. Manis
+Distributed under MIT/X11 license. See license.txt for more infomation. 
 
 """
+import argparse
+import string
+import sys
+import time
+from collections import OrderedDict
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Union
+
+import matplotlib.colorbar  # type: ignore
+import matplotlib.colors  # type: ignore
+import mplcursors
+import numpy as np  # type: ignore
+import pandas as pd
+import pyperclip
+import pyqtgraph as pg  # type: ignore
+
+# import quantities as pq
+import seaborn as sns
+import toml
+import vcnmodel.cell_config as cell_config
+import vcnmodel.util.readmodel as readmodel
+from ephys.ephysanalysis import RmTauAnalysis, SpikeAnalysis
+from lmfit import Model  # type: ignore
+from matplotlib import pyplot as mpl  # type: ignore
+from matplotlib import rc  # type: ignore
+from matplotlib import ticker
+from pylibrary.plotting import plothelpers as PH
+from pylibrary.plotting import styler as PLS
+from pylibrary.tools import cprint as CP
+from pyqtgraph.Qt import QtGui
+from rich.console import Console
+from vcnmodel.analyzers import reverse_correlation as REVCORR
+from vcnmodel.analyzers import sac as SAC
+from vcnmodel.analyzers import vector_strength as VS
+from vcnmodel.util import fixpicklemodule as FPM
+from vcnmodel.util import trace_calls
+
+from . import plot_functions as PF
+
+TRC = trace_calls.TraceCalls
+
+cprint = CP.cprint
+console = Console()
 
 
-# make a shortcut for each of the clases
+# make a shortcut for each of the analysis classes from ephys
 
 SP = SpikeAnalysis.SpikeAnalysis()
 RM = RmTauAnalysis.RmTauAnalysis()
+
+# set some defaults
 rc("text", usetex=True)
 rc("text.latex", preamble=r"\usepackage{xcolor}")
 rc("mathtext", fontset="stixsans")
@@ -149,8 +160,7 @@ orient_cells = {
 
 
 def grAList() -> list:
-    """
-    Return a list of the 'grade A' cells from the SBEM project
+    """ Return a list of the 'grade A' cells from the SBEM project
     """
 
     return [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
@@ -189,7 +199,7 @@ class PData:
 @dataclass
 class SACPars:
     """
-    Shuffled autocorrelation parameters - copied from sac.py
+    Shuffled autocorrelation parameter dataclass - copied from sac.py
     """
 
     twin: float = 5.0
@@ -825,6 +835,7 @@ class PlotSims:
                 caly2=-40.0,
                 calt2=10.0,
                 calv2=20.0,
+                xmax=150.0,
                 figure=P.figure_handle,
                 clipping=True,
             )

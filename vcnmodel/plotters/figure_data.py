@@ -1,16 +1,26 @@
 """
 Figure data: a dict of which simulations are in which figures
 
+The dictionaries all should have the same basic structure: top level keys are
+the cell number/ID. Second level keys relate to the experimental conditions. The
+data in the second level key is either the name of the directory that holds the
+simulation data file, or the name of a pickled file that holds some intermediate results
+
+This file is used both for plotting, and for extracting the original data for plots into
+a new directory structure for general release. Plotting is controlled by
+plot_sims.py and figures.py. Data extraction is controlled by util/make_data_dirs.py.
+
+
 """
 
 figure_IV = {
-    17:
-    {"normal": "runIV-all-2021-07-27.12-18-24",
-    "pasdend": "runIV-all-2021-07-27.12-23-27",
-    "actdend": "runIV-all-2021-07-27.12-28-28",
-    "Z_normal": "VCN_c17_Full_MeshInflate_normal_Z.pkl",
-    "Z_passive": "VCN_c17_Full_MeshInflate_pasdend_Z.pkl",
-    "Z_active": "VCN_c17_Full_MeshInflate_actdend_Z.pkl",
+    17: {
+        "normal": "runIV-all-2021-07-27.12-18-24",
+        "pasdend": "runIV-all-2021-07-27.12-23-27",
+        "actdend": "runIV-all-2021-07-27.12-28-28",
+        "Z_normal": "VCN_c17_Full_MeshInflate_normal_Z.pkl",
+        "Z_passive": "VCN_c17_Full_MeshInflate_pasdend_Z.pkl",
+        "Z_active": "VCN_c17_Full_MeshInflate_actdend_Z.pkl",
     }
 }
 
@@ -26,9 +36,9 @@ figure_AllIVs = {
     },
     # using standard axon ******************
     5: {
-         "normal": "runIV-all-2021-08-01.13-48-01",
-         "pasdend": "runIV-all-2021-08-01.13-53-16",
-         "actdend": "runIV-all-2021-08-01.13-58-29",
+        "normal": "runIV-all-2021-08-01.13-48-01",
+        "pasdend": "runIV-all-2021-08-01.13-53-16",
+        "actdend": "runIV-all-2021-08-01.13-58-29",
     },
     6: {
         "normal": "runIV-all-2021-08-01.13-48-34",
@@ -40,17 +50,11 @@ figure_AllIVs = {
         "pasdend": "runIV-all-2021-08-01.13-54-15",
         "actdend": "runIV-all-2021-08-01.13-59-30",
     },
-    # 10: {
-    #     "normal": "runIV-all-2020-07-30.18-25-42",
-    #     "passive": "runIV-all-2020-07-30.18-38-31",
-    #     "active": "runIV-all-2020-07-30.18-52-07",
-    # },
     10: {
         "normal": "runIV-all-2021-08-01.13-49-36",
         "pasdend": "runIV-all-2021-08-01.13-54-48",
         "actdend": "runIV-all-2021-08-01.14-00-02",
     },
-    # unclear; cell 11 did not have all runs on 7/27 (missing pasdend)
     11: {
         "normal": "runIV-all-2021-08-01.13-50-09",
         "pasdend": "runIV-all-2021-08-01.13-55-22",
@@ -223,9 +227,10 @@ figure_revcorr = {
 
 
 figure_VClamp = {
-    17: {'passive': "runVC-all-2020-07-29.10-36-59",
-         "normal": "runVC-all-2020-07-29.10-30-30",
-         "active": "runVC-all-2020-07-29.12-17-13",
+    17: {
+        "passive": "runVC-all-2020-07-29.10-36-59",
+        "normal": "runVC-all-2020-07-29.10-30-30",
+        "active": "runVC-all-2020-07-29.12-17-13",
     },
 }
 
@@ -272,69 +277,66 @@ figure_psth = {
     30: {
         "30dB": "runANPSTH-all-2021-08-07.12-03-55",
     },
-    
 }
 
 figure_SAC = {
-    2: [
-        "runANPSTH-all-2022-01-02.19-56-54",
-        "runANPSTH-largestonly-2022-01-02.20-02-29",
-        "runANPSTH-removelargest-2022-01-02.20-08-14",
-    ],
-    5: [
-        "runANPSTH-all-2022-01-02.20-14-23",
-        "runANPSTH-largestonly-2022-01-02.20-21-12",
-        "runANPSTH-removelargest-2022-01-02.20-27-52",
-    ],
-    6: [
-        "runANPSTH-all-2022-01-02.20-34-56",
-        "runANPSTH-largestonly-2022-01-02.20-39-59",
-        "runANPSTH-removelargest-2022-01-02.20-45-00",
-    ],
-    9: [
-         "runANPSTH-all-2022-01-02.20-50-30",
-         "runANPSTH-largestonly-2022-01-02.20-56-36",
-         "runANPSTH-removelargest-2022-01-02.21-02-45",
-     ],
-     10: [
-         "runANPSTH-all-2022-01-02.21-09-25",
-         "runANPSTH-largestonly-2022-01-02.21-16-25",
-         "runANPSTH-removelargest-2022-01-02.21-23-22",
-     ],
-     11: [
-         "runANPSTH-all-2022-01-02.21-30-35",
-         "runANPSTH-largestonly-2022-01-02.21-35-34",
-         "runANPSTH-removelargest-2022-01-02.21-40-28",
-     ],
-     13: [
-         "runANPSTH-all-2022-01-02.21-45-49",
-         "runANPSTH-largestonly-2022-01-02.21-51-00",
-         "runANPSTH-removelargest-2022-01-02.21-56-14",
-     ],
-     17: [
-         "runANPSTH-all-2022-01-02.22-02-02",
-         "runANPSTH-largestonly-2022-01-02.22-09-30",
-         "runANPSTH-removelargest-2022-01-02.22-16-35",
-     ],
-     18: [
-         "runANPSTH-all-2022-01-02.22-24-05",
-         "runANPSTH-largestonly-2022-01-02.22-30-05",
-         "runANPSTH-removelargest-2022-01-02.22-36-07",
-     ],
-     30: [
-         "runANPSTH-all-2022-01-02.22-42-35",
-         "runANPSTH-largestonly-2022-01-02.22-48-47",
-         "runANPSTH-removelargest-2022-01-02.22-54-58",
-     ],
+    2: {
+        "all": "runANPSTH-all-2022-01-02.19-56-54",
+        "largestonly": "runANPSTH-largestonly-2022-01-02.20-02-29",
+        "removelargest": "runANPSTH-removelargest-2022-01-02.20-08-14",
+    },
+    5: {
+        "all": "runANPSTH-all-2022-01-02.20-14-23",
+        "largestonly": "runANPSTH-largestonly-2022-01-02.20-21-12",
+        "removelargest": "runANPSTH-removelargest-2022-01-02.20-27-52",
+    },
+    6: {
+        "all": "runANPSTH-all-2022-01-02.20-34-56",
+        "largestonly": "runANPSTH-largestonly-2022-01-02.20-39-59",
+        "removelargest": "runANPSTH-removelargest-2022-01-02.20-45-00",
+    },
+    9: {
+        "all": "runANPSTH-all-2022-01-02.20-50-30",
+        "largestonly": "runANPSTH-largestonly-2022-01-02.20-56-36",
+        "removelargest": "runANPSTH-removelargest-2022-01-02.21-02-45",
+    },
+    10: {
+        "all": "runANPSTH-all-2022-01-02.21-09-25",
+        "largestonly": "runANPSTH-largestonly-2022-01-02.21-16-25",
+        "removelargest": "runANPSTH-removelargest-2022-01-02.21-23-22",
+    },
+    11: {
+        "all": "runANPSTH-all-2022-01-02.21-30-35",
+        "largestonly": "runANPSTH-largestonly-2022-01-02.21-35-34",
+        "removelargest": "runANPSTH-removelargest-2022-01-02.21-40-28",
+    },
+    13: {
+        "all": "runANPSTH-all-2022-01-02.21-45-49",
+        "largestonly": "runANPSTH-largestonly-2022-01-02.21-51-00",
+        "removelargest": "runANPSTH-removelargest-2022-01-02.21-56-14",
+    },
+    17: {
+        "all": "runANPSTH-all-2022-01-02.22-02-02",
+        "largestonly": "runANPSTH-largestonly-2022-01-02.22-09-30",
+        "removelargest": "runANPSTH-removelargest-2022-01-02.22-16-35",
+    },
+    18: {
+        "all": "runANPSTH-all-2022-01-02.22-24-05",
+        "largestonly": "runANPSTH-largestonly-2022-01-02.22-30-05",
+        "removelargest": "runANPSTH-removelargest-2022-01-02.22-36-07",
+    },
+    30: {
+        "all": "runANPSTH-all-2022-01-02.22-42-35",
+        "largestonly": "runANPSTH-largestonly-2022-01-02.22-48-47",
+        "removelargest": "runANPSTH-removelargest-2022-01-02.22-54-58",
+    },
 }
 
 figure_SAM_SAC = {
-    "SAM": [
-        "runANPSTH-all-2021-12-05.21-59-17",
-    ],
-    "SAC": [
-        "runANPSTH-all-2022-01-02.21-30-35",
-    ],
+    17: {
+        "SAM": "runANPSTH-all-2021-12-05.21-59-17",
+        "SAC": "runANPSTH-all-2022-01-02.21-30-35",
+    },
 }
 
 all_figures = {
@@ -350,5 +352,5 @@ all_figures = {
 }
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

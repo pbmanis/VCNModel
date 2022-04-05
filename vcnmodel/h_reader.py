@@ -13,6 +13,7 @@ Support::
 Copyright 2019 Paul B. Manis
 Distributed under MIT/X11 license. See license.txt for more infomation. 
 """
+
 import collections
 import os
 import re
