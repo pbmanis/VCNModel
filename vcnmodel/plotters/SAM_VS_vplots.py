@@ -34,6 +34,12 @@ from matplotlib import pyplot as mpl
 from matplotlib import ticker
 from pylibrary.plotting import plothelpers as PH
 
+# seaborn default palette, first 3 colors
+colors = [
+    (0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
+    (1.0, 0.4980392156862745, 0.054901960784313725),
+    (0.17254901960784313, 0.6274509803921569, 0.17254901960784313),
+]
 
 def reset_style():
     #     sns.set_style(rc={"pdf.fonttype": 42})
@@ -148,6 +154,7 @@ class VS_Plots:
                     color="factor(Configuration)",
                 ),
             )
+            + PN.scale_color_manual(values = colors)
             + PN.scale_x_discrete(breaks=freqs, labels=fr)
             + PN.scale_y_continuous(breaks=vsscale, labels=vscale(vsscale))
             # + PN.scales.scale_y_log10()

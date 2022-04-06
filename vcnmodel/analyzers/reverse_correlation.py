@@ -22,7 +22,6 @@ Distributed under MIT/X11 license. See license.txt for more infomation.
 """
 import datetime
 from dataclasses import dataclass, field
-from lib2to3.pygram import pattern_symbols
 from typing import List, Tuple, Union
 
 import elephant.conversion as EC

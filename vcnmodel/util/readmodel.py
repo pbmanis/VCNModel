@@ -397,7 +397,7 @@ class ReadModel:
         changetimestamp = datetime.datetime.timestamp(dts)
         return changetimestamp
 
-    @TRC(show=False)
+    # @TRC(show=False)
     def get_data_file(
         self,
         fn: Union[str, Path],

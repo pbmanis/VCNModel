@@ -461,7 +461,7 @@ class SAC(object):
                 the width (in samples)
                 the height (true value)
                 left intersection point of horizontal line at half height (in samples)
-                right intersection pont of horizontal ine at half height (in samples)
+                right intersection pont of horizontal line at half height (in samples)
         FW : Full-width of CI, (and side lobes if present)
             same as HW, except for full height
         """

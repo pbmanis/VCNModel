@@ -345,7 +345,7 @@ figure_SAC = {
 }
 
 figure_SAM_SAC = {
-    17: {
+    11: {
         "SAM": "runANPSTH-all-2021-12-05.21-59-17",
         "SAC": "runANPSTH-all-2022-01-02.21-30-35",
     },

@@ -2275,9 +2275,10 @@ class Figures(object):
             "AN",
         )
         # print('dataset: ', dataset)
+        # print('keys: ', dataset.keys())
         # print('mode: ', mode)
         # print('cellpath: ', cellpath)
-        # print('dataset[mode]: ', dataset[mode])
+        # print('dataset[mode]: ', dataset[cell_number][mode])
         sfi = Path(cellpath, Path(dataset[cell_number][mode]).name)
         if not sfi.is_dir():
             print(f"File is not a directory: {str(sfi):s}")
