@@ -526,6 +526,12 @@ class PlotSims:
         if xmax is None and protocol not in ["IV", "VC"]:
             xmax = 1e3 * (ri.pip_start + ri.pip_duration)
             xmin = 1e3 * ri.pip_start
+        elif xmax is None and protocol in ["IV"]:
+            xmax = ri.stimDelay + ri.stimDur + ri.stimPost
+        elif xmax is None and protocol in ["VC"]:
+            xmax = ri.vstimDelay + ri.vstimDur + ri.vstimPost
+        else:
+            raise ValueError("Need to specificy xmax for plot") 
         if isinstance(ax, list):
             ax1 = ax[0]
             ax2 = ax[1]
@@ -2036,6 +2042,8 @@ class PlotSims:
                 raise NotImplementedError(
                     f"Plotting singles is not permitted for protocols with synaptic input (detected protocol: {selected.runProtocol:s})"
                 )
+            isite = i
+            area = syninfo[1][isite][0]
             nsites = int(np.around(area * SC.synperum2))
             eff = f"{(float(nout) / nin):.5f}"
             area = f"{float(area):.2f}"
