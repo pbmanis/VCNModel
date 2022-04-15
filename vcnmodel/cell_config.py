@@ -162,6 +162,7 @@ class CellConfig:
         datafile: Union[str, Path, None] = None,
         spont_mapping: Union[str, None] = None,
         add_inputs: str="none",
+        test_input: float=0.0,
         verbose: bool = False,
     ):
         """
@@ -172,7 +173,11 @@ class CellConfig:
         datafile: str, Path, or None
         Name of the source data file. This is an excel file, in a specific
             format and with specific worksheet names.
-
+        add_inputs: str
+            Add inputs of specific size to selected cells
+        test_input: float (default: 0)
+            Replace all inputs with just one input at specified value.
+            If 0, we do NOT reconfigure for this test.
         verbose: bool (default False)
             whether to print out info as we proceed for debugging purposes.
 
@@ -197,6 +202,7 @@ class CellConfig:
             self.add_inputs = [150, 190, 230]
         else:
             raise ValueError(f"AddInputs does not know {str(add_inputs):s}")
+        self.test_input = test_input
         self.verbose = verbose
         self.datafile = datafile
         self.spont_mapping = spont_mapping  # only set if the spont map is determined
@@ -253,20 +259,36 @@ class CellConfig:
         celln = f"VCN_c{cellnum:02d}"
         self.VCN_Inputs[celln] = ["bushy", []]
         j = 0
-        for i in self.inputs:
-            inasa = dcell[i].values
-            if (cellnum in [10, 17, 30] and 
-                    (self.add_inputs is not None or self.add_inputs not in ["None", "none"]) and 
-                    np.isnan(inasa)
-                ):
-                if isinstance(self.add_inputs, list) and  j < len(self.add_inputs):
-                    inasa = self.add_inputs[j]
-                    j += 1
-            if np.isnan(inasa):  # skip empty entries
-                continue
-            self.VCN_Inputs[celln][1].append(
-                [
-                    (float(inasa)),
+        if self.test_input == 0.0:
+            for i in self.inputs:
+                inasa = dcell[i].values
+                if (cellnum in [10, 17, 30] and 
+                        (self.add_inputs is not None or self.add_inputs not in ["None", "none"]) and 
+                        np.isnan(inasa)
+                        and (self.test_input == 0)
+                    ):
+                    if isinstance(self.add_inputs, list) and  j < len(self.add_inputs):
+                        inasa = self.add_inputs[j]
+                        j += 1
+                if np.isnan(inasa):  # skip empty entries
+                    continue
+                self.VCN_Inputs[celln][1].append(
+                    [
+                        (float(inasa)),
+                        0.0,
+                        2,
+                        np.nan,
+                        np.nan,
+                        np.nan,
+                        np.nan,
+                        "AN",
+                        {"soma": [0, 0.5, 1.0]},
+                    ]
+                )
+        else:
+            self.inputs = 1
+            self.VCN_Inputs[celln][1] = [[
+                    (self.test_input),
                     0.0,
                     2,
                     np.nan,
@@ -275,8 +297,8 @@ class CellConfig:
                     np.nan,
                     "AN",
                     {"soma": [0, 0.5, 1.0]},
-                ]
-            )
+                ]]
+
 
     def modify_cell(self, cellnum: str):
         celln = f"VCN_c{cellnum:02d}"

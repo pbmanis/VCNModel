@@ -476,12 +476,14 @@ class TableManager:
             try:
                 indexdata = pickle.load(fh, fix_imports=True)  #
             except:
+                cprint('y', f"Failed to read with basic pickle: {str(fh):s}")
                 try:
                     import vcnmodel.util.fixpicklemodule as FPM
 
                     indexdata = FPM.pickle_load(fh)  # , encoding="latin1")
                 except:
                     raise ValueError(f"Unable to read index file: {str(fh):s}")
+        cprint('g', f"Success reading indexfile")
         return indexdata
 
     def remove_table_entry(self, indexrow):

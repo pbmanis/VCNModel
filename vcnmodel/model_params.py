@@ -131,6 +131,7 @@ class CmdChoices:
         "none",
         "1017",
         "101730",
+        "all"
     ]
     ANSynapseChoices = ["simple", "multisite"]
 
@@ -331,6 +332,7 @@ class RunInfo:
     CMMRmode: str = "CM"
     Spirou: str = "all"
     SpirouSubs: str = "none"
+    test_input: float = 0.0  # to test specific sized inputs (see cell_config.py)
 
     # gif model parameters
     # parameters for generating a noise signal to generating GIF model of cell
@@ -696,6 +698,15 @@ def build_parser():
         choices=CmdChoices.SpirouInputSubChoices,
         help="Specify Spirou substitute/add inputs (hardwired)....none or 1017 ",
     )
+    parser.add_argument(
+        "--test_input",
+        type=float,   # if 0, don't use... 
+        action="store",
+        dest="test_input",
+        default=False,
+        help="Use a single test input (for efficacy or testing). Specify as ASA (um2)",
+    )
+
     # Morphology
     parser.add_argument(
         "--soma_inflate",

@@ -46,7 +46,7 @@ from pylibrary.tools import cprint as CP
 from pyqtgraph import multiprocess as mproc
 from pyqtgraph.Qt import QtGui
 
-from vcnmodel import NoiseTrainingGen as NG
+# from vcnmodel import NoiseTrainingGen as NG
 from vcnmodel import cellInitialization as cellInit
 from vcnmodel.analyzers import analyze_run as ar
 from vcnmodel.plotters import IVPlots as IVP
@@ -470,7 +470,10 @@ class GenerateRun:
             ipulses = [0]
         nLevels = len(ipulses)
 
-        nWorkers = MP.cpu_count()  # get this automatically
+        if self.Params.Parallel is False:
+            nWorkers = 1
+        else:
+            nWorkers = MP.cpu_count()  # get this automatically
         # workers
         CP.cprint("m", f"Parallel with {nWorkers:d} processes")
         # print(f"do_run: initfile = {str(initfile):s}")

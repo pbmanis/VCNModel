@@ -322,7 +322,8 @@ class ModelRun:
         self.cconfig = cell_config.CellConfig(
             verbose=self.Params.verbose,
             spont_mapping=self.Params.SRType,
-            add_inputs=self.RunInfo.SpirouSubs,  # input substitutions/additions
+            add_inputs=self.RunInfo.SpirouSubs,  # Adding inputs (for Singles runs)
+            test_input=self.RunInfo.test_input, # for a single input size (ignored if 0)
         )
 
         # find out where our files live
@@ -1246,8 +1247,8 @@ class ModelRun:
         )
         if self.Params.verbose:
             print("iv_run: calling do_run")
-        nworkers = self.Params.nWorkers
-        #        print(self.Params.Parallel)
+        # nworkers = self.Params.nWorkers
+        # #        print(self.Params.Parallel)
         if self.Params.Parallel is False:
             nworkers = 1
         #        print('Number of workers available on this machine: ', nworkers)
@@ -1257,7 +1258,7 @@ class ModelRun:
             save="monitor",
             restore_from_file=True,
             initfile=self.Params.initStateFile,
-            workers=nworkers,
+            # workers=nworkers,
         )
         if self.Params.verbose:
             print("   iv_run: do_run completed")
@@ -1354,8 +1355,8 @@ class ModelRun:
             print("iv_run_spike_threshold: calling do_run")
         nworkers = self.Params.nWorkers
         #        print(self.Params.Parallel)
-        if self.Params.Parallel is False:
-            nworkers = 1
+        # if self.Params.Parallel is False:
+        #     nworkers = 1
         #        print('Number of workers available on this machine: ', nworkers)
         # coarse run first:
         self.RunInfo.stimDur = 20.0  # msec short pulses are sufficient
@@ -1363,7 +1364,7 @@ class ModelRun:
         current_I = 0.4  # start near middle of the range
         precision = 0.001  # measure to nearest 10 pA
         step = current_I / 2.0
-        nworkers = 1
+        # nworkers = 1
         niter = 0
         last_spike_thr = current_I
         while step > precision:
@@ -1382,7 +1383,6 @@ class ModelRun:
                 save="monitor",
                 restore_from_file=True,
                 initfile=self.Params.initStateFile,
-                workers=nworkers,
             )
             fspk = np.where(self.R.IVResult["Nspike"])[0]
             if len(fspk) == 0:  # no spikes, increase current
@@ -1455,18 +1455,17 @@ class ModelRun:
         )
         if self.Params.verbose:
             print("vc_run: calling do_run")
-        nworkers = self.Params.nWorkers
-        #        print(self.Params.Parallel)
-        if self.Params.Parallel is False:
-            nworkers = 1
-        #        print('Number of workers available on this machine: ', nworkers)
+        # nworkers = self.Params.nWorkers
+        # #        print(self.Params.Parallel)
+        # if self.Params.Parallel is False:
+        #     nworkers = 1
+        # #        print('Number of workers available on this machine: ', nworkers)
         self.R.do_run(
             self.Params.hocfile,
             parMap=self.RunInfo.stimInj,
             save="monitor",
             restore_from_file=True,
             initfile=self.Params.initStateFile,
-            workers=nworkers,
         )
         if self.Params.verbose:
             print("   vc_run: do_run completed")
@@ -1557,9 +1556,9 @@ class ModelRun:
         self.R.runInfo.folder = Path(
             self.baseDirectory, self.Params.cellID, self.simDirectory, "Noise"
         )
-        if self.Params.verbose:
-            print("noise_run: calling do_run")
-        nworkers = self.Params.nWorkers
+        # if self.Params.verbose:
+        #     print("noise_run: calling do_run")
+        # nworkers = self.Params.nWorkers
 
         if self.Params.Parallel is False:
             nworkers = 1
@@ -1569,7 +1568,7 @@ class ModelRun:
             save="monitor",
             restore_from_file=True,
             initfile=self.Params.initStateFile,
-            workers=nworkers,
+            # workers=nworkers,
         )
         if self.Params.verbose:
             print("   noise_run: do_run completed")

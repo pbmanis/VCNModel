@@ -48,7 +48,7 @@ def pickle_load(file_obj):
     return RenameUnpickler(file_obj).load()
 
 
-# def pickle_loads(pickled_bytes):
-#     # file_obj = io.BytesIO(pickled_bytes)
-#     file_obj = dill.loads(pickled_bytes)
-#     return renamed_load(file_obj)
+def pickle_loads(pickled_bytes):
+    # file_obj = io.BytesIO(pickled_bytes)
+    file_obj = dill.loads(pickled_bytes)
+    return renamed_load(file_obj)

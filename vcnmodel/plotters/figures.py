@@ -1253,8 +1253,8 @@ class Figures(object):
 
     def Figure4_assign_panel(self, supplemental1: bool = False, index: int = 0):
         if not supplemental1:
-            revcorr_panel = f"D{index:d}"
-            vm_panel = f"E{index:d}"
+            revcorr_panel = f"B{index:d}"
+            vm_panel = f"C{index:d}"
         else:
             revcorr_panel = f"B{index:d}"
             vm_panel = f"C{index:d}"
@@ -1267,34 +1267,41 @@ class Figures(object):
         """
         print(f"Figure 4 main: supplemental1={str(supplemental1):s}")
         if supplemental1:
-            example_cells = [2, 6, 10, 11, 13, 18]
+            example_cells = [10, 6, 2, 13, 18, 11]  # in order of spikes for largest input
         else:
-            example_cells = [5, 9, 17, 30]
+            example_cells = [5, 30, 9, 17]  # in order of spikes for largest input
 
         start_letter = "A"
         parent_figure = None
 
-        xw = 2.2
-        xl = 0.75
+        yh = 2.4
+        xw = 1.25*yh
+        xl = 1.05
+
+        xlp = [ xl + (xw+0.6)*i  for i in range(3)]
+        print(xlp)
         if not supplemental1:
             sizer = {
                 # "B": {"pos": [6.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
                 # "C": {"pos": [9.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
                 # "F": {"pos": [6.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
                 # "G": {"pos": [9.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
-                "B": {"pos": [xl, xw, 0.5, 2.5], "labelpos": (-0.15, 1.05)},
-                "C": {
-                    "pos": [xl + 2.75, xw, 0.5, 2.5],
+                "D": {
+                    "pos": [xlp[0], xw, 0.75, 2.5],
+                    "labelpos": (-0.15, 1.05)
+                    },
+                "E": {
+                    "pos": [xlp[1], xw, 0.75, 2.5],
                     "labelpos": (-0.15, 1.02),
                 },
                 "F": {
-                    "pos": [6.5, 2.2, 0.5, 2.5],
+                    "pos": [xlp[2], xw, 0.75, 2.5],
                     "labelpos": (-0.15, 1.02),
                 },
-                "G": {
-                    "pos": [9.5, 2.2, 0.5, 2.5],
-                    "labelpos": (-0.15, 1.02),
-                },
+                # "G": {
+                #     "pos": [9.5, 2.2, 0.5, 2.5],
+                #     "labelpos": (-0.15, 1.02),
+                # },
             }
             figsize = (12, 8)
         else:
@@ -1357,7 +1364,7 @@ class Figures(object):
         if not supplemental1:
             EFP = EF.EfficacyPlots(parent_figure=P)
             EFP.plot_efficacy(
-                "Full", datasetname_added="Added", ax=P.axdict["B"], clean=True
+                "Full", datasetname_added="Added", ax=P.axdict["D"], clean=True
             )
 
         synperum2 = 0.7686  # taken from cell_config.py, line 127 (11/15/2021)
@@ -1448,7 +1455,7 @@ class Figures(object):
             for i, c in enumerate(ds.keys()):
                 # plot_participation(P.axdictax[0], c, ds, drc, dB=dB, color=palette[i])
                 plot_diff_participation(
-                    P.axdict["C"], c, ds, drc, dB=dB, color=palette[i], legend=False
+                    P.axdict["E"], c, ds, drc, dB=dB, color=palette[i], legend=False
                 )
 
             # Cumulative plots

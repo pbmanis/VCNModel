@@ -1182,13 +1182,13 @@ if __name__ == "__main__":
     # fit_individually()
     #    print(dir(metrics))
 
-    # fig, ax = mpl.subplots(2,1)
-    # kmeans(data_Full2, ax, eff_crit=0.02)
-    # fig.suptitle("kmeans")
+    fig, ax = mpl.subplots(2,1)
+    kmeans(data_Full, ax, eff_crit=0.00)
+    fig.suptitle("kmeans")
 
-    # fig2, ax2 = mpl.subplots(2,1)
-    # aggcluster(data_Full2, ax2, eff_crit=0.02)
-    # fig2.suptitle("Aggcluster")
+    fig2, ax2 = mpl.subplots(2,1)
+    aggcluster(data_Full, ax2, eff_crit=0.00)
+    fig2.suptitle("Aggcluster")
     mpl.show()
 
     # cluster_dbscan(data=data_Full2, eff_crit=0.02)
