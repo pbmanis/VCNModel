@@ -523,14 +523,19 @@ class PlotSims:
         ninspikes = 0
         ispikethr = None
         spike_rheobase = None
+        print('xmax incoming: ', xmax)
         if xmax is None and protocol not in ["IV", "VC"]:
             xmax = 1e3 * (ri.pip_start + ri.pip_duration)
             xmin = 1e3 * ri.pip_start
+        elif xmax is not None:
+            pass
         elif xmax is None and protocol in ["IV"]:
             xmax = ri.stimDelay + ri.stimDur + ri.stimPost
         elif xmax is None and protocol in ["VC"]:
             xmax = ri.vstimDelay + ri.vstimDur + ri.vstimPost
         else:
+            print('xmax: ', xmax)
+            print('protocol: ', protocol)
             raise ValueError("Need to specificy xmax for plot") 
         if isinstance(ax, list):
             ax1 = ax[0]
@@ -767,7 +772,7 @@ class PlotSims:
                     ax,
                     calbar=[calx, caly, calt, calv],
                     unitNames={"x": "ms", "y": "mV"},
-                    fontsize=9,
+                    fontsize=8,
                 )
             else:
                 PH.noaxes(ax)
@@ -1568,7 +1573,7 @@ class PlotSims:
         if synlabel:
             self.axins = PH.make_colorbar(
                 ax,
-                bbox=[0.01, 0.9, 0.35, 0.15],
+                bbox=[0.125, 0.7, 0.75, 0.2],
                 vmin=0,
                 vmax=300.0,
                 nticks=4,

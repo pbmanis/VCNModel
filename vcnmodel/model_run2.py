@@ -2715,8 +2715,8 @@ class ModelRun:
         results["Params"].initStateFile = str(self.Params.initStateFile)
         results["Params"].simulationFilename = str(self.Params.simulationFilename)
         results["Params"].hocfile = str(self.Params.hocfile)
-        # do not change RunInfo itself
-        results["runInfo"] = self.clean_neuron_objects(copy.deepcopy(self.RunInfo))
+        # runInfo may be modified by this (neuron objects are turned into strings)
+        results["runInfo"] = self.clean_neuron_objects(self.RunInfo)
         results["modelPars"] = copy.deepcopy(self.post_cell.status)
         del results["modelPars"]["decorator"]  # remove neuron section objects
         results["Results"] = result

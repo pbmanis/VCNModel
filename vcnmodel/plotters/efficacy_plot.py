@@ -45,9 +45,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import sklearn.metrics as metrics
+from matplotlib.lines import Line2D
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
-
 # from pylibrary.plotting import styler as STY
 from scipy import stats
 from sklearn import preprocessing
@@ -319,6 +319,29 @@ N	Cell	syn#	nout	nin	Eff	ASA	SDRatio	nsites
 
 """
 
+# data_one_input is from runs where only one input was applied
+# in this case at a constant value for all cells ("test_input")
+# These runs for ASA of 150 um2 computed on 4/15/2022
+# The efficacy is printed out when running "Singles" in the analysis
+# from DataTablesVCN
+# The ASA and nsites in DataTables is printed from the cell_config
+# table rather than the actual run information... it has been
+# manually edited here.
+
+data_one_input = """
+
+N	Cell	syn#	nout	nin	Efficacy	ASA	SDRatio	nsites
+0	2	0	82	5435	0.01509	150.0	3.23	115
+0	5	0	153	5435	0.02815	150.0	2.80	115
+0	6	0	269	5435	0.04949	150.0	2.82	115
+0	9	0	1506	5435	0.27709	150.0	2.52	115
+0	10	0	134	5435	0.02466	150.0	2.92	115
+0	11	0	2342	5435	0.43091	150.0	2.44	115
+0	13	0	1992	5435	0.36651	150.0	2.50	115
+0	17	0	1622	5435	0.29844	150.0	2.73	115
+0	18	0	248	5435	0.04563	150.0	3.01	115
+0	30	0	229	5435	0.04213	150.0	2.65	115
+"""
 AISlengths = {
     "06": 14.16,
     "09": 24.16,
@@ -521,6 +544,68 @@ def eff_ais(data):
     mpl.show()
 
 
+def eff_one_input(ax=None, legend=True):
+    """Plot the dendritic area against the efficacy for a constant input"""
+    dataset = data_one_input
+    eff_one_input = np.zeros((10, 2))
+    spc = re.compile("[ ;,\t\f\v]+")  # format replacing all spaces with tabs
+    dataiter = re.finditer(spc, dataset)
+    dataset = re.sub(spc, ",", dataset)
+
+    sio = io.StringIO(dataset)
+    df = pd.read_table(sio, sep=",")
+    cell_names = [f"BC{c:02d}" for c in df.Cell]
+    cell_id = set([int(c) for c in df.Cell])
+    ncells = len(cell_id)
+    pal = sns.color_palette("tab10", n_colors=ncells)
+    for ident in cell_id:
+        x = df.loc[(df["Cell"].values == ident) & (df["syn#"].values == 0)]
+        if f"{ident:02d}" in list(DendAreas.keys()):
+
+            df.at[x.index, "Dendrite Area (um2)"] = DendAreas[f"{ident:02d}"]
+    df0 = df[df["syn#"].values == 0]
+    print(df0)
+
+    if ax is None:
+        axr = sns.scatterplot(
+            x="Dendrite Area (um2)",
+            y="Efficacy",
+            data=df,
+            hue="Cell",
+            palette=pal,
+            s=25,
+            legend=legend,
+        )
+    else:
+        sns.scatterplot(
+            x="Dendrite Area (um2)",
+            y="Efficacy",
+            data=df,
+            hue="Cell",
+            palette=pal,
+            ax=ax,
+            legend=legend,
+            s=25,
+        )
+        axr = ax
+    axr.set_xlim(3000, 4800)
+    PH.nice_plot([axr], position=-0.02, direction="outward")
+    PH.talbotTicks(
+        axr,
+        density=(1.0, 1.0),
+        insideMargin=0,
+        tickPlacesAdd={"x": 0, "y": 2},
+        floatAdd={"x": 0, "y": 2},
+        axrange={"x": (0, 300.0), "y": (0, 1)},
+        pointSize=None,
+    )
+    axr.text(
+        x=3000, y=1.0, s=r"Single synapse ASA = 150 ${\mu m^2}$", va="top", ha="left"
+    )
+    if ax is None:
+        mpl.show()
+
+
 def boltz(x, A, vhalf, k):
     return A * (1.0 / (1.0 + np.exp(-(x - vhalf) / k)))
 
@@ -585,7 +670,7 @@ class EfficacyPlots(object):
             )
         else:
             self.P = self.parent_figure
-        self.plot_dataset(dataset, dataset_added, ax=ax, clip_on=clip_on)
+        self.plot_dataset(dataset, dataset_added, ax=ax, clip_on=clip_on, clean=clean)
         return
 
     def plot_ASA_SD(self):
@@ -767,6 +852,7 @@ class EfficacyPlots(object):
         gmodel: object = None,
         legend: bool = True,
         clip_on: bool = False,
+        clean: bool = False,
     ):
         x, df = prepare_data(data)
         cell_names = [f"BC{c:02d}" for c in df.Cell]
@@ -801,7 +887,7 @@ class EfficacyPlots(object):
             size="added",
             palette=pal,
             sizes={0: 20},
-            legend="full",
+            legend=False, # "full",
             clip_on=clip_on,
         )
         if df_added is not None:
@@ -816,14 +902,14 @@ class EfficacyPlots(object):
                 markers={1: "*"},
                 size="added",
                 sizes={1: 70},
-                legend="brief",
+                legend=False, # "brief",
                 clip_on=clip_on,
             )
         ax.set_xlabel(f"ASA ({uni:s})")
         label = [f"BC{c:02d}" for c in df.Cell]
         method = "leastsq"
 
-        # cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+        all_cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
         # self.plot_fit(df, ax, y0=0, method=method, cells=cells, max_x=300.0, color='#888888')
 
         cells1 = [9, 11, 13, 17]
@@ -868,7 +954,22 @@ class EfficacyPlots(object):
             pointSize=None,
         )
         if legend:
+            # create custom legend
+            legend_elements = []
+            # do the cells first
+            for i, cellid in enumerate(all_cells):
+                legend_elements.append(Line2D([0], [0], color=pal[i], marker='o', lw=0, label=f"BC{cellid:02d}"))
+            legend_elements.append(Line2D([0], [0], color='grey', marker='*', lw=0, markersize=5, markeredgecolor=None, label="Test Inputs"))
+            legend_elements.append(Line2D([0], [0], color='red', lw=1, label="Fit: 9, 11, 13, 17"))
+            legend_elements.append(Line2D([0], [0], color='skyblue', lw=1, label="Fit: to 2, 5, 6,\n  10, 18, 30"))
+            
+            # legend_elements = [Line2D([0], [0], color=pal[0], marker, label='Line'),
+            #                 Line2D([0], [0], marker='o', color='w', label='Scatter',
+            #                         markerfacecolor='g', markersize=15),
+            #                 Patch(facecolor='orange', edgecolor='r',
+            #                         label='Color Patch')]
             ax.legend(
+                handles=legend_elements,
                 loc="upper left",
                 bbox_to_anchor=(0.0, 1.0),
                 ncol=1,
@@ -877,7 +978,7 @@ class EfficacyPlots(object):
                 fancybox=False,
                 shadow=False,
                 facecolor="w",
-                labelspacing=0.2,
+                labelspacing=0.22,
             )
 
 
@@ -1045,9 +1146,8 @@ def plot_cluster(data_with_clusters, ax, clip_on: bool = False, mode=None):
 
 def aggcluster(data, axn, eff_crit: float = 0.0, clip_on: bool = False, elbow=True):
     if elbow:
-        from yellowbrick.cluster import (
-            KElbowVisualizer,
-        )  # InterclusterDistance,; SilhouetteVisualizer,
+        from yellowbrick.cluster import \
+            KElbowVisualizer  # InterclusterDistance,; SilhouetteVisualizer,
     x, df = prepare_data(data, eff_crit=eff_crit)
     ax = axn[0]
 
@@ -1083,9 +1183,8 @@ def aggcluster(data, axn, eff_crit: float = 0.0, clip_on: bool = False, elbow=Tr
 def kmeans(data, ax, eff_crit: float = 0.0, elbow=True):
     # we avoid importing this at the top because it messes with the plotting.
     if elbow:
-        from yellowbrick.cluster import (
-            KElbowVisualizer,
-        )  # InterclusterDistance,; SilhouetteVisualizer,
+        from yellowbrick.cluster import \
+            KElbowVisualizer  # InterclusterDistance,; SilhouetteVisualizer,
 
     x, df = prepare_data(data, eff_crit=eff_crit)
     # f, ax = mpl.subplots(2, 1)
@@ -1177,16 +1276,17 @@ def cluster_dbscan(data=None, eff_crit: float = 0.0):
 
 if __name__ == "__main__":
     # eff_ais()  # generate plot of efficacy vs ais length (supplemental)
-
+    eff_one_input()
+    exit()
     eff_plot("Full", datasetname_added="Added")  # generate plot of efficay vs ASA
     # fit_individually()
     #    print(dir(metrics))
 
-    fig, ax = mpl.subplots(2,1)
+    fig, ax = mpl.subplots(2, 1)
     kmeans(data_Full, ax, eff_crit=0.00)
     fig.suptitle("kmeans")
 
-    fig2, ax2 = mpl.subplots(2,1)
+    fig2, ax2 = mpl.subplots(2, 1)
     aggcluster(data_Full, ax2, eff_crit=0.00)
     fig2.suptitle("Aggcluster")
     mpl.show()

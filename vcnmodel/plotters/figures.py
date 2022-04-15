@@ -981,6 +981,7 @@ class Figures(object):
         calxp: float = 800.0,
         calv: float = 20.0,
         maxstack: int = 9,
+        cal_pos:int = 0,
     ):
         """
         What it says: plot traces in a stacked format
@@ -1035,10 +1036,10 @@ class Figures(object):
             ymax = 20.0
             if simulation_experiment != "Full":
                 ymax = 40.0
-            for n in range(len(fn)):
-                if n == (len(fn) - 1) and ic == 0:  # (len(cells)-1):
+            for n, filename in enumerate(fn):
+                if (n == (len(fn)-1)) and (ic == cal_pos):  # (len(cells)-1): # cal bar on first axis
                     calxv = calxp
-                    calyv = -50.0
+                    calyv = -120.0+n*yoffset
                     iax = n
                 else:
                     iax = None
@@ -1048,7 +1049,7 @@ class Figures(object):
                 y0 = n * yoffset
                 self.parent.PLT.plot_traces(
                     ax=axes[ic],
-                    fn=fn[n],
+                    fn=filename,
                     PD=PD,
                     protocol="runANSingles",
                     ymin=ymin,
@@ -1274,12 +1275,12 @@ class Figures(object):
         start_letter = "A"
         parent_figure = None
 
-        yh = 2.4
-        xw = 1.25*yh
+        yh = 2.0
+        xw = 1*yh
         xl = 1.05
 
-        xlp = [ xl + (xw+0.6)*i  for i in range(3)]
-        print(xlp)
+        xlp = [ xl + (xw+0.75)*i  for i in range(4)]
+        print("xlp: ", xlp)
         if not supplemental1:
             sizer = {
                 # "B": {"pos": [6.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
@@ -1298,15 +1299,17 @@ class Figures(object):
                     "pos": [xlp[2], xw, 0.75, 2.5],
                     "labelpos": (-0.15, 1.02),
                 },
-                # "G": {
-                #     "pos": [9.5, 2.2, 0.5, 2.5],
-                #     "labelpos": (-0.15, 1.02),
-                # },
+                "G": {
+                    "pos": [xlp[3], xw, 0.75, 2.5],
+                    "labelpos": (-0.15, 1.02),
+                },
             }
             figsize = (12, 8)
+            cal_pos = 0
         else:
             sizer = {}
             figsize = (9, 8)
+            cal_pos = 1
 
         xw = 1.1
         xw2 = 1.0
@@ -1341,15 +1344,17 @@ class Figures(object):
             }
             sizer[pan_rev] = {  # reverse correlatoin
                 "pos": [xl2, xw2, yb2, yh2],
-                "labelpos": (-0.25, 1.2),
+                "labelpos": (-0.25, 1.1),
                 # "noaxes": True,
             }
             sizer[pan_vm] = {
                 "pos": [xl2, xw2, yb3, yh2],
-                "labelpos": (-0.25, 1.2),
+                "labelpos": (-0.25, 1.1),
                 "noaxes": True,
             }
-        # dict pos elements are [left, width, bottom, height] for the axes in the plot. gr = [(a, a+1, 0, 1) for a in range(0, 8)] # just generate subplots - shape do not matter axmap = OrderedDict(zip(sizer.keys(), gr))
+        # dict pos elements are [left, width, bottom, height] for the axes in the plot. 
+        # gr = [(a, a+1, 0, 1) for a in range(0, 8)] 
+        # just generate subplots - shape do not matter axmap = OrderedDict(zip(sizer.keys(), gr))
         P = PH.arbitrary_grid(
             sizer,
             order="columnsfirst",
@@ -1360,12 +1365,7 @@ class Figures(object):
             showgrid=False,
             parent_figure=parent_figure,
         )
-        # Efficacy plot
-        if not supplemental1:
-            EFP = EF.EfficacyPlots(parent_figure=P)
-            EFP.plot_efficacy(
-                "Full", datasetname_added="Added", ax=P.axdict["D"], clean=True
-            )
+
 
         synperum2 = 0.7686  # taken from cell_config.py, line 127 (11/15/2021)
 
@@ -1434,18 +1434,30 @@ class Figures(object):
                 pointSize=None,
             )
 
+        def plot_single_input(ax, legend:bool=True):
+            EF.eff_one_input(ax = ax, legend=legend)
+
         # Traces
         axl = [P.axdict[axi] for axi in trace_axes]
         self.plot_stacked_traces(
             cells=example_cells, figure=P.figure_handle, axes=axl, maxstack=10,
-            show_title=False,
-            
+            show_title=False, calxp=600., cal_pos=cal_pos,
         )
+        for ax in axl:
+            ax.set_zorder(0)
 
         dB = 30
         if not supplemental1:
-            # clusters  MOVE to supplemental 2
-            # plot_clustering(P.axdict["B"])
+        # Efficacy plot vs. input size (all)
+            for s in ["D", "E", "F", "G"]:
+                P.axdict[s].set_zorder(100)
+            EFP = EF.EfficacyPlots(parent_figure=P)
+            EFP.plot_efficacy(
+                "Full", datasetname_added="Added", ax=P.axdict["D"], clean=True
+            )
+            
+            # efficacy for a single sized input vs. dendritic area
+            plot_single_input(P.axdict["E"], legend=False)
 
             # participation
             ds = self._load_rcdata("Spont")
@@ -1455,20 +1467,20 @@ class Figures(object):
             for i, c in enumerate(ds.keys()):
                 # plot_participation(P.axdictax[0], c, ds, drc, dB=dB, color=palette[i])
                 plot_diff_participation(
-                    P.axdict["E"], c, ds, drc, dB=dB, color=palette[i], legend=False
+                    P.axdict["F"], c, ds, drc, dB=dB, color=palette[i], legend=False
                 )
 
             # Cumulative plots
             self.plot_revcorr_compare(
                 parent_figure=P,
-                axlist=[P.axdict["F"]],
+                axlist=[P.axdict["G"]],
                 dBSPLs=["Spont", "30dB"],
                 legend=False,
             )
-            PH.nice_plot(P.axdict["F"], position=self.axis_offset, direction="outward")
+            PH.nice_plot(P.axdict["G"], position=self.axis_offset, direction="outward")
             synlabel_num = 5
         else:
-            synlabel_num = 2
+            synlabel_num = 10
 
         # revcorrs and traces
         self.plot_revcorr_supplement(
@@ -1480,9 +1492,19 @@ class Figures(object):
             show_title=False,
         )
         # self.plot_efficacy_supplement(cells=example_cells, parent_figure=P, traces=False)
-
+        arrow_xy = {5: [-0.95, -45.0],
+                    30: [-0.98, -45.0],
+                    9: [-0.6, -45.0],
+                    17: [-0.50, -40.0],
+                    10: [-0.95, -45.0],
+                    6: [-0.95, -45.0],
+                    2: [-0.95, -45.],
+                    13: [-0.75, -45.],
+                    18: [-0.6, -45.],
+                    11: [-0.5, -40.],
+                    }
         # Revcorr axes cleanup
-        for j in range(len(example_cells)):
+        for j, celln in enumerate(example_cells):
             pan_rev, pan_vm = self.Figure4_assign_panel(supplemental1, j + 1)
             ax = P.axdict[pan_rev]
             ax.set_ylim(0, 0.8)
@@ -1490,6 +1512,14 @@ class Figures(object):
             ax2 = P.axdict[pan_vm]
             ax2.set_xlim(-5.0, 2.5)
             ax2.set_ylim(-70, 0)
+            if celln in list(arrow_xy.keys()):
+                ax2.annotate("", xy = arrow_xy[celln], xycoords="data",
+                    xytext = (arrow_xy[celln][0]-0.75, arrow_xy[celln][1]+4),
+                    arrowprops=dict(facecolor="black", edgecolor="black",
+                        linewidth=0.5,
+                        width=5, headwidth=5, frac=0.33, shrink=0.05)
+                    )
+
 
             if j == 0:
                 ax.set_ylabel("Presynaptic\nCoinc. Rate (Hz)", ha="center", fontsize=10)
@@ -1512,12 +1542,12 @@ class Figures(object):
         else:
             fig.P = P
         if not supplemental1:
-            fig.filename = "Figure4_Ephys2_main_v8.pdf"
+            fig.filename = "Figure4_Ephys2_main_v11.pdf"
             fig.title[
                 "title"
             ] = "SBEM Project Figure 4 (main) Modeling: singles inputs, efficacy and revcorr, revised version 8"
         else:
-            fig.filename = "Figure4/Figure4_supp/Figure4-Supplemental1_Revcorr_V3.pdf"
+            fig.filename = "Figure4/Figure4_supp/Figure4-Supplemental1_Revcorr_V4.pdf"
             fig.title[
                 "title"
             ] = "SBEM Project Figure 4 Modeling: Supplemental 1: other cells single inputs and revcorr"
