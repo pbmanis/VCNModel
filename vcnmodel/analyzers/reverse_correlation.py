@@ -729,6 +729,7 @@ def _assert_patterns(
         ("1+2+5", "exact"): ["at_least1", "at_least2"],
         ("4+5", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
         ("4+5+6", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
+        ("4+5+6+7", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
         ("6+7+8", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
         ("None", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
         ("not_1_largest", "except"): ["at_least1", "1_largest", "not_1_largest"],
@@ -856,6 +857,7 @@ def make_patterns() -> dict:
         "1+2+5": PatternData(name="1+2+5", mask=0b00010011, logic="exact"),
         "4+5": PatternData(name="4+5", mask=0b00011000, logic="exact"),
         "4+5+6": PatternData(name="4+5+6", mask=0b00111000, logic="exact"),
+        "4+5+6+7": PatternData(name="4+5+6+7", mask=0b01111000, logic="exact"),
         "6+7+8": PatternData(name="6+7+8", mask=0b11100000, logic="exact"),
         "None": PatternData(name="None", mask=0x00, logic="exact"),
         "not_1_largest": PatternData(
@@ -895,6 +897,7 @@ def test_spike_patterns():
         "1+2+5": [[1, 1, 0, 0, 1, 0, 0, 0]],  # 2 largest and a smaller one
         "4+5": [[0, 0, 0, 1, 1, 0, 0, 0]],  # 4th and 5th  Should pass 0 largest
         "4+5+6": [[0, 0, 0, 1, 1, 1, 0, 0]],
+        "4+5+6+7": [[0, 0, 0, 1, 1, 1, 1, 0]],
         "6+7+8": [[0, 0, 0, 0, 0, 1, 1, 1]],  # bunch of little ones - pass 0 largest
         "None": [[0, 0, 0, 0, 0, 0, 0, 0]],
         "not_1_largest": [
@@ -1144,8 +1147,11 @@ def spike_pattern_analysis(model_data, printflag=False):
         "3rd_largest_alone": PatternData(
             name="3rd_largest_alone", mask=0x04, logic="exact"
         ),
-        "3rd_largest+others": PatternData(
+        "3rd_largest+others": PatternData(  # 3rd largest, exclude any with 1 or 2nd largest
             name="3rd_largest+others", mask=0x04, mask_exclude=0x03, logic="atleast"
+        ),
+        "4th_largest+others": PatternData(  # rth largest, exclude any with 1st, 2nd or 3rd largest
+            name="4th_largest+others", mask=0x08, mask_exclude=0x07, logic="atleast"
         ),
         "1st+2nd+3rd+others": PatternData(
             name="1st+2nd+3rd+others", mask=0x07, logic="atleast"

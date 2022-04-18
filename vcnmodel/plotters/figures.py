@@ -1415,6 +1415,9 @@ class Figures(object):
             PH.referenceline(ax, 1.0)
             if legend:
                 ax.legend(fontsize=8, loc="upper right", ncol=2)
+        
+
+
 
         def plot_clustering(ax):
             EF.EffClusters([ax], clip_on=False)

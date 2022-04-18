@@ -1,7 +1,9 @@
 """ pattern_summary:
 Compute the input patterns, and generate a summary figure
 breaking the cells down by 'drivers' and 'coincidence'
-for different input patterns
+for different input patterns.
+
+This also has the routines for plotting panel 4F.
 
 This module is part of *vcnmodel*.
 
@@ -22,11 +24,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Union
 
+import matplotlib.pyplot as mpl
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import toml
-import matplotlib.pyplot as mpl
 import vcnmodel.cell_config as cell_config
 import vcnmodel.plotters.figure_data as FD
 import vcnmodel.plotters.plot_sims as PS
@@ -194,7 +196,7 @@ def get_pattern_data():
     fig_data = FD.figure_revcorr
     db = "Spont"
     #    group = {"First-in": [9, 11, 13, 17], "Coincidence": [2, 5, 6, 10, 18, 30]}
-    group = {"First-in": [9, 11, 13, 17, 18], "Coincidence": [2, 5, 6, 10, 30]}
+    group = {"First-in": [9, 11, 17, 18], "Coincidence": [2, 5, 6, 10, 13, 30]}
 
     compares = pd.DataFrame(columns=["Cell", "PatternName", "Percent", "Group"])
     for gbc in grAList():
@@ -224,7 +226,7 @@ def get_pattern_data():
         RCP, RCD, PAT = revcorr(gbc, pklf.files[0], PD=PData())
         for t in PAT.filttable.keys():
             pat = PAT.filttable[t]
-            REVCORR.print_pattern(t, pat)
+            # pat.print()
             pct = 100.0 * pat.sumtrue / (pat.sumtrue + pat.sumfalse)
             df = pd.DataFrame(
                 [{"Cell": gbc, "PatternName": t, "Percent": pct, "Group": gname}]
@@ -233,89 +235,158 @@ def get_pattern_data():
     return compares
 
 
-compares = get_pattern_data()
-compares.to_pickle('compares.pkl')
+def summarize_patterns():
+    compares = get_pattern_data()
+    compares.to_pickle("compares.pkl")
 
-compares = pd.read_pickle("compares.pkl")
-# print(compares.head(10))
-f, ax = mpl.subplots(4, 3)
-f.set_size_inches(5, 8)
-ax = ax.ravel()
-pats = [
-    "1st_largest_alone",
-    "1st_largest+others",
-    "1st+2nd_alone",
-    "2nd_largest_alone",
-    "2nd_largest+others",
-    "1st+2nd+others",
-    "3rd_largest_alone",
-    "3rd_largest+others",
-    "1st+2nd+3rd+others",
-    "not_largest",
-    "not_2_largest",
-    "not_3_largest",
-]
-pnames = sorted(set(pats))
-pdatanames = sorted(set(compares["PatternName"].values))
-assert pnames == pdatanames
+    compares = pd.read_pickle("compares.pkl")
+    # print(compares.head(10))
+    f, ax = mpl.subplots(4, 3)
+    f.set_size_inches(5, 8)
+    ax = ax.ravel()
+    pats = [
+        "1st_largest_alone",
+        "1st_largest+others",
+        "1st+2nd_alone",
+        "2nd_largest_alone",
+        "2nd_largest+others",
+        "1st+2nd+others",
+        "3rd_largest_alone",
+        "3rd_largest+others",
+        "1st+2nd+3rd+others",
+        "not_largest",
+        "not_2_largest",
+        "not_3_largest",
+    ]
+    pnames = sorted(set(pats))
+    pdatanames = sorted(set(compares["PatternName"].values))
+    assert pnames == pdatanames
 
-# create your own color array
-bar_colors = [(0.8, 0.8, 0.8, 0.2), (0.0, 0.0, 1.0, 0.5)]
+    # create your own color array
+    bar_colors = [(0.8, 0.8, 0.8, 0.2), (0.0, 0.0, 1.0, 0.5)]
 
-# add color array to set_palette
-# function of seaborn
-sns.set_palette(bar_colors, desat=0.2)
+    # add color array to set_palette
+    # function of seaborn
+    sns.set_palette(bar_colors, desat=0.2)
 
-for i, axl in enumerate(pats):
-    # with sns.set_palette(bar_colors):
-    axt = sns.boxplot(
-        data=compares[compares["PatternName"] == pats[i]],
-        x="Group",
-        y="Percent",
-        width=0.5,
-        ax=ax[i],
+    for i, axl in enumerate(pats):
+        # with sns.set_palette(bar_colors):
+        axt = sns.boxplot(
+            data=compares[compares["PatternName"] == pats[i]],
+            x="Group",
+            y="Percent",
+            width=0.5,
+            ax=ax[i],
+        )
+        # # adding transparency to colors
+        # for patch in axt.artists:
+        #     r, g, b, a = patch.get_facecolor()
+        #     # patch.set_facecolor((r, g, b, 0.3))
+        #     patch.set(alpha=None, facecolor=((r,g,b,0.3)))
+
+        swp = sns.swarmplot(
+            data=compares[compares["PatternName"] == pats[i]],
+            x="Group",
+            y="Percent",
+            hue="Cell",
+            ax=ax[i],
+            size=3,
+            # color="black",
+        )
+        # print(dir(swp))
+        # print(dir(swp.legend_))
+        if i < len(pats) - 1:
+            swp.legend_.remove()
+        else:
+            # print(dir(swp.legend_))
+            swp.legend(labelspacing=0.18, fontsize=6.5)
+            for lh in swp.legend_.legendHandles:
+                lh.set_alpha(1)
+                lh._sizes = [10]
+                # print(dir(lh_label))
+        ax[i].set_title(pats[i], fontsize=9)
+        ax[i].set_ylim(0, 100)
+    mpl.tight_layout()
+    where_is_data = Path("wheres_my_data.toml")
+    if where_is_data.is_file():
+        datapaths = toml.load("wheres_my_data.toml")
+    else:
+        raise ValueError()
+    mpl.savefig(
+        Path(
+            datapaths["baseDataDirectory"],
+            datapaths["figureDirectory"],
+            "Figure4",
+            "Figure4_supp",
+            "Figure4-Supplemental3_Patterns.pdf",
+        )
     )
-    # # adding transparency to colors
-    # for patch in axt.artists:
-    #     r, g, b, a = patch.get_facecolor()
-    #     # patch.set_facecolor((r, g, b, 0.3))
-    #     patch.set(alpha=None, facecolor=((r,g,b,0.3)))
+    mpl.show()
 
-    swp = sns.swarmplot(
-        data=compares[compares["PatternName"] == pats[i]],
-        x="Group",
+
+def Figure4E_pattern_plot(ax=None):
+    """Plot the fraction of inputs for specific subsets of
+    input patterns for cells 5, 30, 9 and 17
+
+
+    Raises
+    ------
+    ValueError
+        _description_
+    """
+    analyzed = Path("compares.pkl")
+    if not analyzed.is_file():
+        compares = get_pattern_data()
+        compares.to_pickle("compares.pkl")
+
+    compares = pd.read_pickle("compares.pkl")
+    print("compares:\n", compares.head(10))
+    if ax is None:
+        f, ax = mpl.subplots(1, 1)
+        f.set_size_inches(5, 5)
+
+    pats = [
+        "1st_largest_alone",
+        "1st_largest+others",
+        "2nd_largest_alone",
+        "2nd_largest+others",
+        "3rd_largest_alone",
+        "3rd_largest+others",
+        "4th_largest+others",
+    ]
+
+    cells = [5, 30, 9, 17]
+    print(compares.values)
+    df = compares[compares["PatternName"].isin(pats) & compares["Cell"].isin(cells)]
+    sns.pointplot(
+        x="PatternName",
         y="Percent",
         hue="Cell",
-        ax=ax[i],
-        size=3,
-        # color="black",
+        style="Group",
+        data=df,
+        markers=[
+            "o",
+            "o",
+            "o",
+            "o",
+        ],
+        kind="swarm",
+        ax=ax,
     )
-    # print(dir(swp))
-    # print(dir(swp.legend_))
-    if i < len(pats) - 1:
-        swp.legend_.remove()
-    else:
-        # print(dir(swp.legend_))
-        swp.legend(labelspacing=0.18, fontsize=6.5)
-        for lh in swp.legend_.legendHandles:
-            lh.set_alpha(1)
-            lh._sizes = [10]
-            # print(dir(lh_label))
-    ax[i].set_title(pats[i], fontsize=9)
-    ax[i].set_ylim(0, 100)
-mpl.tight_layout()
-where_is_data = Path("wheres_my_data.toml")
-if where_is_data.is_file():
-    datapaths = toml.load("wheres_my_data.toml")
-else:
-    raise ValueError()
-mpl.savefig(
-    Path(
-        datapaths["baseDataDirectory"],
-        datapaths["figureDirectory"],
-        "Figure4",
-        "Figure4_supp",
-        "Figure4-Supplemental3_Patterns.pdf",
-    )
-)
-mpl.show()
+
+    ax.set_ylim(0, 100)
+    tl = []
+    for l in ax.get_xticklabels():
+        # print(dir(l))
+        t = str(l.get_text()).replace("_", "\n")
+        print(t)
+        tl.append(t)
+    ax.set_xticklabels(tl, rotation=45)
+    mpl.tight_layout()
+
+    mpl.show()
+
+
+if __name__ == "__main__":
+    # summarize_patterns()
+    Figure4E_pattern_plot()
