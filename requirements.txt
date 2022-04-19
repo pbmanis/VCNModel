@@ -36,7 +36,6 @@ numba==0.43.1
 numdifftools>=0.9.39
 numpy==1.16.3
 pandas>=1.0
-paramiko>=2.10.1
 pathspec==0.7.0
 plotnine==0.7.1
 pluggy==0.11.0
