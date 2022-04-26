@@ -392,7 +392,7 @@ all_figures = {
     "VC_ex": figure_VClamp,
     "AN_revcorr": figure_revcorr,
     "AN_ex_revcorr": figure_revcorr_example,
-    "AN_efficacy": figure_efficacy_supplement,
+    "AN_efficacy": figure_efficacy_supplement_30dB,
     "IV_ex": figure_IV,
     "IV_all": figure_AllIVs,
     "AN_SAC": figure_SAC,

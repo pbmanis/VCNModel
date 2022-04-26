@@ -2195,6 +2195,7 @@ class Figures(object):
         lh = 0.07
         rh = 0.32
         xw = 0.20
+        col3 = 0.62
         sizer = OrderedDict(  # define figure layout
             [
                 ("A", {"pos": [lh, xw, 0.87, 0.09]}),
@@ -2211,6 +2212,11 @@ class Figures(object):
                 ("L", {"pos": [rh, xw,  0.31, 0.09]}),
                 ("M", {"pos": [rh, xw,  0.17, 0.09]}),
                 ("N", {"pos": [rh, xw,  0.05, 0.07]}),
+                # right side, summary plots
+                ("O", {"pos": [col3, xw, 0.73, 0.18], 'labelpos': [-0.08, 1.05]}),
+                ("P", {"pos": [col3, xw, 0.45, 0.18], 'labelpos': [-0.08, 1.05]}),
+                ("Q", {"pos": [col3, xw, 0.17, 0.18], 'labelpos': [-0.08, 1.05]}),
+                ("R", {"pos": [col3, xw, 0.05, 0.09], 'labelpos': [-0.08, 1.05]}),
             ]
         )  # dict elements are [left, width, bottom, height] for the axes in the plot.
 
@@ -2305,6 +2311,15 @@ class Figures(object):
             ["H", "I", "J", "K", "L", "M", "N"],
         )
 
+
+        """ Now do the right side with the VS plots and "V" plots
+
+        """
+        VSP = SAM_VS_vplots.VS_Plots(dBSPL=15)
+        VSP.plot_VS_Data(axin=P.axdict["O"])
+        VSP = SAM_VS_vplots.VS_Plots(dBSPL=30)
+        VSP.plot_VS_Data(axin=P.axdict["P"], legend=False)
+
         fig = FigInfo()
         if parent_figure is not None:
             fig.P = parent_figure
@@ -2325,13 +2340,13 @@ class Figures(object):
             "Simulations",
             "AN",
         )
-        print('dataset: ', dataset)
-        print('keys: ', dataset.keys())
-        print('mode: ', mode)
-        print('cellpath: ', cellpath)
-        print("cell_number: ", cell_number)
-        print(dataset.keys())
-        print('dataset[mode]: ', dataset[cell_number][mode])
+        # print('dataset: ', dataset)
+        # print('keys: ', dataset.keys())
+        # print('mode: ', mode)
+        # print('cellpath: ', cellpath)
+        # print("cell_number: ", cell_number)
+        # print(dataset.keys())
+        # print('dataset[mode]: ', dataset[cell_number][mode])
         
         sfi = Path(cellpath, Path(dataset[cell_number][mode]).name)
         if not sfi.is_dir():
@@ -2383,7 +2398,7 @@ class Figures(object):
         self.plot_stacked_spiketrain_rasters(
             an_st_by_input, ax=P.axdict[pan[3]], si=MD.SI, plot_win=plot_win
         )
-        P.axdict[pan[3]].set_xlabel("Time (s)")
+        # P.axdict[pan[3]].set_xlabel("Time (s)")
 
         self.plot_psth_psth(
             ax=P.axdict[pan[4]],
@@ -2394,8 +2409,10 @@ class Figures(object):
             ntr=len(all_an_st),
             ninputs=ninputs,
         )
-        P.axdict[pan[4]].set_xlabel("Time (sec)")
-        P.axdict[pan[4]].set_title("AN")
+        P.axdict[pan[4]].set_xlabel("Time (s)")
+        P.axdict[pan[4]].set_title("AN PSTH", y=1.0,
+            fontdict={"fontsize": 9, "fontweight":"normal", "verticalalignment": "top"},
+            )
         ri = MD.RI
         si = MD.SI
         (
@@ -2433,7 +2450,7 @@ class Figures(object):
                 dither=1e-3 * si.dtIC / 2.0,
             )
             P.axdict[pan[5]].plot(
-                bu_sacbins[:-1],
+                bu_sacbins[:-1]*1e3,
                 bu_sac,
                 "k-",
                 # label=sac_label,
@@ -2445,11 +2462,12 @@ class Figures(object):
                 dither=1e-3 * si.dtIC / 2.0,
             )
             P.axdict[pan[5]].plot(
-                an_sacbins[:-1],
+                an_sacbins[:-1]*1e3,
                 an_sac,
                 "r-",
                 # label=sac_label,
             )
+            P.axdict[pan[5]].set_xlabel("Time (ms)")
         else:
             phasewin = [
                 pip_start + 0.25 * pip_duration,
@@ -2480,6 +2498,7 @@ class Figures(object):
                 run_info=ri,
                 max_time=2 * np.pi,
                 bin_width=est_binw,
+                bin_fill=False,
                 ax=P.axdict[pan[5]],
             )
             PF.plot_psth(
@@ -2497,6 +2516,7 @@ class Figures(object):
                 run_info=ri,
                 max_time=2 * np.pi,
                 bin_width=est_binw,
+                bin_fill = False,
                 ax=P.axdict[pan[5]],
                 alpha=0.5,
             )
@@ -2507,15 +2527,16 @@ class Figures(object):
             #     edgecolor="k",
             # )
             P.axdict[pan[5]].set_xlim((0.0, 2 * np.pi))
+            P.axdict[pan[5]].set_xlabel("Phase")
             P.axdict[pan[5]].set_title(
                 f"VS: AN = {vs_an.vs:.3f} BU = {vs_bu.vs:.3f}",
-                fontsize=8,
-                horizontalalignment="center",
+                    fontdict={"fontsize": 8, "fontweight":"normal", "verticalalignment": "top"}
+                    
             )
 
     def Figure7_Supplemental1(self):
         V = SAM_VS_vplots.VS_Plots()
-        fig = V.make_figure()
+        fig, P = V.make_figure()
         return fig
 
     def plot_psth_psth(
