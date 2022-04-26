@@ -97,8 +97,9 @@ figure_AllIVs = {
 """
 The efficacy data is taken from runs using the latest measure
 of synapse density, 0.7686 syn/um2  11/15/2020
+Two tables here; one at 30 dB (singles) and one at 0dB (singles)
 """
-figure_efficacy_supplement = {
+figure_efficacy_supplement_30dB = {
     2: {
         "Full": "runANSingles-all-2021-08-02.17-58-19",
         "NoDend": "runANSingles-all-2021-08-02.23-13-48",
@@ -140,6 +141,41 @@ figure_efficacy_supplement = {
         "NoDend": "runANSingles-all-2021-08-03.00-03-56",
     },
 }
+
+figure_efficacy_supplement_Spont = {
+    2: {
+        "Full": "runANSingles-all-2021-07-31.11-13-17",
+    },
+    5: {
+        "Full": "runANSingles-all-2021-07-31.11-22-28",
+    },
+    6: {
+        "Full": "runANSingles-all-2021-07-31.11-36-25",
+    },
+    9: {
+        "Full": "runANSingles-all-2021-07-31.11-45-33",
+    },
+    10: {
+        "Full": "runANSingles-all-2021-07-31.12-00-01",
+    },
+    11: {
+        "Full": "runANSingles-all-2021-07-31.12-20-18",
+    },
+    13: {
+        "Full": "runANSingles-all-2021-07-31.12-30-51",
+    },
+    17: {
+        "Full": "runANSingles-all-2021-07-31.12-41-53",
+    },
+    18: {
+        "Full": "runANSingles-all-2021-07-31.12-56-36",
+    },
+    30: {
+        "Full": "runANSingles-all-2021-07-31.13-11-02",
+    },
+}
+
+
 
 
 figure_revcorr_example = {

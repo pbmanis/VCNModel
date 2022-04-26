@@ -1352,7 +1352,7 @@ class PlotSims:
         cbar_vmax: float = 300.0,
     ):
         sns.set_style("ticks")
-
+        max_example_spikes = 10
         # secax = PF.twinax(P.figure_handle, ax, pos=maxwin)
         str_a = string.ascii_uppercase
         p_labels = str_a[str_a.find(start_letter) : str_a.find(start_letter) + 4]
@@ -1404,7 +1404,7 @@ class PlotSims:
                     #     print(np.max(RCD.sv_all[trial][prewin]))
                     for spk in RCD.sv_trials[trial]:
                         if np.max(spk[prewin]) < -40.0:
-                            if len(ex_spikes) < 20:
+                            if len(ex_spikes) < max_example_spikes:
                                 ex_spikes.append(spk)
             # if stepsize > 0:
             #     sel = list(range(0, RCD.sv_all.shape[0], stepsize))

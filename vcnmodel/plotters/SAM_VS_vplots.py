@@ -254,6 +254,14 @@ class VS_Plots:
         # print(dir(PN.scales))
 
         fig, P = gg.draw(return_ggplot=True)
+        print(dir(fig))
+        print(dir(P))
+        print(fig.axes)
+        print(P.axs)
+
+        fig2 = mpl.figure(99)
+        
+
         PN.options.figure_size = (10, 10)
 
         for i, ax in enumerate(P.axs):

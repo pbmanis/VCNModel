@@ -159,6 +159,7 @@ experimenttypes = [
     "delays",
     "largestonly",
     "removelargest",
+    "removetwolargest",
     "mean",
     "max=mean",
     "all=mean",

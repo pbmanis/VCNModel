@@ -50,7 +50,7 @@ from vcnmodel.plotters import \
     figure_data as FD  # table of simulation runs used for plotting figures
 from vcnmodel.plotters import plot_z as PZ
 
-from . import plot_functions as PF
+from vcnmodel.plotters import plot_functions as PF
 
 cprint = CP.cprint
 
@@ -864,7 +864,7 @@ class Figures(object):
         colormap="tab10",
     ):
         cell_number = 17
-        example = FD.figure_efficacy_supplement[cell_number]
+        example = FD.figure_efficacy_supplement_30dB[cell_number]
 
         cellpath = Path(
             self.config["cellDataDirectory"],
@@ -976,6 +976,7 @@ class Figures(object):
         self,
         cells=None,
         figure=None,
+        dBSPL="30dB", 
         show_title=True,
         axes: Union[list, None] = None,
         calxp: float = 800.0,
@@ -1018,10 +1019,17 @@ class Figures(object):
                 "Simulations",
                 "AN",
             )
-            sfiles = Path(
-                cellpath,
-                Path(FD.figure_efficacy_supplement[cellN][simulation_experiment]).name,
-            )
+            if dBSPL == "30dB":
+                sfiles = Path(
+                    cellpath,
+                    Path(FD.figure_efficacy_supplement_30dB[cellN][simulation_experiment]).name,
+                )
+            elif dBSPL == "Spont":
+                    sfiles = Path(
+                    cellpath,
+                    Path(FD.figure_efficacy_supplement_Spont[cellN][simulation_experiment]).name,
+                )
+            
             if not sfiles.is_dir():
                 return
             fn = sorted(list(sfiles.glob("*")))
@@ -1083,7 +1091,7 @@ class Figures(object):
 
                 if n == 0:
                     axes[ic].set_title(
-                        f"BC{cellN:02d}",
+                        f"BC{cellN:02d}  {dBSPL:s}",
                         loc="center",
                         fontdict={
                             "verticalalignment": "baseline",
@@ -1271,6 +1279,10 @@ class Figures(object):
             example_cells = [10, 6, 2, 13, 18, 11]  # in order of spikes for largest input
         else:
             example_cells = [5, 30, 9, 17]  # in order of spikes for largest input
+        
+        Figure4_stim_level = "Spont"  # "30dB" or "Spont" are valid settings.
+        participation_dB = 30  # the stimulus level at which the participation is 
+                               # compared versus participation during spont
 
         start_letter = "A"
         parent_figure = None
@@ -1366,7 +1378,6 @@ class Figures(object):
             parent_figure=parent_figure,
         )
 
-
         synperum2 = 0.7686  # taken from cell_config.py, line 127 (11/15/2021)
 
         def plot_participation(ax, n, a, b, dB=0, color=None):
@@ -1416,9 +1427,6 @@ class Figures(object):
             if legend:
                 ax.legend(fontsize=8, loc="upper right", ncol=2)
         
-
-
-
         def plot_clustering(ax):
             EF.EffClusters([ax], clip_on=False)
             ax.set_xlabel(r"Input ASA (${\mu m^2}$)")
@@ -1443,13 +1451,12 @@ class Figures(object):
         # Traces
         axl = [P.axdict[axi] for axi in trace_axes]
         self.plot_stacked_traces(
-            cells=example_cells, figure=P.figure_handle, axes=axl, maxstack=10,
+            cells=example_cells, dBSPL=Figure4_stim_level , figure=P.figure_handle, axes=axl, maxstack=10,
             show_title=False, calxp=600., cal_pos=cal_pos,
         )
         for ax in axl:
             ax.set_zorder(0)
 
-        dB = 30
         if not supplemental1:
         # Efficacy plot vs. input size (all)
             for s in ["D", "E", "F", "G"]:
@@ -1464,13 +1471,13 @@ class Figures(object):
 
             # participation
             ds = self._load_rcdata("Spont")
-            drc = self._load_rcdata(f"{dB:2d}dB")
+            drc = self._load_rcdata(f"{participation_dB:2d}dB")
             sns.set_palette(palette="tab10", n_colors=10)
             palette = sns.color_palette(palette="tab10", n_colors=len(ds.keys()))
             for i, c in enumerate(ds.keys()):
                 # plot_participation(P.axdictax[0], c, ds, drc, dB=dB, color=palette[i])
                 plot_diff_participation(
-                    P.axdict["F"], c, ds, drc, dB=dB, color=palette[i], legend=False
+                    P.axdict["F"], c, ds, drc, dB=participation_dB, color=palette[i], legend=False
                 )
 
             # Cumulative plots
@@ -1490,7 +1497,8 @@ class Figures(object):
             cells=example_cells,
             parent_figure=P,
             supplemental1=supplemental1,
-            dBSPL="30dB",
+           # dBSPL="30dB",
+            dBSPL=Figure4_stim_level,
             synlabel_num=synlabel_num,
             show_title=False,
         )
@@ -1520,7 +1528,7 @@ class Figures(object):
                     xytext = (arrow_xy[celln][0]-0.75, arrow_xy[celln][1]+4),
                     arrowprops=dict(facecolor="black", edgecolor="black",
                         linewidth=0.5,
-                        width=5, headwidth=5, frac=0.33, shrink=0.05)
+                        width=5, headwidth=5.0, headlength=8.0, shrink=0.05)
                     )
 
 
@@ -1917,9 +1925,9 @@ class Figures(object):
                 return
             fn = sorted(list(sfi.glob("*")))
             print("Revcorr supplement file: ", fn)
-
+            print("Revcorr dbspl: ", dBSPL)
             if i == 0:
-                tcal = True  # point font for cal bar
+                tcal = False  # point font for cal bar
             else:
                 tcal = False  # no cal bar
             if synlabel_num == 0:  # labels all of them
@@ -1958,10 +1966,10 @@ class Figures(object):
                 colormap=colormap,
             )
 
-            print(
+            cprint("g",
                 f"  Mean Pre:  {np.mean(RCD.mean_pre_intervals):7.3f} ms  ({1e3/np.mean(RCD.mean_pre_intervals):7.1f} Hz)"
             )
-            print(
+            cprint("g",
                 f"  Mean Post: {RCD.mean_post_intervals:7.3f} ms  ({1e3/RCD.mean_post_intervals:7.1f} Hz)"
             )
             # if parent_figure is None:
@@ -2184,22 +2192,25 @@ class Figures(object):
             return None
 
     def Figure7_Main(self, parent_figure=None):
+        lh = 0.07
+        rh = 0.32
+        xw = 0.20
         sizer = OrderedDict(  # define figure layout
             [
-                ("A", {"pos": [0.08, 0.4, 0.87, 0.09]}),
-                ("B", {"pos": [0.08, 0.4, 0.73, 0.09]}),
-                ("C", {"pos": [0.08, 0.4, 0.59, 0.09]}),
-                ("D", {"pos": [0.08, 0.4, 0.45, 0.09]}),
-                ("E", {"pos": [0.08, 0.4, 0.31, 0.09]}),
-                ("F", {"pos": [0.08, 0.4, 0.17, 0.09]}),
-                ("G", {"pos": [0.08, 0.4, 0.05, 0.07]}),
-                ("H", {"pos": [0.57, 0.4, 0.87, 0.09]}),
-                ("I", {"pos": [0.57, 0.4, 0.73, 0.09]}),
-                ("J", {"pos": [0.57, 0.4, 0.59, 0.09]}),
-                ("K", {"pos": [0.57, 0.4, 0.45, 0.09]}),
-                ("L", {"pos": [0.57, 0.4, 0.31, 0.09]}),
-                ("M", {"pos": [0.57, 0.4, 0.17, 0.09]}),
-                ("N", {"pos": [0.57, 0.4, 0.05, 0.07]}),
+                ("A", {"pos": [lh, xw, 0.87, 0.09]}),
+                ("B", {"pos": [lh, xw, 0.73, 0.09]}),
+                ("C", {"pos": [lh, xw,  0.59, 0.09]}),
+                ("D", {"pos": [lh, xw, 0.45, 0.09]}),
+                ("E", {"pos": [lh, xw,  0.31, 0.09]}),
+                ("F", {"pos": [lh, xw, 0.17, 0.09]}),
+                ("G", {"pos": [lh, xw, 0.05, 0.07]}),
+                ("H", {"pos": [rh, xw,  0.87, 0.09]}),
+                ("I", {"pos": [rh, xw,  0.73, 0.09]}),
+                ("J", {"pos": [rh, xw, 0.59, 0.09]}),
+                ("K", {"pos": [rh, xw,  0.45, 0.09]}),
+                ("L", {"pos": [rh, xw,  0.31, 0.09]}),
+                ("M", {"pos": [rh, xw,  0.17, 0.09]}),
+                ("N", {"pos": [rh, xw,  0.05, 0.07]}),
             ]
         )  # dict elements are [left, width, bottom, height] for the axes in the plot.
 
@@ -2207,7 +2218,7 @@ class Figures(object):
             sizer,
             order="columnsfirst",
             label=True,
-            figsize=(6.0, 8.0),
+            figsize=(11.0, 8.0),
             # labelposition=(-0.05, 1.02),
         )
         # Column 1: AM
@@ -2314,11 +2325,14 @@ class Figures(object):
             "Simulations",
             "AN",
         )
-        # print('dataset: ', dataset)
-        # print('keys: ', dataset.keys())
-        # print('mode: ', mode)
-        # print('cellpath: ', cellpath)
-        # print('dataset[mode]: ', dataset[cell_number][mode])
+        print('dataset: ', dataset)
+        print('keys: ', dataset.keys())
+        print('mode: ', mode)
+        print('cellpath: ', cellpath)
+        print("cell_number: ", cell_number)
+        print(dataset.keys())
+        print('dataset[mode]: ', dataset[cell_number][mode])
+        
         sfi = Path(cellpath, Path(dataset[cell_number][mode]).name)
         if not sfi.is_dir():
             print(f"File is not a directory: {str(sfi):s}")
@@ -2343,8 +2357,8 @@ class Figures(object):
         protocol = "runANPSTH"
         # AR, SP, RM = analyze_data.analyze_data(ivdatafile, filemode, protocol)
         i = 0
-        plot_win = (0.4, 0.550)
-        psth_binw = 0.0005
+        plot_win = (0.4, 0.450)
+        psth_binw = 0.0001
         i = 0  # Voltage for first trial
         self.plot_voltage(
             ax=P.axdict[pan[0]], ntrace=i, d=MD.data, AR=AR, time_win=plot_win
@@ -2353,7 +2367,7 @@ class Figures(object):
             ax=P.axdict[pan[6]], ntrace=i, d=MD.data, AR=AR, stim_win=plot_win
         )
         all_bu_st = self.get_bu_spikearray(AR, MD.data)
-        self.plot_spiketrain_raster(all_bu_st, ax=P.axdict[pan[1]], plot_win=plot_win)
+        self.plot_spiketrain_raster(all_bu_st, ax=P.axdict[pan[1]], max_raster=10, plot_win=plot_win)
         self.plot_psth_psth(
             ax=P.axdict[pan[2]],
             data=all_bu_st,
@@ -2772,10 +2786,13 @@ class Figures(object):
         )
         ax.set_ylabel("mPa")
 
-    def plot_spiketrain_raster(self, spike_times, ax=None, plot_win: tuple = (0, 0.25)):
+    def plot_spiketrain_raster(self, spike_times, max_raster:int=20, ax=None, plot_win: tuple = (0, 0.25)):
         # print(len(spike_times))
         # print(plot_win)
-        for i in range(len(spike_times)):
+        n_trials = len(spike_times)
+        if n_trials > max_raster:
+            n_trials = max_raster
+        for i in range(n_trials):
             ispt = [
                 j
                 for j in range(len(spike_times[i]))
@@ -2795,7 +2812,7 @@ class Figures(object):
         ax=None,
         si=None,
         plot_win: tuple = (0, 0.25),
-        max_trials=5,
+        max_trials=2,
         use_colors: bool = True,
         colormap="Set3",
         cbar_vmax: float = 300.0,
@@ -2830,8 +2847,8 @@ class Figures(object):
         """
         n_inputs = len(spike_times_by_input)
         n_trials = len(spike_times_by_input[0])
-        trial_spc = 1.0 / (n_inputs * 2)
-        input_spc = 1
+        trial_spc = 1.0
+        input_spc = 0.6/n_inputs
 
         if use_colors:
             cmx = sns.color_palette(colormap, as_cmap=True)
@@ -2840,10 +2857,10 @@ class Figures(object):
             syn_ASA = np.array([syninfo[1][isite][0] for isite in range(n_inputs)])
             max_ASA = np.max(syn_ASA)
         print("syn asa: ", syn_ASA)
-        for k in range(n_inputs):  # raster of input spikes by input
-            for i in range(n_trials):  # and by trial
-                if i > max_trials - 1:
-                    continue
+        for i in range(n_trials):  # and by trial
+            if i > max_trials - 1:
+                continue
+            for k in range(n_inputs):  # raster of input spikes by input
                 if np.max(spike_times_by_input[k][i]) > 2.0:  # probably in msec...
                     tk = np.array(spike_times_by_input[k][i]) * 1e-3
                 else:
@@ -2854,7 +2871,7 @@ class Figures(object):
                     for i in range(tk.shape[0])
                     if (tk[i] >= plot_win[0]) and (tk[i] < plot_win[1])
                 ]
-                y = (i * input_spc + ((n_trials - k - 1) * trial_spc)) * np.ones(
+                y = (((i+1) * trial_spc) - ((n_inputs/2.)*input_spc) + (k * input_spc)) * np.ones(
                     len(in_spt)
                 )
                 if use_colors:
@@ -2869,6 +2886,7 @@ class Figures(object):
                     color=color,
                     linewidth=0.5,
                 )
+                ax.yaxis.set_ticks([1, 2], ["1", "2"])
         ax.set_xlim(plot_win)
 
     def get_bu_spikearray(self, AR, d):
