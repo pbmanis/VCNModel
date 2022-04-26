@@ -13,7 +13,7 @@ for f in $CELLNAMES
             python vcnmodel/model_run2.py VCN_c$f -D $d -P runANPSTH -r $REPS --Spirou max=mean --configfile $CONFIG
             python vcnmodel/model_run2.py VCN_c$f -D $d -P runANPSTH -r $REPS --Spirou removelargest --configfile $CONFIG
             python vcnmodel/model_run2.py VCN_c$f -D $d -P runANPSTH -r $REPS --Spirou largestonly --configfile $CONFIG
-            python vcnmodel/model_run2.py VCN_c$f -D $d -P runANPSTH -r $REPS --Spirou twolargest --configfile $CONFIG
+            python vcnmodel/model_run2.py VCN_c$f -D $d -P runANPSTH -r $REPS --Spirou removetwolargest --configfile $CONFIG
         done
     done
 wait
