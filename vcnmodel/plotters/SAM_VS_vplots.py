@@ -36,6 +36,7 @@ import toml
 import VS_data_15dB as VS_data_15dB
 import VS_data_30dB as VS_data_30dB
 from matplotlib import pyplot as mpl
+import matplotlib.collections
 from matplotlib import ticker
 from pylibrary.plotting import plothelpers as PH
 
@@ -347,7 +348,7 @@ class VS_Plots:
     def plot_with_mpl(self):
         pass
 
-    def plot_VS_Data(self, axin=None, legend=True):
+    def plot_VS_Data(self, axin=None, legendflag=True):
         """Plot the VS response to SAM stimuli for each cells and frequency in a swarmplot
 
         Parameters
@@ -383,7 +384,7 @@ class VS_Plots:
         nfreq = len(self.df["frequency"].unique())
         x = np.arange(nfreq)
         ax.scatter(
-            x, self.df["AN_VS"][:24:3], s=320, color="r", marker="_", linewidth=2
+            x, self.df["AN_VS"][:24:3], s=320, color="firebrick", marker="_", linewidth=2
         )
         xl = ax.get_xticklabels()
         newxl = [f"{int(float(x.get_text())):d}" for x in xl]
@@ -393,7 +394,7 @@ class VS_Plots:
         ax.set_title(
             f"{int(self.dBSPL):2d} dBSPL, 100% modulation", fontdict=title_font
         )
-        if not legend:
+        if not legendflag:
             # ax.legend(handles=[], labels= [])
             ax.get_legend().remove()
         else:
@@ -404,7 +405,7 @@ class VS_Plots:
             ax = axin
         return ax
 
-    def plot_VS_summary(self, cell, axin=None, legendflag=True):
+    def plot_VS_summary(self, cell, axin=None, legendflag=True, show_cell=True):
         """Summarize the VS for one cell for all conditions/frequencies.
         This is similar to the plotnine routine above, but just
         uses matplotlib to acheive the same plot
@@ -419,6 +420,9 @@ class VS_Plots:
         legendflag : bool, optional
             Defines whether to include a legend on the plot, by default True
         """
+        label_font = {"fontsize": 8, "fontweight": "normal"}
+        title_font = {"fontsize": 9, "fontweight": "normal"}
+
         if axin is None:
             fig, ax = mpl.subplots(1, 1, figsize=(5, 5))
         else:
@@ -431,7 +435,7 @@ class VS_Plots:
             hue="Configuration",
             data=dfl,
             dodge=True,  # offset configurations from each other
-            size=4,
+            size=5,
             ax=ax,
         )
         # find out how many configurations and frequencies are present
@@ -441,28 +445,47 @@ class VS_Plots:
         locs = ax.get_children()[
             : n_configurations * n_frequencies
         ]
+        axis_items = []
+        for child in ax.get_children():
+            if isinstance(child, matplotlib.collections.PathCollection):
+                axis_items.append(child)
         x = np.arange(n_frequencies)
         for i in range(0, len(locs), n_configurations):
             xl = []  # hold locations of points that were plotted in this frequency
             yl = []
             for j in range(n_configurations):
-                offs = ax.get_children()[i + j].get_offsets()
+                # axis_item = ax.get_children()[i + j]
+                # if not isinstance(axis_item, matplotlib.collections.PathCollection):
+                #     continue
+                offs = axis_items[i+j].get_offsets()
                 xl.append(offs[0][0])  # build up the line
                 yl.append(offs[0][1])
-            ax.plot(xl, yl, color="darkgrey", linewidth=0.75, linestyle="-")
+            ax.plot(xl, yl, color="slategrey", linewidth=1.25, linestyle="-")
             ax.scatter( # plot the AN vector strength bars for reference
                 x,
                 dfl["AN_VS"][: n_configurations * n_frequencies : n_configurations],
                 s=240,
-                color="r",
+                color="firebrick",
                 marker="_",
                 linewidth=2,
             )
+        ax.set_ylim(0, 1)
+        xl = ax.get_xticklabels()  # do this before niceplot...
+        #PH.nice_plot(ax, direction="outward", position=-0.02, )  # hmmm, removes tick labels...
+        xl = ax.get_xticklabels()
+        newxl = [f"{int(float(x.get_text())):d}" for x in xl if x.get_text() != ""]
+        ax.set_xticklabels(newxl)
+        ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
+        ax.set_ylabel("Vector Strength", fontdict=label_font)
         if not legendflag:
             ax.get_legend().remove()
         else:
             ax.legend(markerscale=0.5)
-
+        if show_cell:
+            ax.text(x=0.5, y=1.0, s=f"BC {cell:02d}",
+                fontdict=title_font,
+            #    "horizontalalignment":"center","verticalalignment":"top"},
+                transform=ax.transAxes)
         if axin is None:
             mpl.show()
         return ax
@@ -472,7 +495,7 @@ if __name__ == "__main__":
 
     V1 = VS_Plots(dBSPL=15)
     # V1.plot_VS_Data()
-    V1.plot_VS_summary(5)
+    V1.plot_VS_summary(17)
     exit()
 
     V = VS_Plots(sels=[5, 30, 9, 17])
