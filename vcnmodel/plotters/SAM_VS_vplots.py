@@ -16,14 +16,13 @@ Copyright 2017-2022 Paul B. Manis
 Distributed under MIT/X11 license. See license.txt for more infomation. 
 
 """
-from dataclasses import dataclass, field
 import importlib
 import io
-from lib2to3.pgen2.pgen import DFAState
-import io
-import pickle
 import os
+import pickle
 import sys
+from dataclasses import dataclass, field
+from lib2to3.pgen2.pgen import DFAState
 from pathlib import Path
 from typing import List
 
@@ -34,8 +33,8 @@ import seaborn as sns
 sys.path.insert(0, os.path.abspath("nb"))
 import plotnine as PN
 import toml
-import VS_data_30dB as VS_data_30dB
 import VS_data_15dB as VS_data_15dB
+import VS_data_30dB as VS_data_30dB
 from matplotlib import pyplot as mpl
 from matplotlib import ticker
 from pylibrary.plotting import plothelpers as PH
@@ -47,30 +46,32 @@ colors = [
     (0.17254901960784313, 0.6274509803921569, 0.17254901960784313),
 ]
 
+
 def reset_style():
     #     sns.set_style(rc={"pdf.fonttype": 42})
     mpl.style.use("~/.matplotlib/figures.mplstyle")
 
+
 def defemptylist():
     return []
+
 
 @dataclass
 class PlotInfo:
     plotwhat: str = "VectorStrength"
-    labels: list = field(default_factory=defemptylist) 
+    labels: list = field(default_factory=defemptylist)
     anpt: str = ""
-    labels: list = field(default_factory=defemptylist) 
-    yscale: list = field(default_factory=defemptylist) 
-    freqs: list = field(default_factory=defemptylist) 
-    fr: list = field(default_factory=defemptylist) 
-    vsscale: list = field(default_factory=defemptylist) 
+    labels: list = field(default_factory=defemptylist)
+    yscale: list = field(default_factory=defemptylist)
+    freqs: list = field(default_factory=defemptylist)
+    fr: list = field(default_factory=defemptylist)
+    vsscale: list = field(default_factory=defemptylist)
 
 
-class VS_Plots():
-
-    def __init__(self, output="P9", 
-            sels=[2, 5, 6, 9, 10, 11, 13, 17, 18, 30],
-            dBSPL=15):
+class VS_Plots:
+    def __init__(
+        self, output="P9", sels=[2, 5, 6, 9, 10, 11, 13, 17, 18, 30], dBSPL=15
+    ):
         """Vector strength plotting class
 
         Parameters
@@ -81,7 +82,7 @@ class VS_Plots():
             cell selection to plot, by default [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
         dBSPL : int, optional
             The base intensity for the VS stimuli, by default 15
-        """            
+        """
         self.dBSPL = dBSPL
         if dBSPL == 15:
             importlib.reload(VS_data_15dB)
@@ -89,7 +90,7 @@ class VS_Plots():
         elif dBSPL == 30:
             importlib.reload(VS_data_30dB)
             self.datas = VS_data_30dB.data
-            
+
         self.output = output
         self.cell_inputs = {
             "2": "subthreshold",
@@ -119,7 +120,7 @@ class VS_Plots():
             ["Cell", "frequency", "Configuration"], ascending=(True, True, True)
         )
         df = df.reset_index()
-        
+
         self.PI = PlotInfo()
 
         reset_style()
@@ -169,7 +170,7 @@ class VS_Plots():
         self.df = df[df["Cell"].isin(sels)]
 
     def make_figure(self, figure=None, axs=None):
-        if self.output == 'P9': 
+        if self.output == "P9":
             fig, P = self.plot_with_p9(self.df, self.PI, figure=figure, axs=axs)
             return fig, P
 
@@ -180,7 +181,7 @@ class VS_Plots():
 
     def fscale(self, x):
         return [str(int(y)) for y in x]
-    
+
     def vscale(self, x):
         return [f"{y:.1f}" for y in x]
 
@@ -204,7 +205,7 @@ class VS_Plots():
                     color="factor(Configuration)",
                 ),
             )
-            + PN.scale_color_manual(values = colors)
+            + PN.scale_color_manual(values=colors)
             + PN.scale_x_discrete(breaks=PI.freqs, labels=PI.fr)
             + PN.scale_y_continuous(breaks=PI.vsscale, labels=self.vscale(PI.vsscale))
             # + PN.scales.scale_y_log10()
@@ -310,7 +311,6 @@ class VS_Plots():
         # print(P.axs)
 
         # fig2 = mpl.figure(99)
-        
 
         PN.options.figure_size = (10, 10)
 
@@ -329,7 +329,7 @@ class VS_Plots():
         #     verticalalignment="top",
         # )
         title = "SBEM Project Supplemental Figure 7 Modeling : Vector Strength Summary"
-        
+
         mpl.savefig(
             Path(self.config["baseDataDirectory"], "Figures", save_file),
             metadata={
@@ -343,7 +343,6 @@ class VS_Plots():
         if hasattr(fig, "title"):
             fig.title["title"] = title
         return fig, P
-
 
     def plot_with_mpl(self):
         pass
@@ -363,47 +362,125 @@ class VS_Plots():
         matplotlib axis instance
             the axis into which the data was plotted; if none was
             specified, then this is the axis that was generated.
-        """        
+        """
+        label_font = {"fontsize": 8, "fontweight": "normal"}
+        title_font = {"fontsize": 9, "fontweight": "normal"}
         if axin is None:
-            fig, ax = mpl.subplots(1,1, figsize=(10, 4))
+            fig, ax = mpl.subplots(1, 1, figsize=(10, 4))
         else:
-            ax=axin
+            ax = axin
         ax.set_ylim(0, 1)
         ax.set_xlim(-1, 10)
-        sax = sns.swarmplot(x='frequency', y="VectorStrength", hue="Configuration",
-            data=self.df, dodge=True,  size=4, ax=ax)
-        x = np.arange(8)
-        nfreq = len(set(self.df['frequency']))
-        ax.scatter(x, self.df['AN_VS'][:24:3], s=320, color='r', marker="_", linewidth=2)
+        sax = sns.swarmplot(
+            x="frequency",
+            y="VectorStrength",
+            hue="Configuration",
+            data=self.df,
+            dodge=True,
+            size=4,
+            ax=ax,
+        )
+        nfreq = len(self.df["frequency"].unique())
+        x = np.arange(nfreq)
+        ax.scatter(
+            x, self.df["AN_VS"][:24:3], s=320, color="r", marker="_", linewidth=2
+        )
         xl = ax.get_xticklabels()
         newxl = [f"{int(float(x.get_text())):d}" for x in xl]
         ax.set_xticklabels(newxl)
-        ax.set_ylabel("Vector Strength)")
-        ax.set_xlabel("Modulation Frequency (Hz)")
-        ax.set_title(f"{int(self.dBSPL):2d} dBSPL, 100% modulation", fontdict={
-            'fontsize': 9, 'fontweight': 'normal'})
+        ax.set_ylabel("Vector Strength)", fontdict=label_font)
+        ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
+        ax.set_title(
+            f"{int(self.dBSPL):2d} dBSPL, 100% modulation", fontdict=title_font
+        )
         if not legend:
-            ax.legend(handles=[], labels= [])
-        
+            # ax.legend(handles=[], labels= [])
+            ax.get_legend().remove()
+        else:
+            ax.legend(markerscale=0.5)
         if axin is None:
             mpl.show()
         else:
             ax = axin
         return ax
 
+    def plot_VS_summary(self, cell, axin=None, legendflag=True):
+        """Summarize the VS for one cell for all conditions/frequencies.
+        This is similar to the plotnine routine above, but just
+        uses matplotlib to acheive the same plot
+
+        Parameters
+        ----------
+        cell : int
+            cell number to pull data from pandas data frame to polt
+        axin : matplotlib axis object, optional
+            The axis to plot into, by default None
+            if None, we just make our own new figure and plot to that.
+        legendflag : bool, optional
+            Defines whether to include a legend on the plot, by default True
+        """
+        if axin is None:
+            fig, ax = mpl.subplots(1, 1, figsize=(5, 5))
+        else:
+            ax = axin
+        dfl = self.df[self.df["Cell"] == cell]  # just get the cell's data
+        # make categorical swarm plot for each configuration
+        sns.swarmplot(
+            x="frequency",
+            y="VectorStrength",
+            hue="Configuration",
+            data=dfl,
+            dodge=True,  # offset configurations from each other
+            size=4,
+            ax=ax,
+        )
+        # find out how many configurations and frequencies are present
+        n_configurations = len(dfl["Configuration"].unique())
+        n_frequencies = len(dfl["frequency"].unique())
+        # get the first set of children plotted - the rest are legend etc
+        locs = ax.get_children()[
+            : n_configurations * n_frequencies
+        ]
+        x = np.arange(n_frequencies)
+        for i in range(0, len(locs), n_configurations):
+            xl = []  # hold locations of points that were plotted in this frequency
+            yl = []
+            for j in range(n_configurations):
+                offs = ax.get_children()[i + j].get_offsets()
+                xl.append(offs[0][0])  # build up the line
+                yl.append(offs[0][1])
+            ax.plot(xl, yl, color="darkgrey", linewidth=0.75, linestyle="-")
+            ax.scatter( # plot the AN vector strength bars for reference
+                x,
+                dfl["AN_VS"][: n_configurations * n_frequencies : n_configurations],
+                s=240,
+                color="r",
+                marker="_",
+                linewidth=2,
+            )
+        if not legendflag:
+            ax.get_legend().remove()
+        else:
+            ax.legend(markerscale=0.5)
+
+        if axin is None:
+            mpl.show()
+        return ax
+
+
 if __name__ == "__main__":
 
     V1 = VS_Plots(dBSPL=15)
-    V1.plot_VS_Data()
+    # V1.plot_VS_Data()
+    V1.plot_VS_summary(5)
     exit()
 
-    V = VS_Plots(sels = [5, 30, 9, 17])
+    V = VS_Plots(sels=[5, 30, 9, 17])
 
     fig, P = V.make_figure()
- 
+
     # fm, new_ax = mpl.subplots(2,2)
     # new_ax = np.ravel(new_ax)
-
 
     # for i, ax in enumerate(P.axs):
     #     ax.tick_params(left=True, bottom=True)
@@ -419,7 +496,7 @@ if __name__ == "__main__":
     #     pickle.dump(fig, buf)
     #     buf.seek(0)
     #     # fig.delaxes(ax)
-    
+
     #     fig2 = pickle.load(buf)
     #     fm.axes[i] = fig2.axes[i]
     #     # ax.remove()
@@ -432,7 +509,4 @@ if __name__ == "__main__":
 
     mpl.show()
 
-            
-                    # ax.text(0.1, 0.9, s=f"{self.cell_list[i]:s}", transform=ax.transAxes)
-
-
+    # ax.text(0.1, 0.9, s=f"{self.cell_list[i]:s}", transform=ax.transAxes)
