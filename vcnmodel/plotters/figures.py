@@ -1,4 +1,3 @@
-
 """figures.py - generate figures for the paper
 This class generates final figures for the SBEM manuscript by reaching back to
 the original simulation data, including, in some cases, refitting. Both primary
@@ -48,9 +47,8 @@ from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot as EF
 from vcnmodel.plotters import \
     figure_data as FD  # table of simulation runs used for plotting figures
-from vcnmodel.plotters import plot_z as PZ
-
 from vcnmodel.plotters import plot_functions as PF
+from vcnmodel.plotters import plot_z as PZ
 
 cprint = CP.cprint
 
@@ -131,7 +129,7 @@ class Figures(object):
     been moved into plot_functions.
 
     This is part of the DataTablesVCN interactive analysis tool for the
-    simulations in the SBEM project. 
+    simulations in the SBEM project.
 
     """
 
@@ -976,13 +974,13 @@ class Figures(object):
         self,
         cells=None,
         figure=None,
-        dBSPL="30dB", 
+        dBSPL="30dB",
         show_title=True,
         axes: Union[list, None] = None,
         calxp: float = 800.0,
         calv: float = 20.0,
         maxstack: int = 9,
-        cal_pos:int = 0,
+        cal_pos: int = 0,
     ):
         """
         What it says: plot traces in a stacked format
@@ -1022,14 +1020,20 @@ class Figures(object):
             if dBSPL == "30dB":
                 sfiles = Path(
                     cellpath,
-                    Path(FD.figure_efficacy_supplement_30dB[cellN][simulation_experiment]).name,
+                    Path(
+                        FD.figure_efficacy_supplement_30dB[cellN][simulation_experiment]
+                    ).name,
                 )
             elif dBSPL == "Spont":
-                    sfiles = Path(
+                sfiles = Path(
                     cellpath,
-                    Path(FD.figure_efficacy_supplement_Spont[cellN][simulation_experiment]).name,
+                    Path(
+                        FD.figure_efficacy_supplement_Spont[cellN][
+                            simulation_experiment
+                        ]
+                    ).name,
                 )
-            
+
             if not sfiles.is_dir():
                 return
             fn = sorted(list(sfiles.glob("*")))
@@ -1045,9 +1049,11 @@ class Figures(object):
             if simulation_experiment != "Full":
                 ymax = 40.0
             for n, filename in enumerate(fn):
-                if (n == (len(fn)-1)) and (ic == cal_pos):  # (len(cells)-1): # cal bar on first axis
+                if (n == (len(fn) - 1)) and (
+                    ic == cal_pos
+                ):  # (len(cells)-1): # cal bar on first axis
                     calxv = calxp
-                    calyv = -120.0+n*yoffset
+                    calyv = -120.0 + n * yoffset
                     iax = n
                 else:
                     iax = None
@@ -1276,22 +1282,29 @@ class Figures(object):
         """
         print(f"Figure 4 main: supplemental1={str(supplemental1):s}")
         if supplemental1:
-            example_cells = [10, 6, 2, 13, 18, 11]  # in order of spikes for largest input
+            example_cells = [
+                10,
+                6,
+                2,
+                13,
+                18,
+                11,
+            ]  # in order of spikes for largest input
         else:
             example_cells = [5, 30, 9, 17]  # in order of spikes for largest input
-        
+
         Figure4_stim_level = "Spont"  # "30dB" or "Spont" are valid settings.
-        participation_dB = 30  # the stimulus level at which the participation is 
-                               # compared versus participation during spont
+        participation_dB = 30  # the stimulus level at which the participation is
+        # compared versus participation during spont
 
         start_letter = "A"
         parent_figure = None
 
         yh = 2.0
-        xw = 1*yh
+        xw = 1 * yh
         xl = 1.05
 
-        xlp = [ xl + (xw+0.75)*i  for i in range(4)]
+        xlp = [xl + (xw + 0.75) * i for i in range(4)]
         print("xlp: ", xlp)
         if not supplemental1:
             sizer = {
@@ -1299,10 +1312,7 @@ class Figures(object):
                 # "C": {"pos": [9.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
                 # "F": {"pos": [6.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
                 # "G": {"pos": [9.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
-                "D": {
-                    "pos": [xlp[0], xw, 0.75, 2.5],
-                    "labelpos": (-0.15, 1.05)
-                    },
+                "D": {"pos": [xlp[0], xw, 0.75, 2.5], "labelpos": (-0.15, 1.05)},
                 "E": {
                     "pos": [xlp[1], xw, 0.75, 2.5],
                     "labelpos": (-0.15, 1.02),
@@ -1364,8 +1374,8 @@ class Figures(object):
                 "labelpos": (-0.25, 1.1),
                 "noaxes": True,
             }
-        # dict pos elements are [left, width, bottom, height] for the axes in the plot. 
-        # gr = [(a, a+1, 0, 1) for a in range(0, 8)] 
+        # dict pos elements are [left, width, bottom, height] for the axes in the plot.
+        # gr = [(a, a+1, 0, 1) for a in range(0, 8)]
         # just generate subplots - shape do not matter axmap = OrderedDict(zip(sizer.keys(), gr))
         P = PH.arbitrary_grid(
             sizer,
@@ -1426,7 +1436,7 @@ class Figures(object):
             PH.referenceline(ax, 1.0)
             if legend:
                 ax.legend(fontsize=8, loc="upper right", ncol=2)
-        
+
         def plot_clustering(ax):
             EF.EffClusters([ax], clip_on=False)
             ax.set_xlabel(r"Input ASA (${\mu m^2}$)")
@@ -1445,27 +1455,33 @@ class Figures(object):
                 pointSize=None,
             )
 
-        def plot_single_input(ax, legend:bool=True):
-            EF.eff_one_input(ax = ax, legend=legend)
+        def plot_single_input(ax, legend: bool = True):
+            EF.eff_one_input(ax=ax, legend=legend)
 
         # Traces
         axl = [P.axdict[axi] for axi in trace_axes]
         self.plot_stacked_traces(
-            cells=example_cells, dBSPL=Figure4_stim_level , figure=P.figure_handle, axes=axl, maxstack=10,
-            show_title=False, calxp=600., cal_pos=cal_pos,
+            cells=example_cells,
+            dBSPL=Figure4_stim_level,
+            figure=P.figure_handle,
+            axes=axl,
+            maxstack=10,
+            show_title=False,
+            calxp=600.0,
+            cal_pos=cal_pos,
         )
         for ax in axl:
             ax.set_zorder(0)
 
         if not supplemental1:
-        # Efficacy plot vs. input size (all)
+            # Efficacy plot vs. input size (all)
             for s in ["D", "E", "F", "G"]:
                 P.axdict[s].set_zorder(100)
             EFP = EF.EfficacyPlots(parent_figure=P)
             EFP.plot_efficacy(
                 "Full", datasetname_added="Added", ax=P.axdict["D"], clean=True
             )
-            
+
             # efficacy for a single sized input vs. dendritic area
             plot_single_input(P.axdict["E"], legend=False)
 
@@ -1477,7 +1493,13 @@ class Figures(object):
             for i, c in enumerate(ds.keys()):
                 # plot_participation(P.axdictax[0], c, ds, drc, dB=dB, color=palette[i])
                 plot_diff_participation(
-                    P.axdict["F"], c, ds, drc, dB=participation_dB, color=palette[i], legend=False
+                    P.axdict["F"],
+                    c,
+                    ds,
+                    drc,
+                    dB=participation_dB,
+                    color=palette[i],
+                    legend=False,
                 )
 
             # Cumulative plots
@@ -1497,23 +1519,24 @@ class Figures(object):
             cells=example_cells,
             parent_figure=P,
             supplemental1=supplemental1,
-           # dBSPL="30dB",
+            # dBSPL="30dB",
             dBSPL=Figure4_stim_level,
             synlabel_num=synlabel_num,
             show_title=False,
         )
         # self.plot_efficacy_supplement(cells=example_cells, parent_figure=P, traces=False)
-        arrow_xy = {5: [-0.95, -45.0],
-                    30: [-0.98, -45.0],
-                    9: [-0.6, -45.0],
-                    17: [-0.50, -40.0],
-                    10: [-0.95, -45.0],
-                    6: [-0.95, -45.0],
-                    2: [-0.95, -45.],
-                    13: [-0.75, -45.],
-                    18: [-0.6, -45.],
-                    11: [-0.5, -40.],
-                    }
+        arrow_xy = {
+            5: [-0.95, -45.0],
+            30: [-0.98, -45.0],
+            9: [-0.6, -45.0],
+            17: [-0.50, -40.0],
+            10: [-0.95, -45.0],
+            6: [-0.95, -45.0],
+            2: [-0.95, -45.0],
+            13: [-0.75, -45.0],
+            18: [-0.6, -45.0],
+            11: [-0.5, -40.0],
+        }
         # Revcorr axes cleanup
         for j, celln in enumerate(example_cells):
             pan_rev, pan_vm = self.Figure4_assign_panel(supplemental1, j + 1)
@@ -1524,13 +1547,21 @@ class Figures(object):
             ax2.set_xlim(-5.0, 2.5)
             ax2.set_ylim(-70, 0)
             if celln in list(arrow_xy.keys()):
-                ax2.annotate("", xy = arrow_xy[celln], xycoords="data",
-                    xytext = (arrow_xy[celln][0]-0.75, arrow_xy[celln][1]+4),
-                    arrowprops=dict(facecolor="black", edgecolor="black",
+                ax2.annotate(
+                    "",
+                    xy=arrow_xy[celln],
+                    xycoords="data",
+                    xytext=(arrow_xy[celln][0] - 0.75, arrow_xy[celln][1] + 4),
+                    arrowprops=dict(
+                        facecolor="black",
+                        edgecolor="black",
                         linewidth=0.5,
-                        width=5, headwidth=5.0, headlength=8.0, shrink=0.05)
-                    )
-
+                        width=5,
+                        headwidth=5.0,
+                        headlength=8.0,
+                        shrink=0.05,
+                    ),
+                )
 
             if j == 0:
                 ax.set_ylabel("Presynaptic\nCoinc. Rate (Hz)", ha="center", fontsize=10)
@@ -1600,8 +1631,9 @@ class Figures(object):
             PD = self.newPData()
             P = None
         else:
-            cprint("r",
-                "You must run revcorr_supplement plot first, then the data file we need will be present"
+            cprint(
+                "r",
+                "You must run revcorr_supplement plot first, then the data file we need will be present",
             )
             run_calcs = True
             cellpath = Path(
@@ -1702,7 +1734,13 @@ class Figures(object):
         sax3 = sax[p_labels[3]]
 
         summarySiteTC = self.parent.PLT.plot_revcorr2(
-            P, PD, RCP, RCD, cell_number=cell_number, start_letter=p_labels[0], colormap=colormap
+            P,
+            PD,
+            RCP,
+            RCD,
+            cell_number=cell_number,
+            start_letter=p_labels[0],
+            colormap=colormap,
         )
         # sax1.set_xlim(-5, 0)
 
@@ -1905,9 +1943,9 @@ class Figures(object):
             if PD is None:
                 cprint("r", "PD is none in plot_revcorr_supplement")
                 continue
- 
+
             all_RCD_RCP[cell_number] = [RCD, RCP]
-             # rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
+            # rc_datafile = Path(f"GradeA_RCD_RCP_all_revcorrs_{dBSPL:s}.pkl")
             # if rc_datafile.is_file() and not run_calcs:
             #     with open(rc_datafile, "rb") as fh:
             #         all_RCD_RCP = FPM.pickle_load(fh)
@@ -1966,11 +2004,13 @@ class Figures(object):
                 colormap=colormap,
             )
 
-            cprint("g",
-                f"  Mean Pre:  {np.mean(RCD.mean_pre_intervals):7.3f} ms  ({1e3/np.mean(RCD.mean_pre_intervals):7.1f} Hz)"
+            cprint(
+                "g",
+                f"  Mean Pre:  {np.mean(RCD.mean_pre_intervals):7.3f} ms  ({1e3/np.mean(RCD.mean_pre_intervals):7.1f} Hz)",
             )
-            cprint("g",
-                f"  Mean Post: {RCD.mean_post_intervals:7.3f} ms  ({1e3/RCD.mean_post_intervals:7.1f} Hz)"
+            cprint(
+                "g",
+                f"  Mean Post: {RCD.mean_post_intervals:7.3f} ms  ({1e3/RCD.mean_post_intervals:7.1f} Hz)",
             )
             # if parent_figure is None:
             ax_top_row.text(
@@ -2192,31 +2232,39 @@ class Figures(object):
             return None
 
     def Figure7_Main(self, parent_figure=None):
-        lh = 0.07
-        rh = 0.32
-        xw = 0.20
-        col3 = 0.62
+        lh = 0.5
+        hsp = 0.7
+        xw = 2.25
+        rh = lh + xw + hsp
+        col3 = rh + xw + hsp
+        col4 = col3 + xw + hsp
+        yht = 0.9
+        ypos = [0.5+0.75+0.15 + i*(yht+0.3) for i in range(6)]
+        yhtr = 2.0
+        yposr = [0.5 + i*(yhtr+0.6) for i in range(3)]
         sizer = OrderedDict(  # define figure layout
             [
-                ("A", {"pos": [lh, xw, 0.87, 0.09]}),
-                ("B", {"pos": [lh, xw, 0.73, 0.09]}),
-                ("C", {"pos": [lh, xw,  0.59, 0.09]}),
-                ("D", {"pos": [lh, xw, 0.45, 0.09]}),
-                ("E", {"pos": [lh, xw,  0.31, 0.09]}),
-                ("F", {"pos": [lh, xw, 0.17, 0.09]}),
-                ("G", {"pos": [lh, xw, 0.05, 0.07]}),
-                ("H", {"pos": [rh, xw,  0.87, 0.09]}),
-                ("I", {"pos": [rh, xw,  0.73, 0.09]}),
-                ("J", {"pos": [rh, xw, 0.59, 0.09]}),
-                ("K", {"pos": [rh, xw,  0.45, 0.09]}),
-                ("L", {"pos": [rh, xw,  0.31, 0.09]}),
-                ("M", {"pos": [rh, xw,  0.17, 0.09]}),
-                ("N", {"pos": [rh, xw,  0.05, 0.07]}),
+                ("A", {"pos": [lh, xw, ypos[5], yht], "labelpos": [-0.1, 1.05]}),
+                ("B", {"pos": [lh, xw, ypos[4], yht], "labelpos": [-0.1, 1.05]}),
+                ("C", {"pos": [lh, xw, ypos[3], yht], "labelpos": [-0.1, 1.05]}),
+                ("D", {"pos": [lh, xw, ypos[2], yht], "labelpos": [-0.1, 1.05]}),
+                ("E", {"pos": [lh, xw, ypos[1], yht], "labelpos": [-0.1, 1.05]}),
+                ("F", {"pos": [lh, xw, ypos[0], yht], "labelpos": [-0.1, 1.05]}),
+                ("G", {"pos": [lh, xw, 0.5, 0.65], "labelpos": [-0.1, 1.05]}),
+                ("H", {"pos": [rh, xw, ypos[5], yht], "labelpos": [-0.1, 1.05]}),
+                ("I", {"pos": [rh, xw, ypos[4], yht], "labelpos": [-0.1, 1.05]}),
+                ("J", {"pos": [rh, xw, ypos[3], yht], "labelpos": [-0.1, 1.05]}),
+                ("K", {"pos": [rh, xw, ypos[2], yht], "labelpos": [-0.1, 1.05]}),
+                ("L", {"pos": [rh, xw, ypos[1], yht], "labelpos": [-0.1, 1.05]}),
+                ("M", {"pos": [rh, xw, ypos[0], yht], "labelpos": [-0.1, 1.05]}),
+                ("N", {"pos": [rh, xw, 0.5, 0.65], "labelpos": [-0.1, 1.05]}),
                 # right side, summary plots
-                ("O", {"pos": [col3, xw, 0.73, 0.18], 'labelpos': [-0.08, 1.05]}),
-                ("P", {"pos": [col3, xw, 0.45, 0.18], 'labelpos': [-0.08, 1.05]}),
-                ("Q", {"pos": [col3, xw, 0.17, 0.18], 'labelpos': [-0.08, 1.05]}),
-                ("R", {"pos": [col3, xw, 0.05, 0.09], 'labelpos': [-0.08, 1.05]}),
+                ("O1", {"pos": [col3, xw, yposr[2], yhtr], "labelpos": [-0.1, 1.05]}),
+                ("O2", {"pos": [col4, xw, yposr[2], yhtr], "labelpos": [-0.1, 1.05]}),
+                ("P1", {"pos": [col3, xw, yposr[1], yhtr], "labelpos": [-0.1, 1.05]}),
+                ("P2", {"pos": [col4, xw, yposr[1], yhtr], "labelpos": [-0.1, 1.05]}),
+                ("P3", {"pos": [col3, xw, yposr[0], yhtr], "labelpos": [-0.1, 1.05]}),
+                ("P4", {"pos": [col4, xw, yposr[0], yhtr], "labelpos": [-0.1, 1.05]}),
             ]
         )  # dict elements are [left, width, bottom, height] for the axes in the plot.
 
@@ -2224,58 +2272,68 @@ class Figures(object):
             sizer,
             order="columnsfirst",
             label=True,
-            figsize=(11.0, 8.0),
+            figsize=(12.0, 9.0),
+            units="inches",
+            showgrid=True,
             # labelposition=(-0.05, 1.02),
         )
         # Column 1: AM
-        P.axdict["A"].set_ylabel("mV", fontsize=8)
 
-        P.axdict["B"].set_title("Bushy Spike Raster", fontsize=9)
-        P.axdict["B"].set_ylabel("Trial")
+        label_font = {"fontsize": 8, "fontweight": "normal"}
+        title_font = {"fontsize": 9, "fontweight": "normal"}
+        P.axdict["A"].set_ylabel("mV", fontdict=label_font)
+
+        P.axdict["B"].set_title("Bushy Spike Raster", fontdict=title_font)
+        P.axdict["B"].set_ylabel("Trial", fontdict=label_font)
 
         P.axdict["C"].set_title(
-            "Bushy PSTH", fontsize=9, verticalalignment="top", y=0.95
+            "Bushy PSTH", fontdict=title_font, verticalalignment="bottom", y=0.95
         )
-        P.axdict["C"].set_ylabel("Spikes/second", fontsize=9)
+        P.axdict["C"].set_ylabel("Spikes/second", fontdict=label_font)
 
-        P.axdict["D"].set_title("ANF Spike Raster", fontsize=9)
-        P.axdict["D"].set_ylabel("Trial")
+        P.axdict["D"].set_title("ANF Spike Raster", fontdict=title_font)
+        P.axdict["D"].set_ylabel("Trial", fontdict=label_font)
 
-        P.axdict["E"].set_title("ANF PSTH", fontsize=9, verticalalignment="top", y=0.95)
-        P.axdict["E"].set_ylabel("Spikes/second", fontsize=9)
+        P.axdict["E"].set_title(
+            "ANF PSTH", fontdict=title_font, verticalalignment="top", y=0.95
+        )
+        P.axdict["E"].set_ylabel("Spikes/second", fontdict=label_font)
 
-        P.axdict["F"].set_title("Phase", fontsize=9)
-        P.axdict["F"].set_ylabel("Spike Count", fontsize=9)
-        P.axdict["F"].set_title("Angle (radians)", fontsize=9)
-
-        P.axdict["G"].set_title("Stimulus", fontsize=9)
-        P.axdict["G"].set_ylabel("Amplitude (Pa)", fontsize=8)
-        P.axdict["G"].set_xlabel("T (s)", fontsize=9)
+        P.axdict["F"].set_xlabel("Angle (radians)", fontdict=label_font)
+        P.axdict["F"].set_ylabel("Spike Count", fontdict=label_font)
+    
+        # P.axdict["G"].set_title("Stimulus", fontdict=title_font)
+        P.axdict["G"].set_ylabel("Amplitude (Pa)", fontdict=label_font)
+        P.axdict["G"].set_xlabel("Time (s)", fontdict=label_font)
 
         # column 2 Click train
-        P.axdict["H"].set_ylabel("mV", fontsize=8)
+        P.axdict["H"].set_ylabel("mV", fontdict=label_font)
 
-        P.axdict["I"].set_title("Bushy Spike Raster", fontsize=9)
-        P.axdict["I"].set_ylabel("Trial")
+        P.axdict["I"].set_title("Bushy Spike Raster", fontdict=title_font)
+        P.axdict["I"].set_ylabel("Trial", fontdict=label_font)
 
         P.axdict["J"].set_title(
-            "Bushy PSTH", fontsize=9, verticalalignment="top", y=0.95
+            "Bushy PSTH", fontdict=title_font, verticalalignment="top", y=0.95
         )
-        P.axdict["J"].set_ylabel("Spikes/second", fontsize=9)
+        P.axdict["J"].set_ylabel("Spikes/second", fontdict=label_font)
 
-        P.axdict["K"].set_title("ANF Spike Raster", fontsize=9)
-        P.axdict["K"].set_ylabel("Trial")
+        P.axdict["K"].set_title("ANF Spike Raster", fontdict=title_font)
+        P.axdict["K"].set_ylabel("Trial", fontdict=label_font)
 
-        P.axdict["L"].set_title("ANF PSTH", fontsize=9, verticalalignment="top", y=0.95)
-        P.axdict["L"].set_ylabel("Spikes/second", fontsize=9)
+        P.axdict["L"].set_title(
+            "ANF PSTH", fontdict=title_font, verticalalignment="top", y=0.95
+        )
+        P.axdict["L"].set_ylabel("Spikes/second", fontdict=label_font)
 
-        P.axdict["M"].set_title("SAC", fontsize=9)
-        P.axdict["M"].set_ylabel("CI", fontsize=9)
-        P.axdict["M"].set_title("Time (ms)", fontsize=9)
-
-        P.axdict["N"].set_title("Stimulus", fontsize=9)
-        P.axdict["N"].set_ylabel("Amplitude (Pa)", fontsize=8)
-        P.axdict["N"].set_xlabel("T (s)", fontsize=9)
+        P.axdict["M"].set_title("SAC", fontdict=title_font)
+        P.axdict["M"].set_ylabel("CI", fontdict=label_font)
+        P.axdict["M"].set_title("SAC", fontdict=title_font, verticalalignment="top", y=0.95)
+        P.axdict["M"].set_ylim(0, 25)
+        PH.talbotTicks(P.axdict["M"], axes='y', density=(1.0, 1.0), 
+            tickPlacesAdd= {'x':2, "y": 0})
+        # P.axdict["N"].set_title("Stimulus", fontdict=title_font)
+        P.axdict["N"].set_ylabel("Amplitude (Pa)", fontdict=label_font)
+        P.axdict["N"].set_xlabel("Time (s)", fontdict=label_font)
 
         for axl in [
             "B",
@@ -2311,14 +2369,13 @@ class Figures(object):
             ["H", "I", "J", "K", "L", "M", "N"],
         )
 
-
         """ Now do the right side with the VS plots and "V" plots
 
         """
         VSP = SAM_VS_vplots.VS_Plots(dBSPL=15)
-        VSP.plot_VS_Data(axin=P.axdict["O"])
+        VSP.plot_VS_Data(axin=P.axdict["O1"])
         VSP = SAM_VS_vplots.VS_Plots(dBSPL=30)
-        VSP.plot_VS_Data(axin=P.axdict["P"], legend=False)
+        VSP.plot_VS_Data(axin=P.axdict["O2"], legend=False)
 
         fig = FigInfo()
         if parent_figure is not None:
@@ -2331,7 +2388,9 @@ class Figures(object):
         fig.title2 = title2
         return fig
 
-    def Figure7_one_column(self, mode:str, cell_number:int, dataset:dict, P:object, pan:object):
+    def Figure7_one_column(
+        self, mode: str, cell_number: int, dataset: dict, P: object, pan: object
+    ):
 
         PD = self.newPData()
         cellpath = Path(
@@ -2347,7 +2406,7 @@ class Figures(object):
         # print("cell_number: ", cell_number)
         # print(dataset.keys())
         # print('dataset[mode]: ', dataset[cell_number][mode])
-        
+
         sfi = Path(cellpath, Path(dataset[cell_number][mode]).name)
         if not sfi.is_dir():
             print(f"File is not a directory: {str(sfi):s}")
@@ -2382,7 +2441,9 @@ class Figures(object):
             ax=P.axdict[pan[6]], ntrace=i, d=MD.data, AR=AR, stim_win=plot_win
         )
         all_bu_st = self.get_bu_spikearray(AR, MD.data)
-        self.plot_spiketrain_raster(all_bu_st, ax=P.axdict[pan[1]], max_raster=10, plot_win=plot_win)
+        self.plot_spiketrain_raster(
+            all_bu_st, ax=P.axdict[pan[1]], max_raster=10, plot_win=plot_win
+        )
         self.plot_psth_psth(
             ax=P.axdict[pan[2]],
             data=all_bu_st,
@@ -2410,9 +2471,15 @@ class Figures(object):
             ninputs=ninputs,
         )
         P.axdict[pan[4]].set_xlabel("Time (s)")
-        P.axdict[pan[4]].set_title("AN PSTH", y=1.0,
-            fontdict={"fontsize": 9, "fontweight":"normal", "verticalalignment": "top"},
-            )
+        P.axdict[pan[4]].set_title(
+            "AN PSTH",
+            y=1.0,
+            fontdict={
+                "fontsize": 9,
+                "fontweight": "normal",
+                "verticalalignment": "top",
+            },
+        )
         ri = MD.RI
         si = MD.SI
         (
@@ -2450,7 +2517,7 @@ class Figures(object):
                 dither=1e-3 * si.dtIC / 2.0,
             )
             P.axdict[pan[5]].plot(
-                bu_sacbins[:-1]*1e3,
+                bu_sacbins[:-1] * 1e3,
                 bu_sac,
                 "k-",
                 # label=sac_label,
@@ -2462,7 +2529,7 @@ class Figures(object):
                 dither=1e-3 * si.dtIC / 2.0,
             )
             P.axdict[pan[5]].plot(
-                an_sacbins[:-1]*1e3,
+                an_sacbins[:-1] * 1e3,
                 an_sac,
                 "r-",
                 # label=sac_label,
@@ -2493,14 +2560,7 @@ class Figures(object):
             else:
                 est_binw = est_binw1
             # print('est_binw: ', est_binw, est_binw1, dt, nints, per)
-            PF.plot_psth(
-                vs_bu.circ_phase,
-                run_info=ri,
-                max_time=2 * np.pi,
-                bin_width=est_binw,
-                bin_fill=False,
-                ax=P.axdict[pan[5]],
-            )
+
             PF.plot_psth(
                 vs_an.circ_phase,
                 run_info=ri,
@@ -2508,6 +2568,7 @@ class Figures(object):
                 bin_width=est_binw,
                 ax=P.axdict[pan[5]],
                 bin_fill=False,
+                xunits="radians",
                 edge_color="r",
                 alpha=0.5,
             )
@@ -2516,8 +2577,10 @@ class Figures(object):
                 run_info=ri,
                 max_time=2 * np.pi,
                 bin_width=est_binw,
-                bin_fill = False,
+                bin_fill=False,
                 ax=P.axdict[pan[5]],
+                xunits="radians",
+                edge_color='k',
                 alpha=0.5,
             )
             # P.axdict["E"].hist(
@@ -2527,11 +2590,14 @@ class Figures(object):
             #     edgecolor="k",
             # )
             P.axdict[pan[5]].set_xlim((0.0, 2 * np.pi))
-            P.axdict[pan[5]].set_xlabel("Phase")
-            P.axdict[pan[5]].set_title(
-                f"VS: AN = {vs_an.vs:.3f} BU = {vs_bu.vs:.3f}",
-                    fontdict={"fontsize": 8, "fontweight":"normal", "verticalalignment": "top"}
-                    
+            P.axdict[pan[5]].text(x=0.05, y=1.0,
+                s=f"VS: AN = {vs_an.vs:5.3f}\n    BU = {vs_bu.vs:5.3f}",
+                fontdict={
+                    "fontsize": 8,
+                    "fontweight": "normal",
+                    "verticalalignment": "top",
+                },
+                transform=P.axdict[pan[5]].transAxes,
             )
 
     def Figure7_Supplemental1(self):
@@ -2807,7 +2873,9 @@ class Figures(object):
         )
         ax.set_ylabel("mPa")
 
-    def plot_spiketrain_raster(self, spike_times, max_raster:int=20, ax=None, plot_win: tuple = (0, 0.25)):
+    def plot_spiketrain_raster(
+        self, spike_times, max_raster: int = 20, ax=None, plot_win: tuple = (0, 0.25)
+    ):
         # print(len(spike_times))
         # print(plot_win)
         n_trials = len(spike_times)
@@ -2869,7 +2937,7 @@ class Figures(object):
         n_inputs = len(spike_times_by_input)
         n_trials = len(spike_times_by_input[0])
         trial_spc = 1.0
-        input_spc = 0.6/n_inputs
+        input_spc = 0.6 / n_inputs
 
         if use_colors:
             cmx = sns.color_palette(colormap, as_cmap=True)
@@ -2892,9 +2960,11 @@ class Figures(object):
                     for i in range(tk.shape[0])
                     if (tk[i] >= plot_win[0]) and (tk[i] < plot_win[1])
                 ]
-                y = (((i+1) * trial_spc) - ((n_inputs/2.)*input_spc) + (k * input_spc)) * np.ones(
-                    len(in_spt)
-                )
+                y = (
+                    ((i + 1) * trial_spc)
+                    - ((n_inputs / 2.0) * input_spc)
+                    + (k * input_spc)
+                ) * np.ones(len(in_spt))
                 if use_colors:
                     color = cmx.colors[int(cmx.N * syn_ASA[k] / cbar_vmax) - 1]
                 else:
@@ -3424,7 +3494,9 @@ class Figures(object):
             fh.write(f'"""\n')  # close the data text.
         cprint("g", "The VS_data file {str(fout):s} has been generated.")
 
-    def plot_VC_gKLT(self, parent_figure=None, loc: Union[None, tuple] = None)->object:
+    def plot_VC_gKLT(
+        self, parent_figure=None, loc: Union[None, tuple] = None
+    ) -> object:
         cell_number = 17
         dataset = FD.figure_VClamp[cell_number]
 
