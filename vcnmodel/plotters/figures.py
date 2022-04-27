@@ -1097,7 +1097,7 @@ class Figures(object):
 
                 if n == 0:
                     axes[ic].set_title(
-                        f"BC{cellN:02d}  {dBSPL:s}",
+                        f"BC{cellN:02d}",
                         loc="center",
                         fontdict={
                             "verticalalignment": "baseline",
@@ -1293,7 +1293,7 @@ class Figures(object):
         else:
             example_cells = [5, 30, 9, 17]  # in order of spikes for largest input
 
-        Figure4_stim_level = "Spont"  # "30dB" or "Spont" are valid settings.
+        Figure4_stim_level = "30dB"  # "30dB" or "Spont" are valid settings.
         participation_dB = 30  # the stimulus level at which the participation is
         # compared versus participation during spont
 
@@ -1387,6 +1387,9 @@ class Figures(object):
             showgrid=False,
             parent_figure=parent_figure,
         )
+        P.figure_handle.text(x=0.01, y=figsize[1]-0.1, s=f"{Figure4_stim_level:s}",
+            fontdict={"fontsize": 11, "fontweight": "bold", "verticalalignment": "top"},
+            transform=P.figure_handle.dpi_scale_trans)
 
         synperum2 = 0.7686  # taken from cell_config.py, line 127 (11/15/2021)
 
@@ -1584,7 +1587,7 @@ class Figures(object):
         else:
             fig.P = P
         if not supplemental1:
-            fig.filename = "Figure4_Ephys2_main_v11.pdf"
+            fig.filename = "Figure4/Figure4_Ephys2_main_v11.pdf"
             fig.title[
                 "title"
             ] = "SBEM Project Figure 4 (main) Modeling: singles inputs, efficacy and revcorr, revised version 8"
@@ -2232,16 +2235,17 @@ class Figures(object):
             return None
 
     def Figure7_Main(self, parent_figure=None):
+        example_cell_number = 17
         lh = 0.5
         hsp = 0.7
         xw = 2.25
         rh = lh + xw + hsp
         col3 = rh + xw + hsp
         col4 = col3 + xw + hsp
-        yht = 0.9
-        ypos = [0.5+0.75+0.15 + i*(yht+0.3) for i in range(6)]
+        yht = 0.8
+        ypos = [0.5+0.75+0.15 + i*(yht+0.4) for i in range(6)]
         yhtr = 2.0
-        yposr = [0.5 + i*(yhtr+0.6) for i in range(3)]
+        yposr = [0.5 + i*(yhtr+0.82) for i in range(3)]
         sizer = OrderedDict(  # define figure layout
             [
                 ("A", {"pos": [lh, xw, ypos[5], yht], "labelpos": [-0.1, 1.05]}),
@@ -2250,14 +2254,14 @@ class Figures(object):
                 ("D", {"pos": [lh, xw, ypos[2], yht], "labelpos": [-0.1, 1.05]}),
                 ("E", {"pos": [lh, xw, ypos[1], yht], "labelpos": [-0.1, 1.05]}),
                 ("F", {"pos": [lh, xw, ypos[0], yht], "labelpos": [-0.1, 1.05]}),
-                ("G", {"pos": [lh, xw, 0.5, 0.65], "labelpos": [-0.1, 1.05]}),
+                ("G", {"pos": [lh, xw, 0.5, 0.5], "labelpos": [-0.1, 1.05]}),
                 ("H", {"pos": [rh, xw, ypos[5], yht], "labelpos": [-0.1, 1.05]}),
                 ("I", {"pos": [rh, xw, ypos[4], yht], "labelpos": [-0.1, 1.05]}),
                 ("J", {"pos": [rh, xw, ypos[3], yht], "labelpos": [-0.1, 1.05]}),
                 ("K", {"pos": [rh, xw, ypos[2], yht], "labelpos": [-0.1, 1.05]}),
                 ("L", {"pos": [rh, xw, ypos[1], yht], "labelpos": [-0.1, 1.05]}),
                 ("M", {"pos": [rh, xw, ypos[0], yht], "labelpos": [-0.1, 1.05]}),
-                ("N", {"pos": [rh, xw, 0.5, 0.65], "labelpos": [-0.1, 1.05]}),
+                ("N", {"pos": [rh, xw, 0.5, 0.5], "labelpos": [-0.1, 1.05]}),
                 # right side, summary plots
                 ("O1", {"pos": [col3, xw, yposr[2], yhtr], "labelpos": [-0.1, 1.05]}),
                 ("O2", {"pos": [col4, xw, yposr[2], yhtr], "labelpos": [-0.1, 1.05]}),
@@ -2274,10 +2278,19 @@ class Figures(object):
             label=True,
             figsize=(12.0, 9.0),
             units="inches",
-            showgrid=True,
+            showgrid=False, 
             # labelposition=(-0.05, 1.02),
         )
-        # Column 1: AM
+        
+        # title the 2 left columns
+        mpl.text(x=1.5, y=8.3, s=f"BC {example_cell_number:02d}  200Hz SAM", fontdict={
+                "fontsize": 10, "fontweight": "bold", "ha": "center"},
+                transform=P.figure_handle.dpi_scale_trans)
+        mpl.text(x=4.5, y=8.3, s=f"BC {example_cell_number:02d}  60 Hz Click Train", fontdict={
+                "fontsize": 10, "fontweight": "bold", "ha": "center"},
+                transform=P.figure_handle.dpi_scale_trans)
+
+        # Column 1: SAM
 
         label_font = {"fontsize": 8, "fontweight": "normal"}
         title_font = {"fontsize": 9, "fontweight": "normal"}
@@ -2313,7 +2326,7 @@ class Figures(object):
         P.axdict["I"].set_ylabel("Trial", fontdict=label_font)
 
         P.axdict["J"].set_title(
-            "Bushy PSTH", fontdict=title_font, verticalalignment="top", y=0.95
+            "Bushy PSTH", fontdict=title_font, verticalalignment="bottom", y=0.95
         )
         P.axdict["J"].set_ylabel("Spikes/second", fontdict=label_font)
 
@@ -2353,20 +2366,20 @@ class Figures(object):
         ]:
             P.axdict[axl].sharex(P.axdict["H"])
 
-        cell_number = 11
+
         self.Figure7_one_column(
-            "SAM",
-            cell_number,
-            FD.figure_SAM_SAC,
-            P,
-            ["A", "B", "C", "D", "E", "F", "G"],
+            mode = "SAM",
+            cell_number = example_cell_number,
+            dataset = FD.figure_SAM_SAC,
+            P = P,
+            pan = ["A", "B", "C", "D", "E", "F", "G"],
         )
         self.Figure7_one_column(
-            "SAC",
-            cell_number,
-            FD.figure_SAM_SAC,
-            P,
-            ["H", "I", "J", "K", "L", "M", "N"],
+            mode = "SAC",
+            cell_number = example_cell_number,
+            dataset = FD.figure_SAM_SAC,
+            P = P,
+            pan = ["H", "I", "J", "K", "L", "M", "N"],
         )
 
         """ Now do the right side with the VS plots and "V" plots
@@ -2374,15 +2387,21 @@ class Figures(object):
         """
         VSP = SAM_VS_vplots.VS_Plots(dBSPL=15)
         VSP.plot_VS_Data(axin=P.axdict["O1"])
-        VSP = SAM_VS_vplots.VS_Plots(dBSPL=30)
-        VSP.plot_VS_Data(axin=P.axdict["O2"], legend=False)
+        VSP30 = SAM_VS_vplots.VS_Plots(dBSPL=30)
+        VSP30.plot_VS_Data(axin=P.axdict["O2"], legendflag=False)
+
+        VSP.plot_VS_summary(5, axin=P.axdict["P1"], legendflag=True)
+        VSP.plot_VS_summary(30, axin=P.axdict["P2"], legendflag=False)
+        VSP.plot_VS_summary(9, axin=P.axdict["P3"], legendflag=False)
+        VSP.plot_VS_summary(17, axin=P.axdict["P4"], legendflag=False)
+
 
         fig = FigInfo()
         if parent_figure is not None:
             fig.P = parent_figure
         else:
             fig.P = P
-        fig.filename = "Figure7/Figure7_Ephys3_main_v1_left.pdf"
+        fig.filename = "Figure7/Figure7_main_v3_complete.pdf"
         fig.title["title"] = "SBEM Project Figure 7 Modeling: SAM, SAC"
         title2 = {"title": f"", "x": 0.99, "y": 0.01}
         fig.title2 = title2
@@ -2399,13 +2418,13 @@ class Figures(object):
             "Simulations",
             "AN",
         )
-        # print('dataset: ', dataset)
-        # print('keys: ', dataset.keys())
-        # print('mode: ', mode)
-        # print('cellpath: ', cellpath)
-        # print("cell_number: ", cell_number)
-        # print(dataset.keys())
-        # print('dataset[mode]: ', dataset[cell_number][mode])
+        print('dataset: ', dataset)
+        print('keys: ', dataset.keys())
+        print('mode: ', mode)
+        print('cellpath: ', cellpath)
+        print("cell_number: ", cell_number)
+        print(dataset.keys())
+        print('dataset[mode]: ', dataset[cell_number][mode])
 
         sfi = Path(cellpath, Path(dataset[cell_number][mode]).name)
         if not sfi.is_dir():
@@ -2457,7 +2476,8 @@ class Figures(object):
         ninputs = len(an_st_by_input)
 
         self.plot_stacked_spiketrain_rasters(
-            an_st_by_input, ax=P.axdict[pan[3]], si=MD.SI, plot_win=plot_win
+            an_st_by_input, ax=P.axdict[pan[3]], si=MD.SI, plot_win=plot_win,
+            linewidth=2.0,
         )
         # P.axdict[pan[3]].set_xlabel("Time (s)")
 
@@ -2905,6 +2925,7 @@ class Figures(object):
         use_colors: bool = True,
         colormap="Set3",
         cbar_vmax: float = 300.0,
+        linewidth=1.0,
     ):
         """
         Spike trains are plotted as a raster for all inputs in the AN data
@@ -2975,7 +2996,7 @@ class Figures(object):
                     "|",
                     markersize=2.5,
                     color=color,
-                    linewidth=0.5,
+                    linewidth=linewidth,
                 )
                 ax.yaxis.set_ticks([1, 2], ["1", "2"])
         ax.set_xlim(plot_win)
