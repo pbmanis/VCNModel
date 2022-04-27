@@ -6,6 +6,7 @@ import matplotlib.pyplot as mpl
 import numpy as np
 from vcnmodel.util import trace_calls
 from vcnmodel.analyzers import analysis as SPKANA
+from vcnmodel.util.basic_units import radians
 
 TRC = trace_calls.TraceCalls
 
@@ -44,6 +45,7 @@ def plot_psth(
     bin_fill: bool = True,
     edge_color: str = "k",
     alpha: float = 1.0,
+    xunits: str="time",
 ):
     """Correctly plot PSTH with spike rate in spikes/second
     All values are in seconds (times, binwidths)
@@ -88,9 +90,14 @@ def plot_psth(
     # h, b = np.histogram(spike_times_flat, bins=bins)
     bins = np.arange(0.0, max_time - zero_time, bin_width)
     if bin_fill:
-        face_color = "k"
+        face_color = edge_color
     else:
-        face_color = "None"
+        face_color = None # "None"
+    if xunits == "radians":
+        xu = radians
+        bins = bins*radians
+    else:
+        xu = None
     if (
         (not np.isnan(np.sum(spike_times_flat)))
         and (len(spike_times_flat) > 0)
@@ -117,6 +124,10 @@ def plot_psth(
                 transform=ax.transAxes,
                 horizontalalignment="center",
             )
+    if xunits == "radians":
+        ticks = np.linspace(0, 2*np.pi, 5)
+        tick_labels = ["0", r"$\pi /2$", r"$\pi$", r"$3\pi /2$", r"$2\pi$"]
+        ax.set_xticks(ticks, tick_labels)
     return  # h, b
 
 
