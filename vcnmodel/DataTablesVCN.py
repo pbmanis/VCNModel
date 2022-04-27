@@ -86,6 +86,7 @@ from vcnmodel.plotters import figure_data
 from vcnmodel.plotters import plot_z
 from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot
+from vcnmodel.plotters import plot_functions
 from pylibrary.tools import cprint as CP
 # import vcnmodel.correlation_calcs
 import vcnmodel.analyzers.spikestatistics
@@ -103,6 +104,7 @@ all_modules = [
     plot_sims,
     figures,
     figure_data,
+    plot_functions,
     plot_z,
     SAM_VS_vplots,
     efficacy_plot,
@@ -117,6 +119,7 @@ all_modules = [
     vcnmodel.util.fixpicklemodule,
     vcnmodel.util.readmodel,
     vcnmodel.util.trace_calls,
+    vcnmodel.util.basic_units,
     ephys.ephysanalysis.SpikeAnalysis,
     ephys.tools.Utility,
     ephys.ephysanalysis.MakeClamps,
