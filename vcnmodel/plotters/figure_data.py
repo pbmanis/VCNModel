@@ -385,6 +385,10 @@ figure_SAM_SAC = {
         "SAM": "runANPSTH-all-2021-12-05.21-59-17",
         "SAC": "runANPSTH-all-2022-01-02.21-30-35",
     },
+    17: {
+        "SAM": "runANPSTH-all-2021-12-06.00-03-21",
+        "SAC": "runANPSTH-all-2022-01-02.22-02-02",
+    }
 }
 
 all_figures = {
