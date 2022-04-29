@@ -87,6 +87,7 @@ from vcnmodel.plotters import plot_z
 from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot
 from vcnmodel.plotters import plot_functions
+from vcnmodel.analyzers import pattern_summary
 from pylibrary.tools import cprint as CP
 # import vcnmodel.correlation_calcs
 import vcnmodel.analyzers.spikestatistics
@@ -116,6 +117,7 @@ all_modules = [
     vcnmodel.analyzers.isi_cv,
     vcnmodel.analyzers.sttc,
     vcnmodel.analyzers.sac,
+    vcnmodel.analyzers.pattern_summary,
     vcnmodel.util.fixpicklemodule,
     vcnmodel.util.readmodel,
     vcnmodel.util.trace_calls,
@@ -607,14 +609,14 @@ class DataTablesVCN:
                     "values":  [
                                 "-------Figure 3-------",
                                 "Figure3-Ephys_1_Main",
-                                "Figure3-Supplemental1_ABC_VC-KLTCalibration",
-                                "Figure3-Supplemental1_DEF_VC_Rin_Taum",
-                                "Figure3-Supplemental2_CC",
-                                "Figure3-Supplemental3_Zin",
-                                "Figure3-Supplemental4_PSTH",
+                                "Figure3-Supplemental2_VC",
+                                "Figure3-Supplemental3_CC",
+                                "Figure3-Supplemental4_Zin",
+                                "Figure3-Supplemental5_PSTH",
                                 "-------Figure 4--------",
                                 "Figure4-Ephys_2_Main",
                                 "Figure4-Ephys_2_Supplemental1",
+                                "Figure4-Ephys_2_Supplemental3",
                                 "-------Figure 7--------",
                                 "Figure7-Ephys_3_Main",
                                 "Figure7-Ephys_3_Supplemental1",

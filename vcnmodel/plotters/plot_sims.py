@@ -490,7 +490,6 @@ class PlotSims:
             ninspikes : number of input spikes to the cell
         """
 
-        print(xmin, xmax)
         inx = str(fn).find("_Syn")
         synno = None
         if inx > 0:
@@ -523,7 +522,6 @@ class PlotSims:
         ninspikes = 0
         ispikethr = None
         spike_rheobase = None
-        print('xmax incoming: ', xmax)
         if xmax is None and protocol not in ["IV", "VC"]:
             xmax = 1e3 * (ri.pip_start + ri.pip_duration)
             xmin = 1e3 * ri.pip_start
@@ -740,18 +738,17 @@ class PlotSims:
 
         elif protocol in ["VC", "vc", "vclamp"]:
             maxt = np.max(AR.MC.time_base)
-            if calx is None:
-                tlen = 10  # ms
-                calx = maxt - tlen
-
-            PH.calbar(
-                ax1,
-                calbar=[calx, caly, calt, calv],
-                orient="left",
-                unitNames={"x": "ms", "y": "nA"},
-                fontsize=9,
-            )
-            if ax2 is not None:
+            if calx is not None:
+                PH.calbar(
+                    ax1,
+                    calbar=[calx, caly, calt, calv],
+                    orient="left",
+                    unitNames={"x": "ms", "y": "nA"},
+                    fontsize=9,
+                )
+            else:
+                PH.noaxes(ax1)
+            if ax2 is not None and calx2 is not None:
                 PH.calbar(
                     ax2,
                     calbar=[calx2, caly2, calt2, calv2],
@@ -764,6 +761,8 @@ class PlotSims:
                     color="k",
                     font="Arial",
                 )
+            else:
+                PH.noaxes(ax2)
         else:
             if calx is not None and iax is not None:
                 cprint("r", "**** making cal bar")
@@ -833,22 +832,27 @@ class PlotSims:
             PD = self.newPData()
             trace_ax = P.axarr[i * 3, 0]
             cmd_ax = P.axarr[i * 3 + 1, 0]
+            if i == 0:
+                calx=120.
+            else:
+                calx = None
             self.plot_traces(
                 ax=[trace_ax, cmd_ax],
                 fn=sfi[i],
                 PD=PD,
                 protocol=protocol[i],
-                calx=120.0,
+                calx=calx,
                 caly=5.0,
                 calt=10.0,
                 calv=2.0,
-                calx2=120.0,
+                calx2=calx,
                 caly2=-40.0,
                 calt2=10.0,
                 calv2=20.0,
                 xmax=150.0,
                 figure=P.figure_handle,
                 clipping=True,
+                show_title=False
             )
             trace_ax.set_ylim((-1, 15))
             trace_ax.set_clip_on(True)

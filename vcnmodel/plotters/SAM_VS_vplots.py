@@ -41,11 +41,17 @@ from matplotlib import ticker
 from pylibrary.plotting import plothelpers as PH
 
 # seaborn default palette, first 3 colors
-colors = [
-    (0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
-    (1.0, 0.4980392156862745, 0.054901960784313725),
-    (0.17254901960784313, 0.6274509803921569, 0.17254901960784313),
-]
+colors = [(0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
+          (1.0, 0.4980392156862745, 0.054901960784313725),
+          (0.17254901960784313, 0.6274509803921569, 0.17254901960784313), 
+          (0.8392156862745098, 0.15294117647058825, 0.1568627450980392),
+          (0.5803921568627451, 0.403921568627451, 0.7411764705882353),
+          (0.5490196078431373, 0.33725490196078434, 0.29411764705882354),
+          (0.8901960784313725, 0.4666666666666667, 0.7607843137254902),
+          (0.4980392156862745, 0.4980392156862745, 0.4980392156862745),
+          (0.7372549019607844, 0.7411764705882353, 0.13333333333333333),
+          (0.09019607843137255, 0.7450980392156863, 0.8117647058823529),
+          ]
 
 
 def reset_style():
@@ -194,6 +200,8 @@ class VS_Plots:
         return [f"{y:.2f}" for y in x]
 
     def plot_with_p9(self, df, PI, figure=None, axs=None):
+        if figure is None:
+            PN.options.figure_size = (10, 10)
         dodge = PN.positions.position_dodge(width=0.6)
         themer = PN.themes.theme
         gg = (
@@ -300,10 +308,11 @@ class VS_Plots:
             #       + PN.scale_x_discrete(labels=labels)
             + PN.scales.ylim(PI.yscale)
             + PN.themes.theme(legend_position=(0.5, 0.93), legend_entry_spacing=0.001)
-            + PN.theme(figure_size=(3, 5))
+            + PN.theme(figure_size=(8, 10))
             # + PN.scales.scale_y_continuous(breaks=[f"{f:.1f}" for f in [0, 0.2, 0.4 0.6, 0.8, 1.0]]) # scalefun) # PN.scales.number_format(accuracy = 0.01))
         )
         # print(dir(PN.scales))
+
 
         fig, P = gg.draw(return_ggplot=True)
         # print(dir(fig))
@@ -313,13 +322,13 @@ class VS_Plots:
 
         # fig2 = mpl.figure(99)
 
-        PN.options.figure_size = (10, 10)
 
         # mpl.show()
         # return fig, P
 
-        save_file = f"Figure7/Figure7_supp/Figure7_Main_RHS_top.pdf"
-        # save_file = f"Figure7/Figure7_supp/Figure7_Supplemental2_V2.pdf"
+        # save_file = Path(f"Figure7/Figure7_supp/Figure7_Main_RHS_top.pdf")
+        save_file = Path(f"Figure7/Figure7_supp/Figure7_Supplemental2_V2.pdf")
+        save_file_png = save_file.with_suffix(".png")
 
         # fig.text(
         #     0.99,
@@ -339,7 +348,14 @@ class VS_Plots:
                 "Title": title,
             },
         )
-
+        mpl.savefig(
+            Path(self.config["baseDataDirectory"], "Figures", save_file_png),
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": title,
+            },
+        )
         fig.filename = save_file
         if hasattr(fig, "title"):
             fig.title["title"] = title
@@ -495,11 +511,10 @@ if __name__ == "__main__":
 
     V1 = VS_Plots(dBSPL=15)
     # V1.plot_VS_Data()
-    V1.plot_VS_summary(17)
-    exit()
+    #V1.plot_VS_summary(17)
+    #exit()
 
-    V = VS_Plots(sels=[5, 30, 9, 17])
-
+    V = VS_Plots()
     fig, P = V.make_figure()
 
     # fm, new_ax = mpl.subplots(2,2)

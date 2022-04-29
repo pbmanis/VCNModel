@@ -29,6 +29,7 @@ import toml
 from matplotlib import pyplot as mpl
 from matplotlib import rc
 from pylibrary.plotting import plothelpers as PH
+from vcnmodel.util.set_figure_path import set_figure_path
 
 rc("text", usetex=True)
 rc("text.latex", preamble=r"\usepackage{xcolor}")
@@ -150,7 +151,11 @@ class PlotZ:
             f = []
             for fin in self.fi:
                 f.append(self.checkfi(fin, cellmode=cond, decorate="normal"))
-            self.plot_col(col=i, f=f, P=P, axonly_scale=axonly_scale)
+            if i == 0:
+                annotate=True
+            else:
+                annotate=False
+            self.plot_col(col=i, f=f, P=P, axonly_scale=axonly_scale, annotate=annotate)
 
         for i, fin in enumerate(self.fi):
             with open(
@@ -177,17 +182,27 @@ class PlotZ:
         P.axarr[1, 2].set_ylabel(rholabel)
         P.axarr[1, 2].set_ylim((0, rho_scale))
 
-        save_file = "Figure3/Figure3_supp/Figure3_Supplemental3_Zin_undecorated.pdf"
+        save_file = set_figure_path(fignum=3, filedescriptor="Zin_decorated", suppnum=3)
+#        "Figure3/Figure3_supp/Figure3_Supplemental3_Zin_undecorated.pdf"
         P.figure_handle.text(
             0.99,
             0.99,
-            save_file,
+            save_file.name,
             transform=P.figure_handle.transFigure,
             horizontalalignment="right",
             verticalalignment="top",
         )
         mpl.savefig(
-            Path(self.config["baseDataDirectory"], "Figures", save_file),
+            save_file,
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": "SBEM Project Figure3, Supplemental Figure 3 Modeling, Zin",
+            },
+        )
+        f2 = save_file.with_suffix(".png")
+        mpl.savefig(
+            f2,
             metadata={
                 "Creator": "Paul Manis",
                 "Author": "Paul Manis",
@@ -196,7 +211,7 @@ class PlotZ:
         )
         mpl.show()
 
-    def plot_col(self, col, f, P, axonly_scale=3000.):
+    def plot_col(self, col, f, P, axonly_scale=3000., annotate=True):
         import matplotlib.scale as MPLS
         import matplotlib.ticker
         
@@ -283,13 +298,63 @@ class PlotZ:
             ticks = matplotlib.ticker.FixedLocator([1, 10, 100, 1000, 10000])
             ax[row, col].set_xticklabels(["1", "10", "100", "1000", "10000"])
         # MPLS.LogScale(ax[0, col], subs=[2,3,4,5,6,7,8,9])
- #        MPLS.LogScale(ax[1, col], subs=[2,3,4,5,6,7,8,9])
+ #        MPLS.LogScale(ax[1, col], subs=[2,3,4,5,6,7,8,9])s
         for row in [0, 1, 2]:
             # for tick in ax[row, col].get_xticklabels():
 #                 tick.set_fontname("Arial")
 #             for tick in ax[row, col].get_yticklabels():
 #                 tick.set_fontname("Arial")
             ax[row, col].tick_params('both', which='major', labelsize=8)
-    
+
+        # Annotations on panel H
+        if annotate:
+            axh = P.axdict["H"]
+            axh.set_clip_on(False)
+            # axh.text(x=20, y=0, s="10 kHz", 
+            #     fontdict={"fontsize": 8, "fontweight": "normal",
+            #         "ha": "center", "va": "top"})
+            # axh.text(x=38, y=0, s="1 Hz", 
+            #     fontdict={"fontsize": 8, "fontweight": "normal",
+            #         "ha": "left", "va": "bottom"})
+            # axh.text(x=100, y=30, s="95 Hz", 
+            #     fontdict={"fontsize": 8, "fontweight": "normal",
+            #         "ha": "center", "va": "center"})
+            # arc around the plot to indicate directions
+            npts = 100
+            ang = np.linspace(-np.pi/8, 0.8*np.pi, npts)
+            x_center = np.linspace(60, 45, npts)
+            y_center = np.linspace(18, 18, npts)
+            minrad = 38
+            import scipy.signal.windows
+            from matplotlib.collections import PatchCollection
+            from matplotlib.patches import Rectangle
+            radius = minrad + 12*(scipy.signal.windows.gaussian(200, 80)[85:185]-0.5)
+            # np.linspace(40, 40, 100)
+            x = x_center + radius*np.cos(ang)
+            y = y_center + radius*np.sin(ang)
+            axh.plot(x[1:], y[1:], 'k-', clip_on=False)
+            # axh.plot(x_center, y_center, 'r-')
+
+            axh.arrow(x[0], y[0], x[1]-x[0], y[1]-y[0], shape="full",
+                overhang=0.3,
+                lw = 1, width=0, head_length=6, head_width=5, color='k', clip_on=False)
+            axh.arrow(x[-1], y[-1], x[-1]-x[-2], y[-1]-y[-2], shape="full",
+                overhang=0.3,
+                lw = 1, width=0, head_length=6, head_width=5, color='k', clip_on=False,)
+            axh.text(x=20, y=0, s="10 kHz", 
+                fontdict={"fontsize": 8, "fontweight": "normal",
+                    "ha": "center", "va": "top"})
+            axh.text(x=36, y=-0.5, s="1 Hz", 
+                fontdict={"fontsize": 8, "fontweight": "normal",
+                    "ha": "left", "va": "bottom"},
+                    )
+            # rect = [Rectangle((90, 27), 30, 8, facecolor='w', fill=True, edgecolor='k', clip_on=False)]
+            # pc = PatchCollection(rect)
+            # axh.add_collection(pc)
+            axh.text(x=105, y=28, s="95 Hz", 
+                fontdict={"fontsize": 8, "fontweight": "normal",
+                    "ha": "center", "va": "center"},
+                    bbox=dict(facecolor='white', alpha=1, edgecolor='none'))
+
 if __name__ == "__main__":
     Z = PlotZ()

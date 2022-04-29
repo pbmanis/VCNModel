@@ -463,7 +463,7 @@ def eff_ais(data):
     )
     mpl.setp(axd["A"].get_legend().get_texts(), fontsize="11")  # for legend text
     axd["A"].legend(labelspacing=0.35)
-    axd["A"].set_xlabel(r"Dendrite area (${\mu m^2}$)")
+    axd["A"].set_xlabel(r"Dendrite Area (${\mu m^2}$)")
     axd["A"].set_ylabel("Efficacy")
     axd["A"].set_xlim(3000, 4800)
     axd["A"].set_ylim(0, 1.0)
@@ -562,7 +562,7 @@ def eff_one_input(ax=None, legend=True):
         x = df.loc[(df["Cell"].values == ident) & (df["syn#"].values == 0)]
         if f"{ident:02d}" in list(DendAreas.keys()):
 
-            df.at[x.index, "Dendrite Area (um2)"] = DendAreas[f"{ident:02d}"]
+            df.at[x.index, r"Dendrite Area (um2)"] = DendAreas[f"{ident:02d}"]
     df0 = df[df["syn#"].values == 0]
     print(df0)
 
@@ -600,8 +600,10 @@ def eff_one_input(ax=None, legend=True):
         pointSize=None,
     )
     axr.text(
-        x=3000, y=1.0, s=r"Single synapse ASA = 150 ${\mu m^2}$", va="top", ha="left"
+        x=3000, y=1.0, s=r"Single synapse ASA = 150 ${\mu m^2}$", va="top", ha="left",
+        fontdict={"fontsize": 8, "fontweight": "normal"},
     )
+    axr.set_xlabel(r"Dendrite Area (${\mu m^2}$)")
     if ax is None:
         mpl.show()
 
@@ -959,9 +961,9 @@ class EfficacyPlots(object):
             # do the cells first
             for i, cellid in enumerate(all_cells):
                 legend_elements.append(Line2D([0], [0], color=pal[i], marker='o', lw=0, label=f"BC{cellid:02d}"))
-            legend_elements.append(Line2D([0], [0], color='grey', marker='*', lw=0, markersize=5, markeredgecolor=None, label="Test Inputs"))
-            legend_elements.append(Line2D([0], [0], color='red', lw=1, label="Fit: 9, 11, 13, 17"))
-            legend_elements.append(Line2D([0], [0], color='skyblue', lw=1, label="Fit: to 2, 5, 6,\n  10, 18, 30"))
+            legend_elements.append(Line2D([0], [0], color='grey', marker='*', lw=0, markersize=5, markeredgecolor=None, label="Pred."))
+            legend_elements.append(Line2D([0], [0], color='red', lw=1, label="Group1"))
+            legend_elements.append(Line2D([0], [0], color='skyblue', lw=1, label="Group2"))
             
             # legend_elements = [Line2D([0], [0], color=pal[0], marker, label='Line'),
             #                 Line2D([0], [0], marker='o', color='w', label='Scatter',

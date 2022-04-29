@@ -33,7 +33,9 @@ import vcnmodel.cell_config as cell_config
 import vcnmodel.plotters.figure_data as FD
 import vcnmodel.plotters.plot_sims as PS
 import vcnmodel.util.readmodel as readmodel
+from vcnmodel.util.set_figure_path import set_figure_path
 from pylibrary.tools import cprint as CP
+from pylibrary.plotting import plothelpers as PH
 from pyrsistent import PSet
 from vcnmodel.analyzers import reverse_correlation as REVCORR
 
@@ -235,32 +237,57 @@ def get_pattern_data():
     return compares
 
 
-def summarize_patterns():
-    compares = get_pattern_data()
-    compares.to_pickle("compares.pkl")
+# seaborn default palette, first 10 colors
+colors = [(0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
+          (1.0, 0.4980392156862745, 0.054901960784313725),
+          (0.17254901960784313, 0.6274509803921569, 0.17254901960784313), 
+          (0.8392156862745098, 0.15294117647058825, 0.1568627450980392),
+          (0.5803921568627451, 0.403921568627451, 0.7411764705882353),
+          (0.5490196078431373, 0.33725490196078434, 0.29411764705882354),
+          (0.8901960784313725, 0.4666666666666667, 0.7607843137254902),
+          (0.4980392156862745, 0.4980392156862745, 0.4980392156862745),
+          (0.7372549019607844, 0.7411764705882353, 0.13333333333333333),
+          (0.09019607843137255, 0.7450980392156863, 0.8117647058823529),
+          ]
+
+def summarize_patterns(reanalyze=False):
+    if reanalyze:
+        compares = get_pattern_data()
+        compares.to_pickle("compares.pkl")
 
     compares = pd.read_pickle("compares.pkl")
     # print(compares.head(10))
-    f, ax = mpl.subplots(4, 3)
-    f.set_size_inches(5, 8)
+    f, ax = mpl.subplots(4, 4)
+    f.set_size_inches(7, 7)
     ax = ax.ravel()
     pats = [
         "1st_largest_alone",
-        "1st_largest+others",
-        "1st+2nd_alone",
         "2nd_largest_alone",
-        "2nd_largest+others",
-        "1st+2nd+others",
         "3rd_largest_alone",
+        "",
+        "1st_largest+others",
+        "2nd_largest+others",
         "3rd_largest+others",
+        "4th_largest+others",
+        "1st+2nd_alone",
+        "1st+2nd+others",
         "1st+2nd+3rd+others",
+        "",
         "not_largest",
         "not_2_largest",
         "not_3_largest",
+        "",
     ]
     pnames = sorted(set(pats))
     pdatanames = sorted(set(compares["PatternName"].values))
-    assert pnames == pdatanames
+    # print(pnames)
+    # print(pdatanames)
+
+    for p in pats:
+        if p == "":
+            continue
+        if p not in pdatanames:
+            raise ValueError(f"Pattern {p:s} is missing from pdatanames")
 
     # create your own color array
     bar_colors = [(0.8, 0.8, 0.8, 0.2), (0.0, 0.0, 1.0, 0.5)]
@@ -271,6 +298,9 @@ def summarize_patterns():
 
     for i, axl in enumerate(pats):
         # with sns.set_palette(bar_colors):
+        if axl == "":
+            PH.noaxes(ax[i])
+            continue
         axt = sns.boxplot(
             data=compares[compares["PatternName"] == pats[i]],
             x="Group",
@@ -291,40 +321,28 @@ def summarize_patterns():
             hue="Cell",
             ax=ax[i],
             size=3,
-            # color="black",
         )
-        # print(dir(swp))
-        # print(dir(swp.legend_))
+
         if i < len(pats) - 1:
             swp.legend_.remove()
         else:
-            # print(dir(swp.legend_))
-            swp.legend(labelspacing=0.18, fontsize=6.5)
+            print(dir(f))
+            f.legend(labelspacing=0.18, fontsize=6.5, loc="lower right") # (1.5, 0.))
             for lh in swp.legend_.legendHandles:
                 lh.set_alpha(1)
                 lh._sizes = [10]
-                # print(dir(lh_label))
         ax[i].set_title(pats[i], fontsize=9)
         ax[i].set_ylim(0, 100)
     mpl.tight_layout()
-    where_is_data = Path("wheres_my_data.toml")
-    if where_is_data.is_file():
-        datapaths = toml.load("wheres_my_data.toml")
-    else:
-        raise ValueError()
-    mpl.savefig(
-        Path(
-            datapaths["baseDataDirectory"],
-            datapaths["figureDirectory"],
-            "Figure4",
-            "Figure4_supp",
-            "Figure4-Supplemental3_Patterns.pdf",
-        )
-    )
+
+    fn = set_figure_path(fignum=4, filedescriptor="Patterns_V1", suppnum=3)
+    mpl.savefig(fn)
+    fn2 = fn.with_suffix(".png")
+    mpl.savefig(fn2)
     mpl.show()
 
 
-def Figure4E_pattern_plot(ax=None):
+def Figure4F_pattern_plot(axin=None):
     """Plot the fraction of inputs for specific subsets of
     input patterns for cells 5, 30, 9 and 17
 
@@ -341,10 +359,12 @@ def Figure4E_pattern_plot(ax=None):
 
     compares = pd.read_pickle("compares.pkl")
     print("compares:\n", compares.head(10))
-    if ax is None:
+    if axin is None:
         f, ax = mpl.subplots(1, 1)
         f.set_size_inches(5, 5)
-
+    else:
+        ax = axin
+    
     pats = [
         "1st_largest_alone",
         "1st_largest+others",
@@ -354,10 +374,18 @@ def Figure4E_pattern_plot(ax=None):
         "3rd_largest+others",
         "4th_largest+others",
     ]
-
+    ax.tick_params(axis="x", direction="out")
+    ax.tick_params(axis="y", direction="out")
+    # print(list(ax.spines.keys()))
+    # print(dir(ax.spines['left']))
+    # ax.spines['left'].set_position(('outward', 0.02))
+    # ax.spines['bottom'].set_position(('outward', 0.02))
     cells = [5, 30, 9, 17]
-    print(compares.values)
+    # print(compares.values)
     df = compares[compares["PatternName"].isin(pats) & compares["Cell"].isin(cells)]
+    # remap colors for the selected cells
+    subset_palette = [colors[1], colors[3], colors[7], colors[9]]
+    sns.set_palette(subset_palette)
     sns.pointplot(
         x="PatternName",
         y="Percent",
@@ -370,23 +398,41 @@ def Figure4E_pattern_plot(ax=None):
             "o",
             "o",
         ],
+        scale=0.75,
         kind="swarm",
         ax=ax,
     )
+    ax.set_xlabel("Input Patterns") # 
+    # ax.text(x=0.5, y=1.0, s="Input Patterns", 
+    #     fontdict={"fontsize": 9, "fontweight": "normal", "ha": "center"},
+    #     transform=ax.transAxes)
+    ax.set_ylabel("% of spikes evoked by input pattern")
+    ax.set_clip_on(False)
+    # PH.nice_plot(ax, position=(-0.02), direction="outward")
 
     ax.set_ylim(0, 100)
+    ax.legend().remove()
+    # remap the database names to a more user-friendly name
+    namemap = {"1st_largest_alone": "1st",
+              "1st_largest+others": "1st+_others",
+              "2nd_largest_alone": "2nd",
+              "2nd_largest+others": "2nd+_others",
+              "3rd_largest_alone": "3rd",
+              "3rd_largest+others": "3rd+_others",
+              "4th_largest+others": "4th+_others"}
     tl = []
     for l in ax.get_xticklabels():
-        # print(dir(l))
-        t = str(l.get_text()).replace("_", "\n")
-        print(t)
+        tickl = str(l.get_text())
+        if tickl in list(namemap.keys()):
+            tickl = namemap[tickl]
+        t = tickl.replace("_", "\n")
         tl.append(t)
-    ax.set_xticklabels(tl, rotation=45)
-    mpl.tight_layout()
-
-    mpl.show()
+    ax.set_xticklabels(tl, rotation=0, fontdict={"fontsize": 6.5, "fontweight": "normal"})
+    if axin is None:
+        mpl.tight_layout()
+        mpl.show()
 
 
 if __name__ == "__main__":
-    # summarize_patterns()
-    Figure4E_pattern_plot()
+    summarize_patterns()
+    # Figure4F_pattern_plot()

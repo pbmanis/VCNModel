@@ -36,6 +36,7 @@ import seaborn as sns
 import toml
 import vcnmodel.util.fixpicklemodule as FPM
 import vcnmodel.util.readmodel as readmodel
+from vcnmodel.util.set_figure_path import set_figure_path
 from matplotlib import image as mpimg
 from matplotlib.lines import Line2D
 from pylibrary.plotting import plothelpers as PH
@@ -43,12 +44,14 @@ from pylibrary.tools import cprint as CP
 from vcnmodel.analyzers import analyze_data
 from vcnmodel.analyzers import isi_cv as ISI
 from vcnmodel.analyzers import sac as SAC
+from vcnmodel.analyzers import pattern_summary as PATSUM
 from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot as EF
 from vcnmodel.plotters import \
     figure_data as FD  # table of simulation runs used for plotting figures
 from vcnmodel.plotters import plot_functions as PF
 from vcnmodel.plotters import plot_z as PZ
+
 
 cprint = CP.cprint
 
@@ -166,13 +169,13 @@ class Figures(object):
         # dispatch
         dispatch_table = {
             "Figure3-Ephys_1_Main": self.Figure3_Main,
-            "Figure3-Supplemental1_ABC_VC-KLTCalibration": self.plot_VC_gKLT,
-            "Figure3-Supplemental1_DEF_VC_Rin_Taum": self.Figure3_Supplemental1,
-            "Figure3-Supplemental2_CC": self.Figure3_Supplemental2_CC,
-            "Figure3-Supplemental3_Zin": self.Figure3_Supplemental3_Zin,
-            "Figure3-Supplemental4_PSTH": self.Figure3_Supplemental4_PSTH,
+            "Figure3-Supplemental2_VC": self.Figure3_Supplemental2_VC,
+            "Figure3-Supplemental3_CC": self.Figure3_Supplemental3_CC,
+            "Figure3-Supplemental4_Zin": self.Figure3_Supplemental4_Zin,
+            "Figure3-Supplemental5_PSTH": self.Figure3_Supplemental5_PSTH,
             "Figure4-Ephys_2_Main": self.Figure4_Main,
-            "Figure4-Ephys_2_Supplemental1": self.Figure4_Supplmental1,
+            "Figure4-Ephys_2_Supplemental1": self.Figure4_Supplemental1,
+            "Figure4-Ephys_2_Supplemental3": self.Figure4_Supplemental3,
             "Figure7-Ephys_3_Main": self.Figure7_Main,
             "Figure7-Ephys_3_Supplemental1": self.Figure7_Supplemental1,
             # Misc figures follow
@@ -216,11 +219,13 @@ class Figures(object):
 
         fig.P.figure_handle.text(
             0.98,
-            0.98,
-            fig.filename,  # .replace('_', '\_'),
+            1.0,
+            str(fig.filename.name),  # .replace('_', '\_'),
             transform=fig.P.figure_handle.transFigure,
-            horizontalalignment="right",
-            verticalalignment="top",
+            fontdict = {"fontsize": 7, "fontweight": "normal",
+                "horizontalalignment": "right",
+                "verticalalignment": "top",
+            }
         )
 
         if hasattr(
@@ -235,14 +240,31 @@ class Figures(object):
                     horizontalalignment="right",
                     verticalalignment="top",
                 )
-        ofile = Path(self.config["baseDataDirectory"], "Figures", fig.filename)
-        ofile.parent.mkdir(exist_ok=True)
+        if isinstance(fig.filename, str):
+            fig.filename = Path(fig.filename)
+        if not fig.filename.is_absolute():  # we were given a filename without the full path
+            out_file = Path(self.config["baseDataDirectory"], # make a full path
+                            self.config["figureDirectory"],
+                            fig.filename)
+        else:
+            out_file = fig.filename
+        out_file.parent.mkdir(exist_ok=True)
         cprint(
             "g",
-            f"Saving to: {str(Path(self.config['baseDataDirectory'])):s}, Figures: {str(fig.filename):s}",
+            f"Saving figure to: {str(out_file):s}",
         )
         mpl.savefig(
-            Path(self.config["baseDataDirectory"], "Figures", fig.filename),
+            out_file,
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": fig.title["title"],
+            },
+        )
+        # make png file as well
+        fn2 = Path(out_file).with_suffix(".png")
+        mpl.savefig(
+            Path(self.config["baseDataDirectory"], "Figures", fn2),
             metadata={
                 "Creator": "Paul Manis",
                 "Author": "Paul Manis",
@@ -308,6 +330,8 @@ class Figures(object):
         loc: location of the "sub" figure relative to the parent figure. ranges 0-1 in each axis
 
         toponly: just for replotting the raw traces.
+        parts: str
+            either "all" (respecting top only) or "DE"
 
         """
         if cell is None:
@@ -461,155 +485,113 @@ class Figures(object):
         # self.P2.axarr[0, 0].line.set_label(iv)
         # self.P2.axarr[0,0].legend(["passive", "normal", "active", "spike thresholds"])
 
-        if not toponly:
-            labels = ["Passive", "Half-active", "Active", "Spk Thresh"]
-            self.P2.axarr[0, 0].legend(
-                lines, labels, bbox_to_anchor=(0.32, 0.35), fontsize=7
+        labels = ["Passive", "Half-active", "Active", "Spk Thresh"]
+        self.P2.axarr[0, 0].legend(
+            lines, labels, bbox_to_anchor=(0.32, 0.35), fontsize=7
+        )
+        res_label = r"$\mathregular{R_{in} (M\Omega)}$"
+        phase_label = r"$\mathregular{\phi (radians)}$"
+
+        # plot overlays of all cell z/phase
+        for iax, mode in enumerate(["Z_passive", "Z_normal", "Z_active"]):
+            if mode not in FD.figure_IV.keys():
+                continue
+            sfi = Path(
+                self.config["cellDataDirectory"],
+                self.config["impedanceDirectory"],
+                FD.figure_IV[mode],
             )
-            res_label = r"$\mathregular{R_{in} (M\Omega)}$"
-            tau_label = r"$\mathregular{\tau_{m} (ms)}$"
-            phase_label = r"$\mathregular{\phi (radians)}$"
-
-            # plot overlays of all cell z/phase
-            for iax, mode in enumerate(["Z_passive", "Z_normal", "Z_active"]):
-                if mode not in FD.figure_IV.keys():
-                    continue
-                sfi = Path(
-                    self.config["cellDataDirectory"],
-                    self.config["impedanceDirectory"],
-                    FD.figure_IV[mode],
-                )
-                if not sfi.is_file():
-                    cprint("r", f"File not found!!!!!!\n->>> {str(sfi):s}")
-                    return None
-                ax = self.P3.axdict[phaseplot1]
-                label = sfi.name  # .replace("_", "\_")
-                with open(sfi, "rb") as fh:
-                    d = FPM.pickle_load(fh)
-                pz = ax.plot(
-                    d["f"],
-                    d["zin"],
-                    color=colors[iax],
-                    marker=syms[iax],
-                    markersize=3,
-                    label=label[:8],
-                )
-                ax.set_ylim(0, 60.0)
-                ax.set_xlim(1.0, 10000.0)
-                ax.set_ylabel(res_label)
-                PH.noaxeslabels(ax, whichaxes="x")
-                # ax.set_xlabel("Frequency (Hz)", fontsize=7)
-                ax.set_xscale("log")
-                self.force_log_ticks(ax)
-
-                # secax = PLS.create_inset_axes([0.0, 0.0, 1, 0.5], ax, label=str(ax))
-                secax = self.P3.axdict[phaseplot2]
-                secax.set_xscale("log")
-                secax.set_xlim(1.0, 10000.0)
-                self.force_log_ticks(secax)
-                pp = secax.plot(
-                    d["f"],
-                    d["phase"],
-                    color=colors[iax],
-                    marker=syms[iax],
-                    markersize=3,
-                    # label=filename
-                )
-                secax.set_ylim(-0.6, 0.2)
-                secax.set_ylabel(phase_label)
-                secax.set_xlabel("Frequency (Hz)")
-                PH.nice_plot(secax, position=self.axis_offset, direction="outward")
-
-            # PH.show_figure_grid(self.P.figure_handle)
-
-            # get Rin and RM from all the examples and make a summary distribution plot
-            rins = {}
-            taus = {}
-
-            k = 0
-            for rax, iv in enumerate(FD.figure_AllIVs.keys()):
-                # cellpath = Path(self.config['cellDataDirectory'], f"VCN_c{iv:02d}", 'Simulations', 'IV')
-                for iax, dendmode in enumerate(["passive", "normal", "active"]):
-                    dendm = self.get_dendmode(dendmode)
-
-                    sfi = Path(
-                        self.config["cellDataDirectory"],
-                        f"VCN_c{iv:02d}",
-                        "Simulations",
-                        "IV",
-                        FD.figure_AllIVs[iv][dendm],
-                    )
-                    if not sfi.is_dir():
-                        print(f"File '{str(sfi):s}' is not a directory")
-                        continue
-                    fn = list(sfi.glob("*"))
-                    sfi = Path(sfi, fn[0])
-                    AR, SP, RM = self.parent.PLT.plot_traces(
-                        None,  # self.P.axarr[rax, iax+1],
-                        sfi,
-                        PD,
-                        protocol="IV",
-                        ymin=ymin,
-                        ymax=ymax,
-                        iax=iax,
-                        figure=None,
-                    )
-                    rins[k] = {
-                        "Cell": iv,
-                        "Rin": RM.analysis_summary["Rin"],
-                        "dendrites": dendmode,
-                    }
-                    taus[k] = {
-                        "Cell": iv,
-                        "taum": RM.analysis_summary["taum"],
-                        "dendrites": dendmode,
-                    }
-                    k += 1
-
-            df_rin = pd.DataFrame.from_dict(rins, orient="index")  # , orient='index')
-            df_tau = pd.DataFrame.from_dict(taus, orient="index")
-
-            sns.boxplot(
-                data=df_rin,
-                x="dendrites",
-                y="Rin",
-                ax=self.P2.axdict[rinplot],
-                saturation=0.3,
-                palette=colors,
+            if not sfi.is_file():
+                cprint("r", f"File not found!!!!!!\n->>> {str(sfi):s}")
+                return None
+            ax = self.P3.axdict[phaseplot1]
+            label = sfi.name  # .replace("_", "\_")
+            with open(sfi, "rb") as fh:
+                d = FPM.pickle_load(fh)
+            pz = ax.plot(
+                d["f"],
+                d["zin"],
+                color=colors[iax],
+                marker=syms[iax],
+                markersize=3,
+                label=label[:8],
             )
-            sns.stripplot(
-                data=df_rin,
-                x="dendrites",
-                y="Rin",
-                ax=self.P2.axdict[rinplot],
-                color="0.6",
-                size=4.0,
-                edgecolor="k",
-            )
-            self.P2.axdict[rinplot].set_ylim(0, 30.0)
-            self.P2.axdict[rinplot].set_ylabel(res_label)
-            self.P2.axdict[rinplot].set_xlabel("Dendrite Decoration")
-            sns.boxplot(
-                data=df_tau,
-                x="dendrites",
-                y="taum",
-                ax=self.P2.axdict[tauplot],
-                saturation=0.3,
-                palette=colors,
-            )
-            sns.stripplot(
-                data=df_tau,
-                x="dendrites",
-                y="taum",
-                ax=self.P2.axdict[tauplot],
-                color="0.6",
-                size=4.0,
-                edgecolor="k",
-            )
-            self.P2.axdict[tauplot].set_ylim(0, 2.5)
-            self.P2.axdict[tauplot].set_ylabel(tau_label)
-            self.P2.axdict[tauplot].set_xlabel("Dendrite Decoration")
+            ax.set_ylim(0, 60.0)
+            ax.set_xlim(1.0, 10000.0)
+            ax.set_ylabel(res_label)
+            PH.noaxeslabels(ax, whichaxes="x")
+            # ax.set_xlabel("Frequency (Hz)", fontsize=7)
+            ax.set_xscale("log")
+            self.force_log_ticks(ax)
 
+            # secax = PLS.create_inset_axes([0.0, 0.0, 1, 0.5], ax, label=str(ax))
+            secax = self.P3.axdict[phaseplot2]
+            secax.set_xscale("log")
+            secax.set_xlim(1.0, 10000.0)
+            self.force_log_ticks(secax)
+            pp = secax.plot(
+                d["f"],
+                d["phase"],
+                color=colors[iax],
+                marker=syms[iax],
+                markersize=3,
+                # label=filename
+            )
+            secax.set_ylim(-0.6, 0.2)
+            secax.set_ylabel(phase_label)
+            secax.set_xlabel("Frequency (Hz)")
+            PH.nice_plot(secax, position=self.axis_offset, direction="outward")
+
+        # PH.show_figure_grid(self.P.figure_handle)
+
+        # get Rin and RM from all the examples and make a summary distribution plot
+        rins, taus = self.get_Rin_Tau()
+        # rins = {}
+        # taus = {}
+
+        # k = 0
+        # for rax, iv in enumerate(FD.figure_AllIVs.keys()):
+        #     # cellpath = Path(self.config['cellDataDirectory'], f"VCN_c{iv:02d}", 'Simulations', 'IV')
+        #     for iax, dendmode in enumerate(["passive", "normal", "active"]):
+        #         dendm = self.get_dendmode(dendmode)
+
+        #         sfi = Path(
+        #             self.config["cellDataDirectory"],
+        #             f"VCN_c{iv:02d}",
+        #             "Simulations",
+        #             "IV",
+        #             FD.figure_AllIVs[iv][dendm],
+        #         )
+        #         if not sfi.is_dir():
+        #             print(f"File '{str(sfi):s}' is not a directory")
+        #             continue
+        #         fn = list(sfi.glob("*"))
+        #         sfi = Path(sfi, fn[0])
+        #         AR, SP, RM = self.parent.PLT.plot_traces(
+        #             None,  # self.P.axarr[rax, iax+1],
+        #             sfi,
+        #             PD,
+        #             protocol="IV",
+        #             ymin=ymin,
+        #             ymax=ymax,
+        #             iax=iax,
+        #             figure=None,
+        #         )
+        #         rins[k] = {
+        #             "Cell": iv,
+        #             "Rin": RM.analysis_summary["Rin"],
+        #             "dendrites": dendmode,
+        #         }
+        #         taus[k] = {
+        #             "Cell": iv,
+        #             "taum": RM.analysis_summary["taum"],
+        #             "dendrites": dendmode,
+        #         }
+        #         k += 1
+    
+        self.plot_Rin_Tau(rins=rins, taus=taus, 
+            ax_rin=self.P2.axdict[rinplot], ax_tau=self.P2.axdict[tauplot])
+        
         fig = FigInfo()
         fig.P = self.P
         if cell is None:
@@ -624,6 +606,101 @@ class Figures(object):
         fig.title["title"] = "SBEM Project Figure 1 Modeling (Main)"
         # self.save_figure(self.P, save_file, title)
         return fig
+    
+    def get_Rin_Tau(self):
+                # get Rin and RM from all the examples and make a summary distribution plot
+        rins = {}
+        taus = {}
+        PD = self.newPData()
+        k = 0
+        for rax, iv in enumerate(FD.figure_AllIVs.keys()):
+            # cellpath = Path(self.config['cellDataDirectory'], f"VCN_c{iv:02d}", 'Simulations', 'IV')
+            for iax, dendmode in enumerate(["passive", "normal", "active"]):
+                dendm = self.get_dendmode(dendmode)
+
+                sfi = Path(
+                    self.config["cellDataDirectory"],
+                    f"VCN_c{iv:02d}",
+                    "Simulations",
+                    "IV",
+                    FD.figure_AllIVs[iv][dendm],
+                )
+                if not sfi.is_dir():
+                    print(f"File '{str(sfi):s}' is not a directory")
+                    continue
+                fn = list(sfi.glob("*"))
+                sfi = Path(sfi, fn[0])
+                AR, SP, RM = self.parent.PLT.plot_traces(
+                    None,  # self.P.axarr[rax, iax+1],
+                    sfi,
+                    PD,
+                    protocol="IV",
+                    ymin=-100,
+                    ymax=20,
+                    iax=iax,
+                    figure=None,  # just returns values when figure is None.
+                )
+                rins[k] = {
+                    "Cell": iv,
+                    "Rin": RM.analysis_summary["Rin"],
+                    "dendrites": dendmode,
+                }
+                taus[k] = {
+                    "Cell": iv,
+                    "taum": RM.analysis_summary["taum"],
+                    "dendrites": dendmode,
+                }
+                k += 1
+        return rins, taus
+
+    def plot_Rin_Tau(self, rins:dict, taus:dict, ax_tau=None, ax_rin=None):
+
+        df_rin = pd.DataFrame.from_dict(rins, orient="index")  # , orient='index')
+        df_tau = pd.DataFrame.from_dict(taus, orient="index")
+        res_label = r"$\mathregular{R_{in} (M\Omega)}$"
+        tau_label = r"$\mathregular{\tau_{m} (ms)}$"
+        sns.boxplot(
+            data=df_rin,
+            x="dendrites",
+            y="Rin",
+            ax=ax_rin,
+            saturation=0.3,
+            palette=colors,
+        )
+        sns.stripplot(
+            data=df_rin,
+            x="dendrites",
+            y="Rin",
+            ax=ax_rin,
+            color="0.6",
+            size=4.0,
+            edgecolor="k",
+        )
+        ax_rin.set_ylim(0, 30.0)
+        ax_rin.set_ylabel(res_label)
+        ax_rin.set_xlabel("Dendrite Decoration")
+
+        sns.boxplot(
+            data=df_tau,
+            x="dendrites",
+            y="taum",
+            ax=ax_tau,
+            saturation=0.3,
+            palette=colors,
+        )
+        sns.stripplot(
+            data=df_tau,
+            x="dendrites",
+            y="taum",
+            ax=ax_tau,
+            color="0.6",
+            size=4.0,
+            edgecolor="k",
+        )
+        ax_tau.set_ylim(0, 2.5)
+        ax_tau.set_ylabel(tau_label)
+        ax_tau.set_xlabel("Dendrite Decoration")
+
 
     def Figure3_Main(self):
         message = """
@@ -635,41 +712,62 @@ class Figures(object):
         into Illustrator to make the figure)
         
         Panels D and E are taken from Figure3_Supplemental2_CC.pdf, for BC 17.
-        Panels F, G and H are taken from Figure3_Supplemental4_PSTH.pdf for BC 17.
         """
         cprint("y", message)
 
-    def Figure3_Supplemental1(self):
+    def Figure3_Supplemental2_VC(self):
         """
-        Figure 3, Supplemental Figure 1
-        Combined voltage clamp traces, IV with Rin, taum plots
+        Figure 3, Supplemental Figure 2
+        Combined voltage clamp traces,  Rin, taum plots
         """
         P0 = PH.regular_grid(  # dummy figure space
             1,
             1,
-            figsize=(8.0, 9.0),
+            figsize=(8.0, 7.0),
             order="rowsfirst",
             units="in",
-            showgrid=False,
+            showgrid=True,
             parent_figure=None,
         )
 
-        figp1 = self.plot_VC_gKLT(parent_figure=P0, loc=(0, 8, 4.0, 9.0))
-        P2 = self.plotIV(parent_figure=figp1.P, loc=(0, 8, 0.0, 4.0))
+        figp1 = self.plot_VC_gKLT(parent_figure=P0, loc=(0, 8, 2., 5.))
+        P2 = PH.regular_grid(  # lower row of 2
+            1,
+            2,
+            order="rowsfirst",
+            units="in",
+            showgrid=False,
+            figsize=(8.0, 6.0),
+            verticalspacing=0.25,
+            horizontalspacing=0.5,
+            margins={
+                "bottommargin": 0.4,
+                "leftmargin": 2.0,
+                "rightmargin": 2.0,
+                "topmargin": 4.6,
+            },
+            labelposition=(-0.05, 1.05),
+            parent_figure=P0,
+            panel_labels=["D", "E"],
+        )
+        rins, taus = self.get_Rin_Tau()
+        self.plot_Rin_Tau(rins, taus, P2.axdict["D"], P2.axdict["E"])
+        # P2 = self.plotIV(parent_figure=figp1.P, loc=(0, 8, 0.0, 4.0))
         fig = FigInfo()
-        fig.P = self.P2
-        fig.filename = "Figure3/Figure3_supp/Figure3-Supplemental1_VC_Rin_Taum.pdf"
-        fig.title["title"] = "SBEM Project Figure4 Supplemental Figure 1 VC_Rin_Taum"
+        fig.P = P0
+        fig.filename = set_figure_path(fignum=3, filedescriptor="VC_Rin_Taum_V2",
+            suppnum=2)
+        fig.title["title"] = "SBEM Project Figure4 Supplemental Figure 2 VC_Rin_Taum"
         return fig
 
-    def Figure3_Supplemental2_CC(self, parent_figure=None, show_pngs=False):
+    def Figure3_Supplemental3_CC(self, parent_figure=None, show_pngs=False):
         """
         Plot all of the IVS, for a supplemental figure
         Passive, normal, active, plus the crossed IV
         Also put the PNG for the cell on the left.
         """
         nivs = len(FD.figure_AllIVs)
-        cprint("c", "Plotting Figure3_Supplemental2_CC")
+        cprint("c", "Plotting Figure3_Supplemental3_CC")
         rows = nivs
         if show_pngs:
             cols = 5
@@ -681,7 +779,7 @@ class Figures(object):
         ymin = -125.0
         ymax = 40.0
         calx = 120.0
-
+        caly = -110.0
         self.P = PH.regular_grid(
             rows,
             cols,
@@ -734,8 +832,9 @@ class Figures(object):
                     continue
                 fn = list(sfi.glob("*"))
                 sfi = Path(sfi, fn[0])
-                if rax > 0:
+                if rax > 0 or iax > 0:
                     calx = None  # only one cal bar on this plot, top row.
+
                 if show_pngs:
                     jax = iax + 1
                     jrax = 4
@@ -759,28 +858,32 @@ class Figures(object):
                     spike_marker_size=1.5,
                     spike_marker_color=spike_colors[dendmode],
                     calx=calx,
-                    caly=-10.0,
+                    caly=caly,
                     axis_index=iax,
                 )
                 if rax == 0:
                     self.P.axarr[rax, jax].set_title(dendmode.title())
                 if iax == 0 and not show_pngs:
                     self.P.axarr[rax, 0].text(
-                        -35.0, 0.6, f"BC{iv:02d}", fontweight="bold", fontsize=12
+                        -0.05, 0.5, f"BC{iv:02d}", 
+                        fontdict={"fontweight": "bold", "fontsize":12,
+                        "ha": "right", "va": "center"},
+                        transform = self.P.axarr[rax, 0].transAxes,
                     )
         if parent_figure is None:
             fig = FigInfo()
             fig.P = self.P
-            fig.filename = f"Figure3/Figure3_supp/Figure3-Supplemental2_CC.pdf"
+            # fig.filename = f"Figure3/Figure3_supp/Figure3_Supplemental3_CC.pdf"
+            fig.filename = set_figure_path(fignum=3, filedescriptor="CC", suppnum=3)
             timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")
             fig.title[
                 "title"
-            ] = f"SBEM Project Figure 3 Modeling (Supplemental 2) ({timestamp_str:s})"
+            ] = f"SBEM Project Figure 3 Modeling (Supplemental 3) ({timestamp_str:s})"
             return fig
         else:
             return self.P
 
-    def Figure3_Supplemental3_Zin(self):
+    def Figure3_Supplemental4_Zin(self):
         """
         All of the Zins for a supplemental figure
         """
@@ -845,7 +948,8 @@ class Figures(object):
         save_file = f"Fig_M2.pdf"
         fig = FigInfo()
         fig.P = P
-        fig.filename = save_file
+        fig.filename = Path(
+                self.config["figureIntermediateDirectory"], save_file)
         fig.title = {
             "title": "SBEM Project Figure Modeling Singles and Revcorr",
             "x": 0.99,
@@ -1262,7 +1366,7 @@ class Figures(object):
             d = FPM.pickle_load(fh)
         return d
 
-    def Figure4_Supplmental1(self):
+    def Figure4_Supplemental1(self):
         fig = self.Figure4_Main(supplemental1=True)
         return fig
 
@@ -1300,30 +1404,35 @@ class Figures(object):
         start_letter = "A"
         parent_figure = None
 
-        yh = 2.0
-        xw = 1 * yh
+        yh = 1.75
+        xw = 0.85 * yh
         xl = 1.05
 
-        xlp = [xl + (xw + 0.75) * i for i in range(4)]
-        print("xlp: ", xlp)
+        xlp = [xl + (xw + 0.72) * i for i in range(5)]
+        lpos = (-0.15, 1.02)
         if not supplemental1:
             sizer = {
                 # "B": {"pos": [6.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
                 # "C": {"pos": [9.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
                 # "F": {"pos": [6.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
                 # "G": {"pos": [9.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
-                "D": {"pos": [xlp[0], xw, 0.75, 2.5], "labelpos": (-0.15, 1.05)},
+                "D": {"pos": [xlp[0], xw, 0.75, yh], "labelpos": lpos},
                 "E": {
-                    "pos": [xlp[1], xw, 0.75, 2.5],
-                    "labelpos": (-0.15, 1.02),
+                    "pos": [xlp[1], xw, 0.75, yh],
+                    "labelpos": lpos,
                 },
                 "F": {
-                    "pos": [xlp[2], xw, 0.75, 2.5],
-                    "labelpos": (-0.15, 1.02),
+                    "pos": [xlp[2], xw, 0.75, yh],
+                    "labelpos": lpos,
                 },
+
                 "G": {
-                    "pos": [xlp[3], xw, 0.75, 2.5],
-                    "labelpos": (-0.15, 1.02),
+                    "pos": [xlp[3], xw, 0.75, yh],
+                    "labelpos": lpos,
+                },
+                "H": {
+                    "pos": [xlp[4], xw, 0.75, yh],
+                    "labelpos": lpos,
                 },
             }
             figsize = (12, 8)
@@ -1344,9 +1453,9 @@ class Figures(object):
             yh1 = 3.75
         else:
             yh2 = 1.2
-            yb2 = 3.5 + 2.7
-            yb3 = 3.5 + 0.6
-            yb1 = 3.25
+            yb2 = 3.5 + 2.7 - 0.5
+            yb3 = 3.5 + 0.6 - 0.5
+            yb1 = 3.25 - 0.5
             yh1 = 4.25
         for j in range(len(example_cells)):
             i = j + 1
@@ -1478,7 +1587,7 @@ class Figures(object):
 
         if not supplemental1:
             # Efficacy plot vs. input size (all)
-            for s in ["D", "E", "F", "G"]:
+            for s in ["D", "E", "F", "G", "H"]:
                 P.axdict[s].set_zorder(100)
             EFP = EF.EfficacyPlots(parent_figure=P)
             EFP.plot_efficacy(
@@ -1488,6 +1597,9 @@ class Figures(object):
             # efficacy for a single sized input vs. dendritic area
             plot_single_input(P.axdict["E"], legend=False)
 
+            # input pattern plot
+            PATSUM.Figure4F_pattern_plot(axin=P.axdict["F"])
+
             # participation
             ds = self._load_rcdata("Spont")
             drc = self._load_rcdata(f"{participation_dB:2d}dB")
@@ -1496,7 +1608,7 @@ class Figures(object):
             for i, c in enumerate(ds.keys()):
                 # plot_participation(P.axdictax[0], c, ds, drc, dB=dB, color=palette[i])
                 plot_diff_participation(
-                    P.axdict["F"],
+                    P.axdict["G"],
                     c,
                     ds,
                     drc,
@@ -1505,15 +1617,23 @@ class Figures(object):
                     legend=False,
                 )
 
+
             # Cumulative plots
             self.plot_revcorr_compare(
                 parent_figure=P,
-                axlist=[P.axdict["G"]],
+                axlist=[P.axdict["H"]],
                 dBSPLs=["Spont", "30dB"],
                 legend=False,
             )
-            PH.nice_plot(P.axdict["G"], position=self.axis_offset, direction="outward")
-            synlabel_num = 5
+            PH.nice_plot(P.axdict["H"], position=self.axis_offset, direction="outward")
+            PH.talbotTicks(P.axdict["H"], axes="xy", 
+                density = (1.0, 1.0),
+                tickPlacesAdd={'x': 0, "y": 2},
+                floatAdd={"x": 0, "y": 2},
+                axrange={"x": (-0.01, 12.), "y": (0., 1.)},
+                )
+            P.axdict["H"].set_xticks((np.arange(0, 12+1, 3.0)))
+            synlabel_num = 5  # this sets which cell the scale bar will be plotted with
         else:
             synlabel_num = 10
 
@@ -1587,12 +1707,13 @@ class Figures(object):
         else:
             fig.P = P
         if not supplemental1:
-            fig.filename = "Figure4/Figure4_Ephys2_main_v11.pdf"
+            fig.filename = set_figure_path(fignum=4, filedescriptor="Ephys_2_main_v12")
             fig.title[
                 "title"
             ] = "SBEM Project Figure 4 (main) Modeling: singles inputs, efficacy and revcorr, revised version 8"
         else:
-            fig.filename = "Figure4/Figure4_supp/Figure4-Supplemental1_Revcorr_V4.pdf"
+            fig.filename = set_figure_path(fignum=4, filedescriptor="Revcorr_V5", suppnum=1)
+            #"Figure4/Figure4_supp/Figure4_Supplemental1_Revcorr_V4.pdf"
             fig.title[
                 "title"
             ] = "SBEM Project Figure 4 Modeling: Supplemental 1: other cells single inputs and revcorr"
@@ -1600,6 +1721,9 @@ class Figures(object):
         title2 = {"title": f"", "x": 0.99, "y": 0.01}
         # fig.title2 = title2
         return fig
+
+    def Figure4_Supplemental3(self):
+        PATSUM.summarize_patterns()  # writes its own figure to the directory
 
     def plot_all_revcorr(self):
         for cell in grAList():
@@ -2104,7 +2228,8 @@ class Figures(object):
         title = (
             "SBEM Project Supplemental Figure 3 Modeling : Reverse Correlation Summary",
         )
-        save_file = Path("Figure3_supp", f"Fig_M3_supplemental_Full_{dBSPL:s}.pdf")
+        save_file = set_figure_path(fignum=3, filedescriptor=f"Revcorr_Summary_Full_{dBSPL:s}", suppnum=99)
+#       save_file = Path("Figure3_supp", f"Fig_M3_supplemental_Full_{dBSPL:s}.pdf")
         fig = FigInfo()
         fig.P = P
         fig.filename = save_file
@@ -2181,8 +2306,8 @@ class Figures(object):
                     hpoints.extend(
                         [[xnspike[k], RCD.ynspike[k]] for k in range(len(xnspike))]
                     )
-            ax.set_xlim(0, 12)
-            ax.set_ylim(0, 1.0)
+            # ax.set_xlim(0, 12)
+            # ax.set_ylim(0, 1.0)
             ax.set_xlabel("Number of inputs prior to spike")
             ax.set_ylabel("Cumulative Fraction of Spikes")
             if i == 0 and legend:
@@ -2401,7 +2526,7 @@ class Figures(object):
             fig.P = parent_figure
         else:
             fig.P = P
-        fig.filename = "Figure7/Figure7_main_v3_complete.pdf"
+        fig.filename = set_figure_path(fignum=7, filedescriptor="Ephys_3_main_v3")
         fig.title["title"] = "SBEM Project Figure 7 Modeling: SAM, SAC"
         title2 = {"title": f"", "x": 0.99, "y": 0.01}
         fig.title2 = title2
@@ -3299,8 +3424,8 @@ class Figures(object):
         if label_x_axis:
             cv_ax.set_xlabel("Latency (ms)")
 
-    def Figure3_Supplemental4_PSTH(self):
-        print("Plotting Figure 3 Supplement 4 PSTH")
+    def Figure3_Supplemental5_PSTH(self):
+        print("Plotting Figure 3 Supplement 5 PSTH")
         dBSPL = "30dB"
         lmar = 0.125
         rmar = 0.1
@@ -3394,8 +3519,9 @@ class Figures(object):
                     horizontalalignment="right",
                 )
 
-        save_file = f"Figure3/Figure3_supp/Figure3-Supplemental4_PSTH.pdf"
-        title = "SBEM Project Figure 3 Modeling Supplemental : PSTH and FSL, all grade A cells"
+        save_file = set_figure_path(fignum=3, filedescriptor="PSTH_V2", suppnum=5)
+        #  f"Figure3/Figure3_supp/Figure3_Supplemental5_PSTH.pdf"
+        title = "SBEM Project Figure 3 Modeling Supplemental5 : PSTH and FSL, all grade A cells"
         fig = FigInfo()
         fig.P = P
         fig.filename = save_file
@@ -3527,12 +3653,9 @@ class Figures(object):
             "Simulations",
             "VC",
         )
-        # print(cellpath)
         sfi = []
         for i, ds in enumerate(dataset):
-            # print("figures:klt:i, ds: ", i, ds)
             sfd = Path(cellpath, Path(dataset[ds]).name)
-            # print(sfd)
             if not sfd.is_dir():
                 print("Directory not found: ", str(sfd))
                 return
@@ -3548,7 +3671,7 @@ class Figures(object):
         fig.P = P
 
         if cell_number == None:
-            fig.filename = "Fig_M0.pdf"
+            fig.filename = Path(self.config["figureIntermediateDirectory"], "Fig_M0.pdf")
         else:
             fig.filename = save_file
         fig.title["title"] = "SBEM Project Figure Modeling Supplemental : VC"
