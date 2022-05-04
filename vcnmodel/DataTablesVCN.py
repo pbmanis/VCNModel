@@ -89,12 +89,8 @@ from vcnmodel.plotters import efficacy_plot
 from vcnmodel.plotters import plot_functions
 from vcnmodel.analyzers import pattern_summary
 from pylibrary.tools import cprint as CP
-# import vcnmodel.correlation_calcs
 import vcnmodel.analyzers.spikestatistics
 import ephys
-
-
-
 
 
 cprint = CP.cprint
@@ -140,7 +136,7 @@ cellvalues = [
     13,
     17,
     18,
-    # 24, 29,
+    # 24, 29,  # 24 and 29 are incomplete.
     30,
 ]
 
@@ -633,7 +629,9 @@ class DataTablesVCN:
                                 "Figure: Revcorr at 40dB",
                                 "Figure: Compare Revcorrs", 
                                 "Figure: PSTHs",
-                                "Figure: VS-SAM Tone",
+                                "Analyze VS-SAM table @ 15dBSPL",
+                                "Analyze VS-SAM table @ 30dBSPL",
+
 
                                ],
                     "value": "-------Figure 3-------",
