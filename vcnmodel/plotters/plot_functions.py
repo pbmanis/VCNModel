@@ -1,9 +1,10 @@
 """
 """
-from typing import Union, Tuple
+from typing import Union, Tuple, List
 
 import matplotlib.pyplot as mpl
 import numpy as np
+import seaborn as sns
 from vcnmodel.util import trace_calls
 from vcnmodel.analyzers import analysis as SPKANA
 from vcnmodel.util.basic_units import radians
@@ -45,7 +46,7 @@ def plot_psth(
     bin_fill: bool = True,
     edge_color: str = "k",
     alpha: float = 1.0,
-    xunits: str="time",
+    xunits: str = "time",
 ):
     """Correctly plot PSTH with spike rate in spikes/second
     All values are in seconds (times, binwidths)
@@ -92,10 +93,10 @@ def plot_psth(
     if bin_fill:
         face_color = edge_color
     else:
-        face_color = None # "None"
+        face_color = None  # "None"
     if xunits == "radians":
         xu = radians
-        bins = bins*radians
+        bins = bins * radians
     else:
         xu = None
     if (
@@ -125,7 +126,7 @@ def plot_psth(
                 horizontalalignment="center",
             )
     if xunits == "radians":
-        ticks = np.linspace(0, 2*np.pi, 5)
+        ticks = np.linspace(0, 2 * np.pi, 5)
         tick_labels = ["0", r"$\pi /2$", r"$\pi$", r"$3\pi /2$", r"$2\pi$"]
         ax.set_xticks(ticks, tick_labels)
     return  # h, b
@@ -251,3 +252,189 @@ def plot_fsl_ssl(
             )
 
     return (fsl, ssl)
+
+
+def plot_spike_raster(
+    P: object,
+    mode: str='postsynaptic',
+    n_inputs: int = 0,
+    i_trial: int = 0,
+    spike_times: List = [],
+    data_window: List = [],
+    panel: Union[str, None] = None,
+):
+    """Plot spike rasters
+
+    Parameters
+    ----------
+    P : object
+        pylibrary plothelpers Plot object
+    mode : str
+        either "presynaptic" or "postsynaptic"
+        changes the way the spike raster is plotted.
+        for postysynaptic, just the spikes in each trial
+        for presynaptic, each input is plotted and trials are grouped.
+    n_inputs : int, optional
+        number of inputs for ell, by default 0
+    i_trial : int, optional
+        trial number, by default 0. Only used if mode is "presynaptic"
+    spike_times : List
+        A list of spike times or a list of lists of spike times, by default []
+    data_window : List, optional
+        _description_, by default []
+    panel : str, optional
+        Panel label where the data will be plotted, by default ""
+    """
+    assert mode in ["presynaptic", "postsynaptic"]
+    assert panel is not None
+    # Raster of spikes for panel
+    plot_dur = np.fabs(np.diff(data_window))
+
+    if mode == "postsynaptic":
+        ispt = [
+            i
+            for i in range(len(spike_times))
+            if spike_times[i] >= data_window[0] and spike_times[i] < data_window[1]
+        ]
+        P.axdict[panel].plot(
+            np.array(spike_times[ispt]) - data_window[0],
+            i_trial * np.ones(len(ispt)),
+            "|",
+            markersize=1.5,
+            color="b",
+        )
+        P.axdict[panel].set_xlim(0, plot_dur)
+    elif mode == "presynaptic":
+        for k in range(n_inputs):  # raster of input spikes
+            if np.max(spike_times[k]) > 2.0:  # probably in miec...
+                tk = np.array(spike_times[k]) * 1e-3
+            else:
+                tk = np.array(spike_times[k])
+
+            y = (i_trial + 0.1 + k * 0.05) * np.ones(len(tk))
+            in_spt = [
+                i
+                for i in range(tk.shape[0])
+                if (tk[i] >= data_window[0]) and (tk[i] < data_window[1])
+            ]
+            y = (i_trial + 0.1 + k * 0.05) * np.ones(len(in_spt))
+            if i_trial % 10 == 0:
+                P.axdict[panel].plot(
+                    tk[in_spt] - data_window[0],
+                    y,
+                    "|",
+                    markersize=2.5,
+                    color="k",
+                    linewidth=0.5,
+                )
+        P.axdict[panel].set_xlim(0, plot_dur)
+
+def plot_spiketrain_raster(
+        spike_times, max_raster: int = 20, ax=None, plot_win: tuple = (0, 0.25)
+    ):
+    # print(len(spike_times))
+    # print(plot_win)
+    n_trials = len(spike_times)
+    if n_trials > max_raster:
+        n_trials = max_raster
+    for i in range(n_trials):
+        ispt = [
+            j
+            for j in range(len(spike_times[i]))
+            if spike_times[i][j] >= plot_win[0] and spike_times[i][j] < plot_win[1]
+        ]
+        ax.plot(
+            np.array(spike_times[i])[ispt] - plot_win[0],
+            i * np.ones(len(ispt)),
+            "|",
+            markersize=1.5,
+            color="b",
+        )
+
+def plot_stacked_spiketrain_rasters(
+
+    spike_times_by_input,
+    ax,
+    si,
+    syninfo,
+    plot_win: tuple = (0, 0.25),
+    max_trials=2,
+    use_colors: bool = True,
+    colormap="Set3",
+    cbar_vmax: float = 300.0,
+    linewidth=1.0,
+):
+    """
+    Spike trains are plotted as a raster for all inputs in the AN data
+
+    Parameters
+    ----------
+    spike_times_by_input : list
+        list by input of spike times by trial
+
+    ax : matplotlib axis to place the plat
+
+    si : Params
+
+    syninfo : synaptic info from SC, syninfo = plot_sims.get_synaptic_info(cell_n)
+    plot_win : tuple
+        time window of data to show
+
+    max_trials : int
+        number of trials to show (the first max_trials are plotted)
+
+    use_colors : bool (default True)
+        Plot the raster ticks with colors scaled by input surface area
+
+    colormap : str
+        color map to use for plotting when use_colors is True
+
+    cbar_vmax : float
+        maximum for the colorbar scale
+
+    """
+    n_inputs = len(spike_times_by_input)
+    n_trials = len(spike_times_by_input[0])
+    trial_spc = 1.0
+    input_spc = 0.6 / n_inputs
+
+    if use_colors:
+        cmx = sns.color_palette(colormap, as_cmap=True)
+        cell_n = int(si.cellID[-2:])
+        
+        syn_ASA = np.array([syninfo[1][isite][0] for isite in range(n_inputs)])
+        max_ASA = np.max(syn_ASA)
+    print("syn asa: ", syn_ASA)
+    for i in range(n_trials):  # and by trial
+        if i > max_trials - 1:
+            continue
+        for k in range(n_inputs):  # raster of input spikes by input
+            if np.max(spike_times_by_input[k][i]) > 2.0:  # probably in msec...
+                tk = np.array(spike_times_by_input[k][i]) * 1e-3
+            else:
+                tk = np.array(spike_times_by_input[k][i])
+
+            in_spt = [
+                i
+                for i in range(tk.shape[0])
+                if (tk[i] >= plot_win[0]) and (tk[i] < plot_win[1])
+            ]
+            y = (
+                ((i + 1) * trial_spc)
+                - ((n_inputs / 2.0) * input_spc)
+                + (k * input_spc)
+            ) * np.ones(len(in_spt))
+            if use_colors:
+                color = cmx.colors[int(cmx.N * syn_ASA[k] / cbar_vmax) - 1]
+            else:
+                color = "k"
+            ax.plot(
+                tk[in_spt] - plot_win[0],
+                y,
+                "|",
+                markersize=2.5,
+                color=color,
+                linewidth=linewidth,
+            )
+            ax.yaxis.set_ticks([1, 2], ["1", "2"])
+    ax.set_xlim(plot_win)
