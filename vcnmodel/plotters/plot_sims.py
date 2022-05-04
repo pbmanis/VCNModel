@@ -113,7 +113,6 @@ TRC = trace_calls.TraceCalls
 cprint = CP.cprint
 console = Console()
 
-
 # make a shortcut for each of the analysis classes from ephys
 
 SP = SpikeAnalysis.SpikeAnalysis()
@@ -281,6 +280,7 @@ class PlotSims:
         self.axis_offset = -0.02
         self.config = toml.load(open("wheres_my_data.toml", "r"))
         self.allspikes = None
+        self.in_Parallel = False # flag to prevent graphics access during parallel processing.
 
     def newPData(self):
         """
@@ -295,13 +295,13 @@ class PlotSims:
         )
 
     def textclear(self):
-        if self.parent is None:
+        if self.parent is None or self.in_Parallel:
             return
         else:
             self.parent.textbox.clear()
 
     def textappend(self, text, color="white"):
-        if self.parent is None:
+        if self.parent is None or self.in_Parallel:
             cprint(color, text)  # just go straight to the terminal
         else:
             self.parent.textbox.setTextColor(self.parent.QColor(color))
@@ -2253,8 +2253,8 @@ class PlotSims:
         PD = self.newPData()
         protocol = selected.runProtocol
         sfi = sorted(selected.files)
-        plot_win = [0.1, 1.0]
-        plot_dur = np.fabs(np.diff(plot_win))
+        data_window = [0.1, 1.0]
+        plot_dur = np.fabs(np.diff(data_window))
         time_scale = 1.0
         for j, index_row in enumerate(selrows):
             selected = self.parent.table_manager.get_table_data(index_row)
@@ -2307,7 +2307,7 @@ class PlotSims:
                 time_base = AR.MC.time_base / 1000.0  # convert to seconds
                 trd = data["Results"][i]
                 dt = si.dtIC / 1000.0  # convert from msec to seconds
-                idx = (int(plot_win[0] / dt), int(plot_win[1] / dt))
+                idx = (int(data_window[0] / dt), int(data_window[1] / dt))
                 if i == 0:
                     waveform = trd["stimWaveform"]
                 stb = trd["stimTimebase"]  # convert to seconds
@@ -2480,6 +2480,8 @@ class PlotSims:
             dmod = ri.dmod
         return totaldur, soundtype, pip_start, pip_duration, F0, dB, fmod, dmod
 
+
+
     @trace_calls.winprint_continuous
     @TRC()
     def plot_AN_response(
@@ -2492,14 +2494,30 @@ class PlotSims:
         sac_engine: str = "cython",
     ):
         gbc = f"VCN_c{int(self.parent.cellID):02d}"
-        if P is None:
-            plotflag = False
-        else:
+        
+        plotflag = False
+
+        if P is not None:
             plotflag = True
+            sim_dir = fn.parts[-2]
+            tstring = f"{gbc:s}_{str(sim_dir):s}_{soundtype:s}.pdf"
+            mpl.get_current_fig_manager().canvas.set_window_title(tstring)
+            bu_voltage_panel = "A"
+            bu_raster_panel = "B"
+            bu_psth_panel = "C"
+            stimulus_panel = "D"
+            vs_panel = "E"
+            sac_panel = "F"
+            an_raster_panel = "G"
+            an_psth_panel = "H"
+            bu_fsl_panel = "I"
+        
         model_data = self.ReadModel.get_data(fn, PD, protocol)
         AR = model_data.AR
         data = model_data.data
         ntr = len(AR.MC.traces)  # number of trials
+        n_inputs = len(data['Results'][0]['inputSpikeTimes'])
+        show_vtrial = 0  # which trial to show for votage
         v0 = -160.0
         trstep = 25.0 / ntr
         inpstep = 5.0 / ntr
@@ -2516,43 +2534,38 @@ class PlotSims:
             fmod,
             dmod,
         ) = self.get_stim_info(si, ri)
-        if plotflag:
-            sim_dir = fn.parts[-2]
-            tstring = f"{gbc:s}_{str(sim_dir):s}_{soundtype:s}.pdf"
-            mpl.get_current_fig_manager().canvas.set_window_title(tstring)
-
-        bu_voltage_panel = "A"
-        bu_raster_panel = "B"
-        bu_psth_panel = "C"
-        stimulus_panel = "D"
-        vs_panel = "E"
-        sac_panel = "F"
-        an_raster_panel = "G"
-        an_psth_panel = "H"
-        bu_fsl_panel = "I"
 
         # We must get the units correct here.
         # AR time_base is in milliseconds, so convert to seconds
         all_an_st = []
         all_bu_st = []
         all_bu_st_trials = []
+
+        an_st_by_input = [
+            [] for x in range(n_inputs)
+        ]  # accumlate by input across trials
+        all_an_st = []  # collapsed completel = all spikes in one array
+        an_st_grand = [
+            [] for x in range(ntr)
+        ]  # accumulate all input spike times for each trial
+
         waveform = []
-        plot_win = (
+        data_window = (
             pip_start - 0.05,
             pip_start + pip_duration + 0.05,
         )  # manually change to shorten...
-        plot_dur = np.fabs(np.diff(plot_win))
+        plot_dur = np.fabs(np.diff(data_window))
 
-        for i in range(ntr):  # for all trials in the measure.
-            vtrial = AR.MC.traces[i] * 1e3  # convert to mV
+        for i_trial in range(ntr):  # for all trials in the measure.
+            if i_trial == show_vtrial:
+                vtrial = AR.MC.traces[i_trial] * 1e3  # convert to mV
             time_base = AR.MC.time_base / 1000.0  # convert to seconds
             dt = si.dtIC / 1000.0  # convert from msec to seconds
-            trd = data["Results"][i]
-            idx = (int(plot_win[0] / dt), int(plot_win[1] / dt))
+            trd = data["Results"][i_trial]
+            idx = (int(data_window[0] / dt), int(data_window[1] / dt))
             waveform.append(trd["stimWaveform"].tolist())
             stb = trd["stimTimebase"]  # convert to seconds
-            if i == 0:
-                n_inputs = len(trd["inputSpikeTimes"])
+
             if len(trd["spikeTimes"]) == 0:
                 trd["spikeTimes"] = np.array([np.nan])
                 sf = 1.0
@@ -2563,7 +2576,7 @@ class PlotSims:
             sptimes = np.array(trd["spikeTimes"]) * sf  # convert to seconds
 
             stim_dt = stb[1] - stb[0]
-            idxs = (int(plot_win[0] / stim_dt), int(plot_win[1] / stim_dt))
+            idxs = (int(data_window[0] / stim_dt), int(data_window[1] / stim_dt))
             if not isinstance(trd["spikeTimes"], list) and not isinstance(
                 trd["spikeTimes"], np.ndarray
             ):
@@ -2572,88 +2585,9 @@ class PlotSims:
                 return
             all_bu_st.extend(sptimes)
             all_bu_st_trials.append(sptimes)
-
-            if i == 0 and plotflag:
-                P.axdict[bu_voltage_panel].plot(
-                    time_base[idx[0] : idx[1]] - plot_win[0],
-                    vtrial[idx[0] : idx[1]],
-                    "k-",
-                    linewidth=0.5,
-                )
-                spikeindex = [
-                    int(t / dt) for t in sptimes if not np.isnan(t)
-                ]  # dt is in sec, but spiketimes is in msec
-                ispt = [
-                    t
-                    for t in range(len(sptimes))
-                    if sptimes[t] >= plot_win[0] and sptimes[t] < plot_win[1]
-                ]
-                P.axdict[bu_voltage_panel].plot(
-                    sptimes[ispt] - plot_win[0],
-                    vtrial[spikeindex][ispt],
-                    "ro",
-                    markersize=1.5,
-                )
-                P.axdict[bu_voltage_panel].set_xlim(0.0, plot_dur)
-            if waveform is not None and plotflag:  # could also do if i == 0
-                dw = 0.5 * np.max(waveform[i])
-
-                P.axdict[stimulus_panel].plot(
-                    stb[idxs[0] : idxs[1]] - plot_win[0],
-                    np.array(waveform[i][idxs[0] : idxs[1]]) + i * dw,
-                    "-",
-                    linewidth=0.5,
-                )  # stimulus underneath
-
-            if plotflag:  # plot the raster of spikes
-                ispt = [
-                    i
-                    for i in range(len(sptimes))
-                    if sptimes[i] >= plot_win[0] and sptimes[i] < plot_win[1]
-                ]
-                P.axdict[bu_raster_panel].plot(
-                    np.array(sptimes[ispt]) - plot_win[0],
-                    i * np.ones(len(ispt)),
-                    "|",
-                    markersize=1.5,
-                    color="b",
-                )
-                P.axdict[bu_raster_panel].set_xlim(0, plot_dur)
-
-                for k in range(n_inputs):  # raster of input spikes
-                    if np.max(trd["inputSpikeTimes"][k]) > 2.0:  # probably in miec...
-                        tk = np.array(trd["inputSpikeTimes"][k]) * 1e-3
-                    else:
-                        tk = np.array(trd["inputSpikeTimes"][k])
-
-                    y = (i + 0.1 + k * 0.05) * np.ones(len(tk))
-                    in_spt = [
-                        i
-                        for i in range(tk.shape[0])
-                        if (tk[i] >= plot_win[0]) and (tk[i] < plot_win[1])
-                    ]
-                    y = (i + 0.1 + k * 0.05) * np.ones(len(in_spt))
-                    if i % 10 == 0 and plotflag:
-                        P.axdict[an_raster_panel].plot(
-                            tk[in_spt] - plot_win[0],
-                            y,
-                            "|",
-                            markersize=2.5,
-                            color="k",
-                            linewidth=0.5,
-                        )
-        an_st_by_input = [
-            [] for x in range(n_inputs)
-        ]  # accumlate by input across trials
-        all_an_st = []  # collapsed completel = all spikes in one array
-        an_st_grand = [
-            [] for x in range(ntr)
-        ]  # accumulate all input spike times for each trial
-
-        for i in range(ntr):  # for all trials in the measure.
-            trd = data["Results"][i]  # trial i data
-            n_inputs = len(trd["inputSpikeTimes"])  # get AN spike time array (by input)
-            if i == 0:
+        
+            n_inputs = len(trd["inputSpikeTimes"])
+            if i_trial == 0:
                 an_st_by_input = [[] for x in range(n_inputs)]
             for k in range(n_inputs):  # raster of input spikes
                 if np.max(trd["inputSpikeTimes"][k]) > 2.0:
@@ -2664,9 +2598,205 @@ class PlotSims:
                 an_st_by_input[k].append(
                     tk
                 )  # index by input, then trials for that input
-                an_st_grand[i].extend(tk)
+                an_st_grand[i_trial].extend(tk)
 
-        cprint("r", f"{soundtype=}")
+        if soundtype.endswith("Clicks"):
+            phasewin = [
+                ri.clickStart + 0.25 * ri.clickTrainDuration,
+                ri.clickStart + ri.clickTrainDuration,
+            ]
+        else:
+            phasewin = [
+                pip_start + 0.25 * pip_duration,
+                pip_start + pip_duration,
+            ]
+
+        x = np.array(all_bu_st)
+        v = np.where((phasewin[0] <= x) & (x < phasewin[1]))[0]
+        bu_spikesinwin = x[v]
+        x = np.array(all_an_st)
+        v = np.where((phasewin[0] <= x) & (x < phasewin[1]))[0]
+        an_spikesinwin = x[v]
+
+        if soundtype in [
+            "SAM",
+            "stationaryNoise",
+            "regularClicks",
+            "poissonClicks",
+        ]:  # also calculate vs and plot histogram
+            vs = self.VS.vector_strength(
+                bu_spikesinwin, fmod
+            )  # vs expects spikes in msec
+            vs.carrier_frequency = F0
+            vs.n_inputs = n_inputs
+            if sac_flag:
+                S = SAC.SAC()
+                spars = SAC.SACPars()
+                spars.binw = 3 * si.dtIC * 1e-3
+                spars.maxn = 100000000
+                if soundtype.endswith("Clicks"):
+                    spars.delay = ri.clickStart + 0.2 * ri.clickTrainDuration
+                    spars.dur = 0.8 * ri.clickTrainDuration
+                    spars.displayDuration = 2e-3  # 2.0/ri.clickRate
+                    spars.twin = 10.0 / ri.clickRate
+                else:
+                    spars.delay = ri.pip_start + 0.2 * ri.pip_duration
+                    spars.dur = 0.8 * ri.pip_duration
+                    spars.displayDuration = 2.0 / ri.fmod
+                    spars.twin = 10.0 / ri.fmod
+                bu_sac, bu_sacbins = S.SAC_with_histo(
+                    all_bu_st_trials,
+                    spars,
+                    engine=sac_engine,
+                    dither=1e-3 * si.dtIC / 2.0,
+                )
+                vs.sac_bu_CI, peaks, HW, FW = S.SAC_measures(bu_sac, bu_sacbins)
+                vs.sac_bu_hw = HW[0][0] * spars.binw
+                print("BU SAC Report: \n  ")
+                print(
+                    f"    HW:    {vs.sac_bu_hw:.6f}  CI: {vs.sac_bu_CI:.2f}  Left IPS: {HW[2][0]:.2f}  Right IPS: {HW[3][0]:.2f}"
+                )
+            else:
+                bu_sac = None
+                bu_sacbins = None
+                vs.sac_bu_CI = 0.0
+                vs.sac_bu_hw = 0.0
+            print(
+                "CN Vector Strength at %.1f: %7.3f, dispersion=%.2f (us) Rayleigh: %7.3f  p = %.3e  n_spikes = %d"
+                % (
+                    fmod,
+                    vs.vs,
+                    vs.circ_timeSD * 1e6,
+                    vs.Rayleigh,
+                    vs.pRayleigh,
+                    vs.n_spikes,
+                )
+            )
+            vs_an = self.VS.vector_strength(
+                an_spikesinwin,
+                fmod,
+            )
+            vs_an.n_inputs = n_inputs
+            if sac_flag:
+                SA = SAC.SAC()
+                spars = SAC.SACPars()
+                spars.binw = 3 * si.dtIC * 1e-3
+                if soundtype.endswith("Clicks"):
+                    spars.delay = ri.clickStart + 0.2 * ri.clickTrainDuration
+                    spars.dur = 0.8 * ri.clickTrainDuration
+                    spars.displayDuration = 2e-3  # 2.0/ri.clickRate
+                    spars.twin = 10.0 / ri.clickRate
+                else:
+                    spars.delay = ri.pip_start + 0.2 * ri.pip_duration
+                    spars.dur = 0.8 * ri.pip_duration
+                spars.maxn = 100000000
+                if soundtype in ["SAM"]:
+                    spars.twin = 10.0 / ri.fmod
+                    spars.displayDuration = 2.0 / ri.fmod
+
+                an_sac = [None] * n_inputs
+                an_hw = [None] * n_inputs
+                an_fw = [None] * n_inputs
+                for i_an in range(n_inputs):
+                    an_sac[i_an], an_sacbins = S.SAC_with_histo(
+                        an_st_by_input[i_an],
+                        spars,
+                        engine=sac_engine,
+                        dither=1e-3 * si.dtIC / 2.0,
+                    )
+                    (
+                        an_CI_windowed,
+                        peaks,
+                        an_hw[i_an],
+                        an_fw[i_an],
+                    ) = S.SAC_measures(an_sac[i_an], an_sacbins)
+                an_hw = np.array(an_hw).T[0]  # reorganize the data
+                vs.sac_an_hw = np.mean(an_hw[0, :]) * spars.binw
+                CI = np.mean(an_hw[1, :])
+                vs.sac_an_CI = CI
+                lips = np.mean(an_hw[2, :])
+                rips = np.mean(an_hw[3, :])
+                print("AN SAC Report: ")
+                print(
+                    f"    HW:    {vs.sac_an_hw:.6f}  CI: {vs.sac_an_CI:.2f}  Left IPS: {lips:.2f}  Right IPS: {rips:.2f}"
+                )
+            else:
+                an_sac = None
+                an_sacbins = None
+                vs.sac_an_CI = 0.0
+                vs.sac_an_hw = 0.0
+
+            print(" Sound type: ", soundtype)
+            print(
+                "AN Vector Strength at %.1f: %7.3f, d=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d"
+                % (
+                    fmod,
+                    vs_an.vs,
+                    vs_an.circ_timeSD * 1e6,
+                    vs_an.Rayleigh,
+                    vs_an.pRayleigh,
+                    vs_an.n_spikes,
+                )
+            )
+            if sac_flag:
+                print(vs.sac_bu_CI)
+                print(np.min(bu_sac))
+                print(vs.sac_bu_hw)
+                print(
+                    f"BU SAC: CI = {vs.sac_bu_CI:7.3f}, min = {np.min(bu_sac):7.3f}, hw = {1e3*vs.sac_bu_hw:7.3f} ms"
+                )
+                print(
+                    f"AN SAC: CI = {vs.sac_an_CI:7.3f}, min = {np.min(an_sac):7.3f}, hw = {1e3*vs.sac_an_hw:7.3f} ms"
+                )
+            vs.an_vs = vs_an.vs  # copy
+            vs.an_circ_phaseMean = vs_an.circ_phaseMean
+            vs.an_circ_phaseSD = vs_an.circ_phaseSD
+            vs.an_circ_timeSD = vs_an.circ_timeSD
+
+            self.print_VS(vs, fmod, dmod, dB, ri.Spirou)
+
+#########################
+
+        if not plotflag:
+            return
+        
+        # Otherwise, lets do some plotting:
+            # plot the raster of spikes
+        PF.plot_spike_raster(P, mode='postsynaptic', n_inputs=1, spiketimes=sptimes,
+            data_window=data_window, panel=an_raster_panel)
+        PF.plot_spike_raster(P, mode='presynaptic', n_inputs=1, spiketimes=trd["inputSpikeTimes"],
+            data_window=data_window, panel=an_raster_panel)
+
+        i_trial = 0
+        P.axdict[bu_voltage_panel].plot(
+            time_base[idx[0] : idx[1]] - data_window[0],
+            vtrial[idx[0] : idx[1]],
+            "k-",
+            linewidth=0.5,
+        )
+        spikeindex = [
+            int(t / dt) for t in sptimes if not np.isnan(t)
+        ]  # dt is in sec, but spiketimes is in msec
+        ispt = [
+            t
+            for t in range(len(sptimes))
+            if sptimes[t] >= data_window[0] and sptimes[t] < data_window[1]
+        ]
+        P.axdict[bu_voltage_panel].plot(
+            sptimes[ispt] - data_window[0],
+            vtrial[spikeindex][ispt],
+            "ro",
+            markersize=1.5,
+        )
+        P.axdict[bu_voltage_panel].set_xlim(0.0, plot_dur)
+
+        dw = 0.5 * np.max(waveform[i_trial])
+        P.axdict[stimulus_panel].plot(
+            stb[idxs[0] : idxs[1]] - data_window[0],
+            np.array(waveform[i_trial][idxs[0] : idxs[1]]) + i_trial * dw,
+            "-",
+            linewidth=0.5,
+        ) 
 
         if (
             soundtype
@@ -2677,24 +2807,22 @@ class PlotSims:
                 "stationaryNoise",
                 "regularClicks",
                 "poissonClicks",
-            ]
-            and plotflag
-        ):  # use panel F for FSL/SSL distributions
+            ] ):  # use panel F for FSL/SSL distributions
             # the histograms of the data
             psth_binw = 0.2e-3
             PF.plot_psth(
                 all_bu_st,
                 run_info=ri,
-                zero_time=plot_win[0],
-                max_time=plot_win[1],
+                zero_time=data_window[0],
+                max_time=data_window[1],
                 bin_width=psth_binw,
                 ax=P.axdict[bu_psth_panel],
             )
             PF.plot_psth(
                 all_an_st,
                 run_info=ri,
-                zero_time=plot_win[0],
-                max_time=plot_win[1],
+                zero_time=data_window[0],
+                max_time=data_window[1],
                 bin_width=psth_binw,
                 ax=P.axdict[an_psth_panel],
             )
@@ -2712,8 +2840,8 @@ class PlotSims:
             "stationaryNoise",
             "regularClicks",
             "poissonClicks",
-        ]:  # also calculate vs and plot histogram
-            if len(all_bu_st) == 0 and plotflag:
+        ]:  # also calculate vs and plot phase locking, CI, etc. histogram
+            if len(all_bu_st) == 0:
                 P.axdict[vs_panel].text(
                     0.5,
                     0.5,
@@ -2723,242 +2851,85 @@ class PlotSims:
                     transform=P.axdict[vs_panel].transAxes,
                     horizontalalignment="center",
                 )
+            sim_dir = fn.parts[-2]
+            tstring = f"{gbc:s} {str(sim_dir):s}\nSAM Tone: F0={F0:.3f} at {dB:3.1f} dbSPL, fMod={fmod:3.1f}  dMod={dmod:5.2f}, cell CF={F0:.3f}"
+            # print('si: ', si)
+            tstring += f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s} DendExpt: {si.dendriteExpt:s}"
+            tstring += (
+                f" Depr: {si.ANSynapticDepression:d} ANInput: {si.SRType:s}"
+            )
+            P.figure_handle.suptitle(tstring, fontsize=8)
+
+            # set bin width based on sampling rate.
+            per = 1.0 / fmod  # period, in seconds
+            est_binw1 = per / 30.0  # try this
+            dt = 1e-3 * si.dtIC
+            nints = np.floor(est_binw1 / dt)
+            if nints == 0:
+                nints = 1
+            if nints < est_binw1 / dt:
+                est_binw = nints * dt
             else:
-                # fold spike times on period, for the last part of the stimulus
-                if soundtype.endswith("Clicks"):
-                    phasewin = [
-                        ri.clickStart + 0.25 * ri.clickTrainDuration,
-                        ri.clickStart + ri.clickTrainDuration,
-                    ]
-                else:
-                    phasewin = [
-                        pip_start + 0.25 * pip_duration,
-                        pip_start + pip_duration,
-                    ]
+                est_binw = est_binw1
+            # print('est_binw: ', est_binw, est_binw1, dt, nints, per)
+            PF.plot_psth(
+                vs.circ_phase,
+                run_info=ri,
+                max_time=2 * np.pi,
+                bin_width=est_binw,
+                ax=P.axdict[vs_panel],
+            )
 
-                x = np.array(all_bu_st)
-                v = np.where((phasewin[0] <= x) & (x < phasewin[1]))[0]
-                bu_spikesinwin = x[v]
-                x = np.array(all_an_st)
-                v = np.where((phasewin[0] <= x) & (x < phasewin[1]))[0]
-                an_spikesinwin = x[v]
-                if soundtype == "tone":
-                    print("Tone: F0=%.3f at %3.1f dbSPL, cell CF=%.3f" % (F0, dB, F0))
-                if (
-                    soundtype
-                    in ["SAM", "stationaryNoise", "regularClicks", "poissonClicks"]
-                    and plotflag
-                ):
-                    sim_dir = fn.parts[-2]
-                    tstring = f"{gbc:s} {str(sim_dir):s}\nSAM Tone: F0={F0:.3f} at {dB:3.1f} dbSPL, fMod={fmod:3.1f}  dMod={dmod:5.2f}, cell CF={F0:.3f}"
-                    # print('si: ', si)
-                    tstring += f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s} DendExpt: {si.dendriteExpt:s}"
-                    tstring += (
-                        f" Depr: {si.ANSynapticDepression:d} ANInput: {si.SRType:s}"
-                    )
-
-                    P.figure_handle.suptitle(tstring, fontsize=8)
-                vs = self.VS.vector_strength(
-                    bu_spikesinwin, fmod
-                )  # vs expects spikes in msec
-                vs.carrier_frequency = F0
-                vs.n_inputs = n_inputs
-                if sac_flag:
-                    S = SAC.SAC()
-                    spars = SAC.SACPars()
-                    spars.binw = 3 * si.dtIC * 1e-3
-                    spars.maxn = 100000000
-                    if soundtype.endswith("Clicks"):
-                        spars.delay = ri.clickStart + 0.2 * ri.clickTrainDuration
-                        spars.dur = 0.8 * ri.clickTrainDuration
-                        spars.displayDuration = 2e-3  # 2.0/ri.clickRate
-                        spars.twin = 10.0 / ri.clickRate
-                    else:
-                        spars.delay = ri.pip_start + 0.2 * ri.pip_duration
-                        spars.dur = 0.8 * ri.pip_duration
-                        spars.displayDuration = 2.0 / ri.fmod
-                        spars.twin = 10.0 / ri.fmod
-                    bu_sac, bu_sacbins = S.SAC_with_histo(
-                        all_bu_st_trials,
-                        spars,
-                        engine=sac_engine,
-                        dither=1e-3 * si.dtIC / 2.0,
-                    )
-                    vs.sac_bu_CI, peaks, HW, FW = S.SAC_measures(bu_sac, bu_sacbins)
-                    vs.sac_bu_hw = HW[0][0] * spars.binw
-                    print("BU SAC Report: \n  ")
-                    print(
-                        f"    HW:    {vs.sac_bu_hw:.6f}  CI: {vs.sac_bu_CI:.2f}  Left IPS: {HW[2][0]:.2f}  Right IPS: {HW[3][0]:.2f}"
-                    )
-                else:
-                    bu_sac = None
-                    bu_sacbins = None
-                    vs.sac_bu_CI = 0.0
-                    vs.sac_bu_hw = 0.0
-                print(
-                    "CN Vector Strength at %.1f: %7.3f, dispersion=%.2f (us) Rayleigh: %7.3f  p = %.3e  n_spikes = %d"
-                    % (
-                        fmod,
-                        vs.vs,
-                        vs.circ_timeSD * 1e6,
-                        vs.Rayleigh,
-                        vs.pRayleigh,
-                        vs.n_spikes,
-                    )
-                )
-                vs_an = self.VS.vector_strength(
-                    an_spikesinwin,
-                    fmod,
-                )
-                vs_an.n_inputs = n_inputs
-                if sac_flag:
-                    SA = SAC.SAC()
-                    spars = SAC.SACPars()
-                    spars.binw = 3 * si.dtIC * 1e-3
-                    if soundtype.endswith("Clicks"):
-                        spars.delay = ri.clickStart + 0.2 * ri.clickTrainDuration
-                        spars.dur = 0.8 * ri.clickTrainDuration
-                        spars.displayDuration = 2e-3  # 2.0/ri.clickRate
-                        spars.twin = 10.0 / ri.clickRate
-                    else:
-                        spars.delay = ri.pip_start + 0.2 * ri.pip_duration
-                        spars.dur = 0.8 * ri.pip_duration
-                    spars.maxn = 100000000
-                    if soundtype in ["SAM"]:
-                        spars.twin = 10.0 / ri.fmod
-                        spars.displayDuration = 2.0 / ri.fmod
-
-                    an_sac = [None] * n_inputs
-                    an_hw = [None] * n_inputs
-                    an_fw = [None] * n_inputs
-                    for i_an in range(n_inputs):
-                        an_sac[i_an], an_sacbins = S.SAC_with_histo(
-                            an_st_by_input[i_an],
-                            spars,
-                            engine=sac_engine,
-                            dither=1e-3 * si.dtIC / 2.0,
-                        )
-                        (
-                            an_CI_windowed,
-                            peaks,
-                            an_hw[i_an],
-                            an_fw[i_an],
-                        ) = S.SAC_measures(an_sac[i_an], an_sacbins)
-                    an_hw = np.array(an_hw).T[0]  # reorganize the data
-                    vs.sac_an_hw = np.mean(an_hw[0, :]) * spars.binw
-                    CI = np.mean(an_hw[1, :])
-                    vs.sac_an_CI = CI
-                    lips = np.mean(an_hw[2, :])
-                    rips = np.mean(an_hw[3, :])
-                    print("AN SAC Report: ")
-                    print(
-                        f"    HW:    {vs.sac_an_hw:.6f}  CI: {vs.sac_an_CI:.2f}  Left IPS: {lips:.2f}  Right IPS: {rips:.2f}"
-                    )
-                else:
-                    an_sac = None
-                    an_sacbins = None
-                    vs.sac_an_CI = 0.0
-                    vs.sac_an_hw = 0.0
-
-                print(" Sound type: ", soundtype)
-                print(
-                    "AN Vector Strength at %.1f: %7.3f, d=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d"
-                    % (
-                        fmod,
-                        vs_an.vs,
-                        vs_an.circ_timeSD * 1e6,
-                        vs_an.Rayleigh,
-                        vs_an.pRayleigh,
-                        vs_an.n_spikes,
-                    )
-                )
-                if sac_flag:
-                    print(vs.sac_bu_CI)
-                    print(np.min(bu_sac))
-                    print(vs.sac_bu_hw)
-                    print(
-                        f"BU SAC: CI = {vs.sac_bu_CI:7.3f}, min = {np.min(bu_sac):7.3f}, hw = {1e3*vs.sac_bu_hw:7.3f} ms"
-                    )
-                    print(
-                        f"AN SAC: CI = {vs.sac_an_CI:7.3f}, min = {np.min(an_sac):7.3f}, hw = {1e3*vs.sac_an_hw:7.3f} ms"
-                    )
-                vs.an_vs = vs_an.vs  # copy
-                vs.an_circ_phaseMean = vs_an.circ_phaseMean
-                vs.an_circ_phaseSD = vs_an.circ_phaseSD
-                vs.an_circ_timeSD = vs_an.circ_timeSD
-
-                self.print_VS(vs, fmod, dmod, dB, ri.Spirou)
-                if plotflag:
-                    # set bin width based on sampling rate.
-                    per = 1.0 / fmod  # period, in seconds
-                    est_binw1 = per / 30.0  # try this
-                    dt = 1e-3 * si.dtIC
-                    nints = np.floor(est_binw1 / dt)
-                    if nints == 0:
-                        nints = 1
-                    if nints < est_binw1 / dt:
-                        est_binw = nints * dt
-                    else:
-                        est_binw = est_binw1
-                    # print('est_binw: ', est_binw, est_binw1, dt, nints, per)
-                    PF.plot_psth(
-                        vs.circ_phase,
-                        run_info=ri,
-                        max_time=2 * np.pi,
-                        bin_width=est_binw,
-                        ax=P.axdict[vs_panel],
-                    )
-
-                    # P.axdict["E"].hist(
-                    #     vs["ph"],
-                    #     bins=2 * np.pi * np.arange(30) / 30.0,
-                    #     facecolor="k",
-                    #     edgecolor="k",
-                    # )
-                    P.axdict[vs_panel].set_xlim((0.0, 2 * np.pi))
-                    P.axdict[vs_panel].set_title(
-                        f"VS: AN = {vs.an_vs:.3f} BU = {vs.vs:.3f}",
-                        fontsize=8,
-                        horizontalalignment="center",
-                    )
-                    if sac_flag:
-                        for i_an in range(n_inputs):
-                            if i_an == 0:
-                                P.axdict[sac_panel].plot(
-                                    an_sacbins[:-1], an_sac[i_an], "r-", label="AN"
-                                )
-                            else:
-                                P.axdict[sac_panel].plot(
-                                    an_sacbins[:-1],
-                                    an_sac[i_an],
-                                    "r-",
-                                )
-
+            # P.axdict["E"].hist(
+            #     vs["ph"],
+            #     bins=2 * np.pi * np.arange(30) / 30.0,
+            #     facecolor="k",
+            #     edgecolor="k",
+            # )
+            P.axdict[vs_panel].set_xlim((0.0, 2 * np.pi))
+            P.axdict[vs_panel].set_title(
+                f"VS: AN = {vs.an_vs:.3f} BU = {vs.vs:.3f}",
+                fontsize=8,
+                horizontalalignment="center",
+            )
+            if sac_flag:
+                for i_an in range(n_inputs):
+                    if i_an == 0:
                         P.axdict[sac_panel].plot(
-                            bu_sacbins[:-1], bu_sac, "b-", label="BU"
+                            an_sacbins[:-1], an_sac[i_an], "r-", label="AN"
                         )
-                        if soundtype in ["SAM"]:
-                            P.axdict[sac_panel].set_xlim(
-                                (-2.0 / ri.fmod, 2.0 / ri.fmod)
-                            )
-                        elif soundtype.endswith("Clicks"):
-                            P.axdict[sac_panel].set_xlim(
-                                (-spars.displayDuration, spars.displayDuration)
-                            )
-                        else:
-                            print(soundtype)
-                            P.axdict[sac_panel].set_xlim(
-                                (-spars.displayDuration, spars.displayDuratoin)
-                            )
-                        P.axdict[sac_panel].set_ylim(
-                            (0.0, np.max([vs.sac_an_CI, vs.sac_bu_CI]) * 1.05)
+                    else:
+                        P.axdict[sac_panel].plot(
+                            an_sacbins[:-1],
+                            an_sac[i_an],
+                            "r-",
                         )
-                        P.axdict[sac_panel].set_title(
-                            f"SAC\nCI: AN={vs.sac_an_CI:.3f}  BU={vs.sac_bu_CI:.3f}\nHW: AN={1e3*vs.sac_an_hw:.3f}  BU={1e3*vs.sac_bu_hw:.3f} ms",
-                            fontsize=8,
-                            horizontalalignment="center",
-                        )
-                        P.axdict[sac_panel].legend(fontsize=7)
+
+                P.axdict[sac_panel].plot(
+                    bu_sacbins[:-1], bu_sac, "b-", label="BU"
+                )
+                if soundtype in ["SAM"]:
+                    P.axdict[sac_panel].set_xlim(
+                        (-2.0 / ri.fmod, 2.0 / ri.fmod)
+                    )
+                elif soundtype.endswith("Clicks"):
+                    P.axdict[sac_panel].set_xlim(
+                        (-spars.displayDuration, spars.displayDuration)
+                    )
+                else:
+                    print(soundtype)
+                    P.axdict[sac_panel].set_xlim(
+                        (-spars.displayDuration, spars.displayDuratoin)
+                    )
+                P.axdict[sac_panel].set_ylim(
+                    (0.0, np.max([vs.sac_an_CI, vs.sac_bu_CI]) * 1.05)
+                )
+                P.axdict[sac_panel].set_title(
+                    f"SAC\nCI: AN={vs.sac_an_CI:.3f}  BU={vs.sac_bu_CI:.3f}\nHW: AN={1e3*vs.sac_an_hw:.3f}  BU={1e3*vs.sac_bu_hw:.3f} ms",
+                    fontsize=8,
+                    horizontalalignment="center",
+                )
+                P.axdict[sac_panel].legend(fontsize=7)
 
     def select_filenames(self, fng, args) -> Union[list, None]:
         # print(fng)

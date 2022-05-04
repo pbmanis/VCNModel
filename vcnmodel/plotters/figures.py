@@ -41,6 +41,7 @@ from matplotlib import image as mpimg
 from matplotlib.lines import Line2D
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
+from pyqtgraph import multiprocess as MP
 from vcnmodel.analyzers import analyze_data
 from vcnmodel.analyzers import isi_cv as ISI
 from vcnmodel.analyzers import sac as SAC
@@ -178,6 +179,7 @@ class Figures(object):
             "Figure4-Ephys_2_Supplemental3": self.Figure4_Supplemental3,
             "Figure7-Ephys_3_Main": self.Figure7_Main,
             "Figure7-Ephys_3_Supplemental1": self.Figure7_Supplemental1,
+            "Figure7-Ephys_3_Supplemental2": self.Figure7_Supplemental2,
             # Misc figures follow
             "Figure: IV Figure": self.plotIV,
             "Figure: All_IVs": self.allIVs,
@@ -191,7 +193,8 @@ class Figures(object):
             "Figure: Revcorr at 40dB": self.plot_revcorr_supplement_40dB,
             "Figure: Compare Revcorrs": self.plot_revcorr_compare,
             "Figure: PSTHs": self.plot_PSTH,
-            "Figure: VS-SAM Tone": self.plot_VS_SAM,
+            "Analyze VS-SAM table @ 15dBSPL": self.plot_VS_SAM_15,
+            "Analyze VS-SAM table @ 30dBSPL": self.plot_VS_SAM_30,
         }
         if figure_name in list(dispatch_table.keys()):
             fig = dispatch_table[figure_name]()
@@ -711,7 +714,7 @@ class Figures(object):
         nb/Figure3_main_PanelC.ipynb, for the generation code; the matplotlib windows were then pulled
         into Illustrator to make the figure)
         
-        Panels D and E are taken from Figure3_Supplemental2_CC.pdf, for BC 17.
+        Panels D and E are taken from Figure3_Supplemental2_CC.pdf, for BC17.
         """
         cprint("y", message)
 
@@ -2408,10 +2411,10 @@ class Figures(object):
         )
         
         # title the 2 left columns
-        mpl.text(x=1.5, y=8.3, s=f"BC {example_cell_number:02d}  200Hz SAM", fontdict={
+        mpl.text(x=1.5, y=8.3, s=f"BC{example_cell_number:02d}  200Hz SAM", fontdict={
                 "fontsize": 10, "fontweight": "bold", "ha": "center"},
                 transform=P.figure_handle.dpi_scale_trans)
-        mpl.text(x=4.5, y=8.3, s=f"BC {example_cell_number:02d}  60 Hz Click Train", fontdict={
+        mpl.text(x=4.5, y=8.3, s=f"BC{example_cell_number:02d}  60 Hz Click Train", fontdict={
                 "fontsize": 10, "fontweight": "bold", "ha": "center"},
                 transform=P.figure_handle.dpi_scale_trans)
 
@@ -2585,7 +2588,7 @@ class Figures(object):
             ax=P.axdict[pan[6]], ntrace=i, d=MD.data, AR=AR, stim_win=plot_win
         )
         all_bu_st = self.get_bu_spikearray(AR, MD.data)
-        self.plot_spiketrain_raster(
+        PF.plot_spiketrain_raster(
             all_bu_st, ax=P.axdict[pan[1]], max_raster=10, plot_win=plot_win
         )
         self.plot_psth_psth(
@@ -2599,9 +2602,9 @@ class Figures(object):
 
         an_st_by_input, all_an_st, an_st_grand = self.get_an_spikearray(AR, MD.data)
         ninputs = len(an_st_by_input)
-
-        self.plot_stacked_spiketrain_rasters(
-            an_st_by_input, ax=P.axdict[pan[3]], si=MD.SI, plot_win=plot_win,
+        SC, syninfo = self.parent.PLT.get_synaptic_info(cell_number)
+        PF.plot_stacked_spiketrain_rasters(
+            an_st_by_input, ax=P.axdict[pan[3]], si=MD.SI, syninfo=syninfo, plot_win=plot_win,
             linewidth=2.0,
         )
         # P.axdict[pan[3]].set_xlabel("Time (s)")
@@ -2749,6 +2752,9 @@ class Figures(object):
         V = SAM_VS_vplots.VS_Plots()
         fig, P = V.make_figure()
         return fig
+    
+    def Figure7_Supplemental2(self):
+        pass
 
     def plot_psth_psth(
         self,
@@ -3018,114 +3024,7 @@ class Figures(object):
         )
         ax.set_ylabel("mPa")
 
-    def plot_spiketrain_raster(
-        self, spike_times, max_raster: int = 20, ax=None, plot_win: tuple = (0, 0.25)
-    ):
-        # print(len(spike_times))
-        # print(plot_win)
-        n_trials = len(spike_times)
-        if n_trials > max_raster:
-            n_trials = max_raster
-        for i in range(n_trials):
-            ispt = [
-                j
-                for j in range(len(spike_times[i]))
-                if spike_times[i][j] >= plot_win[0] and spike_times[i][j] < plot_win[1]
-            ]
-            ax.plot(
-                np.array(spike_times[i])[ispt] - plot_win[0],
-                i * np.ones(len(ispt)),
-                "|",
-                markersize=1.5,
-                color="b",
-            )
-
-    def plot_stacked_spiketrain_rasters(
-        self,
-        spike_times_by_input,
-        ax=None,
-        si=None,
-        plot_win: tuple = (0, 0.25),
-        max_trials=2,
-        use_colors: bool = True,
-        colormap="Set3",
-        cbar_vmax: float = 300.0,
-        linewidth=1.0,
-    ):
-        """
-        Spike trains are plotted as a raster for all inputs in the AN data
-
-        Parameters
-        ----------
-        spike_times_by_input : list
-            list by input of spike times by trial
-
-        ax : matplotlib axis to place the plat
-
-        si : Params
-
-        plot_win : tuple
-            time window of data to show
-
-        max_trials : int
-            number of trials to show (the first max_trials are plotted)
-
-        use_colors : bool (default True)
-            Plot the raster ticks with colors scaled by input surface area
-
-        colormap : str
-            color map to use for plotting when use_colors is True
-
-        cbar_vmax : float
-            maximum for the colorbar scale
-
-        """
-        n_inputs = len(spike_times_by_input)
-        n_trials = len(spike_times_by_input[0])
-        trial_spc = 1.0
-        input_spc = 0.6 / n_inputs
-
-        if use_colors:
-            cmx = sns.color_palette(colormap, as_cmap=True)
-            cell_n = int(si.cellID[-2:])
-            SC, syninfo = self.parent.PLT.get_synaptic_info(cell_n)
-            syn_ASA = np.array([syninfo[1][isite][0] for isite in range(n_inputs)])
-            max_ASA = np.max(syn_ASA)
-        print("syn asa: ", syn_ASA)
-        for i in range(n_trials):  # and by trial
-            if i > max_trials - 1:
-                continue
-            for k in range(n_inputs):  # raster of input spikes by input
-                if np.max(spike_times_by_input[k][i]) > 2.0:  # probably in msec...
-                    tk = np.array(spike_times_by_input[k][i]) * 1e-3
-                else:
-                    tk = np.array(spike_times_by_input[k][i])
-
-                in_spt = [
-                    i
-                    for i in range(tk.shape[0])
-                    if (tk[i] >= plot_win[0]) and (tk[i] < plot_win[1])
-                ]
-                y = (
-                    ((i + 1) * trial_spc)
-                    - ((n_inputs / 2.0) * input_spc)
-                    + (k * input_spc)
-                ) * np.ones(len(in_spt))
-                if use_colors:
-                    color = cmx.colors[int(cmx.N * syn_ASA[k] / cbar_vmax) - 1]
-                else:
-                    color = "k"
-                ax.plot(
-                    tk[in_spt] - plot_win[0],
-                    y,
-                    "|",
-                    markersize=2.5,
-                    color=color,
-                    linewidth=linewidth,
-                )
-                ax.yaxis.set_ticks([1, 2], ["1", "2"])
-        ax.set_xlim(plot_win)
-
+    
     def get_bu_spikearray(self, AR, d):
         """
         Get the arrays of auditory nerve inputs, sorted by input, all, and grand...
@@ -3528,20 +3427,25 @@ class Figures(object):
         fig.title["title"] = title
         return fig
 
-    def plot_VS_SAM(self):
-        self.generate_VS_data_file()
+    def plot_VS_SAM_15(self):
+        self.generate_VS_data_file(dB=15)
+        pass
+
+    def plot_VS_SAM_30(self):
+        self.generate_VS_data_file(dB=30)
         pass
 
     def analyze_VS_data(
-        self, VS_data, cell_number, fout, firstline=False, sac_flag=False
+        self, VS_data, cell_number, fout, firstline=False, sac_flag=False, test=False,
     ):
         """
-        Generate tables of vs measures for all cells
+        Generate tables of Vector Strength measures for all cells
         across the frequencies listed
         """
-        self.parent.PLT.textclear()  # just at start
+        # self.parent.PLT.textclear()  # just at start
         PD = self.newPData()
         P = None
+        linesout = ""
         self.parent.cellID = cell_number
         for i, filename in enumerate(VS_data.samdata[cell_number]):
             print(f"Cell: {cell_number:d}  Filename: {filename:s}")
@@ -3553,39 +3457,97 @@ class Figures(object):
             )
             sfi = Path(cellpath, filename + ".pkl")
             print(f"Opening pkl file: {str(sfi):s}")
-            with open(sfi, "rb") as fh:
-                d = FPM.pickle_load(fh)
 
-            self.parent.PLT.plot_AN_response(
-                P, d.files[0], PD, "runANPSTH", sac_flag=sac_flag
-            )
-            with open(fout, "a") as fth:
+            if not test:
+                with open(sfi, "rb") as fh:
+                    d = FPM.pickle_load(fh)
+                self.parent.PLT.plot_AN_response(
+                    P, d.files[0], PD, "runANPSTH", sac_flag=sac_flag
+                )
+                # note that VSline has results of VS computation to put in the table
                 if firstline:
-                    fth.write(self.parent.PLT.VS_colnames)
-                    fth.write("\n")
+                    linesout += self.parent.PLT.VS_colnames
+                    linesout += "\n"
                     firstline = False
-                fth.write(self.parent.PLT.VS_line)
-                fth.write("\n")
-
+                linesout += self.parent.PLT.VS_line
+                linesout += "\n"
+                # with open(fout, "a") as fth:
+                #     if firstline:
+                #         fth.write(self.parent.PLT.VS_colnames)
+                #         fth.write("\n")
+                #         firstline = False
+                #     fth.write(self.parent.PLT.VS_line)
+                #     fth.write("\n")
+            else:
+                print(f"Testing only... , file found: {str(sfi.is_file()):s}")
+                if firstline:
+                    linesout += f"Cell: {cell_number:d}  Filename: {filename:s}\n"
+                    linesout += "Data would be here\n"
+        
         print("Analyze VS data completed for cell: ", cell_number)
+        return(linesout)
+    
+    def _write_VS_Header(self, fout:Path, timestamp_str:str):
+        with open(fout, "w") as fh:
+            fh.write(f'"""\n')
+            fh.write(
+                "    Vector strength for models with SAM tones, different input configurations.\n"
+            )
+            fh.write("    17 Aug 2021 version.\n")
+            fh.write(
+                "    Results are a printout from DataTablesVCN after selecting the data runs.\n"
+            )
+            fh.write(f"Run started at: {timestamp_str:s}\n")
+            fh.write(
+                "WARNING: This table is automatically written by figures.py generate_VS_data_file\n"
+            )
+            fh.write("       and should not be directly edited.\n")
+            fh.write(f"To Regenerate:\n   After running the simulationns, select the runs to be added.\n"
+            )
+            fh.write(f"   Use the 'Print File Info' button for each cells\n")
+            fh.write(
+                f"    Copy the text in the 'Reports' dock in DataTablesVCN\n"
+            )
+            fh.write(
+                f"  into a 'VS_datasets_xxdB.py' file, where xx is the sound pressure level.\n"
+            )
+            fh.write(
+                f"Then select 'VS-SAMTone-no figure' in DataTables, and 'Create Figure.\n"
+            )
+            fh.write(
+                f"  No figure will be generated, but vector strength will be calculated\n"
+                
+            )
+            fh.write(f"   and the VS_data_xxdB.py file will be created.\n")
+            fh.write(
+                f"The VS_data_xxdB.py file holds all of the vector-strength information, in a text format,\n "
+            )
+            fh.write(f"  and is read by the plotting programs.\n")
+            fh.write(f'--pbm 2014-2022\n"""\n')  # end of the comment
+            fh.write('\ndata = """')  # start of the data
 
-    #
-    def generate_VS_data_file(self, testmode=False, dB=30, append=True):
+    def generate_VS_data_file(self, testmode=True, dB=15, append=False):
         """
         Write the VS_data file from the selected datasets.
-        The datasets are in VS_datasets_nndB.py
+        This routine reanalyzes all of the data in the table
+        to get the vector strength information.
+
+        The datasets that to be analyzed are listed in VS_datasets_nndB.py
         """
+        parallel = True
+        if parallel:
+            import multiprocessing as MPROC
 
         if dB == 30:
             if f"VS_datasets_{dB:d}dB" not in list(dir()):
                 import VS_datasets_30dB as VS_datasets
         if dB == 15:
             if f"VS_datasets_{dB:d}dB" not in list(dir()):
-                from vcnmodel import VS_datasets_15dB as VS_datasets
-        importlib.reload(VS_datasets)
+                import VS_datasets_15dB as VS_datasets
+        importlib.reload(VS_datasets)  # make sure have the current one
         print("VS_datasets: ", VS_datasets)
         print(f"Data set keys found: {str(list(VS_datasets.samdata.keys())):s}")
-
+        timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d-%H.%M.%S")
         config = toml.load(open("wheres_my_data.toml", "r"))
 
         """
@@ -3594,52 +3556,52 @@ class Figures(object):
         """
         cprint("g", f"Generate VS Data for {dB:d} dB")
 
-        fout = f"VS_data_{dB:d}dB.py"  # we will generate this automatically
+        fout = Path(f"VS_data_{dB:d}dB_{timestamp_str:s}.py")  # we will generate this automatically, but time stamp it
         if not append:
-            with open(fout, "w") as fh:
-                fh.write(f'"""\n')
-                fh.write(
-                    "    Vector strength for models with SAM tones, different input configurations.\n"
-                )
-                fh.write("    17 Aug 2021 version.\n")
-                fh.write(
-                    "    Results are a printout from DataTablesVCN after selecting the data runs.\n"
-                )
-                fh.write(
-                    "NOTE: This table is automatically written by figures.py and should not be\n"
-                )
-                fh.write("      directly edited.")
-                fh.write(
-                    f"To Regenerate:\n  After running the simulations, use 'Print File Info' for each cell, "
-                )
-                fh.write(
-                    f"  selecting the relevant simulations, and copy the text in the 'Reports' box in DataTablesVCN"
-                )
-                fh.write(
-                    f"  into a 'VS_datasets_xxdB.py' file, where xx is the sound pressure level.\n"
-                )
-                fh.write(
-                    f"Then select 'VS-SAMTone-no figure' in DataTables, and 'Create Figure."
-                )
-                fh.write(
-                    f"  No figure will be generated, but the VS_data_xxdB.py file will be created.\n"
-                )
-                fh.write(
-                    f"The VS_data file holds all of the vector-strength information, in a text format, "
-                )
-                fh.write(f"  and is read by the plotting programs.\n")
-                fh.write(f'--pbm 2014-2021\n"""\n')  # end of the comment
-                fh.write('\ndata = """')  # start of the data
+            self._write_VS_Header(fout, timestamp_str)
 
         fl = True
-        for i, celln in enumerate(grAList()):
-            if testmode and i != 1:
-                continue
-            self.analyze_VS_data(VS_datasets, celln, fout, firstline=fl, sac_flag=True)
-            fl = False
+        TASKS = [s for s in grAList()]
+        tresults = [None] * len(TASKS)
+        results = {}
+        # run using pyqtgraph's parallel support
+        if parallel:
+            nWorkers = MPROC.cpu_count()
+            cprint("m", f"VS_DataAnalysis : Parallel with {nWorkers:d} processes")
+            self.parent.PLT.in_Parallel = True  # notify caller
+            with MP.Parallelize(
+                    enumerate(TASKS), results=tresults, workers=nWorkers
+                ) as tasker:
+                    for j, celln in tasker:
+                        if j > 0:
+                            fl = False
+                        tresults = self.analyze_VS_data(VS_datasets, celln, fout, 
+                            firstline=fl, sac_flag=True, test=False)
+                        tasker.results[j] = tresults
+            self.parent.PLT.in_Parallel = False
+        else:
+            for j, celln in enumerate(TASKS):
+                tresults = self.analyze_VS_data(VS_datasets, celln, fout, 
+                    firstline=fl, sac_flag=True, test=False)
+                if j > 0:
+                    fl = False
+        print([r+'\n' for r in tresults])
+        for j in range(len(TASKS)):
+            with open(fout, "a") as fh:
+                lines = tresults[j].split('\n')
+                for l in lines:
+                    fh.write(l)
+                    fh.write("\n")
+
+        # for i, celln in enumerate(grAList()):
+        #     if testmode and i != 1:
+        #         continue
+        #     self.analyze_VS_data(VS_datasets, celln, fout, firstline=fl, sac_flag=True, test=True)
+        #     fl = False
+       
         with open(fout, "a") as fh:
             fh.write(f'"""\n')  # close the data text.
-        cprint("g", "The VS_data file {str(fout):s} has been generated.")
+        cprint("g", f"The VS_data file {str(fout):s} has been generated.")
 
     def plot_VC_gKLT(
         self, parent_figure=None, loc: Union[None, tuple] = None
