@@ -24,11 +24,12 @@ import sys
 from dataclasses import dataclass, field
 from lib2to3.pgen2.pgen import DFAState
 from pathlib import Path
-from typing import List
+from typing import List, Union
 
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from vcnmodel.util.set_figure_path import set_figure_path
 
 sys.path.insert(0, os.path.abspath("nb"))
 import plotnine as PN
@@ -41,17 +42,18 @@ from matplotlib import ticker
 from pylibrary.plotting import plothelpers as PH
 
 # seaborn default palette, first 3 colors
-colors = [(0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
-          (1.0, 0.4980392156862745, 0.054901960784313725),
-          (0.17254901960784313, 0.6274509803921569, 0.17254901960784313), 
-          (0.8392156862745098, 0.15294117647058825, 0.1568627450980392),
-          (0.5803921568627451, 0.403921568627451, 0.7411764705882353),
-          (0.5490196078431373, 0.33725490196078434, 0.29411764705882354),
-          (0.8901960784313725, 0.4666666666666667, 0.7607843137254902),
-          (0.4980392156862745, 0.4980392156862745, 0.4980392156862745),
-          (0.7372549019607844, 0.7411764705882353, 0.13333333333333333),
-          (0.09019607843137255, 0.7450980392156863, 0.8117647058823529),
-          ]
+colors = [
+    (0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
+    (1.0, 0.4980392156862745, 0.054901960784313725),
+    (0.17254901960784313, 0.6274509803921569, 0.17254901960784313),
+    (0.8392156862745098, 0.15294117647058825, 0.1568627450980392),
+    (0.5803921568627451, 0.403921568627451, 0.7411764705882353),
+    (0.5490196078431373, 0.33725490196078434, 0.29411764705882354),
+    (0.8901960784313725, 0.4666666666666667, 0.7607843137254902),
+    (0.4980392156862745, 0.4980392156862745, 0.4980392156862745),
+    (0.7372549019607844, 0.7411764705882353, 0.13333333333333333),
+    (0.09019607843137255, 0.7450980392156863, 0.8117647058823529),
+]
 
 
 def reset_style():
@@ -73,6 +75,22 @@ class PlotInfo:
     freqs: list = field(default_factory=defemptylist)
     fr: list = field(default_factory=defemptylist)
     vsscale: list = field(default_factory=defemptylist)
+
+
+def title_data():
+    return {"title": "", "x": None, "y": None}
+
+
+@dataclass
+class FigInfo:
+    """
+    data class to hold figure information for savefig
+    """
+
+    P: object = None
+    filename: Union[str, Path] = ""
+    title: dict = field(default_factory=title_data)
+    title2: dict = field(default_factory=title_data)
 
 
 class VS_Plots:
@@ -153,7 +171,11 @@ class VS_Plots:
         """
 
         labels = set(df["frequency"])
-        self.PI.labels = [str(int(l)) for l in sorted(labels)]
+        print("labels: ", labels)
+        labelnames = [float(label) for label in labels]
+        print("labels, freq: ", labelnames)
+
+        self.PI.labels = [str(int(l)) for l in sorted(labelnames)]
 
         print(self.PI.plotwhat)
         self.PI.anpt = "AN_phasesd"
@@ -313,7 +335,6 @@ class VS_Plots:
         )
         # print(dir(PN.scales))
 
-
         fig, P = gg.draw(return_ggplot=True)
         # print(dir(fig))
         # print(dir(P))
@@ -321,7 +342,6 @@ class VS_Plots:
         # print(P.axs)
 
         # fig2 = mpl.figure(99)
-
 
         # mpl.show()
         # return fig, P
@@ -356,6 +376,7 @@ class VS_Plots:
                 "Title": title,
             },
         )
+
         fig.filename = save_file
         if hasattr(fig, "title"):
             fig.title["title"] = title
@@ -400,7 +421,12 @@ class VS_Plots:
         nfreq = len(self.df["frequency"].unique())
         x = np.arange(nfreq)
         ax.scatter(
-            x, self.df["AN_VS"][:24:3], s=320, color="firebrick", marker="_", linewidth=2
+            x,
+            self.df["AN_VS"][:24:3],
+            s=320,
+            color="firebrick",
+            marker="_",
+            linewidth=2,
         )
         xl = ax.get_xticklabels()
         newxl = [f"{int(float(x.get_text())):d}" for x in xl]
@@ -421,7 +447,7 @@ class VS_Plots:
             ax = axin
         return ax
 
-    def plot_VS_summary(self, cell, axin=None, legendflag=True, show_cell=True):
+    def plot_VS_summary(self, cell, axin=None, legendflag=True, barwidth=240, show_cell=True):
         """Summarize the VS for one cell for all conditions/frequencies.
         This is similar to the plotnine routine above, but just
         uses matplotlib to acheive the same plot
@@ -458,9 +484,7 @@ class VS_Plots:
         n_configurations = len(dfl["Configuration"].unique())
         n_frequencies = len(dfl["frequency"].unique())
         # get the first set of children plotted - the rest are legend etc
-        locs = ax.get_children()[
-            : n_configurations * n_frequencies
-        ]
+        locs = ax.get_children()[: n_configurations * n_frequencies]
         axis_items = []
         for child in ax.get_children():
             if isinstance(child, matplotlib.collections.PathCollection):
@@ -473,21 +497,22 @@ class VS_Plots:
                 # axis_item = ax.get_children()[i + j]
                 # if not isinstance(axis_item, matplotlib.collections.PathCollection):
                 #     continue
-                offs = axis_items[i+j].get_offsets()
+                offs = axis_items[i + j].get_offsets()
                 xl.append(offs[0][0])  # build up the line
                 yl.append(offs[0][1])
             ax.plot(xl, yl, color="slategrey", linewidth=1.25, linestyle="-")
-            ax.scatter( # plot the AN vector strength bars for reference
+            ax.scatter(  # plot the AN vector strength bars for reference
                 x,
                 dfl["AN_VS"][: n_configurations * n_frequencies : n_configurations],
-                s=240,
+                s=barwidth,
                 color="firebrick",
                 marker="_",
                 linewidth=2,
+                alpha=0.3,
             )
         ax.set_ylim(0, 1)
         xl = ax.get_xticklabels()  # do this before niceplot...
-        #PH.nice_plot(ax, direction="outward", position=-0.02, )  # hmmm, removes tick labels...
+        # PH.nice_plot(ax, direction="outward", position=-0.02, )  # hmmm, removes tick labels...
         xl = ax.get_xticklabels()
         newxl = [f"{int(float(x.get_text())):d}" for x in xl if x.get_text() != ""]
         ax.set_xticklabels(newxl)
@@ -498,24 +523,80 @@ class VS_Plots:
         else:
             ax.legend(markerscale=0.5)
         if show_cell:
-            ax.text(x=0.5, y=1.0, s=f"BC {cell:02d}",
+            ax.text(
+                x=0.5,
+                y=1.0,
+                s=f"BC{cell:02d}",
                 fontdict=title_font,
-            #    "horizontalalignment":"center","verticalalignment":"top"},
-                transform=ax.transAxes)
+                #    "horizontalalignment":"center","verticalalignment":"top"},
+                transform=ax.transAxes,
+            )
         if axin is None:
             mpl.show()
         return ax
 
+    def Figure7_Supplemental2(self):
+        V1 = VS_Plots(dBSPL=15)
+        cells = [2, 6, 10, 11, 13, 18]
+        P = PH.regular_grid(
+            2,
+            3,
+            figsize=(8, 6),
+            panel_labels=["A", "B", "C", "D", "E", "F"],
+            margins={"leftmargin": 0.08, "rightmargin": 0.08, "bottommargin": 0.1, "topmargin":0.05},
+            verticalspacing=0.15,
+            horizontalspacing=0.10,
+            labelposition=(-0.12, 1.05),
+        )
+        axl = P.axarr.ravel()
+
+        for i, cell in enumerate(cells):
+            if i == 0:
+                legend = True
+            else:
+                legend = False
+            self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
+            barwidth=180)
+
+        fig = FigInfo()
+        fig.P = P
+
+        fig.filename = set_figure_path(
+            fignum=7, filedescriptor="VS_Summary_V3", suppnum=2
+        )
+        title = "SBEM Project Supplemental Figure 7 Modeling : Vector Strength Summary"
+        fig.title["title"] = title
+        mpl.savefig(
+            fig.filename,
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": title,
+            },
+        )
+        fig.filename = fig.filename.with_suffix(".png")
+        mpl.savefig(
+            fig.filename,
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": title,
+            },
+        )
+
 
 if __name__ == "__main__":
 
-    V1 = VS_Plots(dBSPL=15)
+    # V1 = VS_Plots(dBSPL=15)
     # V1.plot_VS_Data()
-    #V1.plot_VS_summary(17)
-    #exit()
+    # V1.plot_VS_summary(17)
+    # exit()
 
-    V = VS_Plots()
-    fig, P = V.make_figure()
+    # V = VS_Plots()
+    # fig, P = V.make_figure()
+
+    V1 = VS_Plots(dBSPL=15)
+    V1.Figure7_Supplemental2()
 
     # fm, new_ax = mpl.subplots(2,2)
     # new_ax = np.ravel(new_ax)
