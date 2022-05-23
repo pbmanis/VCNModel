@@ -679,9 +679,10 @@ class PlotSims:
                 secax = ivaxis
                 color = ivcolor
                 ticklabelsize = 8
+
             secax.plot(
                 RM.ivss_cmd_all * 1e9,
-                RM.ivss_v_all * 1e3,
+                RM.ivss_v_all.asarray() * 1e3,
                 f"{color:s}s-",
                 markersize=3,
                 markerfacecolor="k",
@@ -1994,7 +1995,7 @@ class PlotSims:
             horizontalspacing=0.01,
             margins={
                 "bottommargin": 0.1,
-                "leftmargin": 0.07,
+                "leftmargin": 0.125,
                 "rightmargin": 0.05,
                 "topmargin": 0.15,
             },
