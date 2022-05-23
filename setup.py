@@ -36,7 +36,7 @@ setup(name='vcnmodel',
           'console_scripts': [
                'model_run=vcnmodel.model_run2:main',
                'allgbcivs=vcnmodel.all_gbc_iv:main',
-               'show_swc=scnmodel.util.show_swc:main',
+               'show_swc=vcnmodel.util.show_swc:main',
                'render=vcnmodel.util.render:main',
                'plot_sims=vcnmodel.plotters.plot_sims:main',
                'datatable=vcnmodel.DataTablesVCN:main',
