@@ -90,6 +90,8 @@ class CmdChoices:
         "NoDend",
         "NoDistal",
         "NoUninnervated",
+        "NoUninnervated2",
+
     ]
     axonExptChoices = ["default", "standardized"]
     protocolChoices = [
@@ -426,7 +428,7 @@ def build_parser():
         dest="dendriteExpt",
         default="default",
         choices=CmdChoices.dendriteExptChoices,
-        help="Choose dendrite experiment (default, Full, NoDend, NoDistal, NoUninnervated)",
+        help="Choose dendrite experiment (default, Full, NoDend, NoDistal, NoUninnervated, NoUninnervated2)",
     )
     parser.add_argument(
         "-A",

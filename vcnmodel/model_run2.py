@@ -886,20 +886,21 @@ class ModelRun:
         ###############################################
         # remove all non-parented sections, except the first.
         ###############################################
+        nremoved = 0
         for i, section in enumerate(self.post_cell.hr.h.allsec()):
             sref = self.post_cell.hr.h.SectionRef(sec=section)
             psec = self.post_cell.hr.h.parent_section(0, sec=section)
-            if not sref.has_parent():
-                if i > 0:
-                    self.post_cell.hr.h.delete_section(sec=section)
-                    print(
-                        "Section index i: ",
-                        i,
-                        "  sec: ",
-                        section.name(),
-                        "has no parent",
-                    )
+            # if not sref.has_parent():
+            #     if i > 0:
+            #         cprint("m", 
+            #             f"Section index i: {i:d}  sec: {str(section.name()):s} has no parent, is being deleted"
+            #         )
+            #         self.post_cell.hr.h.delete_section(sec=section)
+            #         nremoved += 1
+        # if nremoved > 0:
+        #     self.post_cell.hr.h.topology()
 
+ 
         ###############################################
         # Fix singlet section (one point)
         ###############################################
@@ -922,6 +923,13 @@ class ModelRun:
         for group in list(self.post_cell.hr.sec_groups.keys()):
             g = self.post_cell.hr.sec_groups[group]
             for section in list(g):
+                # thissec = self.post_cell.hr.get_section(section)
+                # this_ref = self.post_cell.hr.h.SectionRef(sec=thissec)
+                # print(thissec)
+                # print(dir(this_ref))
+                # print(this_ref.exists())
+                # print(str(thissec) == "<deleted section>")
+                # if str(thissec) != "<deleted section>":  # skip deleted sections
                 self.post_cell.hr.get_section(section).Ra = self.post_cell.hr.h.Ra
                 if self.Params.verbose:
                     print("Section: ", section)
