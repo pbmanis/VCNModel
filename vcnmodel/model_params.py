@@ -114,7 +114,8 @@ class CmdChoices:
         "noise",
         "stationaryNoise",
         "regularClicks",
-        "poissonClicks" "SAM",
+        "poissonClicks",
+        "SAM",
         "CMMR",
     ]
     speciesChoices = ["mouse", "guineapig"]
