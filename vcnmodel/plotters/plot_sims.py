@@ -2498,20 +2498,7 @@ class PlotSims:
         
         plotflag = False
 
-        if P is not None:
-            plotflag = True
-            sim_dir = fn.parts[-2]
-            tstring = f"{gbc:s}_{str(sim_dir):s}_{soundtype:s}.pdf"
-            mpl.get_current_fig_manager().canvas.set_window_title(tstring)
-            bu_voltage_panel = "A"
-            bu_raster_panel = "B"
-            bu_psth_panel = "C"
-            stimulus_panel = "D"
-            vs_panel = "E"
-            sac_panel = "F"
-            an_raster_panel = "G"
-            an_psth_panel = "H"
-            bu_fsl_panel = "I"
+
         
         model_data = self.ReadModel.get_data(fn, PD, protocol)
         AR = model_data.AR
@@ -2536,6 +2523,22 @@ class PlotSims:
             dmod,
         ) = self.get_stim_info(si, ri)
 
+        if P is not None:
+            print(PD)
+
+            plotflag = True
+            sim_dir = fn.parts[-2]
+            tstring = f"{gbc:s}_{str(sim_dir):s}_{ri.soundtype:s}.pdf"
+            mpl.get_current_fig_manager().canvas.set_window_title(tstring)
+            bu_voltage_panel = "A"
+            bu_raster_panel = "B"
+            bu_psth_panel = "C"
+            stimulus_panel = "D"
+            vs_panel = "E"
+            sac_panel = "F"
+            an_raster_panel = "G"
+            an_psth_panel = "H"
+            bu_fsl_panel = "I"
         # We must get the units correct here.
         # AR time_base is in milliseconds, so convert to seconds
         all_an_st = []
@@ -2763,15 +2766,15 @@ class PlotSims:
         
         # Otherwise, lets do some plotting:
             # plot the raster of spikes
-        PF.plot_spike_raster(P, mode='postsynaptic', n_inputs=1, spiketimes=sptimes,
+        PF.plot_spike_raster(P, mode='postsynaptic', n_inputs=1, spike_times=sptimes,
             data_window=data_window, panel=an_raster_panel)
-        PF.plot_spike_raster(P, mode='presynaptic', n_inputs=1, spiketimes=trd["inputSpikeTimes"],
+        PF.plot_spike_raster(P, mode='presynaptic', n_inputs=1, spike_times=trd["inputSpikeTimes"],
             data_window=data_window, panel=an_raster_panel)
 
         i_trial = 0
         P.axdict[bu_voltage_panel].plot(
-            time_base[idx[0] : idx[1]] - data_window[0],
-            vtrial[idx[0] : idx[1]],
+            np.array(time_base[idx[0] : idx[1]] - data_window[0]),
+            np.array(vtrial[idx[0] : idx[1]]),
             "k-",
             linewidth=0.5,
         )
@@ -2810,6 +2813,9 @@ class PlotSims:
                 "poissonClicks",
             ] ):  # use panel F for FSL/SSL distributions
             # the histograms of the data
+            import vcnmodel.util.make_sound_waveforms as msw
+            MSW = msw.Make_Sound_Waveform()
+
             psth_binw = 0.2e-3
             PF.plot_psth(
                 all_bu_st,
@@ -2818,6 +2824,7 @@ class PlotSims:
                 max_time=data_window[1],
                 bin_width=psth_binw,
                 ax=P.axdict[bu_psth_panel],
+                stimbar = {'sound_params': None, 'waveform': [stb, waveform[0]]}
             )
             PF.plot_psth(
                 all_an_st,

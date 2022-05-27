@@ -8,6 +8,7 @@ import seaborn as sns
 from vcnmodel.util import trace_calls
 from vcnmodel.analyzers import analysis as SPKANA
 from vcnmodel.util.basic_units import radians
+from vcnmodel.util import make_sound_waveforms
 
 TRC = trace_calls.TraceCalls
 
@@ -34,6 +35,23 @@ def twinax(fig: object, ax1: object, pos: float = 0.0) -> object:
     return ax2
 
 
+def add_stimbar(stimbar, zero_time, max_time, ax):
+    if stimbar['sound_params'] is None and stimbar['waveform'] is None:
+        return
+    if stimbar['sound_params'] is not None:
+        if stimbar['sound_params'].make_sound():
+            wv = stimbar['sound_params'].stimWaveform
+            wtb = stimbar['sound_params'].stimTimebase
+    if stimbar['waveform'] is not None:
+        wv = stimbar['waveform'][1]
+        wtb = stimbar['waveform'][0]
+    twin = np.argwhere((wtb > zero_time) & (wtb < max_time))
+    wv = wv/np.max(wv)
+    # now build a second axis below the first
+
+    ax.plot(wtb[twin]-zero_time, wv[twin]-2, 'b-', clip_on=False)  # plot outside the axes
+    ax.xaxis.set_tick_params(which='major', pad=50)
+
 @TRC()
 def plot_psth(
     spike_times: Union[list, np.ndarray],
@@ -47,6 +65,7 @@ def plot_psth(
     edge_color: str = "k",
     alpha: float = 1.0,
     xunits: str = "time",
+    stimbar: Union[dict, None] = None, # {'sound_params': None, 'waveform': None},
 ):
     """Correctly plot PSTH with spike rate in spikes/second
     All values are in seconds (times, binwidths)
@@ -74,6 +93,15 @@ def plot_psth(
         color of the edges of the plot bars, by default "k"
     alpha : float, optional
         Transparency of the plot, by default 1.0
+    xunits: str, optional
+        The text for the x axis units
+    stimbar: dict{sound_params: None, waveform: None}
+        A dictionary for placing a plot of the stimulus under the plot.
+        Keys: 'sound_params', 'waveform'
+        if 'sound_params' is not None, then it should be a sound_params dataclass
+        from make_sound_waveforms, and will be used to generate the waveform.
+        if 'waveform' is not None, then it is assumed that the passed
+        argument is a list [time, waveform].
 
     Returns
     -------
@@ -129,7 +157,12 @@ def plot_psth(
         ticks = np.linspace(0, 2 * np.pi, 5)
         tick_labels = ["0", r"$\pi /2$", r"$\pi$", r"$3\pi /2$", r"$2\pi$"]
         ax.set_xticks(ticks, tick_labels)
-    return  # h, b
+    
+    ax.set_ylim(0, ax.get_ylim()[1])
+    if stimbar is not None:
+        add_stimbar(stimbar, zero_time, max_time, ax)
+
+    return
 
 
 @TRC()
@@ -147,7 +180,7 @@ def plot_fsl_ssl(
     show_values: bool = True,
 ) -> Tuple[object, object]:
     """Plot the first and second spike latencies as histogram into the selected axis
-    All times should be specified in seconds
+    All times should be specified in *seconds*
 
     Parameters
     ----------

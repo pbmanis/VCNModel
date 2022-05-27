@@ -26,7 +26,7 @@ import string
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Union
+from typing import Union, List
 
 import matplotlib
 import matplotlib.pyplot as mpl
@@ -2951,7 +2951,7 @@ class Figures(object):
         tb_end = int(time_win[1] / dt)
 
         # cprint('r', f"i is 0, psth: {psth_win=}")
-        ax.plot((time_base - time_win[0]), vtrial, "k-", linewidth=0.5)
+        ax.plot((time_base - time_win[0]), np.array(vtrial), "k-", linewidth=0.5)
         spiketimes = np.array(trd["spikeTimes"])
         # trim spike mark array so we don't get spots at the edge of the plot
         spikeindex = [
@@ -2997,31 +2997,39 @@ class Figures(object):
         AR: object = None,
         si: object = None,
         stim_win: tuple = (0, 0.25),
+        color='b',
+        scale:str='sec', # or "ms"
     ):
         # stimulus waveform
         trd = d["Results"][ntrace]
-        waveform = trd["stimWaveform"].tolist()
+        waveform = np.array(trd["stimWaveform"].tolist())
         stb = trd["stimTimebase"]
+        timescale = 1.0
+        if scale in ['ms', 'msec']:
+            timescale = 1e3  # rescale so we are in milliseconds
+
         stimdt = np.mean(np.diff(stb))
         sttb_beg = int(stim_win[0] / stimdt)
         sttb_end = int(stim_win[1] / stimdt)
-
+        # print('STIMWIN: ', stim_win)
+        # print(stb[sttb_beg], stb[sttb_end])
         ax.plot(
-            (stb[sttb_beg:sttb_end] - stim_win[0]),
-            np.array(waveform)[sttb_beg:sttb_end] * 1e3,
-            "k-",
+            np.array(stb[sttb_beg:sttb_end] - stim_win[0])*timescale,
+            waveform[sttb_beg:sttb_end] * 1e3,
+            linestyle='-',
+            color=color,
             linewidth=0.5,
         )  # stimulus underneath
-        ax.set_xlim(0, stim_win[1] - stim_win[0])
-        PH.talbotTicks(
-            ax,
-            axes="xy",
-            density=(1.0, 0.5),
-            insideMargin=0.02,
-            # pointSize=ticklabelsize,
-            tickPlacesAdd={"x": 2, "y": 1},
-            floatAdd={"x": 2, "y": 1},
-        )
+        ax.set_xlim(0, timescale*(stim_win[1] - stim_win[0]))
+        # PH.talbotTicks(
+        #     ax,
+        #     axes="xy",
+        #     density=(1.0, 0.5),
+        #     insideMargin=0.02,
+        #     # pointSize=ticklabelsize,
+        #     tickPlacesAdd={"x": 2, "y": 1},
+        #     floatAdd={"x": 2, "y": 1},
+        # )
         ax.set_ylabel("mPa")
 
     
@@ -3079,6 +3087,8 @@ class Figures(object):
                 an_st_grand[i].extend(tk * 1e-3)
         return an_st_by_input, all_an_st, an_st_grand
 
+
+
     def plot_one_PSTH(
         self,
         cell_number: int,
@@ -3093,6 +3103,9 @@ class Figures(object):
         plot_win: tuple = (0.4, 0.550),
         bu_fsl_win: Union[None, tuple] = None,
         an_fsl_win: Union[None, tuple] = None,
+        stim_tr_ax:Union[None, object] = None,
+        stim_psth_ax:Union[None, object] = None,
+        stim_fsl_ax:Union[None, object] = None,
         label_x_axis=True,
     ):
         dataset = FD.figure_psth[cell_number]
@@ -3146,7 +3159,9 @@ class Figures(object):
         ) = self.parent.PLT.get_stim_info(si, ri)
 
         ntr = len(AR.MC.traces)
-
+        #
+        # Traces
+ 
         for i in range(ntr):  # for all trials in the measure.
             vtrial = AR.MC.traces[i] * 1e3
             time_base = AR.MC.time_base / 1000.0  # convert to seconds
@@ -3161,6 +3176,37 @@ class Figures(object):
                     ax=st_ax, ntrace=i, d=d, AR=AR, stim_win=plot_win
                 )
         PH.nice_plot(tr_ax, direction="outward", ticklength=3.0)
+        if label_x_axis:
+            xticks_str = ["0.0", "0.1", "0.2"]
+        else:
+            xticks_str = None
+        PH.set_axes_ticks(tr_ax,
+                yticks = [-60, -30, 0],
+                yticks_str = ["-60", "-30", "0"],
+                y_minor=[-70, -50, -40, -20, -10],
+                xticks = [0, 0.1, 0.2],
+                xticks_str = xticks_str,
+                x_minor = [0.05, 0.15, 0.25],
+            )   
+        tr_ax.set_ylim(-75, 5)
+        self.stim_data = {'ntrace': i, 'd': d, 'AR': AR, 'stim_win': psth_win}
+        if stim_tr_ax is not None:
+            self.plot_stim_waveform(
+                    ax=stim_tr_ax, ntrace=i, d=d, AR=AR, stim_win=psth_win
+                )
+            PH.set_axes_ticks(stim_tr_ax,
+                yticks = [-1, -0, 1],
+                yticks_str = ["-1", "", "1"],
+                xticks = [0, 0.1, 0.2],
+                xticks_str = ["0.0", "0.1", "0.2"],
+                x_minor = [0.05, 0.15, 0.25],
+            )
+            stim_tr_ax.set_xlabel("Time (s)")
+        if label_x_axis:
+            tr_ax.set_xlabel("Time (s)")    
+
+        #
+        # PSTH
 
         all_bu_st = self.get_bu_spikearray(AR, d)
         self.all_bu_st = all_bu_st
@@ -3178,12 +3224,36 @@ class Figures(object):
                 ninputs=1,
             )
             PH.nice_plot(bupsth_ax, direction="outward", ticklength=3.0)
-
+            if label_x_axis:
+                xticks_str = ["0", "0.1", "0.2"]
+            else:
+                xticks_str = None
+            PH.set_axes_ticks(bupsth_ax,
+                yticks = [0, 25, 50, 75],
+                yticks_str = ["0", "25", "50", "75"],
+                xticks = [0, 0.1, 0.2],
+                xticks_str = xticks_str,
+                x_minor = [0.05, 0.15, 0.25],
+            )            
+            if stim_psth_ax is not None:
+                self.plot_stim_waveform(
+                        ax=stim_psth_ax, ntrace=i, d=d, AR=AR, stim_win=psth_win
+                    )
+                PH.set_axes_ticks(stim_psth_ax,
+                    yticks = [-1, -0, 1],
+                    yticks_str = ["-1", "", "1"],
+                    xticks = [0, 0.1, 0.2],
+                    xticks_str = ["0", "0.1", "0.2"],
+                    x_minor = [0.05, 0.15, 0.25],
+                )
+                stim_psth_ax.set_xlabel("Time (s)")
             if label_x_axis:
                 bupsth_ax.set_xlabel("Time (s)")
 
         an_st_by_input, all_an_st, an_st_grand = self.get_an_spikearray(AR, d)
 
+        #
+        # ANPSTH
         if anpsth_ax is not None:
             print("anpsth to plotpsth")
             self.plot_psth_psth(
@@ -3198,7 +3268,9 @@ class Figures(object):
             if label_x_axis:
                 anpsth_ax.set_xlabel("Time (sec)")
             anpsth_ax.set_title("AN")
-
+    #
+    # FSL
+    #
         if bufsl_ax is not None:
             PF.plot_fsl_ssl(
                 all_bu_st,
@@ -3211,19 +3283,37 @@ class Figures(object):
                 cellID=cell_number,
             )
             PH.nice_plot(bufsl_ax, direction="outward", ticklength=3.0)
-
-            PH.talbotTicks(
-                bufsl_ax,
-                axes="xy",
-                density=(1.0, 1.0),
-                insideMargin=0.02,
-                # pointSize=ticklabelsize,
-                tickPlacesAdd={"x": 0, "y": 0},
-                floatAdd={"x": 0, "y": 0},
-            )
-            bufsl_ax.set_ylabel("Spikes")
             if label_x_axis:
-                bufsl_ax.set_xlabel("Latency (ms)")
+                xticks_str = ["0", "5", "10", "15", "20", "25"]
+            else:
+                xticks_str = None
+            PH.set_axes_ticks(bufsl_ax,
+                yticks = [0, 20, 40, 60],
+                yticks_str = ["0", "20", "40", "60"],
+                y_minor = [10, 30, 50],
+                xticks = [0, 5, 10, 15, 20, 25],
+                xticks_str = xticks_str,
+            )
+            bufsl_ax.set_ylim(0, 60)
+            bufsl_ax.set_xlim(0, 25)
+            bufsl_ax.set_ylabel("Spikes")
+
+            if stim_fsl_ax is not None:
+                self.plot_stim_waveform(
+                        ax=stim_fsl_ax, ntrace=i, d=d, AR=AR, stim_win=[0.2, 0.225], scale='ms', color='b',
+                    )
+                stim_fsl_ax.set_xlabel("Time (ms)")
+                PH.set_axes_ticks(stim_fsl_ax,
+                    yticks = [-1, -0, 1],
+                    yticks_str = ["-1", "", "1"],
+                    xticks = [0, 5, 10, 15, 20, 25],
+                    xticks_str = ["0", "5", "10", "15", "20", "25"],
+                )
+                stim_fsl_ax.set_xlim(0, 25)
+
+
+            if label_x_axis:
+                bufsl_ax.set_xlabel("Time (ms)")
 
         # a raster plot
         # y = 0.
@@ -3280,8 +3370,9 @@ class Figures(object):
         cv_binw: float = 0.001,
         cv_ax: object = None,
         label_x_axis: bool = False,
+        stim_ax: Union[object, None] = None,
     ):
-        # use the data from PSTH. If not present, skip the CV plot
+        print("CVwin, ref_time: ", cv_win, reftime)# use the data from PSTH. If not present, skip the CV plot
         if self.all_bu_st is None or cv_ax is None:
             return
         cvisit, cvisi, cvt, cvm, cvs = ISI.isi_cv(
@@ -3292,23 +3383,50 @@ class Figures(object):
             t1=cv_win[1],
             tgrace=t_grace,
         )
+        print('cvt min/max: ', np.min(cvt), np.max(cvt))
         cv_ax.plot((cvt - reftime) * 1e3, cvs / cvm, "k-")
 
         PH.nice_plot(cv_ax, direction="outward", ticklength=3.0)
         cv_ax.set_ylim(0, 1.2)
         cv_ax.set_xlim(0, 1e3 * (cv_win[1] - cv_win[0]) - 20.0)
-        PH.talbotTicks(
-            cv_ax,
-            axes="xy",
-            density=(3, 1.5),
-            insideMargin=0.02,
-            # pointSize=ticklabelsize,
-            tickPlacesAdd={"x": 2, "y": 1},
-            floatAdd={"x": 2, "y": 1},
-        )
+        if stim_ax is not None:
+            self.plot_stim_waveform(
+                ax=stim_ax, ntrace=self.stim_data["ntrace"], 
+                d=self.stim_data["d"], 
+                AR=self.stim_data["AR"],
+                stim_win=(0.200, 0.3),
+                scale='ms',
+            )
+            stim_ax.set_ylim(-1, 1)
+            stim_ax.set_xlim(0, 1e3 * (cv_win[1] - cv_win[0]) - 20.0)
+            stim_ax.set_xlabel("Time (ms)")
+            PH.nice_plot(stim_ax, direction="outward", ticklength=3)
+            PH.set_axes_ticks(stim_ax,
+                yticks = [-1, -0, 1],
+                yticks_str = ["-1", "", "1"],
+                xticks = [0, 20, 40, 60, 80],
+                xticks_str = ["0", "20", "40", "60", "80"],
+                x_minor=[10, 30, 50, 70],
+            )
+            stim_ax.set_xlabel("Time (s)")
+
         # compute the mean CV from 10-60 msec for display on the plot
         itwin = np.where(((cvt - reftime) > 0.01) & ((cvt - reftime) < 0.06))[0]
         CVp = np.nanmean(cvs[itwin] / cvm[itwin])
+        if label_x_axis:
+            xticks_str = ["0", "20", "40", "60", "80"]
+        else:
+            xticks_str = None        
+        PH.set_axes_ticks(cv_ax,
+                yticks = [0, 0.4, 0.8, 1.2],
+                yticks_str = ["0.0", "0.4", "0.8","1.2"],
+                y_minor=[0.2, 0.6, 1.0],
+                xticks = [0, 20, 40, 60, 80],
+                xticks_str = xticks_str,
+                x_minor=[10, 30, 50, 70],
+            ) 
+        cv_ax.set_ylim(0, 1.2)
+
         cvlabel = r"$CV\prime$"
         cv_ax.text(
             1.0,
@@ -3321,7 +3439,7 @@ class Figures(object):
         )
         cv_ax.set_ylabel("CV")
         if label_x_axis:
-            cv_ax.set_xlabel("Latency (ms)")
+            cv_ax.set_xlabel("Time (ms)")
 
     def Figure3_Supplemental5_PSTH(self):
         print("Plotting Figure 3 Supplement 5 PSTH")
@@ -3329,14 +3447,16 @@ class Figures(object):
         lmar = 0.125
         rmar = 0.1
         hspc = 0.08
+        pght = 10
+
         P = PH.regular_grid(
             rows=len(grAList()),
             cols=4,
             order="rowsfirst",
-            figsize=(8, 10),
+            figsize=(8, pght),
             # showgrid=True,
             margins={
-                "bottommargin": 0.1,
+                "bottommargin": 0.08,
                 "leftmargin": lmar,
                 "rightmargin": rmar,
                 "topmargin": 0.1,
@@ -3344,6 +3464,25 @@ class Figures(object):
             verticalspacing=0.03,
             horizontalspacing=hspc,
         )
+        P2 = PH.regular_grid(
+            rows=1,
+            cols=4,
+            order="rowsfirst",
+            figsize=(8, pght),
+            margins = {
+                "bottommargin": 0.06,
+                "leftmargin": lmar,
+                "rightmargin": rmar,
+                "topmargin": 0.93,
+            },
+            horizontalspacing=hspc,
+            verticalspacing=0.0,
+            parent_figure=P,
+        )
+        for c in range(4):
+            P.axarr[-1, c].xaxis.set_ticklabels([])
+            P2.axarr[0, c].yaxis.set_ticklabels([])
+
         PH.cleanAxes(P.axarr.ravel())
         ncells = len(grAList())
         # center labels over columns
@@ -3376,7 +3515,12 @@ class Figures(object):
             print("Plotting psth for cell: ", cell_number)
             show_label = False
             if i == ncells - 1:
-                show_label = True
+                # show_label = True  # put label into lower axis
+                stim_ax = P2.axarr[0,:]
+                stim_ax_cv = P2.axarr[0,3]
+            else:
+                stim_ax = [None, None, None]
+                stim_ax_cv = None
             axon_name = self.plot_one_PSTH(
                 cell_number=cell_number,
                 dBSPL=dBSPL,
@@ -3389,14 +3533,21 @@ class Figures(object):
                 anfsl_ax=None,
                 label_x_axis=show_label,
                 bu_fsl_win=(2.2e-3, 4e-3),  # FSL window after onset, in msec
+                stim_tr_ax=stim_ax[0],
+                stim_psth_ax=stim_ax[1],
+                stim_fsl_ax=stim_ax[2]
+
             )
             self.plot_one_CV(
                 cell_number=cell_number,
-                cv_win=(0.0, 0.100),
+                cv_win=(0.2, 0.300),
+                reftime=0.2,
                 cv_ax=P.axarr[i, 3],
                 label_x_axis=show_label,
                 t_grace=0.0,
+                stim_ax=stim_ax_cv,
             )
+
 
             P.axarr[i, 0].text(
                 -0.40,
