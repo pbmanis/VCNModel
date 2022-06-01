@@ -421,7 +421,9 @@ class PlotSims:
         clipping: bool = False,
         axis_index: int = 0,  # index for axes, to prevent replotting text
     ) -> tuple:
-        """Plot traces in a generaly way
+        """Plot traces in a general way
+        Yes, this should be broken up with fewer parameters,
+        probably with dataclasses for the cals, etc... 
 
         Parameters
         ----------
@@ -650,7 +652,8 @@ class PlotSims:
                 toptitle = si.dendriteExpt
         if protocol in ["IV"]:
             cprint("r", f"RM analysis taum: {RM.analysis_summary['taum']:.2f}")
-            toptitle += f"\nRin={RM.analysis_summary['Rin']:.1f} M$\Omega$  $\\tau_m$={RM.analysis_summary['taum']:.2f} ms"
+            if show_title:
+                toptitle += f"\nRin={RM.analysis_summary['Rin']:.1f} M$\Omega$  $\\tau_m$={RM.analysis_summary['taum']:.2f} ms"
 
             if iax is not None and calx is not None:
                 PH.calbar(
@@ -717,7 +720,7 @@ class PlotSims:
                 xyzero=[0.0, -60.0],
                 limits=[
                     np.min(RM.ivss_cmd_all) * 1e9,
-                    -120,
+                    ymin,
                     np.max(RM.ivss_cmd_all) * 1e9,
                     -25.0,
                 ],  #
@@ -736,6 +739,8 @@ class PlotSims:
                 secax.text(
                     0.0, -40.0, "mV ", ha="right", va="center", fontweight="normal"
                 )
+            self.traces_ax = ax1
+            self.crossed_iv_ax = secax
 
         elif protocol in ["VC", "vc", "vclamp"]:
             maxt = np.max(AR.MC.time_base)
@@ -787,8 +792,8 @@ class PlotSims:
                     horizontalalignment="right",
                     fontsize=9,
                 )
-        toptitle += f"\n{model_data.timestamp:s}"
         if show_title:
+            toptitle += f"\n{model_data.timestamp:s}"
             figure.suptitle(toptitle, fontsize=9)
 
         return (synno, noutspikes, ninspikes)

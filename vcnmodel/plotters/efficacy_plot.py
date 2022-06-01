@@ -44,6 +44,7 @@ import matplotlib.pyplot as mpl
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from sklearn.feature_selection import SelectFromModel
 import sklearn.metrics as metrics
 from matplotlib.lines import Line2D
 from pylibrary.plotting import plothelpers as PH
@@ -330,7 +331,7 @@ N	Cell	syn#	nout	nin	Eff	ASA	SDRatio	nsites
 
 data_one_input = """
 
-N	Cell	syn#	nout	nin	Efficacy	ASA	SDRatio	nsites
+N	Cell	syn#	nout	nin	Eff	ASA	SDRatio	nsites
 0	2	0	82	5435	0.01509	150.0	3.23	115
 0	5	0	153	5435	0.02815	150.0	2.80	115
 0	6	0	269	5435	0.04949	150.0	2.82	115
@@ -342,6 +343,22 @@ N	Cell	syn#	nout	nin	Efficacy	ASA	SDRatio	nsites
 0	18	0	248	5435	0.04563	150.0	3.01	115
 0	30	0	229	5435	0.04213	150.0	2.65	115
 """
+# data_BC09_Uninnervated2 is from 2202-05-23-14:34:45, 
+# uninnervated2 cell with normal decoration.
+# for Figure 8.
+
+data_BC09_Uninnervated2 = """
+N	Cell	syn#	nout	nin	Eff	ASA	SDRatio	nsites
+0	9	0	861	1095	0.78630	245.76	2.52	189
+1	9	1	457	1060	0.43113	132.27	2.52	102
+2	9	2	197	1129	0.17449	107.92	2.52	83
+3	9	3	10	1120	0.00893	74.43	2.52	57
+4	9	4	7	1082	0.00647	71.50	2.52	55
+5	9	5	2	1058	0.00189	62.98	2.52	48
+6	9	6	1	1080	0.00093	54.81	2.52	42
+7	9	7	0	1073	0.00000	35.03	2.52	27
+"""
+
 AISlengths = {
     "06": 14.16,
     "09": 24.16,
@@ -623,32 +640,34 @@ def hill(x, A, vhalf, k):
 def hill_resid(p, x, data):
     return p["A"] * (1.0 / (1.0 + np.power(p["vhalf"] / x, p["k"])))
 
-
+##################################
+#
+##################################
 class EfficacyPlots(object):
     def __init__(self, parent_figure: object = None, draft=False):
         self.parent_figure = parent_figure
         self.draft = draft
         self.clean = False
+        self.dmap = {"Full": data_Full, "NoDend": data_NoDend, "Added": data_Added, 
+            "NoUninnervated2": data_BC09_Uninnervated2,
+            "NoUninnervated2_ctl": data_Full,
+            }  # map from simulation manipulation to dataset above
+        self.pal = sns.color_palette("tab10", n_colors=10)  # base palette
 
-    def plot_efficacy(
-        self,
-        datasetname: str,
-        datasetname_added: Union[str, None] = None,
-        ax: object = None,
-        loc: tuple = (0.0, 0.0, 0.0, 0.0),
-        figuremode: str = "full",
-        clean: bool = False,
-        clip_on: bool = False,
-    ):
-        self.figuremode = figuremode
-        self.clean = clean
-        self.titles = ["Intact", "Intact", "No Dendrites", "No Dendrites"]
-        dmap = {"Full": data_Full, "NoDend": data_NoDend, "Added": data_Added}
-        dataset = dmap[datasetname]
-        if datasetname_added is not None:
-            dataset_added = dmap[datasetname_added]
-        else:
-            dataset_added = None
+    
+    def make_figure(self, loc):
+        """Create a figure if one was not given
+
+        Parameters
+        ----------
+        loc : list
+            location of the panel on the page
+
+        Returns
+        -------
+        object from pylibrary.plotting.plothelpers
+            The plot object for multiple plots.
+        """        
         if loc is None:
             x0 = 0
             y0 = 0
@@ -663,7 +682,7 @@ class EfficacyPlots(object):
                     "noaxes": False,
                 },
             }
-            self.P = PH.arbitrary_grid(
+            P = PH.arbitrary_grid(
                 sizer,
                 order="columnsfirst",
                 units="in",
@@ -671,8 +690,54 @@ class EfficacyPlots(object):
                 label=True,
             )
         else:
-            self.P = self.parent_figure
-        self.plot_dataset(dataset, dataset_added, ax=ax, clip_on=clip_on, clean=clean)
+            P = self.parent_figure
+        return P
+
+    def plot_efficacy(
+        self,
+        datasetname: Union[str, None] = None,
+        datasetname_added: Union[str, None] = None,
+        datasetname_special: Union[str, None] = None,
+        ax: object = None,
+        loc: tuple = (0.0, 0.0, 0.0, 0.0),
+        figuremode: str = "full",
+        clean: bool = False,
+        clip_on: bool = False,
+        no_points: bool = False,
+    ):
+        """Plot Efficacy for all inputs from a given dataset
+
+        Parameters
+        ----------
+        datasetname : str
+            _description_
+        datasetname_added : Union[str, None], optional
+            _description_, by default None
+        ax : object, optional
+            _description_, by default None
+        loc : tuple, optional
+            _description_, by default (0.0, 0.0, 0.0, 0.0)
+        figuremode : str, optional
+            _description_, by default "full"
+        clean : bool, optional
+            _description_, by default False
+        clip_on : bool, optional
+            _description_, by default False
+        no_points : bool, optional
+            _description_, by default False
+        """        
+        self.figuremode = figuremode
+        self.clean = clean
+        self.titles = ["Intact", "No Dendrites", "No Dendrites", "Added", "BC09_NoUninnervated2"]
+        if ax is None:
+            self.P = self.make_figure(loc)
+            ax = self.P.axarr[0]
+        self.plot_dataset(datasetname, ax=ax, clip_on=clip_on, clean=clean)
+        if datasetname == 'NoUninnervated2':
+            self.plot_dataset('NoUninnervated2_ctl', ax=ax, clip_on=clip_on, clean=clean)
+        if datasetname_added is not None:
+            self.plot_dataset(datasetname_added, ax=ax, clip_on=clip_on, clean=clean)
+
         return
 
     def plot_ASA_SD(self):
@@ -710,7 +775,7 @@ class EfficacyPlots(object):
 
     def fit_dataset(
         self,
-        df_full,
+        df_in,
         sel_cells: Union[list, None] = None,
         max_xfit: float = 300.0,
         ax: object = None,
@@ -718,31 +783,21 @@ class EfficacyPlots(object):
         initial_conditions: Union[dict, None] = None,
     ):
         # gmodel = Model(boltz)
+        print("dfin: \n", df_in.head())
         if sel_cells is not None:
-            df = df_full[df_full.Cell.isin(sel_cells)]
+            df = df_in[df_in.Cell.isin(sel_cells)]
         else:
-            df = df_full  # everything
+            df = df_in  # everything
         # only include the original synapses, not "added" ones, so that the
         # added ones can be viewed as predictive. As current set up,
         # the "added" inputs are in a separate table, so they would not normally
         # have to be deselected here.
-        df = df_full[df_full.added.isin([0])]
+        # df = df[df.added.isin([0])]
         gmodel = lmfit.models.StepModel(form="logistic")  # gmodel = Model(hill)
-        # This is from the previous version - now we let lmfit guess
-        # the initial parameters and use its own model
-        # if initial_conditions is None:
-        #     A_ic = 1.0
-        #     Vh_ic = 180.0
-        #     k_ic = 20
-        # else:
-        #     A_ic = initial_conditions["A"]
-        #     Vh_ic = initial_conditions["Vh"]
-        #     k_ic = initial_conditions["k"]
-        # gmodel.set_param_hint("A", value=A_ic, min=0.0, max=0.9, vary=True)
-        # gmodel.set_param_hint("vhalf", value=Vh_ic, min=100.0, max=300.0)
-        # gmodel.set_param_hint("k", value=k_ic, min=2.0, max=40.0, vary=True)
-        # gparams = gmodel.make_params()
-
+        # print('selcells: ', sel_cells)
+        # print(df.head())
+        # print(df.Eff)
+        # print(df.ASA)
         gparams = gmodel.guess(df.Eff, x=df.ASA, center=100.0)
 
         resdict = {"leastsq": None}
@@ -786,7 +841,30 @@ class EfficacyPlots(object):
         cells: list = [],
         color: str = "k-",
         initial_conditions: Union[dict, None] = None,
+        plot_fits:bool = True,
     ):
+        """Plot fit to the data points in the dataframe
+
+        Parameters
+        ----------
+        df : Pandas dataframe
+            dataframe holding simulation parameters and measures
+            of efficacy and ASA
+        df_added : Pandas dataframe, optional
+            Additional simulations to plot, but NOT fit. by default None
+        y0 : float, optional
+            _description_, by default 0.0
+        method : str, optional
+            fit method, by default "leastsq"
+        max_x : float, optional
+            maximum x to plot for fits, by default 300.0
+        cells : list, optional
+            Whih cells to include, by default []
+        color : str, optional
+            fit color, by default "k-"
+        initial_conditions : Union[dict, None], optional
+            fit initial conditions, by default None
+        """    
         result_LM, resdict, gmodel, xfit, yfit = self.fit_dataset(
             df,
             sel_cells=cells,
@@ -800,6 +878,8 @@ class EfficacyPlots(object):
         else:
             lab = method
         ax.plot(xfit, yfit, color, label=lab, linewidth=1)  # all cells
+        
+        # perform fit
         print(f"Fitting with model: {gmodel.name:s}")
         if gmodel.name == "Model(step)":
             A = result_LM.params["amplitude"]
@@ -811,6 +891,7 @@ class EfficacyPlots(object):
             vh = result_LM.params["vhalf"]
             k = result_LM.params["k"]
 
+        # label up the plot with some information.
         if self.figuremode == "full" and not self.clean:
             ax.text(
                 1.1,
@@ -847,74 +928,137 @@ class EfficacyPlots(object):
 
     def plot_dataset(
         self,
-        data,
-        datasetname_added: Union[str, None] = None,
+        datasetname: Union[str, None] = None,
         ax: object = None,
         title: str = None,
         gmodel: object = None,
         legend: bool = True,
         clip_on: bool = False,
         clean: bool = False,
+        no_points: bool=False,
+        plot_fits: bool=True
     ):
-        x, df = prepare_data(data)
-        cell_names = [f"BC{c:02d}" for c in df.Cell]
-        ncells = len(set(cell_names))
-        # cprint("r", f"len cell names: {len(set(cell_names)):d}")
-        if datasetname_added is not None:
-            x2, df_added = prepare_data(datasetname_added)
-            cell_names_added = [f"BC{c:02d}" for c in df_added.Cell]
+        dataset = None
+        cell_names = None
+        markers = {"Full": "o", "Added": "*", "NU": "^", "CTL": "o"}
+        sizes = {"Full": 20, "Added": 50, "NU": 20, "CTL": 20}
+        if datasetname == "Full":
+            dataset = self.dmap[datasetname]
+            x, df = prepare_data(dataset)
+            df['style'] = "Full"
+            df['size'] = "Full"
+            markers = markers
+            palette = self.pal
+            sizes= sizes # {0:20}
+
+        elif datasetname == "Added":
+            dataset = self.dmap[datasetname]
+            x, df = prepare_data(dataset)
+            df['style'] = "Added"
+            df['size'] = "Added"
+            palette = [self.pal[4], self.pal[7], self.pal[9]]
+            markers = markers
+            sizes = sizes # {1:60}
+
+        elif datasetname == "NoUninnervated2":
+            dataset = self.dmap[datasetname]
+            x, df = prepare_data(dataset)
+            df['style'] = "NU"
+            df['size'] = "NU"
+            palette = [self.pal[3]]
+            markers = markers
+            sizes = sizes # {0:20}
+
+        elif datasetname == "NoUninnervated2_ctl":
+            dataset = self.dmap[datasetname]
+            x, df = prepare_data(dataset)
+            df = df[df.Cell.isin([9])]
+            df['style'] = "CTL"
+            df['size'] = "CTL"
+            palette = [self.pal[3]]
+            markers = markers
+            sizes = sizes #{0:20}
         else:
-            df_added = None
-            cell_names_added = None
-        # spc = re.compile("[ ;,\t\f\v]+")  # format replacing all spaces with tabs
-        # dataiter = re.finditer(spc, data)
-        # data = re.sub(spc, ",", data)
-        #
-        # sio = io.StringIO(data)
-        # df = pd.read_table(sio, sep=",")
+            raise ValueError("Datasetname was not specified")
 
         cell_names = [f"BC{c:02d}" for c in df.Cell]
         uni = r"$\mu m^2$"
-        resdict = {"leastsq": None}
 
-        pal = sns.color_palette("tab10", n_colors=ncells)
         sns.scatterplot(
             x="ASA",
             y="Eff",
             data=df,
             ax=ax,
             hue=cell_names,
-            # style="added",
-            # markers={0: 'o', 1: '*'},
-            size="added",
-            palette=pal,
-            sizes={0: 20},
-            legend=False, # "full",
+            style = df['style'],
+            size = df['size'],
+            markers=markers,
+            palette=palette,
+            sizes=sizes,
+            legend=legend,
             clip_on=clip_on,
         )
-        if df_added is not None:
-            sns.scatterplot(
-                x="ASA",
-                y="Eff",
-                data=df_added,
-                ax=ax,
-                hue=cell_names_added,
-                palette=[pal[4], pal[7], pal[9]],  # specifically selected
-                style="added",
-                markers={1: "*"},
-                size="added",
-                sizes={1: 70},
-                legend=False, # "brief",
-                clip_on=clip_on,
-            )
+        
+        # if df is not None:
+        #     cell_names = [f"BC{c:02d}" for c in df.Cell]
+        #     label = [f"BC{c:02d}" for c in df.Cell]
+        #     print(len(cell_names), dataset)
+        #     sns.scatterplot(
+        #         x="ASA",
+        #         y="Eff",
+        #         data=df,
+        #         ax=ax,
+        #         hue=cell_names,
+        #         # style="added",
+        #         markers=,
+        #         # size="",
+        #         palette=palette,
+        #         sizes=sizes,
+        #         legend=False, # "full",
+        #         clip_on=clip_on,
+        #     )
+        # if df_added is not None:
+        #     sns.scatterplot(
+        #         x="ASA",
+        #         y="Eff",
+        #         data=df_added,
+        #         ax=ax,
+        #         hue=cell_names_added,
+        #         palette=[self.pal[4], self.pal[7], self.pal[9]],  # specifically selected
+        #         style="added",
+        #         markers={1: "*"},
+        #         #size=4,
+        #         sizes={1: 70},
+        #         legend=False, # "brief",
+        #         clip_on=clip_on,
+        #     )
+        # if df_special is not None:
+        #     sns.scatterplot(
+        #         x="ASA",
+        #         y="Eff",
+        #         data=df_special,
+        #         ax=ax,
+        #         hue=cell_names_special,
+        #         palette=[self.pal[4], self.pal[7], self.pal[9]],  # specifically selected
+        #         style="added",
+        #         markers={1: "*"},
+        #         #size=4,
+        #         sizes={1: 70},
+        #         legend=False, # "brief",
+        #         clip_on=clip_on,
+        #     )
+
         ax.set_xlabel(f"ASA ({uni:s})")
-        label = [f"BC{c:02d}" for c in df.Cell]
+        
+
+    def plot_fits(self, datasetname:str="Full", ax:object=None, legend: bool=True, title:Union[None, str]=None):
+                    
+        dataset = self.dmap[datasetname]
+        x, df = prepare_data(dataset)
         method = "leastsq"
-
-        all_cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
-        # self.plot_fit(df, ax, y0=0, method=method, cells=cells, max_x=300.0, color='#888888')
-
         cells1 = [9, 11, 13, 17]
+        all_cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+
         df1 = df[df.Cell.isin(cells1)]
         self.plot_fit(
             df1,
@@ -940,11 +1084,13 @@ class EfficacyPlots(object):
         )
 
         ax.set_xlim(0, 350.0)
+        uni = r"$\mu m^2$"
         ax.set_xlabel(f"Input ASA ({uni:s})")
 
         ax.set_ylabel("Efficacy (Bushy spikes/input spikes)")
         ax.set_ylim(0, 1.0)
-        ax.set_title(title, fontsize=12, fontweight="bold")
+        if title is not None:
+            ax.set_title(title, fontsize=12, fontweight="bold")
         PH.nice_plot(ax, direction="outward", ticklength=2.0, position=-0.02)
         PH.talbotTicks(
             ax,
@@ -959,8 +1105,10 @@ class EfficacyPlots(object):
             # create custom legend
             legend_elements = []
             # do the cells first
+            print(len(self.pal))
+            print(len(all_cells))
             for i, cellid in enumerate(all_cells):
-                legend_elements.append(Line2D([0], [0], color=pal[i], marker='o', lw=0, label=f"BC{cellid:02d}"))
+                legend_elements.append(Line2D([0], [0], color=self.pal[i], marker='o', lw=0, label=f"BC{cellid:02d}"))
             legend_elements.append(Line2D([0], [0], color='grey', marker='*', lw=0, markersize=5, markeredgecolor=None, label="Pred."))
             legend_elements.append(Line2D([0], [0], color='red', lw=1, label="Group1"))
             legend_elements.append(Line2D([0], [0], color='skyblue', lw=1, label="Group2"))
@@ -984,7 +1132,9 @@ class EfficacyPlots(object):
             )
 
 
-def eff_plot(dataname="Full", datasetname_added: Union[str, None] = None):
+
+def eff_plot(datasetname="Full", datasetname_added: Union[str, None] = None, show_fits: Union[str, None]=None):
+
     sizer = {
         "A": {
             "pos": [1, 4, 1, 4],
@@ -1002,7 +1152,11 @@ def eff_plot(dataname="Full", datasetname_added: Union[str, None] = None):
     )
     EFP = EfficacyPlots(parent_figure=P)
     # EFP.plot_data("B")
-    EFP.plot_efficacy(dataname, datasetname_added=datasetname_added, ax=P.axdict["A"])
+    print("datasetname: ", datasetname)
+    EFP.plot_efficacy(datasetname, datasetname_added=datasetname_added, ax=P.axdict["A"])
+    if show_fits is not None:
+        EFP.plot_fits("Full", ax=P.axdict["A"])
+
     mpl.show()
 
 
@@ -1043,7 +1197,7 @@ def fit_individually(
     ax = P.axdict["A"]
     color = "b"
     cell_names = [f"BC{c:02d}" for c in df.Cell]
-    uni = r"$\mu m^2$"
+
     resdict = {"leastsq": None}
     clip_on = False
     colors = sns.color_palette()
@@ -1271,16 +1425,18 @@ def cluster_dbscan(data=None, eff_crit: float = 0.0):
     x["Clusters"] = dbscan_cluster.labels_
     x["Cell"] = df["Cell"]
     f, ax = mpl.subplots(1, 1)
-    print(x)
+
     plot_cluster(x, ax, mode="id")
     mpl.show()
 
 
 if __name__ == "__main__":
     # eff_ais()  # generate plot of efficacy vs ais length (supplemental)
-    eff_one_input()
+    # eff_one_input()
+    # exit()
+    #eff_plot("Full", datasetname_added="Added", show_fits="Full")  # generate plot of efficay vs ASA
+    eff_plot("NoUninnervated2", show_fits="Full")  # generate plot of efficay vs ASA for the uninnervated2 data vs. fits to the full 
     exit()
-    eff_plot("Full", datasetname_added="Added")  # generate plot of efficay vs ASA
     # fit_individually()
     #    print(dir(metrics))
 

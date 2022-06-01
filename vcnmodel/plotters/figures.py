@@ -180,6 +180,7 @@ class Figures(object):
             "Figure7-Ephys_3_Main": self.Figure7_Main,
             "Figure7-Ephys_3_Supplemental1": self.Figure7_Supplemental1,
             "Figure7-Ephys_3_Supplemental2": self.Figure7_Supplemental2,
+            "Figure8-Ephys_4": self.Figure8_Panels_IJK,
             # Misc figures follow
             "Figure: IV Figure": self.plotIV,
             "Figure: All_IVs": self.allIVs,
@@ -317,6 +318,7 @@ class Figures(object):
         parent_figure=None,
         loc: Union[None, tuple] = None,
         toponly: bool = False,
+        show_title: bool = False,
     ):
         """
         Plot the traces and current-voltage relationship for the specified cell.
@@ -465,6 +467,7 @@ class Figures(object):
                 ivcolor=colors[iax],
                 calx=120.0,
                 caly=-10.0,
+                show_title=False,
             )
             # self.P.axarr[0, iax].set_title(
         #      title_text[iv], color="k", fontweight="normal"
@@ -549,49 +552,7 @@ class Figures(object):
 
         # get Rin and RM from all the examples and make a summary distribution plot
         rins, taus = self.get_Rin_Tau()
-        # rins = {}
-        # taus = {}
 
-        # k = 0
-        # for rax, iv in enumerate(FD.figure_AllIVs.keys()):
-        #     # cellpath = Path(self.config['cellDataDirectory'], f"VCN_c{iv:02d}", 'Simulations', 'IV')
-        #     for iax, dendmode in enumerate(["passive", "normal", "active"]):
-        #         dendm = self.get_dendmode(dendmode)
-
-        #         sfi = Path(
-        #             self.config["cellDataDirectory"],
-        #             f"VCN_c{iv:02d}",
-        #             "Simulations",
-        #             "IV",
-        #             FD.figure_AllIVs[iv][dendm],
-        #         )
-        #         if not sfi.is_dir():
-        #             print(f"File '{str(sfi):s}' is not a directory")
-        #             continue
-        #         fn = list(sfi.glob("*"))
-        #         sfi = Path(sfi, fn[0])
-        #         AR, SP, RM = self.parent.PLT.plot_traces(
-        #             None,  # self.P.axarr[rax, iax+1],
-        #             sfi,
-        #             PD,
-        #             protocol="IV",
-        #             ymin=ymin,
-        #             ymax=ymax,
-        #             iax=iax,
-        #             figure=None,
-        #         )
-        #         rins[k] = {
-        #             "Cell": iv,
-        #             "Rin": RM.analysis_summary["Rin"],
-        #             "dendrites": dendmode,
-        #         }
-        #         taus[k] = {
-        #             "Cell": iv,
-        #             "taum": RM.analysis_summary["taum"],
-        #             "dendrites": dendmode,
-        #         }
-        #         k += 1
-    
         self.plot_Rin_Tau(rins=rins, taus=taus, 
             ax_rin=self.P2.axdict[rinplot], ax_tau=self.P2.axdict[tauplot])
         
@@ -1081,12 +1042,14 @@ class Figures(object):
         self,
         cells=None,
         figure=None,
-        dBSPL="30dB",
+        dBSPL:str="30dB",
+        simulation_experiment:str = "Full",
         show_title=True,
         axes: Union[list, None] = None,
         calxp: float = 800.0,
         calv: float = 20.0,
         maxstack: int = 9,
+        maxtraces: int = 20, # up to 20 in a stack; fewer if desired
         cal_pos: int = 0,
     ):
         """
@@ -1104,17 +1067,20 @@ class Figures(object):
         calv : float
             the size of the calibration bar in voltage (in mV)
         maxstack: int (default 9)
-            determines the height of the stack, relative to the offset (see code)
+            determines the height of the stack,  elative to the offset (see code)
+        maxtraces: int (default 20)
+            How many of the incoming traces to plot in a stack (first maxtraces are taken)
 
         Returns
         -------
         Nothing
         """
+        assert simulation_experiment in ["Full", "NoUninnervated2"]
         if cells is None:
             cells = grAList()
         trace_ht = 80  # mV
-
-        simulation_experiment = "Full"
+        if maxtraces >= maxstack:
+            maxtraces = maxstack
         for ic, cellN in enumerate(cells):
             # if ic > 0:  # for quick tests
             #               continue
@@ -1124,7 +1090,16 @@ class Figures(object):
                 "Simulations",
                 "AN",
             )
-            if dBSPL == "30dB":
+            sfiles = None
+            if simulation_experiment == "NoUninnervated2":
+                dBSPL = "30dB"
+                sfiles = Path(
+                    cellpath,
+                    Path(
+                        FD.figure_cell9_nouninnervated2[cellN][simulation_experiment]
+                    ).name,
+                )                
+            elif dBSPL == "30dB":
                 sfiles = Path(
                     cellpath,
                     Path(
@@ -1151,12 +1126,18 @@ class Figures(object):
             if simulation_experiment != "Full":
                 ymax = 40.0
             yoffset = -90.0
-            ymin = maxstack * yoffset
+            ymin = maxtraces * yoffset
             ymax = 20.0
             if simulation_experiment != "Full":
                 ymax = 40.0
+            xmin = 400.0
+            xmax = 900.0
+            nmax = min(maxtraces, len(fn))
             for n, filename in enumerate(fn):
-                if (n == (len(fn) - 1)) and (
+                if n >= maxtraces:
+                    break
+                print(n, nmax, cal_pos, ic)
+                if (n == (nmax - 1)) and (
                     ic == cal_pos
                 ):  # (len(cells)-1): # cal bar on first axis
                     calxv = calxp
@@ -1166,8 +1147,10 @@ class Figures(object):
                     iax = None
                     calxv = None
                     calyv = -50.0
-                # cprint("c", f"iax: {str(iax):s}, calxv = {str(calxv):s}  calyv = {str(calyv):s}")
                 y0 = n * yoffset
+                cprint("c", f"iax: {str(iax):s}, calxv = {str(calxv):s}  calyv = {str(calyv):s}")
+                cprint("c", f"xmin: {xmin:.1f}, xmax: {xmax:.1f}  ymin: {ymin:.1f}  ymax: {ymax:.1f}")
+                cprint("c", f"y0: {y0:.1f}")
                 self.parent.PLT.plot_traces(
                     ax=axes[ic],
                     fn=filename,
@@ -1175,8 +1158,8 @@ class Figures(object):
                     protocol="runANSingles",
                     ymin=ymin,
                     ymax=ymax,
-                    xmin=400.0,  # in msec
-                    xmax=900.0,
+                    xmin=xmin,  # in msec
+                    xmax=xmax,
                     yoffset=n * yoffset,
                     iax=n,
                     # nax=len(fn),
@@ -1195,7 +1178,7 @@ class Figures(object):
                 )
                 axes[ic].annotate(
                     text=f"{n+1:d} ",
-                    xy=(400.0, y0 - 60.0),  # ms
+                    xy=(xmin, y0 - 60.0),  # ms
                     fontsize=8,
                     horizontalalignment="right",
                     verticalalignment="center",
@@ -3753,6 +3736,117 @@ class Figures(object):
         with open(fout, "a") as fh:
             fh.write(f'"""\n')  # close the data text.
         cprint("g", f"The VS_data file {str(fout):s} has been generated.")
+
+
+    def Figure8_Panels_IJK(self):
+                # Traces
+
+        rows = 1
+        cols = 4
+        bmar = 0.5
+        tmar = 0.5
+        fsize = (8, 3)
+        panels = ["I", "J", "K", "L"]
+        self.P = PH.regular_grid(
+            rows,
+            cols,
+            order="rowsfirst",
+            units="in",
+            figsize=fsize,
+            showgrid=False,
+            verticalspacing=0.25,
+            horizontalspacing=0.35,
+            margins={
+                "bottommargin": bmar,
+                "leftmargin": 0.5,
+                "rightmargin": 0.5,
+                "topmargin": tmar,
+            },
+            labelposition=(-0.05, 1.05),
+            parent_figure=None,
+            panel_labels=panels,
+        )
+        PD = self.newPData()
+        # plot the CCIV response in the first panel
+        cellN = 9
+        cellpath = Path(
+            self.config["cellDataDirectory"],
+            f"VCN_c{cellN:02d}",
+            "Simulations",
+            "IV",
+        )
+        fns = []
+        for fd in FD.figure_No_Dend[cellN].keys():
+            dfile = FD.figure_No_Dend[cellN][fd]
+            sfi = Path(cellpath, Path(dfile).name)
+            if not sfi.is_dir():
+                print("Missing file: sfi 1: ", sfi)
+                return None
+            fng = list(sfi.glob("*"))
+            if len(fng) == 0:
+                raise ValueError("no files found")
+            fns.append(fng[0])
+
+        ymin = -140.0
+        ymax = 20.0
+        iax = 0
+        ivaxis = self.P.axdict["J"]
+        for i, fn in enumerate(fns):
+            sfi = Path(sfi, fn)
+ 
+            self.parent.PLT.plot_traces(
+                self.P.axdict["I"],
+                sfi,
+                PD,
+                protocol="IV",
+                ymin=ymin,
+                ymax=ymax,
+                xmax=150.0,
+                iax=i,
+                figure=self.P.figure_handle,
+                ivaxis=ivaxis,  # accumulate IV's
+                ivcolor=colors[i],
+                trace_color=colors[i],
+                calx=100.0,
+                caly=-110.0,
+                show_title=False,
+                axis_index = 1,
+            )
+        PH.set_axes_ticks(self.parent.PLT.crossed_iv_ax,
+                yticks =     [-140,    -120, -100, -80, -60, -40,  -20],
+                yticks_str = ["-140", "-120", "-100",   "-80",  "", "-40", "-20 mV"],
+                yticks_pad = [-20,      -20,      -20.,     -16.,   4.,   -16.,   -30.],
+                xticks = [-1, 0, 1, 2],
+                xticks_str = ["-1", "", "1", "2 nA"],
+                x_minor = [-0.5, 0.5, 1.5],
+            )
+        self.parent.PLT.crossed_iv_ax.tick_params(axis='both', which="both", direction="inout")
+        
+        # plot the singles responses in the third panel
+
+        cal_pos = 0
+        axl = [self.P.axdict["K"]]
+        self.plot_stacked_traces(
+            cells=[9],
+            dBSPL=30,
+            simulation_experiment="NoUninnervated2",
+            figure=self.P.figure_handle,
+            axes=axl,
+            maxstack=4,
+            maxtraces=4,
+            show_title=False,
+            calxp=600.0,
+            cal_pos=cal_pos,
+        )
+        for ax in axl:
+            ax.set_zorder(0)
+        
+        EFP = EF.EfficacyPlots(parent_figure=self.P.figure_handle)
+        EFP.plot_efficacy(datasetname="NoUninnervated2", ax=self.P.axdict["L"], clean=True)
+        EFP.plot_efficacy(datasetname="NoUninnervated2_ctl", ax=self.P.axdict["L"], clean=True)
+        EFP.plot_fits("Full", ax=self.P.axdict["L"])
+        mpl.show()
+
 
     def plot_VC_gKLT(
         self, parent_figure=None, loc: Union[None, tuple] = None

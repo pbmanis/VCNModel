@@ -391,6 +391,20 @@ figure_SAM_SAC = {
     }
 }
 
+figure_No_Dend = {
+    9: {
+        "normal_noUn": "runIV-all-2022-05-23.13-52-18",
+        "normal_Full": "runIV-all-2021-08-01.13-49-02", # same as control one in allIVs
+    }
+}
+
+figure_cell9_nouninnervated2 = {
+    9: {
+        "NoUninnervated2": "runANSingles-all-2022-05-23.14-34-45",
+        "Full": "runIV-all-2021-08-01.13-49-02",
+    }
+}
+
 all_figures = {
     "AN_PSTH": figure_psth,
     "VC_ex": figure_VClamp,
