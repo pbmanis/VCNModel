@@ -69,6 +69,7 @@ Distributed under MIT/X11 license. See license.txt for more infomation.
 
 """
 import argparse
+import re
 import string
 import sys
 import time
@@ -1607,7 +1608,11 @@ class PlotSims:
         if isinstance(gbc, int):
             gbc_string = f"VCN_c{gbc:02d}"
         elif isinstance(gbc, str) and len(gbc) <= 2:
-            gbc_string = f"VCN_c{int(gbc):02d}"
+            if gbc.isnumeric():
+                gbc_string = f"VCN_c{int(gbc):02d}"
+            else:
+                clean_gbc = re.sub(r"\D", "", gbc)  # remove non-numeric parts
+                gbc_string = f"VCN_c{int(clean_gbc):02d}"
         elif isinstance(gbc, str) and gbc.startswith("VCN_"):
             gbc_string = gbc
         elif isinstance(gbc, str) and gbc.startswith("BC"):
@@ -2201,7 +2206,7 @@ class PlotSims:
             sites[isite] = int(np.around(area * SC.synperum2))
 
         self.VS_colnames = f"Cell,Configuration,carrierfreq,frequency,dmod,dB,VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,AN_VS,AN_phase,AN_phasesd,SAC_AN,SAC_Bu,SAC_AN_HW,SAC_Bu_HW,maxArea,ninputs"
-        line = f"{int(self.parent.cellID):d},{experiment:s},"
+        line = f"{self.parent.cellID:s},{experiment:s},"
         line += f"{d.carrier_frequency:.1f},{freq:06.1f},{dmod:.1f},{dB:.1f},"
         line += f"{d.vs:.4f},"
         line += f"{d.n_spikes:d},"
@@ -2223,8 +2228,10 @@ class PlotSims:
             self.textappend(self.VS_colnames)
         self.textappend(line)
         # put on clipboard
+        print("line pyperclip: ", line)
         pyperclip.copy(line)
         pyperclip.paste()
+        print('pyperclip copy/paste done')
 
         return d
 
@@ -2499,7 +2506,10 @@ class PlotSims:
         sac_flag: bool = True,  # set true to compute SAC as well as standard VS
         sac_engine: str = "cython",
     ):
-        gbc = f"VCN_c{int(self.parent.cellID):02d}"
+        if isinstance(self.parent.cellID, str):
+            gbc = f"VCN_c{int(self.parent.cellID[0]):02d}"
+        else:
+            gbc = f"VCN_c{int(self.parent.cellID):02d}"
         
         plotflag = False
 

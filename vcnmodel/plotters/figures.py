@@ -196,7 +196,10 @@ class Figures(object):
             "Figure: PSTHs": self.plot_PSTH,
             "Analyze VS-SAM table @ 15dBSPL": self.plot_VS_SAM_15,
             "Analyze VS-SAM table @ 30dBSPL": self.plot_VS_SAM_30,
+            "Analyze VS-SAM BC09 table @ 15dBSPL": self.plot_VS_SAM_15_BC09,
         }
+        # print(figure_name)
+        # print(dispatch_table.keys())
         if figure_name in list(dispatch_table.keys()):
             fig = dispatch_table[figure_name]()
             if fig is not None:
@@ -3561,14 +3564,15 @@ class Figures(object):
         fig.title["title"] = title
         return fig
 
+    def plot_VS_SAM_15_BC09(self):
+        self.generate_VS_data_file(dB=15, bc09=True)
+    
     def plot_VS_SAM_15(self):
         self.generate_VS_data_file(dB=15)
-        pass
-
+    
     def plot_VS_SAM_30(self):
         self.generate_VS_data_file(dB=30)
-        pass
-
+    
     def analyze_VS_data(
         self, VS_data, cell_number, fout, firstline=False, sac_flag=False, test=False,
     ):
@@ -3580,12 +3584,18 @@ class Figures(object):
         PD = self.newPData()
         P = None
         linesout = ""
+        print("cell number: ", cell_number)
+        if isinstance(cell_number, str):
+            cell_n = int(cell_number[0])
+        else:
+            cell_n = cell_number
         self.parent.cellID = cell_number
+        print(VS_data.samdata.keys())
         for i, filename in enumerate(VS_data.samdata[cell_number]):
-            print(f"Cell: {cell_number:d}  Filename: {filename:s}")
+            print(f"Cell: {str(cell_number):s}  Filename: {filename:s}")
             cellpath = Path(
                 self.config["cellDataDirectory"],
-                f"VCN_c{cell_number:02d}",
+                f"VCN_c{cell_n:02d}",
                 "Simulations",
                 "AN",
             )
@@ -3615,7 +3625,7 @@ class Figures(object):
             else:
                 print(f"Testing only... , file found: {str(sfi.is_file()):s}")
                 if firstline:
-                    linesout += f"Cell: {cell_number:d}  Filename: {filename:s}\n"
+                    linesout += f"Cell: {str(cell_number):s}  Filename: {filename:s}\n"
                     linesout += "Data would be here\n"
         
         print("Analyze VS data completed for cell: ", cell_number)
@@ -3660,28 +3670,50 @@ class Figures(object):
             fh.write(f'--pbm 2014-2022\n"""\n')  # end of the comment
             fh.write('\ndata = """')  # start of the data
 
-    def generate_VS_data_file(self, testmode=True, dB=15, append=False):
+    def _write_VS_tail(self, fout:Path, end_timestamp:str, run_time_seconds: float):
+        with open(fout, "a") as fh:
+            fh.write('\n"""\n')
+            fh.write(f"Run ended at: {end_timestamp:s}\n")
+            fh.write(f"Run duration (seconds): {run_time_seconds:9.1f}\n")
+            fh.write('\n"""')
+
+    def generate_VS_data_file(self, testmode=True, dB=15, bc09=False, append=False):
         """
         Write the VS_data file from the selected datasets.
         This routine reanalyzes all of the data in the table
         to get the vector strength information.
 
-        The datasets that to be analyzed are listed in VS_datasets_nndB.py
+        The datasets that to be analyzed are listed in VS_datasets_nndB.py 
+        or VS_datasets_15dB_BC09_NoUninnervated.py (if bc09 is True) 
         """
-        parallel = True
+        parallel = False
         if parallel:
             import multiprocessing as MPROC
+        start_timestamp = datetime.datetime.now()
+        timestamp_str = start_timestamp.strftime("%Y-%m-%d-%H.%M.%S")
 
         if dB == 30:
             if f"VS_datasets_{dB:d}dB" not in list(dir()):
                 import VS_datasets_30dB as VS_datasets
-        if dB == 15:
+                outfile = f"VS_data_{dB:d}dB_{timestamp_str:s}.py"
+                TASKS = [s for s in grAList()]
+
+        if dB == 15 and not bc09:
             if f"VS_datasets_{dB:d}dB" not in list(dir()):
                 import VS_datasets_15dB as VS_datasets
+                outfile = f"VS_data_{dB:d}dB_{timestamp_str:s}.py"
+                TASKS = [s for s in grAList()]
+
+        elif dB == 15 and bc09:
+            if f"VS_datasets_{dB:d}dB_BC09_NoUninnervated" not in list(dir()):
+                import VS_datasets_15dB_BC09_NoUninnervated as VS_datasets
+                outfile = f"VS_data_{dB:d}dB_BC09_{timestamp_str:s}.py"
+                TASKS = [s for s in VS_datasets.samdata.keys()]
+
+            
         importlib.reload(VS_datasets)  # make sure have the current one
         print("VS_datasets: ", VS_datasets)
         print(f"Data set keys found: {str(list(VS_datasets.samdata.keys())):s}")
-        timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d-%H.%M.%S")
         config = toml.load(open("wheres_my_data.toml", "r"))
 
         """
@@ -3690,12 +3722,11 @@ class Figures(object):
         """
         cprint("g", f"Generate VS Data for {dB:d} dB")
 
-        fout = Path(f"VS_data_{dB:d}dB_{timestamp_str:s}.py")  # we will generate this automatically, but time stamp it
+        fout = Path(outfile)  # we will generate this automatically, but time stamp it
         if not append:
             self._write_VS_Header(fout, timestamp_str)
 
         fl = True
-        TASKS = [s for s in grAList()]
         tresults = [None] * len(TASKS)
         results = {}
         # run using pyqtgraph's parallel support
@@ -3713,28 +3744,32 @@ class Figures(object):
                             firstline=fl, sac_flag=True, test=False)
                         tasker.results[j] = tresults
             self.parent.PLT.in_Parallel = False
+            print("Results: \n", [r+'\n' for r in tresults])
+            for j in range(len(TASKS)):
+                with open(fout, "a") as fh:
+                    lines = tresults[j].split('\n')
+                    for l in lines:
+                        fh.write(l)
+                        fh.write("\n")
         else:
             for j, celln in enumerate(TASKS):
                 tresults = self.analyze_VS_data(VS_datasets, celln, fout, 
                     firstline=fl, sac_flag=True, test=False)
                 if j > 0:
                     fl = False
-        print([r+'\n' for r in tresults])
-        for j in range(len(TASKS)):
-            with open(fout, "a") as fh:
-                lines = tresults[j].split('\n')
-                for l in lines:
-                    fh.write(l)
-                    fh.write("\n")
-
-        # for i, celln in enumerate(grAList()):
-        #     if testmode and i != 1:
-        #         continue
-        #     self.analyze_VS_data(VS_datasets, celln, fout, firstline=fl, sac_flag=True, test=True)
-        #     fl = False
-       
+                with open(fout, "a") as fh:
+                    fh.write(tresults)
+                    # fh.write("\n")
         with open(fout, "a") as fh:
             fh.write(f'"""\n')  # close the data text.
+
+        # save running time for calculations
+        end_timestamp_ts = datetime.datetime.now()
+        end_timestamp_str = end_timestamp_ts.strftime("%Y-%m-%d-%H.%M.%S")
+        run_time = end_timestamp_ts - start_timestamp
+        self._write_VS_tail(fout, end_timestamp=end_timestamp_str,
+            run_time_seconds = run_time.total_seconds())
+
         cprint("g", f"The VS_data file {str(fout):s} has been generated.")
 
 

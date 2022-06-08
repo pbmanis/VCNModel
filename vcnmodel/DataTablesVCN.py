@@ -633,8 +633,7 @@ class DataTablesVCN:
                                 "Figure: PSTHs",
                                 "Analyze VS-SAM table @ 15dBSPL",
                                 "Analyze VS-SAM table @ 30dBSPL",
-
-
+                                "Analyze VS-SAM BC09 table @ 15dBSPL",
                                ],
                     "value": "-------Figure 3-------",
                 },
