@@ -326,7 +326,6 @@ def summarize_patterns(reanalyze=False):
         if i < len(pats) - 1:
             swp.legend_.remove()
         else:
-            print(dir(f))
             f.legend(labelspacing=0.18, fontsize=6.5, loc="lower right") # (1.5, 0.))
             for lh in swp.legend_.legendHandles:
                 lh.set_alpha(1)
@@ -411,15 +410,17 @@ def Figure4F_pattern_plot(axin=None):
     # PH.nice_plot(ax, position=(-0.02), direction="outward")
 
     ax.set_ylim(0, 100)
+    ax.tick_params('both', which='major', length=3, pad=1.5)
+    ax.tick_params('both', which='minor', length=1.5)
     ax.legend().remove()
     # remap the database names to a more user-friendly name
     namemap = {"1st_largest_alone": "1st",
-              "1st_largest+others": "1st+_others",
+              "1st_largest+others": "1st+_other",
               "2nd_largest_alone": "2nd",
-              "2nd_largest+others": "2nd+_others",
+              "2nd_largest+others": "2nd+_other",
               "3rd_largest_alone": "3rd",
-              "3rd_largest+others": "3rd+_others",
-              "4th_largest+others": "4th+_others"}
+              "3rd_largest+others": "3rd+_other",
+              "4th_largest+others": "4th+_other"}
     tl = []
     for l in ax.get_xticklabels():
         tickl = str(l.get_text())

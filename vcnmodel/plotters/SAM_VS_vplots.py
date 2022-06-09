@@ -36,12 +36,13 @@ import plotnine as PN
 import toml
 import VS_data_15dB as VS_data_15dB
 import VS_data_30dB as VS_data_30dB
+import VS_data_15dB_BC09 as VS_data_15dB_BC09
 from matplotlib import pyplot as mpl
 import matplotlib.collections
 from matplotlib import ticker
 from pylibrary.plotting import plothelpers as PH
 
-# seaborn default palette, first 3 colors
+# seaborn default palette, first 10 colors
 colors = [
     (0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
     (1.0, 0.4980392156862745, 0.054901960784313725),
@@ -95,7 +96,8 @@ class FigInfo:
 
 class VS_Plots:
     def __init__(
-        self, output="P9", sels=[2, 5, 6, 9, 10, 11, 13, 17, 18, 30], dBSPL=15
+        self, output="P9", sels=[2, 5, 6, 9, 10, 11, 13, 17, 18, 30], dBSPL=15, 
+        dends:str=""
     ):
         """Vector strength plotting class
 
@@ -109,7 +111,11 @@ class VS_Plots:
             The base intensity for the VS stimuli, by default 15
         """
         self.dBSPL = dBSPL
-        if dBSPL == 15:
+
+        if dends == "9I9U":
+            importlib.reload(VS_data_15dB_BC09)
+            self.datas = VS_data_15dB_BC09.data
+        elif dBSPL == 15:
             importlib.reload(VS_data_15dB)
             self.datas = VS_data_15dB.data
         elif dBSPL == 30:
@@ -171,13 +177,10 @@ class VS_Plots:
         """
 
         labels = set(df["frequency"])
-        print("labels: ", labels)
         labelnames = [float(label) for label in labels]
-        print("labels, freq: ", labelnames)
 
         self.PI.labels = [str(int(l)) for l in sorted(labelnames)]
 
-        print(self.PI.plotwhat)
         self.PI.anpt = "AN_phasesd"
         if plotwhat == "phasesdtime":
             self.PI.yscale = [0.0, 1.5]
@@ -419,14 +422,22 @@ class VS_Plots:
             ax=ax,
         )
         nfreq = len(self.df["frequency"].unique())
+        nconfig = len(self.df["Configuration"].unique())
         x = np.arange(nfreq)
+        if nconfig == 3:
+            anline = 320
+        else:
+            anline = 75
+        # print(self.df["AN_VS"][:24:3])
+        y = self.df["AN_VS"][::nconfig]
         ax.scatter(
             x,
-            self.df["AN_VS"][:24:3],
-            s=320,
+            y,
+            s=anline,
             color="firebrick",
             marker="_",
             linewidth=2,
+            legend="AN"
         )
         xl = ax.get_xticklabels()
         newxl = [f"{int(float(x.get_text())):d}" for x in xl]
@@ -437,8 +448,9 @@ class VS_Plots:
             f"{int(self.dBSPL):2d} dBSPL, 100% modulation", fontdict=title_font
         )
         if not legendflag:
+            pass
             # ax.legend(handles=[], labels= [])
-            ax.get_legend().remove()
+            # ax.get_legend().remove()
         else:
             ax.legend(markerscale=0.5)
         if axin is None:
@@ -454,8 +466,9 @@ class VS_Plots:
 
         Parameters
         ----------
-        cell : int
-            cell number to pull data from pandas data frame to polt
+        cell : Union[int, str]
+            cell number to pull data from pandas data frame to plot
+            If str, probably 9U or 9I, then use those 2 datasets insteead of "all" etc.
         axin : matplotlib axis object, optional
             The axis to plot into, by default None
             if None, we just make our own new figure and plot to that.
@@ -477,7 +490,7 @@ class VS_Plots:
             hue="Configuration",
             data=dfl,
             dodge=True,  # offset configurations from each other
-            size=5,
+            size=3.5,
             ax=ax,
         )
         # find out how many configurations and frequencies are present
@@ -512,12 +525,13 @@ class VS_Plots:
             )
         ax.set_ylim(0, 1)
         xl = ax.get_xticklabels()  # do this before niceplot...
-        # PH.nice_plot(ax, direction="outward", position=-0.02, )  # hmmm, removes tick labels...
         xl = ax.get_xticklabels()
         newxl = [f"{int(float(x.get_text())):d}" for x in xl if x.get_text() != ""]
         ax.set_xticklabels(newxl)
         ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
         ax.set_ylabel("Vector Strength", fontdict=label_font)
+        PH.nice_plot(ax, position=-0.02, direction="outward", ticklength=3)
+
         if not legendflag:
             ax.get_legend().remove()
         else:
@@ -556,7 +570,7 @@ class VS_Plots:
             else:
                 legend = False
             self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
-            barwidth=180)
+                barwidth=180)
 
         fig = FigInfo()
         fig.P = P
@@ -566,6 +580,62 @@ class VS_Plots:
         )
         title = "SBEM Project Supplemental Figure 7 Modeling : Vector Strength Summary"
         fig.title["title"] = title
+        mpl.savefig(
+            fig.filename,
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": title,
+            },
+        )
+        fig.filename = fig.filename.with_suffix(".png")
+        mpl.savefig(
+            fig.filename,
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": title,
+            },
+        )
+
+    def Figure8_M(self, ax=None):
+        V1 = VS_Plots(dBSPL=15, dends="9I9U")
+        cells = [9]
+        if ax is None:
+            P = PH.regular_grid(
+                1,
+                1,
+                figsize=(6, 6),
+                panel_labels=["M"],
+                margins={"leftmargin": 0.08, "rightmargin": 0.08, "bottommargin": 0.1, "topmargin":0.05},
+                verticalspacing=0.15,
+                horizontalspacing=0.10,
+                labelposition=(-0.12, 1.05),
+            )
+            axl = P.axarr.ravel()
+        else:
+            axl = [ax]
+
+        for i, cell in enumerate(cells):
+            if i >= 0:
+                legend = True
+            else:
+                legend = False
+            self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
+                barwidth=180)
+
+        if ax is not None:
+            return
+        
+        fig = FigInfo()
+        fig.P = P
+
+        fig.filename = set_figure_path(
+            fignum=8, filedescriptor="BC09_Uninnervated_V1"
+        )
+        title = "SBEM Project Supplemental Figure 7 Modeling : Vector Strength Summary"
+        fig.title["title"] = title
+        mpl.show()
         mpl.savefig(
             fig.filename,
             metadata={
@@ -595,8 +665,8 @@ if __name__ == "__main__":
     # V = VS_Plots()
     # fig, P = V.make_figure()
 
-    V1 = VS_Plots(dBSPL=15)
-    V1.Figure7_Supplemental2()
+    V1 = VS_Plots(sels=[9], dBSPL=15, dends="9I9U")
+    V1.Figure8_M()
 
     # fm, new_ax = mpl.subplots(2,2)
     # new_ax = np.ravel(new_ax)

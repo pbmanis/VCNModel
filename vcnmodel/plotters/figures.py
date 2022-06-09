@@ -66,7 +66,19 @@ def grAList() -> list:
 
 syms = ["s", "o", "x", "s", "o", "x", "s", "o", "x"]
 colors = ["c", "k", "m", "r"]
-
+# seaborn default palette, first 10 colors
+sns_colors = [
+    (0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
+    (1.0, 0.4980392156862745, 0.054901960784313725),
+    (0.17254901960784313, 0.6274509803921569, 0.17254901960784313),
+    (0.8392156862745098, 0.15294117647058825, 0.1568627450980392),
+    (0.5803921568627451, 0.403921568627451, 0.7411764705882353),
+    (0.5490196078431373, 0.33725490196078434, 0.29411764705882354),
+    (0.8901960784313725, 0.4666666666666667, 0.7607843137254902),
+    (0.4980392156862745, 0.4980392156862745, 0.4980392156862745),
+    (0.7372549019607844, 0.7411764705882353, 0.13333333333333333),
+    (0.09019607843137255, 0.7450980392156863, 0.8117647058823529),
+]
 title_text = {
     "passive": "Passive",
     "normal": "Half-active",
@@ -1139,7 +1151,6 @@ class Figures(object):
             for n, filename in enumerate(fn):
                 if n >= maxtraces:
                     break
-                print(n, nmax, cal_pos, ic)
                 if (n == (nmax - 1)) and (
                     ic == cal_pos
                 ):  # (len(cells)-1): # cal bar on first axis
@@ -1169,6 +1180,7 @@ class Figures(object):
                     rep=0,
                     figure=figure,
                     longtitle=True,
+                    show_title=show_title,
                     ivaxis=None,
                     ivcolor="k",
                     iv_spike_color="r",
@@ -1525,14 +1537,18 @@ class Figures(object):
             ax.set_ylim(0, 3)
             ax.set_ylabel(f"Participation ratio {dB:2d}/{0:2d} dBSPL")
             PH.nice_plot(ax, position=self.axis_offset, direction="outward")
-            PH.talbotTicks(
-                ax,
-                density=(1.0, 1.5),
-                insideMargin=0,
-                tickPlacesAdd={"x": 0, "y": 1},
-                floatAdd={"x": 0, "y": 1},
-                axrange={"x": (0, 300.0), "y": (0, 3)},
-                pointSize=None,
+            PH.set_axes_ticks(ax=ax,
+                xticks = [0, 100, 200, 300],
+                xticks_str = ['0', '100', '200', '300'],
+                # xticks_pad:Union[List, None]=None,
+                x_minor = [50, 150, 250, 350],
+                major_length = 3.0,
+                minor_length =1.5,
+                yticks = [0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0],
+                yticks_str=["0", "0.5", "1.0", "1.5", "2.0", "2.5", "3.0"], 
+                yticks_pad=[1]*7,
+                y_minor=None,
+                fontsize=8,
             )
             PH.referenceline(ax, 1.0)
             if legend:
@@ -1614,14 +1630,21 @@ class Figures(object):
                 dBSPLs=["Spont", "30dB"],
                 legend=False,
             )
-            PH.nice_plot(P.axdict["H"], position=self.axis_offset, direction="outward")
-            PH.talbotTicks(P.axdict["H"], axes="xy", 
-                density = (1.0, 1.0),
-                tickPlacesAdd={'x': 0, "y": 2},
-                floatAdd={"x": 0, "y": 2},
-                axrange={"x": (-0.01, 12.), "y": (0., 1.)},
-                )
-            P.axdict["H"].set_xticks((np.arange(0, 12+1, 3.0)))
+            # the folowing is set in plot_revcorr compare
+            PH.set_axes_ticks(ax=P.axdict["H"],
+                xticks =     [0,    4,   8,   12],
+                xticks_str = ["0", "4", "8", "12"],
+                xticks_pad=None,
+                x_minor = [2, 6, 10],
+                major_length = 3.0,
+                minor_length =1.5,
+                yticks =   [0,    0.2,   0.4,   0.6,   0.8,   1.0],
+                yticks_str=["0", "0.2", "0.4", "0.6", "0.8", "1.0"], 
+                yticks_pad=[1, 1, 1, 1, 1, 1,],
+                y_minor=None,
+                fontsize=8,
+            )
+            PH.nice_plot(P.axdict["H"], position=self.axis_offset, direction="outward", ticklength=3)
             synlabel_num = 5  # this sets which cell the scale bar will be plotted with
         else:
             synlabel_num = 10
@@ -1640,8 +1663,8 @@ class Figures(object):
         arrow_xy = {
             5: [-0.95, -45.0],
             30: [-0.98, -45.0],
-            9: [-0.6, -45.0],
-            17: [-0.50, -40.0],
+            9: [-0.8, -46.0],
+            17: [-0.660, -45.0],
             10: [-0.95, -45.0],
             6: [-0.95, -45.0],
             2: [-0.95, -45.0],
@@ -1696,7 +1719,7 @@ class Figures(object):
         else:
             fig.P = P
         if not supplemental1:
-            fig.filename = set_figure_path(fignum=4, filedescriptor="Ephys_2_main_v12")
+            fig.filename = set_figure_path(fignum=4, filedescriptor="Ephys_2_main_v14")
             fig.title[
                 "title"
             ] = "SBEM Project Figure 4 (main) Modeling: singles inputs, efficacy and revcorr, revised version 8"
@@ -2299,6 +2322,7 @@ class Figures(object):
             # ax.set_ylim(0, 1.0)
             ax.set_xlabel("Number of inputs prior to spike")
             ax.set_ylabel("Cumulative Fraction of Spikes")
+
             if i == 0 and legend:
                 ax.legend()
             if len(axes) == 1:  # superimposed, so just show the symbols
@@ -2330,8 +2354,6 @@ class Figures(object):
                     ax.add_patch(
                         PolygonPatch(poly, fc="grey", ec="darkgrey", alpha=0.3)
                     )
-
-            # ax.set_title(dBSPL)
 
         if parent_figure is None:
             save_file = Path(
@@ -3775,13 +3797,14 @@ class Figures(object):
 
     def Figure8_Panels_IJK(self):
                 # Traces
+        import matplotlib.patches as mpatches
 
         rows = 1
-        cols = 4
+        cols = 5
         bmar = 0.5
         tmar = 0.5
-        fsize = (8, 3)
-        panels = ["I", "J", "K", "L"]
+        fsize = (8, 2.5)
+        panels = ["I", "J", "K", "L", "M"]
         self.P = PH.regular_grid(
             rows,
             cols,
@@ -3793,8 +3816,8 @@ class Figures(object):
             horizontalspacing=0.35,
             margins={
                 "bottommargin": bmar,
-                "leftmargin": 0.5,
-                "rightmargin": 0.5,
+                "leftmargin": 0.25,
+                "rightmargin": 0.25,
                 "topmargin": tmar,
             },
             labelposition=(-0.05, 1.05),
@@ -3880,7 +3903,59 @@ class Figures(object):
         EFP.plot_efficacy(datasetname="NoUninnervated2", ax=self.P.axdict["L"], clean=True)
         EFP.plot_efficacy(datasetname="NoUninnervated2_ctl", ax=self.P.axdict["L"], clean=True)
         EFP.plot_fits("Full", ax=self.P.axdict["L"])
-        mpl.show()
+        PH.set_axes_ticks(ax=self.P.axdict["L"],
+            xticks = [0, 100, 200, 300],
+            xticks_str = ['0', '100', '200', '300'],
+            # xticks_pad:Union[List, None]=None,
+            x_minor = [50, 150, 250, 350],
+            major_length = 3.0,
+            minor_length =1.5,
+            yticks = [0, 0.2, 0.4, 0.6, 0.8, 1.0],
+            yticks_str=["0", "0.2", "0.4", "0.6", "0.8", "1.0"], 
+            yticks_pad=[1]*6,
+            y_minor=None,
+            fontsize=8,
+        )
+        custom_legend = [
+                Line2D([0], [0], marker='o', color='w', markerfacecolor='r', markersize=5, label="BC09 Intact"),
+                Line2D([0], [0], marker='^', color="w", markerfacecolor='r', markersize=6, label="BC09 Pruned"),
+                Line2D([0], [0], color="#FF0000", lw=1, label='Group 1'),
+                Line2D([0], [0], color="#94c8ff", lw=1, label='Group 2'),
+                ]
+        self.P.axdict["L"].legend(handles=custom_legend, handlelength=1, 
+            loc="upper left", bbox_to_anchor=(-0.07, 1.8),
+            fontsize=7, labelspacing=0.33)
+        # panel M : compare 9I(intact) and 9U (NoUninnervated) VS across frequencies
+        VSP = SAM_VS_vplots.VS_Plots(sels=[9], dBSPL=15, dends="9I9U")
+        VSP.plot_VS_summary(axin=self.P.axdict["M"], cell=9, barwidth=75, legendflag=True)
+        self.P.adjust_panel_labels(fontsize=28, fontweight="light", fontname="myriad")
+        custom_legend = [Line2D([0], [0], marker="_", markersize=2, color="firebrick", lw=2, label='AN'),
+                Line2D([0], [0], marker='o', color='w', markerfacecolor=sns_colors[0], markersize=5, label="Intact"),
+                Line2D([0], [0], marker='o', color='w', markerfacecolor=sns_colors[1], markersize=5, label="Pruned"),
+                ]
+        self.P.axdict["M"].legend(handles=custom_legend, handlelength=1, loc="lower left", fontsize=7, labelspacing=0.33)
+        PH.set_axes_ticks(ax=self.P.axdict["M"],
+            xticks = [0, 1, 2, 3, 4, 5, 6, 7],
+            xticks_str = ['0', '100', '200', '300', '400', '500', '750', '1000'],
+            # xticks_pad:Union[List, None]=None,
+            x_minor = None,
+            x_rotation=60.,
+            major_length = 3.0,
+            minor_length =1.5,
+            fontsize=8,
+        )        
+
+        fig = FigInfo()
+        fig.P = self.P
+        fig.filename = set_figure_path(fignum=8, filedescriptor="Ephys_Pruning_IJKLM_V2")
+        fig.title[
+            "title"
+        ] = "SBEM Project Figure 8 (main) Modeling: Dendrite pruning effects"
+
+        title2 = {"title": f"", "x": 0.99, "y": 0.01}
+        # fig.title2 = title2
+
+        return fig
 
 
     def plot_VC_gKLT(

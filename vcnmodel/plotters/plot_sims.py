@@ -553,11 +553,9 @@ class PlotSims:
         for trial, icurr in enumerate(data["Results"]):
             if rep is not None and trial != rep:
                 continue
-            # cprint('c', f"trial: {trial:d}")
             AR.MC.traces[trial][0] = AR.MC.traces[trial][1]
             if protocol in ["VC", "vc", "vclamp"]:
                 AR.MC.traces[trial] = AR.MC.traces[trial].asarray() * 1e9  # nA
-
                 cmd = AR.MC.cmd_wave[trial] * 1e3  # from V to mV
             else:
                 AR.MC.traces[trial] = AR.MC.traces[trial].asarray() * 1e3  # mV
@@ -794,6 +792,7 @@ class PlotSims:
                     fontsize=9,
                 )
         if show_title:
+            cprint("r", "ShowTitle in plot_traces")
             toptitle += f"\n{model_data.timestamp:s}"
             figure.suptitle(toptitle, fontsize=9)
 
@@ -1303,7 +1302,6 @@ class PlotSims:
                     tx = spk.dt * np.arange(0, len(spk.waveform)) + spk.start_win
                     # print(np.min(tx), np.max(tx), tx.shape)
                     #                    print(np.min(spk.waveform), np.max(spk.waveform), spk.waveform.shape)
-                    # print(dir(self.parent.trace_plots))
                     self.parent.trace_plots.setEnabled(True)
                     self.parent.trace_plots.plotItem.plot(
                         np.arange(10), np.ones(10) * ix, pen="r"
@@ -1314,7 +1312,6 @@ class PlotSims:
                         # pen=color,
                     )
                     self.lines[ix].curve.show()
-                    # print(dir(self.lines[ix]))
 
                 else:
                     self.check_yscaling()
@@ -2228,10 +2225,8 @@ class PlotSims:
             self.textappend(self.VS_colnames)
         self.textappend(line)
         # put on clipboard
-        print("line pyperclip: ", line)
         pyperclip.copy(line)
         pyperclip.paste()
-        print('pyperclip copy/paste done')
 
         return d
 
@@ -2539,8 +2534,6 @@ class PlotSims:
         ) = self.get_stim_info(si, ri)
 
         if P is not None:
-            print(PD)
-
             plotflag = True
             sim_dir = fn.parts[-2]
             tstring = f"{gbc:s}_{str(sim_dir):s}_{ri.soundtype:s}.pdf"
@@ -2758,9 +2751,7 @@ class PlotSims:
                 )
             )
             if sac_flag:
-                print(vs.sac_bu_CI)
-                print(np.min(bu_sac))
-                print(vs.sac_bu_hw)
+   
                 print(
                     f"BU SAC: CI = {vs.sac_bu_CI:7.3f}, min = {np.min(bu_sac):7.3f}, hw = {1e3*vs.sac_bu_hw:7.3f} ms"
                 )
@@ -2940,7 +2931,6 @@ class PlotSims:
                         (-spars.displayDuration, spars.displayDuration)
                     )
                 else:
-                    print(soundtype)
                     P.axdict[sac_panel].set_xlim(
                         (-spars.displayDuration, spars.displayDuratoin)
                     )
