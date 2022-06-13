@@ -14,6 +14,12 @@ nb/*.html
 nb/*.nwb
 nb/*.jl
 
+# compiled neuron mechanisms
+arm64/
+x86_64/
+i386/
+
+
 blenderneuron/
 # /vcnmodel/VS_data_mar2021.py
 # src/vcnmodel/VS_datasets_Nov2020.py
