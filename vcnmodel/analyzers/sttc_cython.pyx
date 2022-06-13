@@ -19,7 +19,8 @@ def sttc_cython(
         double ta,
         np.ndarray[INT_t, ndim=1] tiles, # result tiles (output, must preallocate)
         ):
-        cdef long int npts, ix0, ix1, i
+        cdef long int npts
+        cdef long int ix0, ix1
         cdef double st
 
 
@@ -30,8 +31,8 @@ def sttc_cython(
             if ix0 < 0:
                 ix0 = 0
             ix1 = int(st/rate)+itile
-            if ix1 > len(tiles):
-                ix1 = len(tiles)
+            if ix1 > int(len(tiles)):
+                ix1 = int(len(tiles))
             tiles[ix0:ix1] += 1
 #            for i in range(ix0, ix1):
 #                tiles[i] = tiles[i] + 1
