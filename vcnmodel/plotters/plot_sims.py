@@ -125,7 +125,9 @@ rc("text.latex", preamble=r"\usepackage{xcolor}")
 rc("mathtext", fontset="stixsans")
 
 sns.set_style(rc={"pdf.fonttype": 42})
-mpl.style.use("~/.matplotlib/figures.mplstyle")
+thisdir = Path.cwd()
+print("\n", "*"*80, "\n", thisdir)
+mpl.style.use(Path(thisdir, "styles", "figures.mplstyle"))
 
 modeltypes = ["mGBC", "XM13", "RM03", "XM13_nacncoop", "XM13A_nacncoop"]
 runtypes = ["AN", "an", "IO", "IV", "iv", "gifnoise"]
@@ -2203,7 +2205,7 @@ class PlotSims:
             sites[isite] = int(np.around(area * SC.synperum2))
 
         self.VS_colnames = f"Cell,Configuration,carrierfreq,frequency,dmod,dB,VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,AN_VS,AN_phase,AN_phasesd,SAC_AN,SAC_Bu,SAC_AN_HW,SAC_Bu_HW,maxArea,ninputs"
-        line = f"{self.parent.cellID:s},{experiment:s},"
+        line = f"{str(self.parent.cellID):s},{experiment:s},"
         line += f"{d.carrier_frequency:.1f},{freq:06.1f},{dmod:.1f},{dB:.1f},"
         line += f"{d.vs:.4f},"
         line += f"{d.n_spikes:d},"

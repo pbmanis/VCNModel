@@ -219,7 +219,7 @@ dendriteChoices = [
 
 
 class TableModel(QtGui.QStandardItemModel):
-    _sort_order = QtCore.Qt.AscendingOrder
+    _sort_order = QtCore.Qt.SortOrder.AscendingOrder
 
     def sortOrder(self):
         return self._sort_order
@@ -261,19 +261,19 @@ class DataTablesVCN:
         white = self.QColor(255, 255, 255)
         black = self.QColor(0, 0, 0)
         red = self.QColor(255, 0, 0)
-        dark_palette.setColor(QtGui.QPalette.Window, self.QColor(53, 53, 53))
-        dark_palette.setColor(QtGui.QPalette.WindowText, white)
-        dark_palette.setColor(QtGui.QPalette.Base, self.QColor(25, 25, 25))
-        dark_palette.setColor(QtGui.QPalette.AlternateBase, self.QColor(53, 53, 53))
-        dark_palette.setColor(QtGui.QPalette.ToolTipBase, white)
-        dark_palette.setColor(QtGui.QPalette.ToolTipText, white)
-        dark_palette.setColor(QtGui.QPalette.Text, white)
-        dark_palette.setColor(QtGui.QPalette.Button, self.QColor(53, 53, 53))
-        dark_palette.setColor(QtGui.QPalette.ButtonText, white)
-        dark_palette.setColor(QtGui.QPalette.BrightText, red)
-        dark_palette.setColor(QtGui.QPalette.Link, self.QColor(42, 130, 218))
-        dark_palette.setColor(QtGui.QPalette.Highlight, self.QColor(42, 130, 218))
-        dark_palette.setColor(QtGui.QPalette.HighlightedText, black)
+        dark_palette.setColor(QtGui.QPalette.ColorRole.Window, self.QColor(53, 53, 53))
+        dark_palette.setColor(QtGui.QPalette.ColorRole.WindowText, white)
+        dark_palette.setColor(QtGui.QPalette.ColorRole.Base, self.QColor(25, 25, 25))
+        dark_palette.setColor(QtGui.QPalette.ColorRole.AlternateBase, self.QColor(53, 53, 53))
+        dark_palette.setColor(QtGui.QPalette.ColorRole.ToolTipBase, white)
+        dark_palette.setColor(QtGui.QPalette.ColorRole.ToolTipText, white)
+        dark_palette.setColor(QtGui.QPalette.ColorRole.Text, white)
+        dark_palette.setColor(QtGui.QPalette.ColorRole.Button, self.QColor(53, 53, 53))
+        dark_palette.setColor(QtGui.QPalette.ColorRole.ButtonText, white)
+        dark_palette.setColor(QtGui.QPalette.ColorRole.BrightText, red)
+        dark_palette.setColor(QtGui.QPalette.ColorRole.Link, self.QColor(42, 130, 218))
+        dark_palette.setColor(QtGui.QPalette.ColorRole.Highlight, self.QColor(42, 130, 218))
+        dark_palette.setColor(QtGui.QPalette.ColorRole.HighlightedText, black)
 
         self.app.setPalette(dark_palette)
         self.app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }")
@@ -695,8 +695,8 @@ class DataTablesVCN:
         self.Dock_Report.addWidget(self.textbox)
 
         self.win.show()
-        self.table.setSelectionMode(pg.QtGui.QAbstractItemView.ExtendedSelection)
-        self.table.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
+        self.table.setSelectionMode(pg.QtGui.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.table.setSelectionBehavior(QtWidgets.QTableView.SelectionBehavior.SelectRows)
         self.table_manager = table_manager.TableManager(
             parent=self,
             table=self.table,
@@ -875,7 +875,7 @@ class DataTablesVCN:
                     print("reloading...")
                     # get the current list selection - first put tabke in the
                     # same order we will see later
-                    self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)  # by date
+                    self.table.sortByColumn(1, QtCore.Qt.SortOrder.AscendingOrder)  # by date
                     selected_rows = self.table.selectionModel().selectedRows()
                     selection_model = self.table.selectionModel()
                     for module in all_modules:
@@ -899,10 +899,10 @@ class DataTablesVCN:
                         self.handleSortIndicatorChanged
                     )
                     self.table_manager.apply_filter()
-                    self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)  # by date
+                    self.table.sortByColumn(1, QtCore.Qt.SortOrder.AscendingOrder)  # by date
                     self.altColors()  # reset the color list.
                     # now reapply the original selection
-                    mode = QtCore.QItemSelectionModel.Select | QtCore.QItemSelectionModel.Rows
+                    mode = QtCore.QItemSelectionModel.SelectionFlag.Select | QtCore.QItemSelectionModel.SelectionFlag.Rows
                     for row in selected_rows:
                         selection_model.select(row, mode)# for row in selected_rows:
 
@@ -1123,7 +1123,7 @@ def main():
     # code...
     D = DataTablesVCN()  # must retain a pointer to the class, else we die!
     if (sys.flags.interactive != 1) or not hasattr(QtCore, "PYQT_VERSION"):
-        QtGui.QApplication.instance().exec_()
+        QtGui.QApplication.instance().exec()
 
 
 if __name__ == "__main__":

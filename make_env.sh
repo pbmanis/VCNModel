@@ -58,7 +58,7 @@ then
     pip install -e $LOCAL"neuronvis"
 else
     pip install -e git+https://github.com/pbmanis/cnmodel.git#egg=cnmodel
-    pip install -e git+https://github.com/pbmanis/pylibrary.git#egg=pylibrary
+    pip install -e git+https://github.com/pbmanis/pylibrary.git@master#egg=pylibrary
     pip install -e git+https://github.com/pbmanis/ephys.git@022edf3885bb64328a84b30b1d83aa8f1871cae0#egg=ephys
     pip install -e git+https://github.com/pbmanis/montager.git#egg=montage
     pip install -e git+https://github.com/pbmanis/neuronvis@179cef80314ce88eb8e352200be8fb6f02ffa6e1#egg=neuronvis
