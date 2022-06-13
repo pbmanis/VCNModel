@@ -1,8 +1,9 @@
 from setuptools import setup, find_packages, Extension
+from Cython.Build import cythonize
 import numpy
 
 """
-This module is part of *vcnmodel*.
+This set is for *vcnmodel*.
 
 Support::
 
@@ -14,8 +15,11 @@ Support::
 Paul B. Manis, 2014-2022
 """
 
-version = '0.9.3'
-
+version = '0.9.5'
+extensions = [
+    Extension("sttc_cython",  ["vcnmodel/analyzers/sttc_cython.pyx"],
+               include_dirs=[numpy.get_include()])
+]
 setup(name='vcnmodel',
       version=version,
       description='VCN SBEM Cell modeling',
@@ -24,10 +28,8 @@ setup(name='vcnmodel',
       author_email='pmanis@med.unc.edu',
       license='MIT',
       packages=find_packages(include=['vcnmodel*']),
-      ext_modules=[
-          Extension("sttc_cython", ["vcnmodel/analyzers/sttc_cython.c"],
-                    include_dirs=[numpy.get_include()]),
-          ],
+      ext_modules=cythonize(extensions),
+
       python_requires='>=3.8',
       # install_requires=['matplotlib>=3.0', 'numpy>=1.1',
 #           ],
