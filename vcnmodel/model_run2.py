@@ -12,9 +12,9 @@ Requires:
     6. ephys (Manis, from github)
     7. pylibrary (Manis, from github)
     8. cochlea : Rudniki and Hemmert python implementation of Zilany model. A very slightly modified version that works with Python 3, "cochlea-1", is in Manis' github repository.
-    9. thorns  # required for cochlea
+    9. thorns  # required for cochlea (the current version of cochlea does not need this)
 
-See the requirements.txt file, or preferably build an environment using make_local_env.sh.
+See the requirements.txt file, or preferably build an environment using make_env.sh.
 
 Where should we look for data? The paths to the directories are defined in **wheres_the_data.toml**
 

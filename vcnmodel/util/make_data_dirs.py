@@ -316,21 +316,6 @@ File List: (Appended automatically by the vcnmodel/util/make_data_dirs.py,
 write_the_readme function)
 """
 
-allcells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
-cdirs = {}
-sdirs = {}
-for cn in allcells:
-    cell_id = f"VCN_c{cn:02d}"
-    celldir = Path(simulations, cell_id)
-    cdirs[cn] = Path(simulations, celldir)
-    cdirs[cn].mkdir(exist_ok=True)
-    for ddir in ["Simulations/AN", "Simulations/IV", "Simulations/VC", "Morphology"]:
-        Path(cdirs[cn], ddir).mkdir(exist_ok=True, parents=True)
-    sdirs[cn] = Path(sourcepath, "VCN_Cells", cell_id)
-
-# for p in list(simpath.glob("*/**")):
-#     print(p)
-
 
 def mk_cellid(cellN):
     return f"VCN_c{cellN:02d}"
@@ -423,7 +408,26 @@ def copy_simresults(FD, simcopy=True):
 
 
 
-copy_morphology(allcells)
-copy_simresults(FD, simcopy=False)
-# finally, complete the README.txt file
-write_the_readme()
+def main():
+    allcells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+    cdirs = {}
+    sdirs = {}
+    for cn in allcells:
+        cell_id = f"VCN_c{cn:02d}"
+        celldir = Path(simulations, cell_id)
+        cdirs[cn] = Path(simulations, celldir)
+        cdirs[cn].mkdir(exist_ok=True)
+        for ddir in ["Simulations/AN", "Simulations/IV", "Simulations/VC", "Morphology"]:
+            Path(cdirs[cn], ddir).mkdir(exist_ok=True, parents=True)
+        sdirs[cn] = Path(sourcepath, "VCN_Cells", cell_id)
+
+    # for p in list(simpath.glob("*/**")):
+    #     print(p)
+
+    copy_morphology(allcells)
+    copy_simresults(FD, simcopy=False)
+    # finally, complete the README.txt file
+    write_the_readme()
+
+if __name__ == "__main__":
+    main()

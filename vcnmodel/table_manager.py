@@ -728,8 +728,8 @@ class TableManager:
         """
         self.filters = {'Use Filter': False, 'dBspl': None, 'nReps': None,
         'Protocol': None,
-                'Experiment': None, 'modelName': None, 'dendMode': None,
-                "dataTable": None,}
+        'Experiment': None, 'modelName': None, 'dendMode': None,
+        "dataTable": None,}
         """
         if not self.parent.filters[
             "Use Filter"

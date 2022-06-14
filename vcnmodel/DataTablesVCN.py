@@ -2,17 +2,22 @@
 This program provides a graphical interface for model results for the SBEM
 reconstruction project. The display appears as 3 panels: One on the left with
 controls, one on the top right that is tabbed,
-    showing either the current table, or the traces, and one on the bottom for
-    text output.
+showing either the current table, or the traces, and one on the bottom for
+text output.
+
 The left panel provides a set of organized controls:
+
     Selections:
+
         Run Type (AN, IV) corresponding to auditory nerve input or current
         injection protocols Cells (from list of cells that are available to
-        model)
-            Selecting one of these will population the simulation table on the
-            right with valid simulations.
+        model).
+        Selecting one of these will population the simulation table on the
+        right with valid simulations.
         ModelType Mode, Experiment, Analysis, Dendrites: inactive.
+
     Analysis:
+
         This provides different fixed kinds of analysis for the model data.
         Traces: just plot the traces, stacked, for reference. IV : plot
         current-voltage relationships and calculate Rin, Taum, find spikes. VC :
@@ -25,28 +30,33 @@ The left panel provides a set of organized controls:
         reverse correlation calculation. RevcorrSTTC : not implemented. PSTH :
         Plot PSTH, raster, for bu cell and AN input; also compute phase locking
         to AM if needed.
+
     Filters:
         This provides data selection in the table. Most entries provide a
-        drop-down list. The values that are not 
-            None are applied with "and" logic. The filters are not applied until
-            the Apply button is pressed; The filters are cleared by the Clear
-            button.
+        drop-down list. The values that are not  None are applied with "and" 
+        logic. The filters are not applied until the Apply button is pressed.
+        The filters are cleared by the Clear button.
+
     Options:
         These are options for the TraceViewer mode. Nubmer of traces Plot Vm or
         dVm/dt Movie button generates a movie through time. Frame interval sets
         the time between frames in the movie, in msec.
+
     Figures:
         Interface to figure generation. Figures are generated from the model
         data directly as much as possible. Some figures are generated from
         analysis data that is either compiled manually, or using a script.
+
     Tools:
         Reload: for all modules under DataTables, reload the code. Mostly used
         during development. View IndexFile: Print the index file in the text
         window. Print File Info: Prints the file info for the selected entries
         into the text window. Delete Selected Sim : for deleting simulations
         that are broken (or stopped early). 
+
     Quit:
         Exit the program.
+
 Uses pyqtgraph tablewidget to build a table showing simulation files/runs and
 enabling analysis via a GUI
 
