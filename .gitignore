@@ -4,6 +4,7 @@ MorphologyData/  # misc morphology data not necessarily related to the project
 vcn_venv/ # virtual environment
 vcn_venv
 vcnmodel/archived
+VS_data*.py
 #vcnmodel/archived/plotters
 vcnmodel/util/testmpl.py
 src
@@ -18,6 +19,8 @@ nb/*.jl
 arm64/
 x86_64/
 i386/
+
+
 
 
 blenderneuron/

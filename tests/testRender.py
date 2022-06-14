@@ -1,27 +1,23 @@
-from __future__ import print_function
-__author__ = 'pbmanis'
+"""
+Render the hoc file using pyqtgraph as color cylinders by 
+section type
+"""
 
-import numpy as np
-import neuronvis.sim_result as sr
-from neuronvis.hoc_viewer import HocViewer
-from neuronvis.hoc_reader import HocReader
+from pathlib import Path
+
 import neuronvis.hoc_graphics as hoc_graphics
-from pyqtgraph.Qt import QtGui
-import os
-import string
+import neuronvis.sim_result as sr
+import numpy as np
+import toml
+from neuronvis.hoc_reader import HocReader
+from neuronvis.hoc_viewer import HocViewer
+import pyqtgraph as pg
 
-#infile = 'LC_neuromantic_scaled.hoc'
-#infile = 'Calyx-S53Acvt3.hoc'
-# infile = 'Calyx-68cvt4.hoc'
-#infile = 'mainDenHOC_cleaned.hoc'
-#infile = 'wholeThing_cleaned.hoc'
-#infile = 'VCN_c18_final_rescaled.hoc'
-#infile = 'test.hoc'
-#infile = 'VCN_c18_final_rescaled.hoc'
-#infile = 'VCN_c18_reparented755.hoc'
-infile = 'VCN_c02_Full.hoc'
+config = toml.load("wheres_my_data.toml")
 
-hf = HocReader('/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells/VCN_c02/Morphology/' + infile)
+infile = 'VCN_c02_Full_MeshInflate.hoc'
+
+hf = HocReader(Path(config["cellDataDirectory"], 'VCN_c02/Morphology', infile))
 if hf.file_loaded is False:
     exit()
 
@@ -69,8 +65,7 @@ for s in hf.sections.keys(): # all of the sections in the model
 
 
 render = HocViewer(hf)
-#render.hr.read_hoc_section_lists(section_colors.keys())
-#print 'sec groups: ', render.hr.sec_groups
+
 type = 'cylinder'
 if type == 'surface':
     surface = render.draw_surface(resolution = 8.0)
@@ -80,11 +75,10 @@ elif type == 'cylinder':
     cylinder.set_group_colors(section_colors, alpha=0.8)
 elif type == 'volume':
     volume = render.draw_volume(resolution = 10.0, max_size=1e9)
-    #volume.set_group_colors(section_colors, alpha=0.35)
 
 render.setCameraPosition(distance=4500.*0.110, elevation=60., azimuth=135.)
 render.pan(dx=1350.*0.110, dy=-750.*(0.110), dz=0.0)
-#print clist
+
 pos = render.cameraPosition()
 center = render.opts['center']
 dist = render.opts['distance']
@@ -101,4 +95,4 @@ print('Pos (center, dist, elev, azim)', center, dist, elev, azim)
 # print 'AXON_0 diameter = %6.1f microns' % hf.h('AXON_0[0].diam')
 # print 'AXON_0 length = %6.1f microns' % hf.h('AXON_0[0].L')
 
-QtGui.QApplication.instance().exec_()
+pg.QtWidgets.QApplication.instance().exec()
