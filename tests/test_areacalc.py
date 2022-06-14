@@ -662,7 +662,7 @@ def recon_hoc():
     ax[3].set_ylabel("3d Area inflated")
     ax[3].set_xlabel("3D Area before inflation")
     ax[2].set_title("Areas re inflation")
-    mpl.savefig("../VCN-SBEM-Data/AreaCalc_Section.pdf")
+    mpl.savefig(Path(config["baseDataDirectory"], "AreaCalc_Section.pdf"))
     mpl.show()
 
 
