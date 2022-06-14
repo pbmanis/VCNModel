@@ -17,8 +17,7 @@ pasting into this file
 
 There are a number of routines in here:
 
-1. eff_ais plots the efficacy versis measured AIS length and against dendritic
-   areas
+1. eff_ais plots the efficacy versus measured AIS length (dendrite area is plotted separately now)
 2. Individual fits
 3. clustering to test efficacy groups
 
@@ -427,20 +426,35 @@ def eff_ais(data):
     df = pd.read_table(sio, sep=",")
     cell_names = [f"BC{c:02d}" for c in df.Cell]
     cell_id = set([int(c) for c in df.Cell])
-    for ident in cell_id:
-        x = df.loc[(df["Cell"].values == ident) & (df["syn#"].values == 0)]
-        if f"{ident:02d}" in list(AISlengths.keys()):
-            df.at[x.index, "AIS"] = AISlengths[f"{ident:02d}"]
-        if f"{ident:02d}" in list(DendAreas.keys()):
-            df.at[x.index, "DendArea"] = DendAreas[f"{ident:02d}"]
-    df0 = df[df["syn#"].values == 0]
-    print(df0)
+    df2 = df.loc[(df["syn#"].values == 0)]
+ 
+    df0 = df2.loc[(df2["Cell"].values > 5)]
+    aisl = [AISlengths[k] for k in AISlengths.keys()]
+    df0["AIS"] = aisl
+    print(df0.head(10))
 
-    fig = mpl.figure(figsize=(5, 8))
+
+    # for ident in cell_id:
+    #     x = df.loc[(df["Cell"].values == ident) & (df["syn#"].values == 0)]
+    #     if f"{ident:02d}" in list(AISlengths.keys()):
+    #         df.at[x.index, "AIS"] = AISlengths[f"{ident:02d}"]
+    #     else:
+    #         continue
+    #     print("cell id: ", ident)
+    #     print(DendAreas.keys())
+    #     print("Ais: ", df.at[x.index, "AIS"])
+    #     if f"{ident:02d}" in list(DendAreas.keys()):
+    #         print(DendAreas[f"{ident:02d}"])
+    #         print(x.index)
+    #         print(df.at[x.index, "DendArea"])
+    #         df.at[x.index, "DendArea"] = DendAreas[f"{ident:02d}"]
+    # df0 = df[df["syn#"].values == 0]
+    # print(df0)
+
+    fig = mpl.figure(figsize=(5, 3.5))
     axd = fig.subplot_mosaic(
         """
         A
-        B
         """,
         gridspec_kw={
             "bottom": 0.1,
@@ -451,9 +465,9 @@ def eff_ais(data):
             "hspace": 0.8,
         },
     )
-    slope, intercept, r_value, p_value, std_err = stats.linregress(
-        df0["DendArea"], df0["Eff"]
-    )
+    # slope, intercept, r_value, p_value, std_err = stats.linregress(
+    #     df0["DendArea"], df0["Eff"]
+    # )
     x0 = df0["AIS"].values
     y0 = df0["Eff"].values
     x0n = []
@@ -464,26 +478,49 @@ def eff_ais(data):
             y0n.append(y0[i])
     slopea, intercepta, r_valuea, p_valuea, std_erra = stats.linregress(x0n, y0n)
     x = range(3100, 4400)
-    y = x * slope + intercept
+    # y = x * slope + intercept
     xa = range(10, 25)
     ya = xa * slopea + intercepta
+    # axd["A"].set_clip_on(False)
+    # pa = sns.scatterplot(
+    #     x="DendArea",
+    #     y="Eff",
+    #     hue="Cell",
+    #     data=df0,
+    #     palette="tab10",
+    #     ax=axd["A"],
+    #     s=32,
+    #     clip_on=False,
+    # )
+    # mpl.setp(axd["A"].get_legend().get_texts(), fontsize="11")  # for legend text
+    # axd["A"].legend(labelspacing=0.35)
+    # axd["A"].set_xlabel(r"Dendrite Area (${\mu m^2}$)")
+    # axd["A"].set_ylabel("Efficacy")
+    # axd["A"].set_xlim(3000, 4800)
+    # axd["A"].set_ylim(0, 1.0)
+    # axd["A"].text(
+    #     -0.05,
+    #     1.05,
+    #     "A",
+    #     fontsize=13,
+    #     fontweight="bold",
+    #     fontfamily="sans-serif",
+    #     transform=axd["A"].transAxes,
+    # )
+    # PH.nice_plot(axd["A"], position=-0.02, direction="outward")
+
+    # PH.talbotTicks(
+    #     axd["A"],
+    #     density=(1.0, 1.5),
+    #     insideMargin=0,
+    #     tickPlacesAdd={"x": 0, "y": 1},
+    #     floatAdd={"x": 0, "y": 1},
+    #     axrange={"x": (3000, 4800), "y": (0, 1)},
+    #     pointSize=10,
+    # )
+    # axd["A"].plot(x, y, color="k", linewidth=0.5)
+
     axd["A"].set_clip_on(False)
-    pa = sns.scatterplot(
-        x="DendArea",
-        y="Eff",
-        hue="Cell",
-        data=df0,
-        palette="tab10",
-        ax=axd["A"],
-        s=32,
-        clip_on=False,
-    )
-    mpl.setp(axd["A"].get_legend().get_texts(), fontsize="11")  # for legend text
-    axd["A"].legend(labelspacing=0.35)
-    axd["A"].set_xlabel(r"Dendrite Area (${\mu m^2}$)")
-    axd["A"].set_ylabel("Efficacy")
-    axd["A"].set_xlim(3000, 4800)
-    axd["A"].set_ylim(0, 1.0)
     axd["A"].text(
         -0.05,
         1.05,
@@ -493,29 +530,6 @@ def eff_ais(data):
         fontfamily="sans-serif",
         transform=axd["A"].transAxes,
     )
-    PH.nice_plot(axd["A"], position=-0.02, direction="outward")
-
-    PH.talbotTicks(
-        axd["A"],
-        density=(1.0, 1.5),
-        insideMargin=0,
-        tickPlacesAdd={"x": 0, "y": 1},
-        floatAdd={"x": 0, "y": 1},
-        axrange={"x": (3000, 4800), "y": (0, 1)},
-        pointSize=10,
-    )
-    axd["A"].plot(x, y, color="k", linewidth=0.5)
-
-    axd["B"].set_clip_on(False)
-    axd["B"].text(
-        -0.05,
-        1.05,
-        "B",
-        fontsize=13,
-        fontweight="bold",
-        fontfamily="sans-serif",
-        transform=axd["B"].transAxes,
-    )
 
     pb = sns.scatterplot(
         x="AIS",
@@ -523,20 +537,20 @@ def eff_ais(data):
         hue="Cell",
         data=df0,
         palette="tab10",
-        ax=axd["B"],
+        ax=axd["A"],
         legend=False,
         s=32,
         clip_on=False,
     )
-    axd["B"].set_xlabel(r"AIS length (${\mu m}$)")
-    axd["B"].set_ylabel("Efficacy")
-    axd["B"].plot(xa, ya, color="k", linewidth=0.5)
-    axd["B"].legend(handles=[], labels=[])
-    axd["B"].set_xlim(3000, 4500)
-    axd["B"].set_xlim(10, 24)
-    PH.nice_plot(axd["B"], position=-0.02, direction="outward")
+    axd["A"].set_xlabel(r"AIS length (${\mu m}$)")
+    axd["A"].set_ylabel("Efficacy")
+    axd["A"].plot(xa, ya, color="k", linewidth=0.5)
+    axd["A"].legend(handles=[], labels=[])
+    axd["A"].set_xlim(3000, 4500)
+    axd["A"].set_xlim(10, 24)
+    PH.nice_plot(axd["A"], position=-0.02, direction="outward")
     PH.talbotTicks(
-        axd["B"],
+        axd["A"],
         density=(1.0, 1.5),
         insideMargin=0,
         tickPlacesAdd={"x": 0, "y": 1},
@@ -544,13 +558,13 @@ def eff_ais(data):
         axrange={"x": (10, 25), "y": (0, 1)},
         pointSize=10,
     )
-    line_fit = f"y={slope:.4f}x+{intercept:.4f}, p={p_value:6.4f} r={r_value:6.4f}"
+    # line_fit = f"y={slope:.4f}x+{intercept:.4f}, p={p_value:6.4f} r={r_value:6.4f}"
     line_fita = f"y={slopea:.4f}x+{intercepta:.4f}, p={p_valuea:6.4f} r={r_valuea:6.4f}"
-    axd["A"].text(0.05, 0.92, line_fit, fontsize=10, transform=axd["A"].transAxes)
-    axd["B"].text(0.05, 0.92, line_fita, fontsize=10, transform=axd["B"].transAxes)
-    mpl.setp(pa.get_legend().get_texts(), fontsize="7")
-    # mpl.setp(pb.get_legend().get_texts(), fontsize="6")
-    for lh in pa.legend_.legendHandles:
+    # axd["A"].text(0.05, 0.92, line_fit, fontsize=10, transform=axd["A"].transAxes)
+    axd["A"].text(0.05, 0.92, line_fita, fontsize=10, transform=axd["A"].transAxes)
+    # mpl.setp(pa.get_legend().get_texts(), fontsize="7")
+    mpl.setp(pb.get_legend().get_texts(), fontsize="7")
+    for lh in pb.legend_.legendHandles:
         lh.set_alpha(1)
         lh._sizes = [12]
         # You can also use lh.set_sizes([50])
@@ -1414,7 +1428,8 @@ def cluster_dbscan(data=None, eff_crit: float = 0.0):
 
 
 if __name__ == "__main__":
-    # eff_ais()  # generate plot of efficacy vs ais length (supplemental)
+    eff_ais(data_Full)  # generate plot of efficacy vs ais length (supplemental)
+    exit()
     # eff_one_input()
     # exit()
     eff_plot("Full", datasetname_added="Added", show_fits="Full", clean=True)  # generate plot of efficay vs ASA
