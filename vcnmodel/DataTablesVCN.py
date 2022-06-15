@@ -622,6 +622,7 @@ class DataTablesVCN:
                                 "-------Figure 4--------",
                                 "Figure4-Ephys_2_Main",
                                 "Figure4-Ephys_2_Supplemental1",
+                                "Figure4-Ephys_2_Supplemental2",
                                 "Figure4-Ephys_2_Supplemental3",
                                 "-------Figure 7--------",
                                 "Figure7-Ephys_3_Main",

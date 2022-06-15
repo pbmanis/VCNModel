@@ -188,6 +188,7 @@ class Figures(object):
             "Figure3-Supplemental5_PSTH": self.Figure3_Supplemental5_PSTH,
             "Figure4-Ephys_2_Main": self.Figure4_Main,
             "Figure4-Ephys_2_Supplemental1": self.Figure4_Supplemental1,
+            "Figure4-Ephys_2_Supplemental2": self.Figure4_Supplemental2,
             "Figure4-Ephys_2_Supplemental3": self.Figure4_Supplemental3,
             "Figure7-Ephys_3_Main": self.Figure7_Main,
             "Figure7-Ephys_3_Supplemental1": self.Figure7_Supplemental1,
@@ -1369,6 +1370,10 @@ class Figures(object):
 
     def Figure4_Supplemental1(self):
         fig = self.Figure4_Main(supplemental1=True)
+        return fig
+
+    def Figure4_Supplemental2(self):
+        fig = EF.eff_ais(EF.data_Full, save_fig=True, figinfo=FigInfo())
         return fig
 
     def Figure4_assign_panel(self, supplemental1: bool = False, index: int = 0):
