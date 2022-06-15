@@ -1,6 +1,8 @@
 Workflow for vcnmodel simulations =================================
 
-Last update: 16 Aug 2021 pbm
+Last update: 14 June 2022 pbm
+
+Please read the documents in the "docs" directory (you can build with sphinx)
 
 Simulations are controlled by shell scripts in the scripts subdirectory. These scripts set up the parameters for the
 runs, including the cnmodel datatables and various stimulus parameters. The results are stored on a by-cell basis in
