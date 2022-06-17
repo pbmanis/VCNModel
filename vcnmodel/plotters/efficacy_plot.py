@@ -526,7 +526,7 @@ def eff_ais(data: str, save_fig: bool = False, figinfo: Union[object, None] = No
     P.axdict["A"].set_ylabel("Efficacy")
     P.axdict["A"].plot(xa, ya, color="k", linewidth=0.5)
     P.axdict["A"].set_xlim(3000, 4500)
-    P.axdict["A"].set_xlim(10, 24)
+    P.axdict["A"].set_xlim(0, 25)
     PH.nice_plot(P.axdict["A"], position=-0.02, direction="outward")
     PH.talbotTicks(
         P.axdict["A"],
@@ -534,14 +534,14 @@ def eff_ais(data: str, save_fig: bool = False, figinfo: Union[object, None] = No
         insideMargin=0,
         tickPlacesAdd={"x": 0, "y": 1},
         floatAdd={"x": 0, "y": 1},
-        axrange={"x": (10, 25), "y": (0, 1)},
+        axrange={"x": (0, 25), "y": (0, 1)},
         pointSize=10,
     )
     # line_fit = f"y={slope:.4f}x+{intercept:.4f}, p={p_value:6.4f} r={r_value:6.4f}"
     # P.axdict["A"].text(0.05, 0.92, line_fit, fontsize=10, transform=P.axdict["A"].transAxes)
-    line_fita = f"y={slopea:.4f}x+{intercepta:.4f}, p={p_valuea:6.4f} r={r_valuea:6.4f}"
+    line_fita = f"y={slopea:.3f}x+{intercepta:.3f}, p={p_valuea:6.4f} r={r_valuea:6.3f}"
     P.axdict["A"].text(
-        0.05, 0.92, line_fita, fontsize=10, transform=P.axdict["A"].transAxes
+        0.05, 0.92, line_fita, fontsize=9, transform=P.axdict["A"].transAxes
     )
 
     new_labels = [f"BC{x:02d}" for x in [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]]
@@ -565,7 +565,7 @@ def eff_ais(data: str, save_fig: bool = False, figinfo: Union[object, None] = No
         handles=custom_legend,
         handlelength=1,
         loc="upper left",
-        bbox_to_anchor=(1.05, 1),
+        bbox_to_anchor=(0.025, 0.85),
         fontsize=7,
         labelspacing=0.33,
         frameon=False,
@@ -573,6 +573,7 @@ def eff_ais(data: str, save_fig: bool = False, figinfo: Union[object, None] = No
 
     if save_fig:
         figinfo.P = P
+        figinfo.show_name = False
         figinfo.filename = set_figure_path(
             fignum=4, filedescriptor="Efficacy_AIS_V2", suppnum=2
         )

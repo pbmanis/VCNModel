@@ -413,6 +413,7 @@ class PlotSims:
         iv_spike_color: str = "r",
         spike_marker_size: float = 2.5,
         spike_marker_color: str = "r",
+        spike_marker_shape: str = "o",
         calx: Union[float, None] = 0.0,
         caly: Union[float, None] = 0.0,
         calt: Union[float, None] = 10.0,
@@ -468,6 +469,8 @@ class PlotSims:
             size of spike marker in traces, by default 2.5
         spike_marker_color : str, optional
             color of spike marker in traces, by default "r"
+        spike_marker_shape : str, optional
+            shape of spike marker in traces, by default "o"
         calx : Union[float, None], optional
             calibration bar x length, by default 0.0
         caly : Union[float, None], optional
@@ -590,10 +593,11 @@ class PlotSims:
             ax1.plot(
                 AR.MC.time_base[spikeindex],
                 AR.MC.traces[trial][spikeindex] + yoffset,
-                "o",
+                marker = spike_marker_shape, # "o",
                 color=spike_marker_color,
                 markerfacecolor=spike_marker_color,
                 markersize=spike_marker_size,
+                linestyle="none",
             )
             sinds = np.array(spikeindex) * AR.MC.sample_rate[trial]
             # print('sinds: ', sinds, deadtime, ri.stimDelay, ri.stimDur)
@@ -709,8 +713,8 @@ class PlotSims:
                 secax.plot(
                     RM.ivss_cmd_all[ispikethr] * 1e9,
                     RM.ivss_v_all[ispikethr] * 1e3,
-                    "o",
-                    markersize=3,
+                    marker=spike_marker_shape,
+                    markersize=spike_marker_size,
                     color=iv_spike_color,
                     markerfacecolor=iv_spike_color,
                     zorder=100,

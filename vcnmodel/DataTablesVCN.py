@@ -97,6 +97,7 @@ from vcnmodel.plotters import plot_z
 from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot
 from vcnmodel.plotters import plot_functions
+from vcnmodel.plotters import SAC_plots
 from vcnmodel.analyzers import pattern_summary
 from pylibrary.tools import cprint as CP
 import vcnmodel.analyzers.spikestatistics
@@ -115,6 +116,7 @@ all_modules = [
     plot_z,
     SAM_VS_vplots,
     efficacy_plot,
+    SAC_plots,
     cell_config,
     vcnmodel.analyzers.spikestatistics,
     vcnmodel.analyzers.analysis,
@@ -626,7 +628,8 @@ class DataTablesVCN:
                                 "Figure4-Ephys_2_Supplemental3",
                                 "-------Figure 7--------",
                                 "Figure7-Ephys_3_Main",
-                                "Figure7-Ephys_3_Supplemental1",
+                                "Figure7-Ephys_3_Supplemental2",
+                                "Figure7-Ephys_3_Supplemental3",
                                 "-------Figure 8--------",
                                 "Figure8-Ephys_4",
                                 "---------Misc----------",

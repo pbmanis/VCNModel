@@ -86,7 +86,8 @@ def plot_psth(
         matplotlib axis instance for this plotm by default None
         note: if None, no plot is generated
     scale : float, optional
-        Weights for the bins, optional and not used, by default 1.0
+        Weights for the histogram optional. Used to scale (for example,
+        by the number of cells or fibers)
     bin_fill : bool, optional
         Fill the bins, or leave open (transparent), by default True
     edge_color : str, optional
@@ -108,7 +109,6 @@ def plot_psth(
     Nothing
     """
     num_trials = run_info.nReps
-    bins = np.arange(0.0, max_time - zero_time, bin_width)
     spf = []
     for x in spike_times:
         if isinstance(x, list):
@@ -116,7 +116,8 @@ def plot_psth(
         else:
             spf.extend([x])
     spike_times_flat = np.array(spf, dtype=object).ravel() - zero_time
-    # h, b = np.histogram(spike_times_flat, bins=bins)
+    spike_times_flat = spike_times_flat[np.where(spike_times_flat < max_time)]
+
     bins = np.arange(0.0, max_time - zero_time, bin_width)
     if bin_fill:
         face_color = edge_color
@@ -136,7 +137,7 @@ def plot_psth(
             x=spike_times_flat,
             bins=bins,
             density=False,
-            # weights=scale * np.ones_like(spike_times_flat),
+            weights=(1./(bin_width*num_trials)) * np.ones_like(spike_times_flat),
             histtype="stepfilled",
             facecolor=face_color,
             edgecolor=edge_color,
@@ -158,7 +159,7 @@ def plot_psth(
         tick_labels = ["0", r"$\pi /2$", r"$\pi$", r"$3\pi /2$", r"$2\pi$"]
         ax.set_xticks(ticks, tick_labels)
     
-    ax.set_ylim(0, ax.get_ylim()[1])
+    # ax.set_ylim(0, ax.get_ylim()[1])
     if stimbar is not None:
         add_stimbar(stimbar, zero_time, max_time, ax)
 

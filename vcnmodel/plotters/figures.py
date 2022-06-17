@@ -22,6 +22,7 @@ Distributed under MIT/X11 license. See license.txt for more infomation.
 import datetime
 import importlib
 import pickle
+from ssl import SSL_ERROR_EOF
 import string
 from collections import OrderedDict
 from dataclasses import dataclass, field
@@ -39,6 +40,8 @@ import vcnmodel.util.readmodel as readmodel
 from vcnmodel.util.set_figure_path import set_figure_path
 from matplotlib import image as mpimg
 from matplotlib.lines import Line2D
+import matplotlib.patches as mpatches
+
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
 from pyqtgraph import multiprocess as MP
@@ -47,6 +50,7 @@ from vcnmodel.analyzers import isi_cv as ISI
 from vcnmodel.analyzers import sac as SAC
 from vcnmodel.analyzers import pattern_summary as PATSUM
 from vcnmodel.plotters import SAM_VS_vplots
+from vcnmodel.plotters import SAC_plots as SACP
 from vcnmodel.plotters import efficacy_plot as EF
 from vcnmodel.plotters import \
     figure_data as FD  # table of simulation runs used for plotting figures
@@ -125,6 +129,7 @@ class FigInfo:
     """
 
     P: object = None
+    show_figure_name: bool = False  # if True, figure filename appears in top right corner
     filename: Union[str, Path] = ""
     title: dict = field(default_factory=title_data)
     title2: dict = field(default_factory=title_data)
@@ -134,7 +139,7 @@ class Figures(object):
     """
     This class generates final figures for the SBEM manuscript by reaching back
     to the original simulation data, including, in some cases, refitting. Both
-    primary "examplar" figures, and supplemental figures, are generated. The
+    primary "exemplar" figures, and supplemental figures, are generated. The
     figures are made consistent by using both sns.set_style and mpl.style for
     figures.mplstyle, which overrides some defaults in mpl. The resulting
     figures are editable in Illustrator without any missing fonts.
@@ -142,7 +147,7 @@ class Figures(object):
     This is overall ugly code, but it gets the job done. Note that some plots
     are modifications of what is present in plot_sims, and also that plot_sims
     is used here, accessed through self.parent.PLT. Some plotting routines have
-    been moved into plot_functions.
+    been moved into plot_functions.py.
 
     This is part of the DataTablesVCN interactive analysis tool for the
     simulations in the SBEM project.
@@ -191,8 +196,8 @@ class Figures(object):
             "Figure4-Ephys_2_Supplemental2": self.Figure4_Supplemental2,
             "Figure4-Ephys_2_Supplemental3": self.Figure4_Supplemental3,
             "Figure7-Ephys_3_Main": self.Figure7_Main,
-            "Figure7-Ephys_3_Supplemental1": self.Figure7_Supplemental1,
             "Figure7-Ephys_3_Supplemental2": self.Figure7_Supplemental2,
+            "Figure7-Ephys_3_Supplemental3": self.Figure7_Supplemental3,
             "Figure8-Ephys_4": self.Figure8_Panels_IJK,
             # Misc figures follow
             "Figure: IV Figure": self.plotIV,
@@ -221,7 +226,7 @@ class Figures(object):
         else:
             cprint("r", f"Figure name '{figure_name:s}' was not in dispatch table.")
 
-    def save_figure(self, fig):
+    def save_figure(self, fig, show_figure_name:bool=False):
         """
         Save a figure to a disk file.
         This routine adds metadata to the figure, along with
@@ -237,28 +242,29 @@ class Figures(object):
         Nothing
         """
 
-        fig.P.figure_handle.text(
-            0.98,
-            1.0,
-            str(fig.filename.name),  # .replace('_', '\_'),
-            transform=fig.P.figure_handle.transFigure,
-            fontdict = {"fontsize": 7, "fontweight": "normal",
-                "horizontalalignment": "right",
-                "verticalalignment": "top",
-            }
-        )
+        if show_figure_name:
+            fig.P.figure_handle.text(
+                0.98,
+                1.0,
+                str(fig.filename.name),  # .replace('_', '\_'),
+                transform=fig.P.figure_handle.transFigure,
+                fontdict = {"fontsize": 7, "fontweight": "normal",
+                    "horizontalalignment": "right",
+                    "verticalalignment": "top",
+                }
+            )
 
-        if hasattr(
-            fig, "title2"
-        ):  # ggplot figures do not have a title or title2 attribute
-            if fig.title2["title"] is not None or len(fig.title2["title"]) > 0:
-                fig.P.figure_handle.text(
-                    fig.title2["x"],
-                    fig.title2["y"],
-                    fig.title2["title"],  # .replace('_', '\_'),
-                    transform=fig.P.figure_handle.transFigure,
-                    horizontalalignment="right",
-                    verticalalignment="top",
+            if hasattr(
+                fig, "title2"
+            ):  # ggplot figures do not have a title or title2 attribute
+                if fig.title2["title"] is not None or len(fig.title2["title"]) > 0:
+                    fig.P.figure_handle.text(
+                        fig.title2["x"],
+                        fig.title2["y"],
+                        fig.title2["title"],  # .replace('_', '\_'),
+                        transform=fig.P.figure_handle.transFigure,
+                        horizontalalignment="right",
+                        verticalalignment="top",
                 )
         if isinstance(fig.filename, str):
             fig.filename = Path(fig.filename)
@@ -1373,7 +1379,7 @@ class Figures(object):
         return fig
 
     def Figure4_Supplemental2(self):
-        fig = EF.eff_ais(EF.data_Full, save_fig=True, figinfo=FigInfo())
+        fig = EF.eff_ais(EF.data_Full, save_fig=True, figinfo=FigInfo(show_figure_name=False))
         return fig
 
     def Figure4_assign_panel(self, supplemental1: bool = False, index: int = 0):
@@ -2761,20 +2767,21 @@ class Figures(object):
                 transform=P.axdict[pan[5]].transAxes,
             )
 
-    def Figure7_Supplemental1(self):
+    def Figure7_Supplemental2(self):
         V = SAM_VS_vplots.VS_Plots()
         fig, P = V.make_figure()
         return fig
     
-    def Figure7_Supplemental2(self):
-        pass
+    def Figure7_Supplemental3(self):
+        fig = SACP.plot_sacs(figinfo=FigInfo(show_figure_name=False))
+        return fig
 
     def plot_psth_psth(
         self,
         ax: object,
         data: object,
         ri: dict,
-        psth_binw: float = 0.0005,
+        psth_binw: float = 0.001,
         psth_win: Union[list, np.array] = [0.0, 1.0],
         ntr: int = 1,
         ninputs: int = 1,
@@ -2786,7 +2793,7 @@ class Figures(object):
             max_time=psth_win[1],
             bin_width=psth_binw,
             ax=ax,
-            scale=1.0 / ntr / psth_binw / ninputs,
+            scale=1.0 / ninputs,
         )
         ax.set_xlim(0, np.fabs(np.diff(psth_win)))
         PH.talbotTicks(
@@ -2831,7 +2838,7 @@ class Figures(object):
             f"\nSSL: {np.nanmean(grand_ssl):.3f} (SD {np.nanstd(grand_ssl):.3f})"
         )
         ax.text(
-            0.20,
+            0.18,
             0.95,
             fsl_text,
             # N={np.count_nonzero(~np.isnan(fsl)):3d})",
@@ -3242,8 +3249,8 @@ class Figures(object):
             else:
                 xticks_str = None
             PH.set_axes_ticks(bupsth_ax,
-                yticks = [0, 25, 50, 75],
-                yticks_str = ["0", "25", "50", "75"],
+                yticks = [0,  500,  1000, 1500],
+                yticks_str = ["0", "500",  "1000", "1500"],
                 xticks = [0, 0.1, 0.2],
                 xticks_str = xticks_str,
                 x_minor = [0.05, 0.15, 0.25],
@@ -3440,15 +3447,15 @@ class Figures(object):
             ) 
         cv_ax.set_ylim(0, 1.2)
 
-        cvlabel = r"$CV\prime$"
+        cvlabel = "" # r"$CV\prime$: "
         cv_ax.text(
-            1.0,
-            1.15,
-            f"{cvlabel:s}: {CVp:4.2f}",
+            1.02,
+            CVp,
+            f"{cvlabel:s}{CVp:4.2f}",
             transform=cv_ax.transAxes,
             fontsize=7,
-            horizontalalignment="right",
-            verticalalignment="top",
+            horizontalalignment="left",
+            verticalalignment="center",
         )
         cv_ax.set_ylabel("CV")
         if label_x_axis:
@@ -3560,7 +3567,10 @@ class Figures(object):
                 t_grace=0.0,
                 stim_ax=stim_ax_cv,
             )
-
+           # Shim CV slightly to the right so that label does not overlap text in FSL?SSL_ERROR_EOF
+            pos = P.axarr[i, 3].get_position()
+            pos.x0 = pos.x0 + 0.02
+            P.axarr[i, 3].set_position(pos)
 
             P.axarr[i, 0].text(
                 -0.40,
@@ -3801,9 +3811,11 @@ class Figures(object):
 
 
     def Figure8_Panels_IJK(self):
-                # Traces
-        import matplotlib.patches as mpatches
+        """Make the lower panels for Figure 8
 
+        Returns:
+            FigData: The figure object
+        """        
         rows = 1
         cols = 5
         bmar = 0.5
@@ -3825,6 +3837,7 @@ class Figures(object):
                 "rightmargin": 0.25,
                 "topmargin": tmar,
             },
+
             labelposition=(-0.05, 1.05),
             parent_figure=None,
             panel_labels=panels,
@@ -3838,6 +3851,7 @@ class Figures(object):
             "Simulations",
             "IV",
         )
+        # get the filenames that will be overplotted
         fns = []
         for fd in FD.figure_No_Dend[cellN].keys():
             dfile = FD.figure_No_Dend[cellN][fd]
@@ -3849,14 +3863,17 @@ class Figures(object):
             if len(fng) == 0:
                 raise ValueError("no files found")
             fns.append(fng[0])
-
+        print(fns)
         ymin = -140.0
         ymax = 20.0
         iax = 0
+        spkmarkcolors = ['c', 'r']
+        spkmarksizes = [2.5, 3.5]
+        spkmarkshape = ["^", "o"]
         ivaxis = self.P.axdict["J"]
         for i, fn in enumerate(fns):
             sfi = Path(sfi, fn)
- 
+
             self.parent.PLT.plot_traces(
                 self.P.axdict["I"],
                 sfi,
@@ -3870,11 +3887,19 @@ class Figures(object):
                 ivaxis=ivaxis,  # accumulate IV's
                 ivcolor=colors[i],
                 trace_color=colors[i],
+                iv_spike_color = spkmarkcolors[i],
+                spike_marker_size = spkmarksizes[i],
+                spike_marker_color= spkmarkcolors[i],
+                spike_marker_shape = spkmarkshape[i],
                 calx=100.0,
                 caly=-110.0,
                 show_title=False,
                 axis_index = 1,
             )
+        pos = self.P.axdict["I"].get_position()
+        pos.y0 = pos.y0 - 0.15
+        self.P.axdict["I"].set_position(pos)
+
         PH.set_axes_ticks(self.parent.PLT.crossed_iv_ax,
                 yticks =     [-140,    -120, -100, -80, -60, -40,  -20],
                 yticks_str = ["-140", "-120", "-100",   "-80",  "", "-40", "-20 mV"],
@@ -3884,7 +3909,10 @@ class Figures(object):
                 x_minor = [-0.5, 0.5, 1.5],
             )
         self.parent.PLT.crossed_iv_ax.tick_params(axis='both', which="both", direction="inout")
-        
+        pos = ivaxis.get_position()
+        pos = pos.translated(-0.03, 0)
+        pos.y0 = pos.y0-0.1
+        ivaxis.set_position(pos)
         # plot the singles responses in the third panel
 
         cal_pos = 0
@@ -3903,7 +3931,13 @@ class Figures(object):
         )
         for ax in axl:
             ax.set_zorder(0)
-        
+            pos = ax.get_position()
+            pos = pos.translated(-0.03, 0)
+            pos.y0 = pos.y0 - 0.08
+            ax.set_position(pos)
+
+        # plot the efficacy curves and points in the 4th panel
+
         EFP = EF.EfficacyPlots(parent_figure=self.P.figure_handle)
         EFP.plot_efficacy(datasetname="NoUninnervated2", ax=self.P.axdict["L"], clean=True)
         EFP.plot_efficacy(datasetname="NoUninnervated2_ctl", ax=self.P.axdict["L"], clean=True)
@@ -3928,9 +3962,12 @@ class Figures(object):
                 Line2D([0], [0], color="#94c8ff", lw=1, label='Group 2'),
                 ]
         self.P.axdict["L"].legend(handles=custom_legend, handlelength=1, 
-            loc="upper left", bbox_to_anchor=(-0.07, 1.8),
+            loc="upper left", bbox_to_anchor=(-0.07, 1.0),
             fontsize=7, labelspacing=0.33)
+        
+        # Plot the Vector Strength for SAM at different frequencies in the 5th panel
         # panel M : compare 9I(intact) and 9U (NoUninnervated) VS across frequencies
+
         VSP = SAM_VS_vplots.VS_Plots(sels=[9], dBSPL=15, dends="9I9U")
         VSP.plot_VS_summary(axin=self.P.axdict["M"], cell=9, barwidth=75, legendflag=True)
         self.P.adjust_panel_labels(fontsize=28, fontweight="light", fontname="myriad")
@@ -3941,7 +3978,7 @@ class Figures(object):
         self.P.axdict["M"].legend(handles=custom_legend, handlelength=1, loc="lower left", fontsize=7, labelspacing=0.33)
         PH.set_axes_ticks(ax=self.P.axdict["M"],
             xticks = [0, 1, 2, 3, 4, 5, 6, 7],
-            xticks_str = ['0', '100', '200', '300', '400', '500', '750', '1000'],
+            xticks_str = ['50', '100', '200', '300', '400', '500', '750', '1000'],
             # xticks_pad:Union[List, None]=None,
             x_minor = None,
             x_rotation=60.,
@@ -3952,7 +3989,7 @@ class Figures(object):
 
         fig = FigInfo()
         fig.P = self.P
-        fig.filename = set_figure_path(fignum=8, filedescriptor="Ephys_Pruning_IJKLM_V2")
+        fig.filename = set_figure_path(fignum=8, filedescriptor="Ephys_Pruning_IJKLM_V3")
         fig.title[
             "title"
         ] = "SBEM Project Figure 8 (main) Modeling: Dendrite pruning effects"

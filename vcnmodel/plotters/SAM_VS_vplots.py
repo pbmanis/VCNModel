@@ -336,31 +336,13 @@ class VS_Plots:
             + PN.theme(figure_size=(8, 10))
             # + PN.scales.scale_y_continuous(breaks=[f"{f:.1f}" for f in [0, 0.2, 0.4 0.6, 0.8, 1.0]]) # scalefun) # PN.scales.number_format(accuracy = 0.01))
         )
-        # print(dir(PN.scales))
-
+ 
         fig, P = gg.draw(return_ggplot=True)
-        # print(dir(fig))
-        # print(dir(P))
-        # print(fig.axes)
-        # print(P.axs)
-
-        # fig2 = mpl.figure(99)
-
-        # mpl.show()
-        # return fig, P
-
+ 
         # save_file = Path(f"Figure7/Figure7_supp/Figure7_Main_RHS_top.pdf")
         save_file = Path(f"Figure7/Figure7_supp/Figure7_Supplemental2_V2.pdf")
         save_file_png = save_file.with_suffix(".png")
 
-        # fig.text(
-        #     0.99,
-        #     0.99,
-        #     save_file,  # .replace('_', '\_'),
-        #     # transform=fig.transFigure,
-        #     horizontalalignment="right",
-        #     verticalalignment="top",
-        # )
         title = "SBEM Project Supplemental Figure 7 Modeling : Vector Strength Summary"
 
         mpl.savefig(
@@ -482,6 +464,7 @@ class VS_Plots:
             fig, ax = mpl.subplots(1, 1, figsize=(5, 5))
         else:
             ax = axin
+        print("Cell: ", cell)
         dfl = self.df[self.df["Cell"] == cell]  # just get the cell's data
         # make categorical swarm plot for each configuration
         sns.swarmplot(
@@ -496,6 +479,7 @@ class VS_Plots:
         # find out how many configurations and frequencies are present
         n_configurations = len(dfl["Configuration"].unique())
         n_frequencies = len(dfl["frequency"].unique())
+
         # get the first set of children plotted - the rest are legend etc
         locs = ax.get_children()[: n_configurations * n_frequencies]
         axis_items = []
@@ -551,6 +535,7 @@ class VS_Plots:
 
     def Figure7_Supplemental2(self):
         V1 = VS_Plots(dBSPL=15)
+
         cells = [2, 6, 10, 11, 13, 18]
         P = PH.regular_grid(
             2,
@@ -599,7 +584,14 @@ class VS_Plots:
         )
 
     def Figure8_M(self, ax=None):
+        """Plot Figure 8 panel M: Vector strength to SAM tones at
+        different modulatoin frequencies.
+
+        Args:
+            ax (matplotlib axis, optional): axis. Defaults to None.
+        """
         V1 = VS_Plots(dBSPL=15, dends="9I9U")
+
         cells = [9]
         if ax is None:
             P = PH.regular_grid(
