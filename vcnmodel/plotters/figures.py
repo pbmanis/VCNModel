@@ -698,6 +698,8 @@ class Figures(object):
         into Illustrator to make the figure)
         
         Panels D and E are taken from Figure3_Supplemental2_CC.pdf, for BC17.
+        Panels F, G and H are from Figure3_Supplemental5_PSTH.pdf for BC17, with the stimuli underneath
+        
         """
         cprint("y", message)
 
