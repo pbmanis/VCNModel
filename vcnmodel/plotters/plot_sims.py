@@ -2635,16 +2635,36 @@ class PlotSims:
         x = np.array(all_an_st)
         v = np.where((phasewin[0] <= x) & (x < phasewin[1]))[0]
         an_spikesinwin = x[v]
-
+        cprint('r', len(all_bu_st_trials))
+        
         if soundtype in [
             "SAM",
             "stationaryNoise",
             "regularClicks",
             "poissonClicks",
         ]:  # also calculate vs and plot histogram
+
+            print(soundtype, fmod)
+
+            # break into 10 groups of 10 trials (if 100 total) and 
+            # compute vs for each group, then get mean and sd to report
+            n_vs_groups = int(len(all_bu_st_trials)/10)
+            vs_n = np.zeros(n_vs_groups)
+            vs_nspikes = np.zeros(n_vs_groups)
+            for i in range(n_vs_groups):
+                vs_data = all_bu_st_trials[(i*n_vs_groups):(i+1*n_vs_groups)]
+                vs_calc = self.VS.vector_strength(
+                            vs_data, fmod
+                        )  # vs expects spikes in msec
+                vs_n[i] = vs_calc.vs
+                vs_nspikes[i] = vs_calc.n_spikes
+            cprint("c", f"mean VS: {np.mean(vs_n):8.4f}  SD={np.std(vs_n):8.4f}")
+            
+
             vs = self.VS.vector_strength(
                 bu_spikesinwin, fmod
             )  # vs expects spikes in msec
+            cprint("c", f"Grand mean VS: {vs.vs:8.4f}  N={vs.n_spikes:6d}")
             vs.carrier_frequency = F0
             vs.n_inputs = n_inputs
             if sac_flag:

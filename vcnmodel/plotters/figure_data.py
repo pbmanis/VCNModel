@@ -415,6 +415,7 @@ all_figures = {
     "IV_all": figure_AllIVs,
     "AN_SAC": figure_SAC,
     "AN_SAM_SAC": figure_SAM_SAC,
+    "BC_09_Pruned": figure_cell9_nouninnervated2,
 }
 
 

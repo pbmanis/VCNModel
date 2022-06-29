@@ -35,8 +35,9 @@ sourcepath = Path(config["baseDataDirectory"])
 
 simpath = Path("/Volumes/Pegasus_002/BU_simulation_data")
 
-intermediates = Path(simpath, "IntermediateAnalyses")
-intermediates.mkdir(exist_ok=True, parents=True)
+intermediate = Path(simpath, "IntermediateAnalyses")
+intermediate.mkdir(exist_ok=True, parents=True)
+intermediate_source = Path("/Volumes/Pegasus_002/VCN-SBEM-Data/Figures/IntermediateResults")
 
 simulations = Path(simpath, "Simulations")
 simulations.mkdir(exist_ok=True, parents=True)
@@ -44,6 +45,8 @@ simulations.mkdir(exist_ok=True, parents=True)
 Zin_dest_dir = Path(simulations, "Impedance_Calculations")
 Zin_dest_dir.mkdir(exist_ok=True, parents=True)
 Zin_source_dir = Path(sourcepath, "VCN_Cells", "Impedance_Calculations")
+
+
 
 
 readmefilecontents="""This VCN_SBEM_readme.txt file was generated on 2022-04-07
@@ -66,10 +69,11 @@ reconstructions of globular bushy cells from the mouse ventral cochlear nucleus.
         Name: George A. Spirou Institution: Univesity of South Florida Address:
         Tampa FL Email: gspirou@usf.edu
 
-< 3. Date of data collection (single date, range, approximate date): 2014-01-01
-to 2022-04-15
+3. Date of data collection (single date, range, approximate date): 2014-01-01
+to 2022-05-15
 
-4. Geographic location of data collection : Chapel Hill, NC USA 
+4. Geographic location of data collection : Chapel Hill, NC USA, Morgantown, WV,
+    Tampa, FL.
 
 5. Information about funding sources that supported the collection of the data: 
     NIH grants: DC R01 DC015901 (Spirou, Manis, Ellisman), DC R01 DC004551
@@ -405,7 +409,26 @@ def copy_simresults(FD, simcopy=True):
                     elif sourcefilepkl.is_file():
                         print("   pkl copying ", sourcefilepkl, " to ", targetdir)
                         shutil.copy2(sourcefilepkl, targetdir)
-
+    # intermediate results:
+    # SAM clicks, SAM
+    target1 = Path(intermediate, 'SAC_Results_Clicks.pkl')
+    source1 = Path(intermediate_source, 'SAC_Results_Clicks.pkl')
+    shutil.copy2(source1, target1)
+    target2 = Path(intermediate, 'SAC_Results_SAM.pkl')
+    source2 = Path(intermediate_source, 'SAC_Results_SAM.pkl')
+    shutil.copy2(source2, target2)
+    source_VS15 = Path(config['codeDirectory'], 'VS_data_15dB.py')
+    target_VS15 = Path(intermediate, 'VS_data_15dB.py')
+    shutil.copy2(source_VS15, target_VS15)
+    source_VS15_BC09 = Path(config['codeDirectory'], 'VS_data_15dB_BC09.py')
+    target_VS15_BC09 = Path(intermediate, 'VS_data_15dB_BC09.py')
+    shutil.copy2(source_VS15, target_VS15)
+    source_VS15 = Path(config['codeDirectory'], 'VS_data_15dB.py')
+    target_VS15 = Path(intermediate, 'VS_data_15dB.py')
+    shutil.copy2(source_VS15, target_VS15)
+    source_VS30 = Path(config['codeDirectory'], 'VS_data_30dB.py')
+    target_VS30 = Path(intermediate, 'VS_data_30dB.py')
+    shutil.copy2(source_VS30, target_VS30)
 
 
 def main():
