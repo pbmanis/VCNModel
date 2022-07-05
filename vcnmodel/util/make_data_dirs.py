@@ -25,7 +25,7 @@ Distributed under MIT/X11 license. See license.txt for more infomation.
 import shutil
 import subprocess
 from pathlib import Path
-
+from typing import List
 import toml
 from vcnmodel.plotters import \
     figure_data as FD  # table of simulation runs used for plotting figures
@@ -336,7 +336,7 @@ def write_the_readme():
     with open(Path(simpath, "README.txt"), "a") as fh:
         fh.write(r.stdout.decode())
 
-def copy_morphology(allcells):
+def copy_morphology(allcells, sdirs, cdirs):
     for cn in allcells:
         cell_id = f"VCN_c{cn:02d}"
         source_morph = list(Path(sdirs[cn], "Morphology").glob("*.hoc"))
@@ -353,7 +353,7 @@ def copy_morphology(allcells):
                 print("    dest file was: ", dest_file)
 
 
-def copy_simresults(FD, simcopy=True):
+def copy_simresults(FD, simcopy:bool=True, sdirs:List=[], cdirs:List=[]):
     for fig in FD.all_figures:
         figd = FD.all_figures[fig]
         if fig in ["IV_ex", "IV_all", "VC_ex"]:
@@ -447,8 +447,8 @@ def main():
     # for p in list(simpath.glob("*/**")):
     #     print(p)
 
-    copy_morphology(allcells)
-    copy_simresults(FD, simcopy=False)
+    copy_morphology(allcells, sdirs=sdirs, cdirs=cdirs)
+    copy_simresults(FD, simcopy=False, sdirs=sdirs, cdirs=cdirs)
     # finally, complete the README.txt file
     write_the_readme()
 
