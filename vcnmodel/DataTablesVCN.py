@@ -98,7 +98,8 @@ from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot
 from vcnmodel.plotters import plot_functions
 from vcnmodel.plotters import SAC_plots
-from vcnmodel.analyzers import pattern_summary
+import vcnmodel.analyzers.pattern_summary
+import vcnmodel.analyzers.vector_strength
 from pylibrary.tools import cprint as CP
 import vcnmodel.analyzers.spikestatistics
 import ephys
@@ -126,6 +127,8 @@ all_modules = [
     vcnmodel.analyzers.sttc,
     vcnmodel.analyzers.sac,
     vcnmodel.analyzers.pattern_summary,
+    vcnmodel.analyzers.vector_strength,
+
     vcnmodel.util.fixpicklemodule,
     vcnmodel.util.readmodel,
     vcnmodel.util.trace_calls,
@@ -214,7 +217,7 @@ revcorrtypes = [
     "RevcorrSTTC",
 ]
 # For Filter dropdown: 10 dB steps
-dbValues = list(range(0, 91, 10))
+dbValues = list(range(0, 91, 5))
 dbValues.insert(0, "None")
 
 # SR possibilities
