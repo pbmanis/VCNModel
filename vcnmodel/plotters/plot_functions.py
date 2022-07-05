@@ -293,6 +293,7 @@ def plot_spike_raster(
     mode: str='postsynaptic',
     n_inputs: int = 0,
     i_trial: int = 0,
+    n_trials: int = 10, 
     spike_times: List = [],
     data_window: List = [],
     panel: Union[str, None] = None,
@@ -312,6 +313,8 @@ def plot_spike_raster(
         number of inputs for ell, by default 0
     i_trial : int, optional
         trial number, by default 0. Only used if mode is "presynaptic"
+    n_trials : int, optional (default 10)
+        number of trials, by default 10. 
     spike_times : List
         A list of spike times or a list of lists of spike times, by default []
     data_window : List, optional
@@ -325,18 +328,19 @@ def plot_spike_raster(
     plot_dur = np.fabs(np.diff(data_window))
 
     if mode == "postsynaptic":
-        ispt = [
-            i
-            for i in range(len(spike_times))
-            if spike_times[i] >= data_window[0] and spike_times[i] < data_window[1]
-        ]
-        P.axdict[panel].plot(
-            np.array(spike_times[ispt]) - data_window[0],
-            i_trial * np.ones(len(ispt)),
-            "|",
-            markersize=1.5,
-            color="b",
-        )
+        for j in range(n_trials):
+            ispt = [
+                i
+                for i in range(len(spike_times[j]))
+                if spike_times[j][i] >= data_window[0] and spike_times[j][i] < data_window[1]
+            ]
+            P.axdict[panel].plot(
+                np.array(spike_times[j][ispt]) - data_window[0],
+                j * np.ones(len(ispt)),
+                "|",
+                markersize=1.5,
+                color="b",
+            )
         P.axdict[panel].set_xlim(0, plot_dur)
     elif mode == "presynaptic":
         for k in range(n_inputs):  # raster of input spikes
@@ -386,7 +390,6 @@ def plot_spiketrain_raster(
         )
 
 def plot_stacked_spiketrain_rasters(
-
     spike_times_by_input,
     ax,
     si,

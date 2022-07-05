@@ -586,7 +586,7 @@ class PlotSims:
                     for t in data["Results"][icurr]["spikeTimes"]
                 ]
             else:
-                # cprint('r', 'spikes from SP.spikeIndices')
+                cprint('r', 'spikes from SP.spikeIndices')
                 spikeindex = SP.spikeIndices[trial]
             # print(f"Trial: {trial:3d} Nspikes: {len(spikeindex):d}")
             # plot spike peaks
@@ -2196,7 +2196,7 @@ class PlotSims:
         return P
 
     @trace_calls.winprint_continuous
-    def print_VS(self, d, freq, dmod, dB, experiment):
+    def print_VS(self, d, freq, dmod, dB, experiment, filename:str=""):
         print("Getting data")
         SC, syninfo = self.get_synaptic_info(self.parent.cellID)
         amax = 0
@@ -2207,9 +2207,9 @@ class PlotSims:
             if area > amax:
                 amax = area
             sites[isite] = int(np.around(area * SC.synperum2))
-
-        self.VS_colnames = f"Cell,Configuration,carrierfreq,frequency,dmod,dB,VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,AN_VS,AN_phase,AN_phasesd,SAC_AN,SAC_Bu,SAC_AN_HW,SAC_Bu_HW,maxArea,ninputs"
-        line = f"{str(self.parent.cellID):s},{experiment:s},"
+        
+        self.VS_colnames = f"Cell,Filename,Configuration,carrierfreq,frequency,dmod,dB,VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,VS_mean,VS_SD,VS_Ns,VS_groups,AN_VS,AN_phase,AN_phasesd,SAC_AN,SAC_Bu,SAC_AN_HW,SAC_Bu_HW,maxArea,ninputs"
+        line = f"{str(self.parent.cellID):s},{filename:s},{experiment:s},"
         line += f"{d.carrier_frequency:.1f},{freq:06.1f},{dmod:.1f},{dB:.1f},"
         line += f"{d.vs:.4f},"
         line += f"{d.n_spikes:d},"
@@ -2217,6 +2217,10 @@ class PlotSims:
         line += f"{d.circ_phaseSD:.4f},"
         line += f"{d.Rayleigh:.4f},"
         line += f"{d.pRayleigh:.4e},"
+        line += f"vsm={d.vs_mean:.4f},"
+        line += f"vssd={d.vs_sd:.4f},"
+        line += f"vsns={int(d.vs_Ns):d},"
+        line += f"vsg={d.vs_groups:d}"
         line += f"{d.an_vs:.4f},"
         line += f"{d.an_circ_phaseMean:.4f},"
         line += f"{d.an_circ_phaseSD:.4f},"
@@ -2508,12 +2512,14 @@ class PlotSims:
         sac_engine: str = "cython",
     ):
         if isinstance(self.parent.cellID, str):
-            gbc = f"VCN_c{int(self.parent.cellID[0]):02d}"
+            gbc = f"VCN_c{int(self.parent.cellID[0:2]):02d}"
+            cellN = int(self.parent.cellID[0:2])
         else:
             gbc = f"VCN_c{int(self.parent.cellID):02d}"
+            cellN = self.parent.cellID
         
         plotflag = False
-
+        SC, syninfo = self.get_synaptic_info(cellN)
 
         
         model_data = self.ReadModel.get_data(fn, PD, protocol)
@@ -2557,7 +2563,7 @@ class PlotSims:
         # AR time_base is in milliseconds, so convert to seconds
         all_an_st = []
         all_bu_st = []
-        all_bu_st_trials = []
+        all_bu_st_trials = []  # bushy spike times, but per trial
 
         an_st_by_input = [
             [] for x in range(n_inputs)
@@ -2576,7 +2582,7 @@ class PlotSims:
 
         for i_trial in range(ntr):  # for all trials in the measure.
             if i_trial == show_vtrial:
-                vtrial = AR.MC.traces[i_trial] * 1e3  # convert to mV
+                v_show_trial = AR.MC.traces[i_trial] * 1e3  # save for display, and convert to mV
             time_base = AR.MC.time_base / 1000.0  # convert to seconds
             dt = si.dtIC / 1000.0  # convert from msec to seconds
             trd = data["Results"][i_trial]
@@ -2649,22 +2655,35 @@ class PlotSims:
             # break into 10 groups of 10 trials (if 100 total) and 
             # compute vs for each group, then get mean and sd to report
             n_vs_groups = int(len(all_bu_st_trials)/10)
+            cprint("c", f"n vs groups:  {n_vs_groups:d}")
+            cprint("c", f"len bust trials: {len(all_bu_st_trials):d}")
             vs_n = np.zeros(n_vs_groups)
             vs_nspikes = np.zeros(n_vs_groups)
-            for i in range(n_vs_groups):
-                vs_data = all_bu_st_trials[(i*n_vs_groups):(i+1*n_vs_groups)]
+            bu_vs_data = []
+            for i in range(n_vs_groups):  # divide trials into trial groups (of 10)
+                bu_vs_data = []
+                for j in range(i*n_vs_groups, (i+1)*n_vs_groups):  # within each 
+                    v = np.where((phasewin[0] <= all_bu_st_trials[j]) & (all_bu_st_trials[j] < phasewin[1]))[0]
+                    bu_vs_data.extend(all_bu_st_trials[j][v])
                 vs_calc = self.VS.vector_strength(
-                            vs_data, fmod
+                            bu_vs_data, fmod
                         )  # vs expects spikes in msec
                 vs_n[i] = vs_calc.vs
-                vs_nspikes[i] = vs_calc.n_spikes
-            cprint("c", f"mean VS: {np.mean(vs_n):8.4f}  SD={np.std(vs_n):8.4f}")
-            
+                vs_nspikes[i] = int(vs_calc.n_spikes)
+
+            print('vs_nspikes: ', vs_nspikes)
+            print("vs by group: ", vs_n)
+            cprint("c", f"mean VS: {np.mean(vs_n):8.4f}  SD={np.std(vs_n):8.4f}, total spikes: {int(np.sum(vs_nspikes)):d}")
 
             vs = self.VS.vector_strength(
                 bu_spikesinwin, fmod
             )  # vs expects spikes in msec
             cprint("c", f"Grand mean VS: {vs.vs:8.4f}  N={vs.n_spikes:6d}")
+            vs.vs_mean = np.mean(vs_n)
+            vs.vs_sd = np.std(vs_n)
+            vs.vs_Ns = np.sum(vs_nspikes)
+            vs.vs_groups = n_vs_groups
+
             vs.carrier_frequency = F0
             vs.n_inputs = n_inputs
             if sac_flag:
@@ -2789,7 +2808,7 @@ class PlotSims:
             vs.an_circ_phaseSD = vs_an.circ_phaseSD
             vs.an_circ_timeSD = vs_an.circ_timeSD
 
-            self.print_VS(vs, fmod, dmod, dB, ri.Spirou)
+            self.print_VS(vs, fmod, dmod, dB, ri.Spirou, filename=str(fn))
 
 #########################
 
@@ -2798,29 +2817,36 @@ class PlotSims:
         
         # Otherwise, lets do some plotting:
             # plot the raster of spikes
-        PF.plot_spike_raster(P, mode='postsynaptic', n_inputs=1, spike_times=sptimes,
-            data_window=data_window, panel=an_raster_panel)
-        PF.plot_spike_raster(P, mode='presynaptic', n_inputs=1, spike_times=trd["inputSpikeTimes"],
-            data_window=data_window, panel=an_raster_panel)
+        PF.plot_spike_raster(P, mode='postsynaptic', spike_times=all_bu_st_trials,
+            data_window=data_window, panel=bu_raster_panel)
+        PF.plot_stacked_spiketrain_rasters( 
+            spike_times_by_input=an_st_by_input,
+            ax=P.axdict[an_raster_panel],
+            si = si,
+            syninfo = syninfo,
+            plot_win = data_window,
+            max_trials=5,
+        )
+        # PF.plot_spike_raster(P, mode='presynaptic', n_inputs=1, spike_times=trd["inputSpikeTimes"],
+        #     data_window=data_window, panel=an_raster_panel)
 
+        # be sure we are using the right data, not overwriting
+        time_base = AR.MC.time_base / 1000.0  # convert to seconds
+        dt = si.dtIC / 1000.0  # convert from msec to seconds
         i_trial = 0
         P.axdict[bu_voltage_panel].plot(
             np.array(time_base[idx[0] : idx[1]] - data_window[0]),
-            np.array(vtrial[idx[0] : idx[1]]),
+            np.array(v_show_trial[idx[0] : idx[1]]),
             "k-",
             linewidth=0.5,
         )
+        # get the spike indices for the trial that will be shown at the top
         spikeindex = [
-            int(t / dt) for t in sptimes if not np.isnan(t)
-        ]  # dt is in sec, but spiketimes is in msec
-        ispt = [
-            t
-            for t in range(len(sptimes))
-            if sptimes[t] >= data_window[0] and sptimes[t] < data_window[1]
+            int(t / dt) for t in all_bu_st_trials[show_vtrial] if not np.isnan(t) and t >= data_window[0] and t < data_window[1]
         ]
         P.axdict[bu_voltage_panel].plot(
-            sptimes[ispt] - data_window[0],
-            vtrial[spikeindex][ispt],
+            np.array(time_base[spikeindex]-data_window[0]),
+            v_show_trial[spikeindex],
             "ro",
             markersize=1.5,
         )

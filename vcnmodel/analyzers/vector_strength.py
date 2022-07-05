@@ -74,11 +74,7 @@ class VectorStrength:
         period = 1.0 / freq
         VSR.n_spikes = len(spikes)
         twopi_per = 2.0 * np.pi / period
-        print(np)
-        print(np.fmod)
-        phasev = twopi_per * np.fmod(
-            spikes, period
-        )  # convert to time within a cycle period in radians
+        phasev = twopi_per * np.fmod(spikes, period)  # convert to time within a cycle period in radians
         VSR.circ_phase = phasev
         sumcos = np.sum(np.cos(phasev))
         sumsin = np.sum(np.sin(phasev))
