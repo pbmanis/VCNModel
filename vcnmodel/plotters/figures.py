@@ -2771,7 +2771,8 @@ class Figures(object):
 
     def Figure7_Supplemental2(self):
         V = SAM_VS_vplots.VS_Plots()
-        fig, P = V.make_figure()
+        #fig, P = V.make_figure()
+        fig, P = V.Figure7_Supplemental2()
         return fig
     
     def Figure7_Supplemental3(self):

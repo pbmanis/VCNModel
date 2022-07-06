@@ -110,7 +110,6 @@ class VS_Plots:
             The base intensity for the VS stimuli, by default 15
         """
         self.dBSPL = dBSPL
-
         if dends == "9I9U":
             importlib.reload(VS_data_15dB_BC09)
             self.datas = VS_data_15dB_BC09.data
@@ -120,7 +119,6 @@ class VS_Plots:
         elif dBSPL == 30:
             importlib.reload(VS_data_30dB)
             self.datas = VS_data_30dB.data
-
         self.output = output
         self.cell_inputs = {
             "2": "subthreshold",
@@ -177,6 +175,7 @@ class VS_Plots:
         """
 
         labels = set(df["frequency"])
+        print("labels: ", labels)
         labelnames = [float(label) for label in labels]
 
         self.PI.labels = [str(int(l)) for l in sorted(labelnames)]
@@ -340,13 +339,13 @@ class VS_Plots:
         fig, P = gg.draw(return_ggplot=True)
  
         # save_file = Path(f"Figure7/Figure7_supp/Figure7_Main_RHS_top.pdf")
-        save_file = Path(f"Figure7/Figure7_supp/Figure7_Supplemental2_V2.pdf")
+        save_file = Path(f"Figure7/Figure7_supp/Figure7_Supplemental2_V3.pdf")
         save_file_png = save_file.with_suffix(".png")
 
         title = "SBEM Project Supplemental Figure 7 Modeling : Vector Strength Summary"
 
         mpl.savefig(
-            Path(self.config["baseDataDirectory"], "Figures", save_file),
+            Path(self.config["baseDataDirectory"], self.config["figureDirectory"], save_file),
             metadata={
                 "Creator": "Paul Manis",
                 "Author": "Paul Manis",
@@ -354,7 +353,7 @@ class VS_Plots:
             },
         )
         mpl.savefig(
-            Path(self.config["baseDataDirectory"], "Figures", save_file_png),
+            Path(self.config["baseDataDirectory"], self.config["figureDirectory"], save_file_png),
             metadata={
                 "Creator": "Paul Manis",
                 "Author": "Paul Manis",
@@ -467,46 +466,87 @@ class VS_Plots:
         print("Cell: ", cell)
         dfl = self.df[self.df["Cell"] == cell]  # just get the cell's data
         # make categorical swarm plot for each configuration
-        sns.swarmplot(
-            x="frequency",
-            y="VectorStrength",
-            hue="Configuration",
-            data=dfl,
-            dodge=True,  # offset configurations from each other
-            size=3.5,
+        offs = 0.25
+        nconfigs = len(set(dfl["Configuration"]))
+        print('nconfigs: ', nconfigs)
+        cfg_color = {'all': colors[0], "largestonly": colors[1], "removelargest": colors[2], "removetwolargest": colors[3]}
+        for ifr, fr in enumerate(sorted(set(dfl['frequency']))):
+            xc = ifr
+            x = np.zeros(nconfigs)
+            y = np.zeros(nconfigs)
+            ye = np.zeros(nconfigs)
+            yc = [None]*nconfigs
+            mfc = [None]*nconfigs
+            for jcfg, cfg in enumerate(sorted(set(dfl['Configuration']))):
+                x[jcfg] = xc+jcfg*offs
+                run = dfl[(dfl['frequency'] == fr) & (dfl['Configuration'] == cfg)]
+                y[jcfg] = run['VS_mean']
+                ye[jcfg] = run['VS_SD']
+                yc[jcfg] = cfg
+                # print(x[jcfg], y[jcfg], ye[jcfg])
+                mfc[jcfg] = cfg_color[cfg]
+            print(cell, fr, x, y, ye, yc, mfc)
+            ax.errorbar(x, y, yerr=ye, marker='o', mfc='none', ms=1, mec='none', mew=0, color='grey')
+            ax.scatter(x, y, marker='o', c=mfc, s=12)
+        
+        freqs = sorted(set(dfl['frequency']))
+        configs = sorted(set(dfl['Configuration']))
+        PH.set_axes_ticks(
             ax=ax,
+            xticks=range(len(freqs)),
+            xticks_str=[f"{int(f):d}" for f in freqs],
+            xticks_pad=None,
+            major_length=3.0,
+            minor_length=1.5,
+            yticks = [0, 0.2, 0.4, 0.6, 0.8, 1.0],
+            yticks_str= ['0.0', '0.2', '0.4', '0.6', '0.8', '1.0'], 
+            yticks_pad=None,
+            y_minor=[0.1, 0.3, 0.5, 0.7, 0.9],
+            y_rotation=0., 
+            fontsize=8,
         )
-        # find out how many configurations and frequencies are present
-        n_configurations = len(dfl["Configuration"].unique())
-        n_frequencies = len(dfl["frequency"].unique())
+        
+        # sns.swarmplot(
+        #     x="frequency",
+        #     y = "VS_mean", # y="VectorStrength",
+        #     hue="Configuration",
+        #     data=dfl,
+        #     dodge=True,  # offset configurations from each other
+        #     size=3.5,
+        #     ax=ax,
+        # )
+        # # find out how many configurations and frequencies are present
+        # n_configurations = len(dfl["Configuration"].unique())
+        # n_frequencies = len(dfl["frequency"].unique())
 
-        # get the first set of children plotted - the rest are legend etc
-        locs = ax.get_children()[: n_configurations * n_frequencies]
-        axis_items = []
-        for child in ax.get_children():
-            if isinstance(child, matplotlib.collections.PathCollection):
-                axis_items.append(child)
-        x = np.arange(n_frequencies)
-        for i in range(0, len(locs), n_configurations):
-            xl = []  # hold locations of points that were plotted in this frequency
-            yl = []
-            for j in range(n_configurations):
-                # axis_item = ax.get_children()[i + j]
-                # if not isinstance(axis_item, matplotlib.collections.PathCollection):
-                #     continue
-                offs = axis_items[i + j].get_offsets()
-                xl.append(offs[0][0])  # build up the line
-                yl.append(offs[0][1])
-            ax.plot(xl, yl, color="slategrey", linewidth=1.25, linestyle="-")
-            ax.scatter(  # plot the AN vector strength bars for reference
-                x,
-                dfl["AN_VS"][: n_configurations * n_frequencies : n_configurations],
-                s=barwidth,
-                color="firebrick",
-                marker="_",
-                linewidth=2,
-                alpha=0.3,
-            )
+        # # get the first set of children plotted - the rest are legend etc
+        # locs = ax.get_children()[: n_configurations * n_frequencies]
+        # axis_items = []
+        # for child in ax.get_children():
+        #     if isinstance(child, matplotlib.collections.PathCollection):
+        #         axis_items.append(child)
+        # x = np.arange(n_frequencies)
+        # for i in range(0, len(locs), n_configurations):
+        #     xl = []  # hold locations of points that were plotted in this frequency
+        #     yl = []
+        #     yerr = []
+        #     for j in range(n_configurations):
+        #         # axis_item = ax.get_children()[i + j]
+        #         # if not isinstance(axis_item, matplotlib.collections.PathCollection):
+        #         #     continue
+        #         offs = axis_items[i + j].get_offsets()
+        #         xl.append(offs[0][0])  # build up the line
+        #         yl.append(offs[0][1])
+        #     ax.plot(xl, yl, color="slategrey", linewidth=1.25, linestyle="-")
+        #     ax.scatter(  # plot the AN vector strength bars for reference
+        #         x,
+        #         dfl["AN_VS"][: n_configurations * n_frequencies : n_configurations],
+        #         s=barwidth,
+        #         color="firebrick",
+        #         marker="_",
+        #         linewidth=2,
+        #         alpha=0.3,
+        #     )
         ax.set_ylim(0, 1)
         xl = ax.get_xticklabels()  # do this before niceplot...
         xl = ax.get_xticklabels()
@@ -516,10 +556,10 @@ class VS_Plots:
         ax.set_ylabel("Vector Strength", fontdict=label_font)
         PH.nice_plot(ax, position=-0.02, direction="outward", ticklength=3)
 
-        if not legendflag:
-            ax.get_legend().remove()
-        else:
-            ax.legend(markerscale=0.5)
+        # if not legendflag:
+        #     ax.get_legend().remove()
+        # else:
+        #     ax.legend(markerscale=0.5)
         if show_cell:
             ax.text(
                 x=0.5,
@@ -544,7 +584,7 @@ class VS_Plots:
             panel_labels=["A", "B", "C", "D", "E", "F"],
             margins={"leftmargin": 0.08, "rightmargin": 0.08, "bottommargin": 0.1, "topmargin":0.05},
             verticalspacing=0.15,
-            horizontalspacing=0.10,
+            horizontalspacing=0.07,
             labelposition=(-0.12, 1.05),
         )
         axl = P.axarr.ravel()
@@ -582,6 +622,7 @@ class VS_Plots:
                 "Title": title,
             },
         )
+        return fig, P
 
     def Figure8_M(self, ax=None):
         """Plot Figure 8 panel M: Vector strength to SAM tones at
