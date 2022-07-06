@@ -659,7 +659,9 @@ class PlotSims:
         if protocol in ["IV"]:
             cprint("r", f"RM analysis taum: {RM.analysis_summary['taum']:.2f}")
             if show_title:
-                toptitle += f"\nRin={RM.analysis_summary['Rin']:.1f} M$\Omega$  $\\tau_m$={RM.analysis_summary['taum']:.2f} ms"
+                omega = r"$\Omega$"
+                tau_m = r"$\tau_m$"
+                toptitle += f"\nRin={RM.analysis_summary['Rin']:.1f} M{omega:s}  {tau_m}{RM.analysis_summary['taum']:.2f} ms"
 
             if iax is not None and calx is not None:
                 PH.calbar(
@@ -2218,10 +2220,10 @@ class PlotSims:
         line += f"{d.circ_phaseSD:.4f},"
         line += f"{d.Rayleigh:.4f},"
         line += f"{d.pRayleigh:.4e},"
-        line += f"vsm={d.vs_mean:.4f},"
-        line += f"vssd={d.vs_sd:.4f},"
-        line += f"vsns={int(d.vs_Ns):d},"
-        line += f"vsg={d.vs_groups:d}"
+        line += f"{d.vs_mean:.4f},"
+        line += f"{d.vs_sd:.4f},"
+        line += f"{int(d.vs_Ns):d},"
+        line += f"{int(d.vs_groups):d}"
         line += f"{d.an_vs:.4f},"
         line += f"{d.an_circ_phaseMean:.4f},"
         line += f"{d.an_circ_phaseSD:.4f},"
@@ -2412,7 +2414,7 @@ class PlotSims:
             if ri.soundtype.endswith("Clicks"):
                 sac_label = f"Expt: {ri.Spirou:14s} {ri.dB:3.0f} dBSPL  HW={1e3*sac_bu_hw:.3f} ms  CI={sac_bu_CI:6.2f}"
             else:
-                sac_label = f"Expt: {ri.Spirou:14s} {ri.dB:3.0f} dBSPL Fmod={ri.fmod:5.1}fHz Dmod={ri.dmod:5.1f}\%"
+                sac_label = f"Expt: {ri.Spirou:14s} {ri.dB:3.0f} dBSPL Fmod={ri.fmod:5.1}fHz Dmod={ri.dmod:5.1f}%"
 
             # return
             P.axdict["A"].plot(
@@ -2458,7 +2460,7 @@ class PlotSims:
                 self.firstline = True
             else:
                 self.firstline = False
-            self.plot_AN_response(P, sfi, PD, selected.runProtocol)
+            self.plot_AN_response(P, sfi, PD, fn = selected.runProtocol)
         self.firstline = True
 
     def _ntrials(self, spike_times: Union[list, np.ndarray]):
@@ -2511,6 +2513,7 @@ class PlotSims:
         protocol: str = "",
         sac_flag: bool = True,  # set true to compute SAC as well as standard VS
         sac_engine: str = "cython",
+        filename: str="",
     ):
         if isinstance(self.parent.cellID, str):
             gbc = f"VCN_c{int(self.parent.cellID[0:2]):02d}"
@@ -2550,7 +2553,7 @@ class PlotSims:
             plotflag = True
             sim_dir = fn.parts[-2]
             tstring = f"{gbc:s}_{str(sim_dir):s}_{ri.soundtype:s}.pdf"
-            mpl.get_current_fig_manager().canvas.set_window_title(tstring)
+            mpl.get_current_fig_manager().set_window_title(tstring)
             bu_voltage_panel = "A"
             bu_raster_panel = "B"
             bu_psth_panel = "C"
@@ -2687,7 +2690,7 @@ class PlotSims:
 
             vs.carrier_frequency = F0
             vs.n_inputs = n_inputs
-            if sac_flag:
+            if sac_flag and len(all_bu_st) > 50:
                 S = SAC.SAC()
                 spars = SAC.SACPars()
                 spars.binw = 3 * si.dtIC * 1e-3
@@ -2708,17 +2711,25 @@ class PlotSims:
                     engine=sac_engine,
                     dither=1e-3 * si.dtIC / 2.0,
                 )
-                vs.sac_bu_CI, peaks, HW, FW = S.SAC_measures(bu_sac, bu_sacbins)
-                vs.sac_bu_hw = HW[0][0] * spars.binw
+                print("fmod, 10/ri.fmod: ", ri.fmod, 10.0/ri.fmod)
+                vs.sac_bu_CI, peaks, HW, FW = S.SAC_measures(bu_sac, bu_sacbins, twin=spars.twin)
+                if HW is not None:
+                    vs.sac_bu_hw = HW[0][0] * spars.binw
+                    left_ips = HW[2][0]
+                    right_ips = HW[3][0]
+                else:
+                    vs.sac_bu_hw = np.nan
+                    left_ips = np.nan
+                    right_ips = np.nan
                 print("BU SAC Report: \n  ")
                 print(
-                    f"    HW:    {vs.sac_bu_hw:.6f}  CI: {vs.sac_bu_CI:.2f}  Left IPS: {HW[2][0]:.2f}  Right IPS: {HW[3][0]:.2f}, Binw: {spars.binw:.6f}"
+                    f"    HW:    {vs.sac_bu_hw:.6f}  CI: {vs.sac_bu_CI:.2f}  Left IPS: {left_ips:.2f}  Right IPS: {right_ips:.2f}, Binw: {spars.binw:.6f}"
                 )
             else:
                 bu_sac = None
                 bu_sacbins = None
                 vs.sac_bu_CI = 0.0
-                vs.sac_bu_hw = 0.0
+                vs.sac_bu_hw = np.nan
             print(
                 "CN Vector Strength at %.1f: %7.3f, dispersion=%.2f (us) Rayleigh: %7.3f  p = %.3e  n_spikes = %d"
                 % (
@@ -2767,7 +2778,7 @@ class PlotSims:
                         peaks,
                         an_hw[i_an],
                         an_fw[i_an],
-                    ) = S.SAC_measures(an_sac[i_an], an_sacbins)
+                    ) = S.SAC_measures(an_sac[i_an], an_sacbins, twin=spars.twin)
                 an_hw = np.array(an_hw).T[0]  # reorganize the data
                 vs.sac_an_hw = np.mean(an_hw[0, :]) * spars.binw
                 CI = np.mean(an_hw[1, :])
@@ -2809,7 +2820,7 @@ class PlotSims:
             vs.an_circ_phaseSD = vs_an.circ_phaseSD
             vs.an_circ_timeSD = vs_an.circ_timeSD
 
-            self.print_VS(vs, fmod, dmod, dB, ri.Spirou, filename=str(fn))
+            self.print_VS(vs, fmod, dmod, dB, ri.Spirou, filename=str(filename))
 
 #########################
 

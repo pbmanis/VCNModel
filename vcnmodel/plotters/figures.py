@@ -156,9 +156,9 @@ class Figures(object):
 
     def __init__(self, parent):
         self.parent = parent  # point back to caller's space
-        self.config = toml.load(
-            open("wheres_my_data.toml", "r")
-        )  # sorry, have to reload it here.
+        with open("wheres_my_data.toml", "r") as fh:
+            self.config = toml.load(fh)
+        # sorry, have to reload it here.
         self.axis_offset = -0.02
         self.ReadModel = readmodel.ReadModel()
         self.ReadModel.set_parent(
@@ -3645,7 +3645,8 @@ class Figures(object):
                 with open(sfi, "rb") as fh:
                     d = FPM.pickle_load(fh)
                 self.parent.PLT.plot_AN_response(
-                    P, d.files[0], PD, "runANPSTH", sac_flag=sac_flag
+                    P, d.files[0], PD, "runANPSTH", sac_flag=sac_flag,
+                    filename=filename,
                 )
                 # note that VSline has results of VS computation to put in the table
                 if firstline:
@@ -3768,16 +3769,15 @@ class Figures(object):
 
         fl = True
         tresults = [None] * len(TASKS)
-        print("Tasks: ", TASKS)
-        print("parallel: ", parallel)
+ 
         results = {}
         # run using pyqtgraph's parallel support
         nWorkers = MPROC.cpu_count()-2
-        print("N workers: ", nWorkers)
 
         if parallel:
-
-            return
+            print("Tasks: ", TASKS)
+            print("parallel: ", parallel)
+            print("N workers: ", nWorkers)
             cprint("m", f"VS_DataAnalysis : Parallel with {nWorkers:d} processes")
             self.parent.PLT.in_Parallel = True  # notify caller
             with MP.Parallelize(
