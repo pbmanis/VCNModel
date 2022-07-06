@@ -188,7 +188,8 @@ class CellConfig:
         """
         # datafile_default = Path('MorphologyData', 'Dendrite Quality and Surface Areas_comparisons_pbm_15Mar2019_v2.xlsx')
         # soma_area_data = 'Mesh Surface Area'
-        self.config = toml.load(open("wheres_my_data.toml", "r"))
+        with open("wheres_my_data.toml", "r") as fh:
+            self.config = toml.load(fh)
         self.dendqualfile = Path(self.config["baseMorphologyDirectory"], self.config["dendriteQualityFile"])
         self.inputs = [f"Input {i+1:d}" for i in range(20)]  # input column labels, up to 20
 

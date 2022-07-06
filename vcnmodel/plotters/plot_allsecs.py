@@ -13,7 +13,8 @@ import toml
 
 
 def main():
-    config = toml.load(open("wheres_my_data.toml", "r"))
+    with open("wheres_my_data.toml", "r") as fh:
+        config = toml.load(fh)
     # modify to point to the file:
     basepath = Path(config['cellDataDirectory'], 'VCN_c09/Simulations/')
 

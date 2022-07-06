@@ -30,7 +30,8 @@ import toml
 from vcnmodel.plotters import \
     figure_data as FD  # table of simulation runs used for plotting figures
 
-config = toml.load(open("wheres_my_data.toml", "r"))
+with open("wheres_my_data.toml", "r") as fh:
+    config = toml.load(fh)
 sourcepath = Path(config["baseDataDirectory"])
 
 simpath = Path("/Volumes/Pegasus_002/BU_simulation_data")

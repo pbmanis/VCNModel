@@ -906,7 +906,8 @@ def get_commands(toml_dir="."):
                 print(f"Reading JSON configuration file: {str(cfile):s}")
             elif ".toml" in str(args.configfile):
                 print(f"Reading TOML configuration file: {str(cfile):s}")
-                config = toml.load(open(cfile))
+                with open(cfile, "r") as fh:
+                    config = toml.load(fh)
 
         vargs = vars(args)  # reach into the dict to change values in namespace
 

@@ -20,7 +20,8 @@ from vcnmodel.util.set_figure_path import set_figure_path
 ReadModel = readmodel.ReadModel()
 cprint = CP.cprint
 
-config = toml.load(open("wheres_my_data.toml", "r"))
+with open("wheres_my_data.toml", "r") as fh:
+    config = toml.load(fh)
 # print(config)
 # os.chdir(config['codeDirectory'])
 PS = plot_sims.PlotSims(parent=None)
@@ -597,6 +598,8 @@ def plot_sacs(save_fig:bool=True, figinfo: Union[object, None] = None):
         mpl.show()
         return None
 
+def main():
+    pass  # keep sphinx from running this
 
 if __name__ == "__main__":
     main()

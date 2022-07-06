@@ -42,7 +42,8 @@ mpl.style.use("~/.matplotlib/figures.mplstyle")
 class PlotZ:
     def __init__(self, pg=False):
         self.pg = pg
-        self.config = toml.load(open("wheres_my_data.toml", "r"))
+        with open("wheres_my_data.toml", "r") as fh:
+            self.config = toml.load(fh)
         # f = ['VCN_c09_Full_Z.pkl', 'VCN_c09_NoUninnervated_Z.pkl', 'VCN_c09_NoDend_Z.pkl']
         self.fi = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
         # fi = [9, 11, 13, 30]

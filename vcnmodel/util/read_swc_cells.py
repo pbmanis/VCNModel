@@ -6,7 +6,8 @@ Read the swc soma reconstructions and genereate hoc files.
 from pathlib import Path
 import vcnmodel.util.swc_to_hoc as swc_to_hoc
 import toml
-config = toml.load(open("wheres_my_data.toml", "r"))
+with open("wheres_my_data.toml", "r") as fh:
+    config = toml.load(fh)
 
 swcPath = Path(config['baseMorphologyDirectory'], 'ASA', 'CellBodySWCs')
 

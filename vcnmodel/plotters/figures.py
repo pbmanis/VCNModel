@@ -21,15 +21,18 @@ Distributed under MIT/X11 license. See license.txt for more infomation.
 
 import datetime
 import importlib
+import multiprocessing as MPROC
 import pickle
-from ssl import SSL_ERROR_EOF
+import platform
 import string
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Union, List
+from ssl import SSL_ERROR_EOF
+from typing import List, Union
 
 import matplotlib
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as mpl
 import numpy as np
 import pandas as pd
@@ -37,26 +40,23 @@ import seaborn as sns
 import toml
 import vcnmodel.util.fixpicklemodule as FPM
 import vcnmodel.util.readmodel as readmodel
-from vcnmodel.util.set_figure_path import set_figure_path
 from matplotlib import image as mpimg
 from matplotlib.lines import Line2D
-import matplotlib.patches as mpatches
-
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
 from pyqtgraph import multiprocess as MP
 from vcnmodel.analyzers import analyze_data
 from vcnmodel.analyzers import isi_cv as ISI
-from vcnmodel.analyzers import sac as SAC
 from vcnmodel.analyzers import pattern_summary as PATSUM
-from vcnmodel.plotters import SAM_VS_vplots
+from vcnmodel.analyzers import sac as SAC
 from vcnmodel.plotters import SAC_plots as SACP
+from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot as EF
 from vcnmodel.plotters import \
     figure_data as FD  # table of simulation runs used for plotting figures
 from vcnmodel.plotters import plot_functions as PF
 from vcnmodel.plotters import plot_z as PZ
-
+from vcnmodel.util.set_figure_path import set_figure_path
 
 cprint = CP.cprint
 
@@ -699,7 +699,7 @@ class Figures(object):
         
         Panels D and E are taken from Figure3_Supplemental2_CC.pdf, for BC17.
         Panels F, G and H are from Figure3_Supplemental5_PSTH.pdf for BC17, with the stimuli underneath
-        
+
         """
         cprint("y", message)
 
@@ -3725,9 +3725,10 @@ class Figures(object):
         The datasets that to be analyzed are listed in VS_datasets_nndB.py 
         or VS_datasets_15dB_BC09_NoUninnervated.py (if bc09 is True) 
         """
-        parallel = False
-        if parallel:
-            import multiprocessing as MPROC
+        parallel = True
+        if platform.system() == "Darwin":
+            parallel = False # not easy from here to run parallel
+
         start_timestamp = datetime.datetime.now()
         timestamp_str = start_timestamp.strftime("%Y-%m-%d-%H.%M.%S")
 
@@ -3750,11 +3751,11 @@ class Figures(object):
                 TASKS = [s for s in VS_datasets.samdata.keys()]
 
             
-        importlib.reload(VS_datasets)  # make sure have the current one
+        # importlib.reload(VS_datasets)  # make sure have the current one
         print("VS_datasets: ", VS_datasets)
         print(f"Data set keys found: {str(list(VS_datasets.samdata.keys())):s}")
-        config = toml.load(open("wheres_my_data.toml", "r"))
-
+        with open("wheres_my_data.toml", "r") as fh:
+            self.config = toml.load(fh)
         """
         Generate the table in VS_data.py by analyzing the data from 
         VS_datasets.py
@@ -3767,10 +3768,16 @@ class Figures(object):
 
         fl = True
         tresults = [None] * len(TASKS)
+        print("Tasks: ", TASKS)
+        print("parallel: ", parallel)
         results = {}
         # run using pyqtgraph's parallel support
+        nWorkers = MPROC.cpu_count()-2
+        print("N workers: ", nWorkers)
+
         if parallel:
-            nWorkers = MPROC.cpu_count()
+
+            return
             cprint("m", f"VS_DataAnalysis : Parallel with {nWorkers:d} processes")
             self.parent.PLT.in_Parallel = True  # notify caller
             with MP.Parallelize(
@@ -3779,6 +3786,7 @@ class Figures(object):
                     for j, celln in tasker:
                         if j > 0:
                             fl = False
+                        cprint("m", f"Cell: {celln:d}  j={j:d}")
                         tresults = self.analyze_VS_data(VS_datasets, celln, fout, 
                             firstline=fl, sac_flag=True, test=False)
                         tasker.results[j] = tresults

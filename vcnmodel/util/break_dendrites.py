@@ -30,7 +30,8 @@ from neuron import h
 from neuronvis import hoc_reader as HR
 from neuronvis import swc_to_hoc
 
-config = toml.load(open("wheres_my_data.toml", "r"))
+with open("wheres_my_data.toml", "r") as fh:
+    config = toml.load(fh)
 
 known_names = [
     "Axon_Hillock",

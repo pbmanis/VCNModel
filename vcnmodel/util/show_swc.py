@@ -18,7 +18,8 @@ from neuronvis import hocRender as HR
 import toml
 from vcnmodel.util.parse_hoc import ParseHoc
 
-config = toml.load(open("wheres_my_data.toml", "r"))
+with open("wheres_my_data.toml", "r") as fh:
+    config = toml.load(fh)
 
 # getting from new soma reconstructions:
 # modes:

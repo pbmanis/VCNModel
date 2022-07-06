@@ -58,8 +58,11 @@ from numba import jit, njit
 from numba.typed import List
 
 pyximport.install()
+import warnings
+
 from vcnmodel.analyzers import sac_cython
 
+warnings.filterwarnings("error")
 
 
 
@@ -472,8 +475,20 @@ class SAC(object):
         CI = np.max(win_data)
         peaks, _ = scipy.signal.find_peaks(win_data)
         center = [int((len(win_data)-1)/2)]  # only analyze the center peak
-        half_widths = scipy.signal.peak_widths(win_data, center, rel_height=0.5)
-        full_widths = scipy.signal.peak_widths(win_data, center, rel_height=1.0)
+        try:
+            half_widths = scipy.signal.peak_widths(win_data, center, rel_height=0.5)
+        except scipy.signal.peak_widths.PeakPropertyWarning:
+            print("Half width: Peak prominence and/or width=0")
+            print(win_data)
+            print(center)
+            return
+        try:
+            full_widths = scipy.signal.peak_widths(win_data, center, rel_height=1.0)
+        except scipy.signal.peak_widths.PeakPeropertyWarning:
+            print("Full width: Peak prominence and/or width=0")
+            print(win_data)
+            print(center)
+            return
         return CI, peaks, half_widths, full_widths
         
         

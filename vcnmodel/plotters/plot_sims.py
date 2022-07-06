@@ -281,7 +281,8 @@ class PlotSims:
         self.firstline = True
         self.VS = VS.VectorStrength()
         self.axis_offset = -0.02
-        self.config = toml.load(open("wheres_my_data.toml", "r"))
+        with open("wheres_my_data.toml", "r") as fh:
+            self.config = toml.load(fh)
         self.allspikes = None
         self.in_Parallel = False # flag to prevent graphics access during parallel processing.
 
@@ -2711,7 +2712,7 @@ class PlotSims:
                 vs.sac_bu_hw = HW[0][0] * spars.binw
                 print("BU SAC Report: \n  ")
                 print(
-                    f"    HW:    {vs.sac_bu_hw:.6f}  CI: {vs.sac_bu_CI:.2f}  Left IPS: {HW[2][0]:.2f}  Right IPS: {HW[3][0]:.2f}"
+                    f"    HW:    {vs.sac_bu_hw:.6f}  CI: {vs.sac_bu_CI:.2f}  Left IPS: {HW[2][0]:.2f}  Right IPS: {HW[3][0]:.2f}, Binw: {spars.binw:.6f}"
                 )
             else:
                 bu_sac = None

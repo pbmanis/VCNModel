@@ -165,7 +165,8 @@ def cmdline_display(args, PD):
     """
 
     PS = PlotSims(parent=None)
-    config = toml.load(open("wheres_my_data.toml", "r"))
+    with open("wheres_my_data.toml", "r") as fh:
+        config = toml.load(fh)
     args.protocol = args.protocol.upper()
     changetimestamp = get_changetimestamp()
     # PD.gradeA = [cn for cn in args.cell]
@@ -298,7 +299,8 @@ def getCommands():
     #             print(f"Reading JSON configuration file: {args.configfile:s}")
     #         elif ".toml" in args.configfile:
     #             print(f"Reading TOML configuration file: {args.configfile:s}")
-    #             config = toml.load(open(args.configfile))
+    #             with open("wheres_my_data.toml", "r") as fh:
+    #                 self.config = toml.load(fh)
     #
     #     vargs = vars(args)  # reach into the dict to change values in namespace
     #

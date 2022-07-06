@@ -23,7 +23,8 @@ import neuronvis.swc_to_hoc as swc_to_hoc
 import numpy as np
 import toml
 
-config = toml.load(open("wheres_my_data.toml", "r"))
+with open("wheres_my_data.toml", "r") as fh:
+    config = toml.load(fh)
 
 
 def main():

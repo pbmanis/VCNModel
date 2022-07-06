@@ -22,7 +22,6 @@ import os
 import pickle
 import sys
 from dataclasses import dataclass, field
-from lib2to3.pgen2.pgen import DFAState
 from pathlib import Path
 from typing import List, Union
 
@@ -136,7 +135,8 @@ class VS_Plots:
             "17": "two",
         }
         self.cell_list = []
-        self.config = toml.load(open("wheres_my_data.toml", "r"))
+        with open("wheres_my_data.toml", "r") as fh:
+            self.config = toml.load(fh)
 
         df = self.prepare_data(self.datas)
 

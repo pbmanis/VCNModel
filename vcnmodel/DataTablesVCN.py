@@ -293,7 +293,7 @@ class DataTablesVCN:
         self.app.setPalette(dark_palette)
         self.app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }")
 
-        self.win = pg.QtGui.QMainWindow()
+        self.win = pg.QtWidgets.QMainWindow()
         # use dock system instead of layout.
         self.dockArea = PGD.DockArea()
         self.win.setCentralWidget(self.dockArea)
@@ -385,25 +385,25 @@ class DataTablesVCN:
                     {
                         "name": "Run Type",
                         "type": "list",
-                        "values": runtypes,
+                        "limits": runtypes,
                         "value": runtypes[0],
                     },
                     {
                         "name": "Cells",
                         "type": "list",
-                        "values": cellvalues,
+                        "limits": cellvalues,
                         "value": 2,
                     },
                     {
                         "name": "Start Date",
                         "type": "list",
-                        "values": run_dates,
+                        "limits": run_dates,
                         "value": run_dates[0],
                     },
                     {
                         "name": "End Date",
                         "type": "list",
-                        "values": run_dates,
+                        "limits": run_dates,
                         "value": run_dates[0],
                     },
                      # {
@@ -500,62 +500,62 @@ class DataTablesVCN:
                     {
                         "name": "SRType",
                         "type": "list",
-                        "values": SRValues,
+                        "limits": SRValues,
                         "value": "None",
                     },
                     {
                         "name": "Depr",
                         "type": "list",
-                        "values": DeprValues,
+                        "limits": DeprValues,
                         "value": 0,
                     },
                     {
                         "name": "dBspl",
                         "type": "list",
-                        "values": dbValues,
+                        "limits": dbValues,
                         "value": "None",
                     },
                     {
                         "name": "nReps",
                         "type": "list",
-                        "values": ["None", 1, 5, 10, 20, 25, 50, 100],
+                        "limits": ["None", 1, 5, 10, 20, 25, 50, 100],
                         "value": "None",
                     },
                     {
                       "name": "pipDur",
                       "type": "list",
-                      "values": ["None", 0.05, 0.1, 0.2, 0.25, 0.5, 1.0, 2.0, 10.0],
+                      "limits": ["None", 0.05, 0.1, 0.2, 0.25, 0.5, 1.0, 2.0, 10.0],
                       "value": "None",  
                     },
                     {
                         "name": "Protocol",
                         "type": "list",
-                        "values": ["None", "runIV", "runANPSTH", "runANSingles"],
+                        "limits": ["None", "runIV", "runANPSTH", "runANSingles"],
                         "value": "None",
                     },
                     {
                         "name": "Experiment",
                         "type": "list",
-                        "values": experimenttypes,
+                        "limits": experimenttypes,
                         "value": "None",
                     },
                     {
                         "name": "modelName",
                         "type": "list",
-                        "values": modeltypes,
+                        "limits": modeltypes,
                         "value": "None",
                     },
                     {"name": "dataTable", "type": "str", "value": "None"},
                     {
                         "name": "dendMode",
                         "type": "list",
-                        "values": ["None", "actdend", "normal", "pasdend"],
+                        "limits": ["None", "actdend", "normal", "pasdend"],
                         "value": "None",
                     },
                     {
                         "name": "soundType",
                         "type": "list",
-                        "values": [
+                        "limits": [
                             "None",
                             "tonepip",
                             "noise",
@@ -570,7 +570,7 @@ class DataTablesVCN:
                     {
                         "name": "fmod",
                         "type": "list",
-                        "values": ["None", 10, 20, 50, 100, 200, 300, 400, 500, 750, 1000],
+                        "limits": ["None", 10, 20, 50, 100, 200, 300, 400, 500, 750, 1000],
                         "value": "None",
                     },
                     {
@@ -590,20 +590,20 @@ class DataTablesVCN:
                     {
                         "name": "Viewer #traces",
                         "type": "list",
-                        "values": self.trvalues,
+                        "limits": self.trvalues,
                         "value": self.n_trace_sel,
                     },
                     {
                         "name": "Vm or dV/dt",
                         "type": "list",
-                        "values": self.V_disp,
+                        "limits": self.V_disp,
                         "value": self.V_disp_sel,
                     },
                     {"name": "Movie", "type": "action"},
                     {
                         "name": "Frame Interval",
                         "type": "list",
-                        "values": self.frame_intervals,
+                        "limitss": self.frame_intervals,
                         "value": self.frame_interval,
                     },
                 ],
@@ -617,7 +617,7 @@ class DataTablesVCN:
                 "type": "group",
                 "children": [
                     {"name": "Figures", "type": "list", 
-                    "values":  [
+                    "limits":  [
                                 "-------Figure 3-------",
                                 "Figure3-Ephys_1_Main",
                                 "Figure3-Supplemental2_VC",
@@ -699,7 +699,7 @@ class DataTablesVCN:
         self.trace_selector_plot.addItem(self.frameTicks, ignoreBounds=True)
         self.trace_selector_plot.addItem(self.trace_selector)
         self.trace_selector_plot.setMaximumHeight(100)
-        self.trace_plots.setContentsMargins(10.0, 10.0, 10.0, 10.0)
+        self.trace_plots.setContentsMargins(10, 10, 10, 10)
 
         # print(dir(self.trace_selector_plot))
         self.Dock_Traces.addWidget(
@@ -712,7 +712,7 @@ class DataTablesVCN:
         self.Dock_Report.addWidget(self.textbox)
 
         self.win.show()
-        self.table.setSelectionMode(pg.QtGui.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.table.setSelectionMode(pg.QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.table.setSelectionBehavior(QtWidgets.QTableView.SelectionBehavior.SelectRows)
         self.table_manager = table_manager.TableManager(
             parent=self,
@@ -1140,7 +1140,7 @@ def main():
     # code...
     D = DataTablesVCN()  # must retain a pointer to the class, else we die!
     if (sys.flags.interactive != 1) or not hasattr(QtCore, "PYQT_VERSION"):
-        QtGui.QApplication.instance().exec()
+        QtWidgets.QApplication.instance().exec()
 
 
 if __name__ == "__main__":

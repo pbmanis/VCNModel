@@ -6,7 +6,8 @@
 #
 # Read this file as:
 # import toml
-# config = toml.load(open("wheres_my_data.toml", "r"))
+# with open("wheres_my_data.toml", "r") as fh:
+#   config = toml.load(fh)
 # Dec 2020: Move simulation result storage off to RAID disk for space reasons.
 
 baseDataDirectory = "/Volumes/Pegasus_002/VCN-SBEM-Data" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
