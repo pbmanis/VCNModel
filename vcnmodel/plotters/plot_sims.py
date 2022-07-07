@@ -2211,9 +2211,11 @@ class PlotSims:
                 amax = area
             sites[isite] = int(np.around(area * SC.synperum2))
         
-        self.VS_colnames = f"Cell,Filename,Configuration,carrierfreq,frequency,dmod,dB,VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,VS_mean,VS_SD,VS_Ns,VS_groups,AN_VS,AN_phase,AN_phasesd,SAC_AN,SAC_Bu,SAC_AN_HW,SAC_Bu_HW,maxArea,ninputs"
+        self.VS_colnames = f"Cell,Filename,Configuration,carrierfreq,frequency,dmod,dB,"
         line = f"{str(self.parent.cellID):s},{filename:s},{experiment:s},"
         line += f"{d.carrier_frequency:.1f},{freq:06.1f},{dmod:.1f},{dB:.1f},"
+
+        self.VS_colnames += f"VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,VS_mean,VS_SD,VS_Ns,VS_groups,"
         line += f"{d.vs:.4f},"
         line += f"{d.n_spikes:d},"
         line += f"{d.circ_phaseMean:.4f},"
@@ -2223,7 +2225,9 @@ class PlotSims:
         line += f"{d.vs_mean:.4f},"
         line += f"{d.vs_sd:.4f},"
         line += f"{int(d.vs_Ns):d},"
-        line += f"{int(d.vs_groups):d}"
+        line += f"{int(d.vs_groups):d},"
+
+        self.VS_colnames += f"AN_VS,AN_phase,AN_phasesd,SAC_AN,SAC_Bu,SAC_AN_HW,SAC_Bu_HW,maxArea,ninputs"
         line += f"{d.an_vs:.4f},"
         line += f"{d.an_circ_phaseMean:.4f},"
         line += f"{d.an_circ_phaseSD:.4f},"
@@ -2501,8 +2505,6 @@ class PlotSims:
             dmod = ri.dmod
         return totaldur, soundtype, pip_start, pip_duration, F0, dB, fmod, dmod
 
-
-
     @trace_calls.winprint_continuous
     @TRC()
     def plot_AN_response(
@@ -2516,8 +2518,12 @@ class PlotSims:
         filename: str="",
     ):
         if isinstance(self.parent.cellID, str):
-            gbc = f"VCN_c{int(self.parent.cellID[0:2]):02d}"
-            cellN = int(self.parent.cellID[0:2])
+            if ("U" in self.parent.cellID) or ("I" in self.parent.cellID):
+                gbc = f"VCN_c{int(self.parent.cellID[0:1]):02d}"
+                cellN = int(self.parent.cellID[0])
+            else:
+                gbc = f"VCN_c{int(self.parent.cellID[0:2]):02d}"
+                cellN = int(self.parent.cellID[0:2])
         else:
             gbc = f"VCN_c{int(self.parent.cellID):02d}"
             cellN = self.parent.cellID
