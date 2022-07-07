@@ -31,14 +31,15 @@ import seaborn as sns
 from vcnmodel.util.set_figure_path import set_figure_path
 
 sys.path.insert(0, os.path.abspath("nb"))
+import matplotlib.collections
 import plotnine as PN
 import toml
 import VS_data_15dB as VS_data_15dB
-import VS_data_30dB as VS_data_30dB
 import VS_data_15dB_BC09 as VS_data_15dB_BC09
+import VS_data_30dB as VS_data_30dB
 from matplotlib import pyplot as mpl
-import matplotlib.collections
 from matplotlib import ticker
+from matplotlib.lines import Line2D
 from pylibrary.plotting import plothelpers as PH
 
 # seaborn default palette, first 10 colors
@@ -170,12 +171,8 @@ class VS_Plots:
         if self.PI.plotwhat == "logSpikeCount":
             df["logSpikeCount"] = np.log10(df["SpikeCount"])
 
-        """
-        Plot all the cells in two columns using ggplot
-        """
 
         labels = set(df["frequency"])
-        print("labels: ", labels)
         labelnames = [float(label) for label in labels]
 
         self.PI.labels = [str(int(l)) for l in sorted(labelnames)]
@@ -366,9 +363,6 @@ class VS_Plots:
             fig.title["title"] = title
         return fig, P
 
-    def plot_with_mpl(self):
-        pass
-
     def plot_VS_Data(self, axin=None, legendflag=True):
         """Plot the VS response to SAM stimuli for each cells and frequency in a swarmplot
 
@@ -391,6 +385,7 @@ class VS_Plots:
             fig, ax = mpl.subplots(1, 1, figsize=(10, 4))
         else:
             ax = axin
+        PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3.0)
         ax.set_ylim(0, 1)
         ax.set_xlim(-1, 10)
         sax = sns.swarmplot(
@@ -411,15 +406,17 @@ class VS_Plots:
             anline = 75
         # print(self.df["AN_VS"][:24:3])
         y = self.df["AN_VS"][::nconfig]
-        ax.scatter(
-            x,
-            y,
-            s=anline,
-            color="firebrick",
-            marker="_",
-            linewidth=2,
-            legend="AN"
-        )
+        # print(x)
+        # print(y)
+        # ax.scatter(
+        #     x,
+        #     y,
+        #     s=anline,
+        #     color="firebrick",
+        #     marker="_",
+        #     linewidth=2,
+        #     legend="AN"
+        # )
         xl = ax.get_xticklabels()
         newxl = [f"{int(float(x.get_text())):d}" for x in xl]
         ax.set_xticklabels(newxl)
@@ -429,9 +426,8 @@ class VS_Plots:
             f"{int(self.dBSPL):2d} dBSPL, 100% modulation", fontdict=title_font
         )
         if not legendflag:
-            pass
-            # ax.legend(handles=[], labels= [])
-            # ax.get_legend().remove()
+            ax.legend(handles=[], labels= [])
+            ax.get_legend().remove()
         else:
             ax.legend(markerscale=0.5)
         if axin is None:
@@ -463,13 +459,16 @@ class VS_Plots:
             fig, ax = mpl.subplots(1, 1, figsize=(5, 5))
         else:
             ax = axin
-        print("Cell: ", cell)
+
         dfl = self.df[self.df["Cell"] == cell]  # just get the cell's data
+
         # make categorical swarm plot for each configuration
         offs = 0.25
         nconfigs = len(set(dfl["Configuration"]))
-        print('nconfigs: ', nconfigs)
-        cfg_color = {'all': colors[0], "largestonly": colors[1], "removelargest": colors[2], "removetwolargest": colors[3]}
+        cfg_color = {'all': colors[0], "largestonly": colors[1], "removelargest": colors[2], "removetwolargest": colors[3],
+                    'Intact': colors[0], "Pruned": colors[1]}
+        legs = {'Intact': None, 'Pruned': None, "ANF": None, "all": None, "largestonly": None, "removelargest": None, "removetwolargest": None}
+        
         for ifr, fr in enumerate(sorted(set(dfl['frequency']))):
             xc = ifr
             x = np.zeros(nconfigs)
@@ -477,18 +476,22 @@ class VS_Plots:
             ye = np.zeros(nconfigs)
             yc = [None]*nconfigs
             mfc = [None]*nconfigs
+            x_an = np.zeros(nconfigs)
+            y_an = np.zeros(nconfigs)
             for jcfg, cfg in enumerate(sorted(set(dfl['Configuration']))):
-                x[jcfg] = xc+jcfg*offs
+                x[jcfg] = xc+(jcfg-1)*offs
                 run = dfl[(dfl['frequency'] == fr) & (dfl['Configuration'] == cfg)]
                 y[jcfg] = run['VS_mean']
                 ye[jcfg] = run['VS_SD']
                 yc[jcfg] = cfg
-                # print(x[jcfg], y[jcfg], ye[jcfg])
                 mfc[jcfg] = cfg_color[cfg]
-            print(cell, fr, x, y, ye, yc, mfc)
+                x_an[jcfg] = x[jcfg]
+                y_an[jcfg] = run['AN_VS']
+            # print(cell, fr, x, y, ye, yc, mfc)
             ax.errorbar(x, y, yerr=ye, marker='o', mfc='none', ms=1, mec='none', mew=0, color='grey')
             ax.scatter(x, y, marker='o', c=mfc, s=12)
-        
+            ax.plot(x_an, y_an, '-', color="firebrick", lw=1.5, zorder=-100)  # in back of data
+            # print(x_an, y_an)
         freqs = sorted(set(dfl['frequency']))
         configs = sorted(set(dfl['Configuration']))
         PH.set_axes_ticks(
@@ -554,17 +557,23 @@ class VS_Plots:
         ax.set_xticklabels(newxl)
         ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
         ax.set_ylabel("Vector Strength", fontdict=label_font)
-        PH.nice_plot(ax, position=-0.02, direction="outward", ticklength=3)
+        PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)
 
-        # if not legendflag:
-        #     ax.get_legend().remove()
-        # else:
-        #     ax.legend(markerscale=0.5)
+        if legendflag:
+            custom_legend = [Line2D([0], [0], marker="_", markersize=2, color="firebrick", lw=2, label='AN'),
+                Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[0], markersize=5, label="Intact"),
+                Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[1], markersize=5, label="Pruned"),
+                ]
+            ax.legend(handles=custom_legend, handlelength=1, loc="lower left", fontsize=7, labelspacing=0.33, markerscale=0.5)
+        if isinstance(cell, str):
+            cellname = f"BC{int(cell[0]):02d}"
+        else:
+            cellname = f"BC{cell:02d}"
         if show_cell:
             ax.text(
                 x=0.5,
                 y=1.0,
-                s=f"BC{cell:02d}",
+                s=cellname,
                 fontdict=title_font,
                 #    "horizontalalignment":"center","verticalalignment":"top"},
                 transform=ax.transAxes,
@@ -626,12 +635,12 @@ class VS_Plots:
 
     def Figure8_M(self, ax=None):
         """Plot Figure 8 panel M: Vector strength to SAM tones at
-        different modulatoin frequencies.
+        different modulation frequencies.
 
         Args:
             ax (matplotlib axis, optional): axis. Defaults to None.
         """
-        V1 = VS_Plots(dBSPL=15, dends="9I9U")
+        # V1 = VS_Plots(dBSPL=15, dends="9I9U")
 
         cells = [9]
         if ax is None:
@@ -650,10 +659,9 @@ class VS_Plots:
             axl = [ax]
 
         for i, cell in enumerate(cells):
-            if i >= 0:
+            legend = False
+            if i == 0:
                 legend = True
-            else:
-                legend = False
             self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
                 barwidth=180)
 
@@ -728,7 +736,5 @@ if __name__ == "__main__":
     #     # fm.axes[j] = ax
     #     # fm.axes[j] = ax
     #     fm.axes[i].set_position(pos)
-
-    mpl.show()
 
     # ax.text(0.1, 0.9, s=f"{self.cell_list[i]:s}", transform=ax.transAxes)
