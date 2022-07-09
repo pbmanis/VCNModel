@@ -25,6 +25,11 @@ Copyright 2017-2022 Paul B. Manis
 Distributed under MIT/X11 license. See license.txt for more infomation. 
 """
 
+import VS_datasets_15dB
+import VS_datasets_15dB_BC09_NoUninnervated
+import VS_datasets_30dB
+
+
 figure_IV = {
     17: {
         "normal": "runIV-all-2021-07-27.12-18-24",
@@ -405,6 +410,10 @@ figure_cell9_nouninnervated2 = {
     }
 }
 
+figure_VS_SAM_30 = VS_datasets_30dB.samdata
+figure_VS_SAM_15 = VS_datasets_15dB.samdata
+figure_VS_SAM_BC09 = VS_datasets_15dB_BC09_NoUninnervated.samdata
+
 all_figures = {
     "AN_PSTH": figure_psth,
     "VC_ex": figure_VClamp,
@@ -415,7 +424,10 @@ all_figures = {
     "IV_all": figure_AllIVs,
     "AN_SAC": figure_SAC,
     "AN_SAM_SAC": figure_SAM_SAC,
-    "BC_09_Pruned": figure_cell9_nouninnervated2,
+    "AN_BC_09_Pruned": figure_cell9_nouninnervated2,
+    "AN_VS_15": figure_VS_SAM_15,
+    "AN_VS_30": figure_VS_SAM_30,
+    "AN_VS_15_BC09": figure_VS_SAM_BC09,
 }
 
 
