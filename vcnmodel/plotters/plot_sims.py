@@ -2516,6 +2516,7 @@ class PlotSims:
         sac_flag: bool = True,  # set true to compute SAC as well as standard VS
         sac_engine: str = "cython",
         filename: str="",
+        make_VS_raw:bool=False
     ):
         if isinstance(self.parent.cellID, str):
             if ("U" in self.parent.cellID) or ("I" in self.parent.cellID):
@@ -2531,7 +2532,6 @@ class PlotSims:
         plotflag = False
         SC, syninfo = self.get_synaptic_info(cellN)
 
-        
         model_data = self.ReadModel.get_data(fn, PD, protocol)
         AR = model_data.AR
         data = model_data.data
@@ -2680,6 +2680,13 @@ class PlotSims:
                         )  # vs expects spikes in msec
                 vs_n[i] = vs_calc.vs
                 vs_nspikes[i] = int(vs_calc.n_spikes)
+                if make_VS_raw:
+                    VS_file_raw = Path(f"VS_raw_SAM_{cellN:02d}_{int(dB):02d}")
+                    if not VS_file_raw.is_file():  # if file does not exist, write header
+                        with open(VS_file_raw, "w") as fh:
+                            fh.write(f"celln,experiment,trial,fmod,VS,nspikes\n")
+                    with open(VS_file_raw, "a") as fh:  # add the data to this file
+                        fh.write(f"{cellN:02d},{ri.Spirou:s},{i:d},{int(fmod):d},{vs_calc.vs:.5f},{vs_calc.n_spikes:d}\n")
 
             print('vs_nspikes: ', vs_nspikes)
             print("vs by group: ", vs_n)

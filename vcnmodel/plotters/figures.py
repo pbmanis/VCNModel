@@ -3615,11 +3615,13 @@ class Figures(object):
     
     def analyze_VS_data(
         self, VS_data, cell_number, fout, firstline=False, sac_flag=False, test=False,
+        dBSPL:int=0, make_VS_raw:bool=True,
     ):
         """
         Generate tables of Vector Strength measures for all cells
         across the frequencies listed
         """
+        
         # self.parent.PLT.textclear()  # just at start
         PD = self.newPData()
         P = None
@@ -3630,7 +3632,7 @@ class Figures(object):
         else:
             cell_n = cell_number
         self.parent.cellID = cell_number
-        print(VS_data.samdata.keys())
+    
         for i, filename in enumerate(VS_data.samdata[cell_number]):
             print(f"Cell: {str(cell_number):s}  Filename: {filename:s}")
             cellpath = Path(
@@ -3647,7 +3649,7 @@ class Figures(object):
                     d = FPM.pickle_load(fh)
                 self.parent.PLT.plot_AN_response(
                     P, d.files[0], PD, "runANPSTH", sac_flag=sac_flag,
-                    filename=filename,
+                    filename=filename, make_VS_raw=make_VS_raw,
                 )
                 # note that VSline has results of VS computation to put in the table
                 if firstline:
@@ -3788,8 +3790,9 @@ class Figures(object):
                         if j > 0:
                             fl = False
                         cprint("m", f"Cell: {celln:d}  j={j:d}")
+                        VS_file_raw = f"VS_raw_SAM_{dB:02d}_{celln:02d}.txt"
                         tresults = self.analyze_VS_data(VS_datasets, celln, fout, 
-                            firstline=fl, sac_flag=True, test=False)
+                            firstline=fl, sac_flag=True, test=False, dBSPL=dB, make_VS_raw=True)
                         tasker.results[j] = tresults
             self.parent.PLT.in_Parallel = False
             print("Results: \n", [r+'\n' for r in tresults])
@@ -3802,7 +3805,7 @@ class Figures(object):
         else:
             for j, celln in enumerate(TASKS):
                 tresults = self.analyze_VS_data(VS_datasets, celln, fout, 
-                    firstline=fl, sac_flag=True, test=False)
+                    firstline=fl, sac_flag=True, test=False, make_VS_raw=True)
                 if j > 0:
                     fl = False
                 with open(fout, "a") as fh:
