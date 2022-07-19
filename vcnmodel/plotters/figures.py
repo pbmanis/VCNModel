@@ -2487,7 +2487,6 @@ class Figures(object):
         )
         P.axdict["L"].set_ylabel("Spikes/second", fontdict=label_font)
 
-        P.axdict["M"].set_title("SAC", fontdict=title_font)
         P.axdict["M"].set_ylabel("CI", fontdict=label_font)
         P.axdict["M"].set_title("SAC", fontdict=title_font, verticalalignment="top", y=0.95)
         P.axdict["M"].set_ylim(0, 25)
@@ -2534,12 +2533,13 @@ class Figures(object):
         """ Now do the right side with the VS plots and "V" plots
 
         """
-        VSP = SAM_VS_vplots.VS_Plots(dBSPL=15)
-        VSP.plot_VS_Data(axin=P.axdict["O1"])
+        VSP15 = SAM_VS_vplots.VS_Plots(dBSPL=15)
+        VSP15.plot_VS_Data(axin=P.axdict["O1"])
         VSP30 = SAM_VS_vplots.VS_Plots(dBSPL=30)
         VSP30.plot_VS_Data(axin=P.axdict["O2"], legendflag=False)
 
-        VSP.plot_VS_summary(5, axin=P.axdict["P1"], legendflag=True)
+        VSP = SAM_VS_vplots.VS_Plots(dBSPL=15)
+        VSP.plot_VS_summary(2, axin=P.axdict["P1"], legendflag=True)
         VSP.plot_VS_summary(30, axin=P.axdict["P2"], legendflag=False)
         VSP.plot_VS_summary(9, axin=P.axdict["P3"], legendflag=False)
         VSP.plot_VS_summary(17, axin=P.axdict["P4"], legendflag=False)
@@ -2685,10 +2685,11 @@ class Figures(object):
                 engine=sac_engine,
                 dither=1e-3 * si.dtIC / 2.0,
             )
+            # plot bu as red
             P.axdict[pan[5]].plot(
                 bu_sacbins[:-1] * 1e3,
                 bu_sac,
-                "k-",
+                "r-",
                 # label=sac_label,
             )
             an_sac, an_sacbins = S.SAC_with_histo(
@@ -2700,9 +2701,13 @@ class Figures(object):
             P.axdict[pan[5]].plot(
                 an_sacbins[:-1] * 1e3,
                 an_sac,
-                "r-",
+                "k-",
                 # label=sac_label,
             )
+            custom_legend = [Line2D([0], [0], marker=None, color="k", lw=1, label='AN'),
+                             Line2D([0], [0], marker=None, color="r", lw=1, label="BU"),
+                    ]
+            P.axdict[pan[5]].legend(handles=custom_legend, handlelength=1, loc="upper right", fontsize=7, labelspacing=0.33, markerscale=0.5)
             P.axdict[pan[5]].set_xlabel("Time (ms)")
         else:
             phasewin = [
@@ -2730,6 +2735,7 @@ class Figures(object):
                 est_binw = est_binw1
             # print('est_binw: ', est_binw, est_binw1, dt, nints, per)
 
+            # plot AN red
             PF.plot_psth(
                 vs_an.circ_phase,
                 run_info=ri,
@@ -2738,9 +2744,10 @@ class Figures(object):
                 ax=P.axdict[pan[5]],
                 bin_fill=False,
                 xunits="radians",
-                edge_color="r",
+                edge_color="k",
                 alpha=0.5,
             )
+            # plot BU black
             PF.plot_psth(
                 vs_bu.circ_phase,
                 run_info=ri,
@@ -2749,7 +2756,7 @@ class Figures(object):
                 bin_fill=False,
                 ax=P.axdict[pan[5]],
                 xunits="radians",
-                edge_color='k',
+                edge_color='r',
                 alpha=0.5,
             )
             # P.axdict["E"].hist(
@@ -2759,15 +2766,19 @@ class Figures(object):
             #     edgecolor="k",
             # )
             P.axdict[pan[5]].set_xlim((0.0, 2 * np.pi))
-            P.axdict[pan[5]].text(x=0.05, y=1.0,
-                s=f"VS: AN = {vs_an.vs:5.3f}\n    BU = {vs_bu.vs:5.3f}",
-                fontdict={
-                    "fontsize": 8,
-                    "fontweight": "normal",
-                    "verticalalignment": "top",
-                },
-                transform=P.axdict[pan[5]].transAxes,
-            )
+            custom_legend = [Line2D([0], [0], marker=None, color="k", lw=3, alpha=0.5, label=f"AN = {vs_an.vs:5.3f}"),
+                             Line2D([0], [0], marker=None, color="r", lw=3, alpha=0.5, label=f"BU = {vs_bu.vs:5.3f}"),
+                    ]
+            P.axdict[pan[5]].legend(handles=custom_legend, handlelength=1, loc="upper left", fontsize=7, labelspacing=0.33, markerscale=0.5)
+            # P.axdict[pan[5]].text(x=0.05, y=1.0,
+            #     s=f"VS: AN = {vs_an.vs:5.3f}\n    BU = {vs_bu.vs:5.3f}",
+            #     fontdict={
+            #         "fontsize": 8,
+            #         "fontweight": "normal",
+            #         "verticalalignment": "top",
+            #     },
+            #     transform=P.axdict[pan[5]].transAxes,
+            # )
 
     def Figure7_Supplemental2(self):
         V = SAM_VS_vplots.VS_Plots()
