@@ -49,6 +49,7 @@ from vcnmodel.analyzers import analyze_data
 from vcnmodel.analyzers import isi_cv as ISI
 from vcnmodel.analyzers import pattern_summary as PATSUM
 from vcnmodel.analyzers import sac as SAC
+from vcnmodel.plotters import AIS_thresholds
 from vcnmodel.plotters import SAC_plots as SACP
 from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot as EF
@@ -1417,39 +1418,53 @@ class Figures(object):
 
         start_letter = "A"
         parent_figure = None
-
+        yrow0 = 0.75
+        yrow1 = 2.50+0.75
         yh = 1.75
-        xw = 0.85 * yh
+        #xw = 0.85 * yh
+        xw = 1.15 * yh
         xl = 1.05
 
-        xlp = [xl + (xw + 0.72) * i for i in range(5)]
-        lpos = (-0.15, 1.02)
+        xlp = [xl + (xw + 0.72) * i for i in range(4)]
+        lpos = (-0.12, 1.06)
         if not supplemental1:
             sizer = {
                 # "B": {"pos": [6.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
                 # "C": {"pos": [9.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
                 # "F": {"pos": [6.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
                 # "G": {"pos": [9.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
-                "D": {"pos": [xlp[0], xw, 0.75, yh], "labelpos": lpos},
+                "D": {
+                    "pos": [xlp[0], xw, yrow1, yh],
+                    "labelpos": lpos},
                 "E": {
-                    "pos": [xlp[1], xw, 0.75, yh],
+                    "pos": [xlp[1], xw, yrow1, yh],
                     "labelpos": lpos,
                 },
                 "F": {
-                    "pos": [xlp[2], xw, 0.75, yh],
+                    "pos": [xlp[2], xw, yrow1, yh],
                     "labelpos": lpos,
                 },
 
                 "G": {
-                    "pos": [xlp[3], xw, 0.75, yh],
+                    "pos": [xlp[3], xw, yrow1, yh],
                     "labelpos": lpos,
                 },
                 "H": {
-                    "pos": [xlp[4], xw, 0.75, yh],
+                    "pos": [xlp[0], xw, yrow0, yh],
                     "labelpos": lpos,
                 },
+                "I": {
+                    "pos": [xlp[1], xw, yrow0, yh],
+                    "labelpos": lpos,
+
+                },
+                "J": {
+                    "pos": [xlp[2], xw, yrow0, yh],
+                    "labelpos": lpos,
+
+                },
             }
-            figsize = (12, 8)
+            figsize = (12, 8+2.5)
             cal_pos = 0
         else:
             sizer = {}
@@ -1467,9 +1482,9 @@ class Figures(object):
             yh1 = 3.75
         else:
             yh2 = 1.2
-            yb2 = 3.5 + 2.7 - 0.5
-            yb3 = 3.5 + 0.6 - 0.5
-            yb1 = 3.25 - 0.5
+            yb2 = 3.5 + 2.7 - 0.5 + 2.5
+            yb3 = 3.5 + 0.6 - 0.5 + 2.5
+            yb1 = 3.25 - 0.5 +2.5
             yh1 = 4.25
         for j in range(len(example_cells)):
             i = j + 1
@@ -1605,7 +1620,7 @@ class Figures(object):
 
         if not supplemental1:
             # Efficacy plot vs. input size (all)
-            for s in ["D", "E", "F", "G", "H"]:
+            for s in ["D", "E", "F", "G", "H", "I", "J"]:
                 P.axdict[s].set_zorder(100)
             EFP = EF.EfficacyPlots(parent_figure=P)
             EFP.plot_efficacy(
@@ -1613,10 +1628,10 @@ class Figures(object):
             )
 
             # efficacy for a single sized input vs. dendritic area
-            plot_single_input(P.axdict["E"], legend=False)
+            plot_single_input(P.axdict["H"], legend=False)
 
             # input pattern plot
-            PATSUM.Figure4F_pattern_plot(axin=P.axdict["F"])
+            PATSUM.Figure4F_pattern_plot(axin=P.axdict["E"])
 
             # participation
             ds = self._load_rcdata("Spont")
@@ -1626,7 +1641,7 @@ class Figures(object):
             for i, c in enumerate(ds.keys()):
                 # plot_participation(P.axdictax[0], c, ds, drc, dB=dB, color=palette[i])
                 plot_diff_participation(
-                    P.axdict["G"],
+                    P.axdict["F"],
                     c,
                     ds,
                     drc,
@@ -1639,12 +1654,12 @@ class Figures(object):
             # Cumulative plots
             self.plot_revcorr_compare(
                 parent_figure=P,
-                axlist=[P.axdict["H"]],
+                axlist=[P.axdict["G"]],
                 dBSPLs=["Spont", "30dB"],
                 legend=False,
             )
-            # the folowing is set in plot_revcorr compare
-            PH.set_axes_ticks(ax=P.axdict["H"],
+            # the following is set in plot_revcorr compare
+            PH.set_axes_ticks(ax=P.axdict["G"],
                 xticks =     [0,    4,   8,   12],
                 xticks_str = ["0", "4", "8", "12"],
                 xticks_pad=None,
@@ -1657,7 +1672,11 @@ class Figures(object):
                 y_minor=None,
                 fontsize=8,
             )
-            PH.nice_plot(P.axdict["H"], position=self.axis_offset, direction="outward", ticklength=3)
+            PH.nice_plot(P.axdict["G"], position=self.axis_offset, direction="outward", ticklength=3)
+            ATHR = AIS_thresholds.AIS()
+            ATHR.DendvsThr(ax=P.axdict["I"])
+            ATHR.AISLengthThr(ax=P.axdict["J"])
+
             synlabel_num = 5  # this sets which cell the scale bar will be plotted with
         else:
             synlabel_num = 10
@@ -2432,7 +2451,7 @@ class Figures(object):
         )
         
         # title the 2 left columns
-        mpl.text(x=1.5, y=8.3, s=f"BC{example_cell_number:02d}  200Hz SAM", fontdict={
+        mpl.text(x=1.5, y=8.3, s=f"BC{example_cell_number:02d}  200Hz 100% SAM", fontdict={
                 "fontsize": 10, "fontweight": "bold", "ha": "center"},
                 transform=P.figure_handle.dpi_scale_trans)
         mpl.text(x=4.5, y=8.3, s=f"BC{example_cell_number:02d}  60 Hz Click Train", fontdict={
@@ -2465,7 +2484,7 @@ class Figures(object):
         P.axdict["F"].set_ylabel("Spike Count", fontdict=label_font)
     
         # P.axdict["G"].set_title("Stimulus", fontdict=title_font)
-        P.axdict["G"].set_ylabel("Amplitude (Pa)", fontdict=label_font)
+        P.axdict["G"].set_ylabel("Stimulus", fontdict=label_font)
         P.axdict["G"].set_xlabel("Time (s)", fontdict=label_font)
 
         # column 2 Click train
@@ -2493,7 +2512,7 @@ class Figures(object):
         PH.talbotTicks(P.axdict["M"], axes='y', density=(1.0, 1.0), 
             tickPlacesAdd= {'x':2, "y": 0})
         # P.axdict["N"].set_title("Stimulus", fontdict=title_font)
-        P.axdict["N"].set_ylabel("Amplitude (Pa)", fontdict=label_font)
+        P.axdict["N"].set_ylabel("Stimulus", fontdict=label_font)
         P.axdict["N"].set_xlabel("Time (s)", fontdict=label_font)
 
         for axl in [
@@ -2530,7 +2549,7 @@ class Figures(object):
             pan = ["H", "I", "J", "K", "L", "M", "N"],
         )
 
-        """ Now do the right side with the VS plots and "V" plots
+        """ Now do the right side with the VS plots and "V" or line plots
 
         """
         VSP15 = SAM_VS_vplots.VS_Plots(dBSPL=15)
@@ -2539,7 +2558,7 @@ class Figures(object):
         VSP30.plot_VS_Data(axin=P.axdict["O2"], legendflag=False)
 
         VSP = SAM_VS_vplots.VS_Plots(dBSPL=15)
-        VSP.plot_VS_summary(2, axin=P.axdict["P1"], legendflag=True)
+        VSP.plot_VS_summary(2, axin=P.axdict["P1"], legendflag=False)
         VSP.plot_VS_summary(30, axin=P.axdict["P2"], legendflag=False)
         VSP.plot_VS_summary(9, axin=P.axdict["P3"], legendflag=False)
         VSP.plot_VS_summary(17, axin=P.axdict["P4"], legendflag=False)
@@ -2567,13 +2586,13 @@ class Figures(object):
             "Simulations",
             "AN",
         )
-        print('dataset: ', dataset)
-        print('keys: ', dataset.keys())
-        print('mode: ', mode)
-        print('cellpath: ', cellpath)
-        print("cell_number: ", cell_number)
-        print(dataset.keys())
-        print('dataset[mode]: ', dataset[cell_number][mode])
+        # print('dataset: ', dataset)
+        # print('keys: ', dataset.keys())
+        # print('mode: ', mode)
+        # print('cellpath: ', cellpath)
+        # print("cell_number: ", cell_number)
+        # print(dataset.keys())
+        # print('dataset[mode]: ', dataset[cell_number][mode])
 
         sfi = Path(cellpath, Path(dataset[cell_number][mode]).name)
         if not sfi.is_dir():
@@ -2705,7 +2724,7 @@ class Figures(object):
                 # label=sac_label,
             )
             custom_legend = [Line2D([0], [0], marker=None, color="k", lw=1, label='AN'),
-                             Line2D([0], [0], marker=None, color="r", lw=1, label="BU"),
+                             Line2D([0], [0], marker=None, color="r", lw=1, label="BC"),
                     ]
             P.axdict[pan[5]].legend(handles=custom_legend, handlelength=1, loc="upper right", fontsize=7, labelspacing=0.33, markerscale=0.5)
             P.axdict[pan[5]].set_xlabel("Time (ms)")
@@ -2766,8 +2785,8 @@ class Figures(object):
             #     edgecolor="k",
             # )
             P.axdict[pan[5]].set_xlim((0.0, 2 * np.pi))
-            custom_legend = [Line2D([0], [0], marker=None, color="k", lw=3, alpha=0.5, label=f"AN = {vs_an.vs:5.3f}"),
-                             Line2D([0], [0], marker=None, color="r", lw=3, alpha=0.5, label=f"BU = {vs_bu.vs:5.3f}"),
+            custom_legend = [Line2D([0], [0], marker=None, color="k", lw=3, alpha=0.5, label=f"AN VS = {vs_an.vs:5.3f}"),
+                             Line2D([0], [0], marker=None, color="r", lw=3, alpha=0.5, label=f"BC VS = {vs_bu.vs:5.3f}"),
                     ]
             P.axdict[pan[5]].legend(handles=custom_legend, handlelength=1, loc="upper left", fontsize=7, labelspacing=0.33, markerscale=0.5)
             # P.axdict[pan[5]].text(x=0.05, y=1.0,
@@ -3033,6 +3052,7 @@ class Figures(object):
         stim_win: tuple = (0, 0.25),
         color='b',
         scale:str='sec', # or "ms"
+        y_label:bool=False,  # turn off mPa
     ):
         # stimulus waveform
         trd = d["Results"][ntrace]
@@ -3055,16 +3075,13 @@ class Figures(object):
             linewidth=0.5,
         )  # stimulus underneath
         ax.set_xlim(0, timescale*(stim_win[1] - stim_win[0]))
-        # PH.talbotTicks(
-        #     ax,
-        #     axes="xy",
-        #     density=(1.0, 0.5),
-        #     insideMargin=0.02,
-        #     # pointSize=ticklabelsize,
-        #     tickPlacesAdd={"x": 2, "y": 1},
-        #     floatAdd={"x": 2, "y": 1},
-        # )
-        ax.set_ylabel("mPa")
+        PH.nice_plot(ax, position={'bottom': -0.03}, direction='outward', ticklength=3)
+
+        if y_label:
+            ax.set_ylabel("mPa")
+        else:
+            tl = ax.get_yticklabels()
+            ax.set_yticklabels([""]*len(tl))
 
     
     def get_bu_spikearray(self, AR, d):
@@ -3230,7 +3247,7 @@ class Figures(object):
                 )
             PH.set_axes_ticks(stim_tr_ax,
                 yticks = [-1, -0, 1],
-                yticks_str = ["-1", "", "1"],
+                yticks_str = [], # ["-1", "", "1"],
                 xticks = [0, 0.1, 0.2],
                 xticks_str = ["0.0", "0.1", "0.2"],
                 x_minor = [0.05, 0.15, 0.25],
@@ -3275,7 +3292,7 @@ class Figures(object):
                     )
                 PH.set_axes_ticks(stim_psth_ax,
                     yticks = [-1, -0, 1],
-                    yticks_str = ["-1", "", "1"],
+                    yticks_str = [], # ["-1", "", "1"],
                     xticks = [0, 0.1, 0.2],
                     xticks_str = ["0", "0.1", "0.2"],
                     x_minor = [0.05, 0.15, 0.25],
@@ -3339,7 +3356,7 @@ class Figures(object):
                 stim_fsl_ax.set_xlabel("Time (ms)")
                 PH.set_axes_ticks(stim_fsl_ax,
                     yticks = [-1, -0, 1],
-                    yticks_str = ["-1", "", "1"],
+                    yticks_str = [], # ["-1", "", "1"],
                     xticks = [0, 5, 10, 15, 20, 25],
                     xticks_str = ["0", "5", "10", "15", "20", "25"],
                 )
@@ -3424,6 +3441,7 @@ class Figures(object):
         cv_ax.set_ylim(0, 1.2)
         cv_ax.set_xlim(0, 1e3 * (cv_win[1] - cv_win[0]) - 20.0)
         if stim_ax is not None:
+            # print("Plotting CV waveform")
             self.plot_stim_waveform(
                 ax=stim_ax, ntrace=self.stim_data["ntrace"], 
                 d=self.stim_data["d"], 
@@ -3434,10 +3452,10 @@ class Figures(object):
             stim_ax.set_ylim(-1, 1)
             stim_ax.set_xlim(0, 1e3 * (cv_win[1] - cv_win[0]) - 20.0)
             stim_ax.set_xlabel("Time (ms)")
-            PH.nice_plot(stim_ax, direction="outward", ticklength=3)
+            # PH.nice_plot(stim_ax, direction="outward", ticklength=3)
             PH.set_axes_ticks(stim_ax,
                 yticks = [-1, -0, 1],
-                yticks_str = ["-1", "", "1"],
+                yticks_str = [], # ["-1", "", "1"],
                 xticks = [0, 20, 40, 60, 80],
                 xticks_str = ["0", "20", "40", "60", "80"],
                 x_minor=[10, 30, 50, 70],
@@ -3585,6 +3603,11 @@ class Figures(object):
             pos = P.axarr[i, 3].get_position()
             pos.x0 = pos.x0 + 0.02
             P.axarr[i, 3].set_position(pos)
+            # also shi the stim plot
+            if stim_ax_cv is not None:
+                pos = stim_ax_cv.get_position()
+                pos.x0 = pos.x0 + 0.02
+                stim_ax_cv.set_position(pos)
 
             P.axarr[i, 0].text(
                 -0.40,
@@ -3994,23 +4017,23 @@ class Figures(object):
         # panel M : compare 9I(intact) and 9U (NoUninnervated) VS across frequencies
 
         VSP = SAM_VS_vplots.VS_Plots(sels=[9], dBSPL=15, dends="9I9U")
-        VSP.plot_VS_summary(axin=self.P.axdict["M"], cell=9, barwidth=75, legendflag=True)
+        VSP.plot_VS_summary(axin=self.P.axdict["M"], cell=9, barwidth=75, legendflag=True, xscale="log", figure8_xscale=True)
         self.P.adjust_panel_labels(fontsize=28, fontweight="light", fontname="myriad")
         custom_legend = [Line2D([0], [0], marker="_", markersize=2, color="firebrick", lw=2, label='AN'),
                 Line2D([0], [0], marker='o', color='w', markerfacecolor=sns_colors[0], markersize=5, label="Intact"),
                 Line2D([0], [0], marker='o', color='w', markerfacecolor=sns_colors[1], markersize=5, label="Pruned"),
                 ]
         self.P.axdict["M"].legend(handles=custom_legend, handlelength=1, loc="lower left", fontsize=7, labelspacing=0.33)
-        PH.set_axes_ticks(ax=self.P.axdict["M"],
-            xticks = [0, 1, 2, 3, 4, 5, 6, 7],
-            xticks_str = ['50', '100', '200', '300', '400', '500', '750', '1000'],
-            # xticks_pad:Union[List, None]=None,
-            x_minor = None,
-            x_rotation=60.,
-            major_length = 3.0,
-            minor_length =1.5,
-            fontsize=8,
-        )        
+        # PH.set_axes_ticks(ax=self.P.axdict["M"],
+        #     xticks = [0, 1, 2, 3, 4, 5, 6, 7],
+        #     xticks_str = ['50', '100', '200', '300', '400', '500', '750', '1000'],
+        #     # xticks_pad:Union[List, None]=None,
+        #     x_minor = None,
+        #     x_rotation=60.,
+        #     major_length = 3.0,
+        #     minor_length =1.5,
+        #     fontsize=8,
+        # )        
 
         fig = FigInfo()
         fig.P = self.P
