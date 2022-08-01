@@ -439,8 +439,8 @@ class BuildDataSet():
                 "AN_SAC",
                 "AN_SAM_SAC",
                 "AN_BC_09_Pruned",
-                "AN_VS_15",
-                "AN_VS_30",
+                # "AN_VS_15", # removed for size
+              #  "AN_VS_30",  # removed for size
                 "AN_VS_15_BC09",
             ]:
                 for cell_idx in list(figd.keys()):

@@ -410,6 +410,7 @@ figure_cell9_nouninnervated2 = {
     }
 }
 
+# we get the datasets here from the other files
 figure_VS_SAM_30 = VS_datasets_30dB.samdata
 figure_VS_SAM_15 = VS_datasets_15dB.samdata
 figure_VS_SAM_BC09 = VS_datasets_15dB_BC09_NoUninnervated.samdata
