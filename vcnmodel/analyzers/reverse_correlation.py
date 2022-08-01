@@ -22,6 +22,7 @@ Distributed under MIT/X11 license. See license.txt for more infomation.
 """
 import datetime
 from dataclasses import dataclass, field
+
 from typing import List, Tuple, Union
 
 import elephant.conversion as EC
@@ -318,14 +319,14 @@ def revcorr(
         # Now get reverse  correlation for each input
         for isite in range(RCP.ninputs):  # for each ANF input
             # print(len( data["Results"][trial]["inputSpikeTimes"]), isite)
-            anx = an_spikes[isite]
+            anx = an_spikes[isite].squeeze()
             # anx = anx[(anx > RCP.min_time) & (anx < RCP.max_time)]
             if len(anx) == 0:
                 continue
             RCD.npre_spikes += len(anx)  # count up pre spikes.
             pre_intervals[isite].extend(
                 np.diff(anx)
-            )  # keep track of presynapit intervals by input
+            )  # keep track of presynaptic intervals by input
             if revcorrtype == "RevcorrSPKS":
                 RCD.C[isite] += SPKS.correlogram(
                     stx * pq.ms,
@@ -409,6 +410,8 @@ def revcorr(
     RCD.mean_pre_intervals = [0] * RCP.ninputs
     RCD.pre_st = [[]] * RCP.ninputs
     for isite in range(RCP.ninputs):
+        # print(isite, len(pre_intervals[isite]))
+        print(pre_intervals[isite])
         RCD.mean_pre_intervals[isite] = np.mean(pre_intervals[isite])
         RCD.pre_st[isite] = pre_intervals[isite]
     RCD.mean_post_intervals = np.mean(post_intervals)
@@ -723,27 +726,55 @@ def _assert_patterns(
         ("1_largest", "exact"): ["at_least1"],
         ("2_largest", "exact"): ["at_least1", "at_least2"],
         ("3_largest", "exact"): ["at_least1", "at_least2", "at_least3"],
+        ("4_largest", "exact"): ["at_least1", "at_least2", "at_least3", "at_least4"],
+        ("5_largest", "exact"): ["at_least1", "at_least2", "at_least3", "at_least4", "at_least5"],
         ("2nd_largest", "exact"): ["not_1_largest"],
         ("3rd_largest", "exact"): ["not_1_largest", "not_2_largest"],
         ("4th_largest", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
+        ("5th_largest", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest", "not_4_largest"],
         ("1+2+5", "exact"): ["at_least1", "at_least2"],
         ("4+5", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
         ("4+5+6", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
         ("4+5+6+7", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
-        ("6+7+8", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
+        ("6+7+8", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest", 'not_4_largest', 'not_5_largest'],
         ("None", "exact"): ["not_1_largest", "not_2_largest", "not_3_largest"],
-        ("not_1_largest", "except"): ["at_least1", "1_largest", "not_1_largest"],
-        ("not_2_largest", "except"): ["at_least1", "2_largest", "at_least2"],
-        ("not_3_largest", "except"): [
+        ("not_1_largest", "except"): [
+            "at_least1", 
+            "1_largest", 
+            "not_1_largest",
+            ],
+        ("not_2_largest", "except"): [
             "at_least1",
+            "2_largest",
+            "at_least2",
+            ],
+        ("not_3_largest", "except"): [
             "3_largest",
+            "at_least1",
             "at_least2",
             "at_least3",
         ],
-        ("at_least", "atleast"): ["at_least1"],
+        ("not_4_largest", "except"): [
+            "4_largest",
+            "at_least1",
+            "at_least2",
+            "at_least3",
+            "at_least4",
+        ],
+        ("not_5_largest", "except"): [
+            "5_largest",
+            "at_least1",
+            "at_least2",
+            "at_least3",
+            "at_least4",
+            "at_least5",
+        ],
+        ("at_least",  "atleast"): ["at_least1"],
         ("at_least1", "atleast"): ["at_least"],
         ("at_least2", "atleast"): ["at_least1"],
         ("at_least3", "atleast"): ["at_least1", "at_least2"],
+        ("at_least4", "atleast"): ["at_least1", "at_least2", "at_least3"],
+        ("at_least5", "atleast"): ["at_least1", "at_least2", "at_least3", "at_least4"],
     }
     logic = pattern_results[pattern_name].logic
     if logic == "exact":
@@ -753,9 +784,9 @@ def _assert_patterns(
                 and pattern_results[pattern_name].sumfalse == 0
             )
             n_successes += 1
-            cprint("c", f"  Assert success for exact with  {pattern_name:s} (match)")
+            cprint("c", f"  Assert success for exact with  {pattern_name:20s} (match)")
         except AssertionError:
-            cprint("r", f"      Assert failed for exact with {pattern_name:s}")
+            cprint("r", f"      Assert failed for exact with {pattern_name:20s}")
             pattern_results[pattern_name].print()
             n_fails += 1
         for p in spike_patterns:  # cross check
@@ -767,10 +798,10 @@ def _assert_patterns(
                         assert pattern_results[p].sumfalse == 1
                     cprint(
                         "c",
-                        f"  Assert success for exact with pattern  {p:s} (should not match, and did not)  Cross-check",
+                        f"  Assert success for exact with pattern  {p:20s} (should not match, and did not)  Cross-check",
                     )
                 except AssertionError:
-                    cprint("r", f"      Cross-check Assert failed for {p:s} with exact")
+                    cprint("r", f"      Cross-check Assert failed for {p:20s} with exact")
                     pattern_results[p].print()
                     n_fails += 1
 
@@ -783,10 +814,10 @@ def _assert_patterns(
             n_successes += 1
             cprint(
                 "c",
-                f"  Assert success for except with pattern  {pattern_name:s} (match)",
+                f"  Assert success for except with pattern  {pattern_name:20s} (match)",
             )
         except AssertionError:
-            cprint("r", f"      Assert failed for except with {pattern_name:s}")
+            cprint("r", f"      Assert failed for except with {pattern_name:20s}")
             pattern_results[pattern_name].print()
             n_fails += 1
 
@@ -799,11 +830,11 @@ def _assert_patterns(
                         assert pattern_results[p].sumfalse == 1
                     cprint(
                         "c",
-                        f"  Assert success for except with pattern {p:s} (should not match, and did not)  Cross-Check",
+                        f"  Assert success for except with pattern {p:20s} (should not match, and did not)  Cross-Check",
                     )
                 except AssertionError:
                     cprint(
-                        "r", f"      Cross-check Assert failed for {p:s} with except"
+                        "r", f"      Cross-check Assert failed for {p:20s} with except"
                     )
                     pattern_results[p].print()
                     n_fails += 1
@@ -816,10 +847,10 @@ def _assert_patterns(
             n_successes += 1
             cprint(
                 "c",
-                f"  Assert success for atleast with pattern  {pattern_name:s} (match)",
+                f"  Assert success for atleast with pattern  {pattern_name:20s} (match)",
             )
         except AssertionError:
-            cprint("r", f"      Assert failed for atleast with {pattern_name:s}")
+            cprint("r", f"      Assert failed for atleast with {pattern_name:20s}")
             pattern_results[pattern_name].print()
             n_fails += 1
         for p in spike_patterns:  # cross check
@@ -831,11 +862,11 @@ def _assert_patterns(
                         assert pattern_results[p].sumfalse == 1
                     cprint(
                         "c",
-                        f"  Assert success for atleast with pattern  {p:s} (should not match, and did not)  Cross-check",
+                        f"  Assert success for atleast with pattern  {p:20s} (should not match, and did not)  Cross-check",
                     )
                 except AssertionError:
                     cprint(
-                        "r", f"      Cross-check Assert failed for {p:s} with atleast"
+                        "r", f"      Cross-check Assert failed for {p:20s} with atleast"
                     )
                     pattern_results[p].print()
                     n_fails += 1
@@ -851,9 +882,11 @@ def make_patterns() -> dict:
         "1_largest": PatternData(name="1_largest", mask=0x01, logic="exact"),
         "2_largest": PatternData(name="2_largest", mask=0x03, logic="exact"),
         "3_largest": PatternData(name="3_largest", mask=0x07, logic="exact"),
+        "4_largest": PatternData(name="4_largest", mask=0x0F, logic="exact"),
         "2nd_largest": PatternData(name="2nd_largest", mask=0x02, logic="exact"),
         "3rd_largest": PatternData(name="3rd_largest", mask=0x04, logic="exact"),
         "4th_largest": PatternData(name="4th_largest", mask=0x08, logic="exact"),
+        "5th_largest": PatternData(name="5th_largest", mask=0x10, logic="exact"),
         "1+2+5": PatternData(name="1+2+5", mask=0b00010011, logic="exact"),
         "4+5": PatternData(name="4+5", mask=0b00011000, logic="exact"),
         "4+5+6": PatternData(name="4+5+6", mask=0b00111000, logic="exact"),
@@ -869,6 +902,9 @@ def make_patterns() -> dict:
         "not_3_largest": PatternData(
             name="not_3_largest", mask=0x07, logic="except"
         ),  # none of the 3 largest
+        "not_4_largest": PatternData(
+            name="not_4_largest", mask=0x0F, logic="except"
+        ),  # none of the 4 largest
         "at_least": PatternData(
             name="at_least", mask=0x55, logic="atleast"
         ),  # at least some in a pattern
@@ -881,6 +917,9 @@ def make_patterns() -> dict:
         "at_least3": PatternData(
             name="at_least3", mask=0x07, logic="atleast"
         ),  # at least the 3 largest
+        "at_least4": PatternData(
+            name="at_least4", mask=0x0F, logic="atleast"
+        ),  # at least the 3 largest
     }
     return patterns
 
@@ -890,10 +929,12 @@ def test_spike_patterns():
     spike_patterns = {  # some test spike patterns
         "1_largest": [[1, 0, 0, 0, 0, 0, 0, 0]],  # largest only
         "2_largest": [[1, 1, 0, 0, 0, 0, 0, 0]],  # 2 largest
-        "3_largest": [[1, 1, 1, 0, 0, 0, 0, 0]],  # 3largest
+        "3_largest": [[1, 1, 1, 0, 0, 0, 0, 0]],  # 3 largest
+        "4_largest": [[1, 1, 1, 1, 0, 0, 0, 0]],  # 3 largest
         "2nd_largest": [[0, 1, 0, 0, 0, 0, 0, 0]],  # second only
         "3rd_largest": [[0, 0, 1, 0, 0, 0, 0, 0]],  # 3rd only
         "4th_largest": [[0, 0, 0, 1, 0, 0, 0, 0]],  # 4th only
+        "5th_largest": [[0, 0, 0, 0, 1, 0, 0, 0]],  # 5th only
         "1+2+5": [[1, 1, 0, 0, 1, 0, 0, 0]],  # 2 largest and a smaller one
         "4+5": [[0, 0, 0, 1, 1, 0, 0, 0]],  # 4th and 5th  Should pass 0 largest
         "4+5+6": [[0, 0, 0, 1, 1, 1, 0, 0]],
@@ -905,10 +946,12 @@ def test_spike_patterns():
         ],  # to test the ones we are against...
         "not_2_largest": [[1, 1, 0, 0, 0, 0, 0, 0]],
         "not_3_largest": [[1, 1, 1, 0, 0, 0, 0, 0]],
+        "not_4_largest": [[1, 1, 1, 1, 0, 0, 0, 0]],
         "at_least": [[1, 0, 1, 0, 1, 0, 1, 0]],  # just some pattern
         "at_least1": [[1, 0, 1, 0, 1, 0, 1, 0]],
         "at_least2": [[1, 1, 0, 0, 1, 0, 1, 0]],
         "at_least3": [[1, 1, 1, 0, 0, 1, 0, 1]],
+        "at_least4": [[1, 1, 1, 1, 0, 0, 0, 1]],
     }
     # patterns are [bitmask(largest input in lowest/LSB position), logic, counts lack input, count have_input]
     ninputs = 8
@@ -926,144 +969,9 @@ def test_spike_patterns():
             pattern_results=pattern_results,
         )
 
-        # print("solo: ", solo, "\n")
-
     return
 
-    # if spike_pattern[0] == 0 and np.sum(spike_pattern) >= 1:
-    #     lack_largest += 1
-    # if np.sum(spike_pattern[0:2]) == 0 and np.sum(spike_pattern) >= 1:
-    #     lack_two_largest += 1
-    # if np.sum(spike_pattern[0:3]) == 0 and np.sum(spike_pattern) >= 1:
-    #     lack_three_largest += 1
 
-    # if np.sum(spike_pattern[0:1]) == 1 and np.sum(spike_pattern) == 1:
-    #     only_largest += 1
-    # if np.sum(spike_pattern[0:2]) == 2 and np.sum(spike_pattern) == 2:
-    #     only_two_largest += 1
-    # if np.sum(spike_pattern[0:3]) == 3 and np.sum(spike_pattern) == 3:
-    #     only_three_largest += 1
-    # print_patterns = False
-    # if sum(spike_pattern[0:5]) == 0:
-    #     if print_patterns:
-    #         cprint(
-    #         "magenta",
-    #         f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
-    #     )
-    #     filter_table1.append(spike_pattern)
-    # elif sum(spike_pattern[0:4]) == 0:
-    #     if print_patterns:
-    #         cprint(
-    #         "cyan", f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
-    #         )
-
-    #     filter_table2.append(spike_pattern)
-    # elif sum(spike_pattern[0:3]) == 0:
-    #     if print_patterns:
-    #         cprint(
-    #         "blue", f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
-    #     )
-    #     filter_table1.append(spike_pattern)
-    # elif sum(spike_pattern[0:2]) == 0:
-    #     if print_patterns:
-    #         cprint(
-    #         "green", f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}",
-    #     )
-    #     filter_table2.append(spike_pattern)
-    # if spike_pattern[2] == 1:
-    #         filter_table2.append(spike_pattern)
-    # # elif spike_pattern[0]== 0:
-    # #     cprint('yellow', f"{str(spike_pattern):s}, {int(np.sum(spike_pattern)):d}")
-    # # nfilt_spikes += 1
-    # # filttable.append(spike_pattern)
-    # else:
-    #     pass
-    #     # cprint("w", f"{str(spike_pattern):s}, {which_input[0]:d}")
-
-    # return patterns  # , filter_table1, filter_table2
-
-    # def print_pairwise(RCD, RCP, PAT):
-    #     print("\nPairwise matrix: \n", RCD.pairwise)
-    #     print(
-    #         "Total prespikes: \n", sum(pre_spike_counts), [int(p) for p in pre_spike_counts]
-    #     )
-    #     print("\nTotal post spikes: ", RCD.nspikes)
-    #     print("Windowd post spikes: ", RCD.npost_spikes)
-    #     print("\nPre solo drive: ", PAT.pre_solo_spikes)
-    #     print("\nFiltered Spikes: ", nfilt_spikes)
-    #     print(
-    #         f"Postspikes without the largest input active:      {lack_largest:5d} ({100.*lack_largest/RCD.nspikes:4.1f}%)"
-    #     )
-    #     print(
-    #         f"Postspikes with only the largest input active:    {only_largest:5d} ({100.*only_largest/RCD.nspikes:4.1f}%)"
-    #     )
-    #     print(
-    #         f"Postspikes without two largest inputs active:     {lack_two_largest:5d} ({100.*lack_two_largest/RCD.nspikes:4.1f}%)"
-    #     )
-    #     print(
-    #         f"Postspikes with only two largest inputs active:   {only_two_largest:5d} ({100.*only_two_largest/RCD.nspikes:4.1f}%)"
-    #     )
-    #     print(
-    #         f"Postspikes without three largest inputs active:   {lack_three_largest:5d} ({100.*lack_three_largest/RCD.nspikes:4.1f}%)"
-    #     )
-    #     print(
-    #         f"Postspikes with only three largest inputs active: {only_three_largest:5d} ({100.*only_three_largest/RCD.nspikes:4.1f}%)"
-    #     )
-    #     print(
-    #         f"Mean presynaptic rate: {np.mean([1./RCD.mean_pre_intervals[k] for k in range(len(RCD.mean_pre_intervals))]):f}"
-    #     )
-    #     print(f"Mean postsynaptic rate: {1./RCD.mean_post_intervals:f}")
-    #     print(f"RCP min/max time: {RCP.min_time:8.3f} {RCP.max_time:8.3f}")
-
-    # print('filttable: \n', filttable)
-    # filttable = np.array(filttable)
-    # filttable2 = np.array(filttable2)
-    # print("Counts: ", filttable.sum(axis=0))
-    # if filttable.shape[0] > 0:
-    #     print("\nFilt Spike Proportions: ", filttable.sum(axis=0) / nfilt_spikes)
-    #     fs1 = np.array(filttable)[:, 2:].sum(axis=0) / nfilt_spikes
-
-    # fsa = np.array(RCD.sites[2:]) / np.sum(RCD.sites[2:])
-    # print("Input Proportions: ", fsa)
-
-    # filttable2 = np.array(filttable2)
-    # # print('filttable 2 shape: ', filttable2.shape)
-    # if filttable2.shape[0] > 0:
-    #     print(
-    #         "\nFilt Spike Proportions on input #3: ",
-    #         filttable2.sum(axis=0) / nfilt2_spikes,
-    #     )
-    #     fs2 = np.array(filttable2)[:, 2:].sum(axis=0) / nfilt2_spikes
-
-    # if filttable.shape[0] > 0:
-    #     f=mpl.figure()
-    #     mpl.plot(fs1, fsa)
-    #     mpl.show()
-    # print('pre spike_count associated with a post spike: ', pre_spike_counts)
-    # plot the position of the prespikes for every trial as determined by the
-    # second trial loop above.
-    # f, ax = mpl.subplots(1,1)
-    # for i in range(len(self.allspikes)):
-    #     y = i*np.ones(len(self.allspikes[i].prespikes))
-    #     print(list(self.allspikes[i].prespikes))
-    #     print(y)
-    #     ax.plot(self.allspikes[i].prespikes, y)
-    # mpl.show()
-    # print(self.allspikes)
-
-    # print(np.unique(nperspike, return_counts=True))
-    # nperspike = [n for n in nperspike if n != 0]
-    # nperspike = scipy.stats.itemfreq(nperspike).T
-    # print('nperspike counts: ', nperspike)
-    # nperspike = np.array(np.unique(nperspike, return_counts=True))/nspikes
-    # properly fill out output
-    # xnspike = np.arange(RCP.ninputs)
-    # ynspike = np.zeros(RCP.ninputs)
-    # for j, i in enumerate(nperspike[0]):
-    #     # print(i, j, nperspike[1,j])
-    #     ynspike[i - 1] = nperspike[1, j]
-
-    # ynspike = np.cumsum(ynspike / nspikes)
     cprint("r", f"prespikecounts: {np.sum(pre_spike_counts[1:]):f}")
     if np.sum(pre_spike_counts[1:]) == 0:
         return RCP, RCD, allspikes
@@ -1153,6 +1061,9 @@ def spike_pattern_analysis(model_data, printflag=False):
         "4th_largest+others": PatternData(  # rth largest, exclude any with 1st, 2nd or 3rd largest
             name="4th_largest+others", mask=0x08, mask_exclude=0x07, logic="atleast"
         ),
+        "5th_largest+others": PatternData(  # rth largest, exclude any with 1st, 2nd or 3rd largest
+            name="5th_largest+others", mask=0x10, mask_exclude=0x0F, logic="atleast"
+        ),
         "1st+2nd+3rd+others": PatternData(
             name="1st+2nd+3rd+others", mask=0x07, logic="atleast"
         ),
@@ -1229,147 +1140,7 @@ def spike_pattern_analysis(model_data, printflag=False):
     if RCD.s_pair > 0.0:
         RCD.pairwise /= RCD.s_pair
 
-    # print(np.unique(nperspike, return_counts=True))
-    # nperspike = [n for n in nperspike if n != 0]
-    # nperspike = scipy.stats.itemfreq(nperspike).T
-    # print('nperspike counts: ', nperspike)
-    # nperspike = np.array(np.unique(nperspike, return_counts=True))/nspikes
-    # properly fill out output
-    # xnspike = np.arange(RCP.ninputs)
-    # ynspike = np.zeros(RCP.ninputs)
-    # for j, i in enumerate(nperspike[0]):
-    #     # print(i, j, nperspike[1,j])
-    #     ynspike[i - 1] = nperspike[1, j]
-
-    # ynspike = np.cumsum(ynspike / nspikes)
-
     return RCP, RCD, PAT
-
-
-# def pairwise_old(model_data):
-#     allspikes = []
-#     data = model_data.data
-#     AR = model_data.AR
-#     RCP = model_data.RCP
-#     RCD = model_data.RCD
-#     RCD.pairwise = np.zeros((RCP.ninputs, RCP.ninputs))
-#     RCD.participation = np.zeros(RCP.ninputs)
-#     pre_spike_counts = np.zeros(
-#         RCP.ninputs + 1
-#     )  # there could be 0, or up to RCP.ninputs pre spikes
-#     pre_solo_spikes = np.zeros(RCP.ninputs + 1)
-#     srate = (
-#         model_data.SI.dtIC * 1e-3
-#     )  # this needs to be adjusted by the date of the run, somewhere...
-#     # for runs prior to spring 2021, the 1e-3 is NOT needed.
-#     # for runs after that, the value is held in milliseconds, so needs to be
-#     # converted to seconds
-#     nperspike = []
-#     nfilt_spikes = 0
-#     nfilt2_spikes = 0
-#     filttable = []
-#     filttable2 = []
-#     RCD.nspikes = 0
-#     sellist = [True] * RCP.ninputs
-
-#     print(f"RCP.ninputs {RCP.ninputs:d}", "sites: ", RCD.sites)
-#     for trial in range(RCP.ntrials):  # accumulate across all trials
-#         # spiketimes is in msec, so si.dtIC should be in msec
-#         spikeindex = [int(t / (srate)) for t in data["Results"][trial]["spikeTimes"]]
-#         spks = AR.MC.time_base[spikeindex]  # get postsynaptic spikes for the trial
-#         allspikes = _spike_filter(data, spks)
-
-#     print("\nPairwise matrix: \n", RCD.pairwise)
-#     print(
-#         "Total prespikes: \n", sum(pre_spike_counts), [int(p) for p in pre_spike_counts]
-#     )
-#     print("\nTotal post spikes: ", RCD.nspikes)
-#     print("Windowd post spikes: ", RCD.npost_spikes)
-#     print("\nPre solo drive: ", pre_solo_spikes)
-#     print("\nFiltered Spikes: ", nfilt_spikes)
-#     print(
-#         f"Postspikes without the largest input active:      {lack_largest:5d} ({100.*lack_largest/RCD.nspikes:4.1f}%)"
-#     )
-#     print(
-#         f"Postspikes with only the largest input active:    {only_largest:5d} ({100.*only_largest/RCD.nspikes:4.1f}%)"
-#     )
-#     print(
-#         f"Postspikes without two largest inputs active:     {lack_two_largest:5d} ({100.*lack_two_largest/RCD.nspikes:4.1f}%)"
-#     )
-#     print(
-#         f"Postspikes with only two largest inputs active:   {only_two_largest:5d} ({100.*only_two_largest/RCD.nspikes:4.1f}%)"
-#     )
-#     print(
-#         f"Postspikes without three largest inputs active:   {lack_three_largest:5d} ({100.*lack_three_largest/RCD.nspikes:4.1f}%)"
-#     )
-#     print(
-#         f"Postspikes with only three largest inputs active: {only_three_largest:5d} ({100.*only_three_largest/RCD.nspikes:4.1f}%)"
-#     )
-#     print(
-#         f"Mean presynaptic rate: {np.mean([1./RCD.mean_pre_intervals[k] for k in range(len(RCD.mean_pre_intervals))]):f}"
-#     )
-#     print(f"Mean postsynaptic rate: {1./RCD.mean_post_intervals:f}")
-#     print(f"RCP min/max time: {RCP.min_time:8.3f} {RCP.max_time:8.3f}")
-
-#     # print('filttable: \n', filttable)
-#     filttable = np.array(filttable)
-#     filttable2 = np.array(filttable2)
-#     print("Counts: ", filttable.sum(axis=0))
-#     if filttable.shape[0] > 0:
-#         print("\nFilt Spike Proportions: ", filttable.sum(axis=0) / nfilt_spikes)
-#         fs1 = np.array(filttable)[:, 2:].sum(axis=0) / nfilt_spikes
-
-#     fsa = np.array(RCD.sites[2:]) / np.sum(RCD.sites[2:])
-#     print("Input Proportions: ", fsa)
-
-#     filttable2 = np.array(filttable2)
-#     # print('filttable 2 shape: ', filttable2.shape)
-#     if filttable2.shape[0] > 0:
-#         print(
-#             "\nFilt Spike Proportions on input #3: ",
-#             filttable2.sum(axis=0) / nfilt2_spikes,
-#         )
-#         fs2 = np.array(filttable2)[:, 2:].sum(axis=0) / nfilt2_spikes
-
-#     # if filttable.shape[0] > 0:
-#     #     f=mpl.figure()
-#     #     mpl.plot(fs1, fsa)
-#     #     mpl.show()
-#     # print('pre spike_count associated with a post spike: ', pre_spike_counts)
-#     # plot the position of the prespikes for every trial as determined by the
-#     # second trial loop above.
-#     # f, ax = mpl.subplots(1,1)
-#     # for i in range(len(self.allspikes)):
-#     #     y = i*np.ones(len(self.allspikes[i].prespikes))
-#     #     print(list(self.allspikes[i].prespikes))
-#     #     print(y)
-#     #     ax.plot(self.allspikes[i].prespikes, y)
-#     # mpl.show()
-#     # print(self.allspikes)
-#     npartipating = np.sum(RCD.participation)
-#     RCD.s_pair = np.sum(RCD.pairwise)
-#     if RCD.s_pair > 0.0:
-#         RCD.pairwise /= RCD.s_pair
-
-#     # print(np.unique(nperspike, return_counts=True))
-#     # nperspike = [n for n in nperspike if n != 0]
-#     # nperspike = scipy.stats.itemfreq(nperspike).T
-#     # print('nperspike counts: ', nperspike)
-#     # nperspike = np.array(np.unique(nperspike, return_counts=True))/nspikes
-#     # properly fill out output
-#     # xnspike = np.arange(RCP.ninputs)
-#     # ynspike = np.zeros(RCP.ninputs)
-#     # for j, i in enumerate(nperspike[0]):
-#     #     # print(i, j, nperspike[1,j])
-#     #     ynspike[i - 1] = nperspike[1, j]
-
-#     # ynspike = np.cumsum(ynspike / nspikes)
-#     cprint("r", f"prespikecounts: {np.sum(pre_spike_counts[1:]):f}")
-#     if np.sum(pre_spike_counts[1:]) == 0:
-#         return RCP, RCD, allspikes
-
-#     RCD.ynspike = np.cumsum(pre_spike_counts[1:]) / np.sum(pre_spike_counts[1:])
-#     return RCP, RCD, allspikes
 
 
 if __name__ == "__main__":
