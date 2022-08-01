@@ -187,7 +187,7 @@ def revcorr(gbc, filename, PD, protocol="runANPSTH", revcorrtype="RevcorrSPKS"):
     return RCP, RCD, PAT
 
 
-def get_pattern_data():
+def get_pattern_data(dataset:str="Spont"):
 
     where_is_data = Path("wheres_my_data.toml")
     if where_is_data.is_file():
@@ -196,11 +196,11 @@ def get_pattern_data():
         raise ValueError()
     basepath = datapaths["cellDataDirectory"]
     fig_data = FD.figure_revcorr
-    db = "Spont"
+    db = dataset
     #    group = {"First-in": [9, 11, 13, 17], "Coincidence": [2, 5, 6, 10, 18, 30]}
     group = {"First-in": [9, 11, 17, 18], "Coincidence": [2, 5, 6, 10, 13, 30]}
 
-    compares = pd.DataFrame(columns=["Cell", "PatternName", "Percent", "Group"])
+    compares = pd.DataFrame(columns=["Cell", "PatternName", "Percent", "#Spikes", "Group"])
     for gbc in grAList():
         BC = f"VCN_c{gbc:02d}"
         cprint("g", f"\nBushy cell: {BC:s}")
@@ -230,8 +230,9 @@ def get_pattern_data():
             pat = PAT.filttable[t]
             # pat.print()
             pct = 100.0 * pat.sumtrue / (pat.sumtrue + pat.sumfalse)
+            Nspikes = pat.sumtrue + pat.sumfalse
             df = pd.DataFrame(
-                [{"Cell": gbc, "PatternName": t, "Percent": pct, "Group": gname}]
+                [{"Cell": gbc, "PatternName": t, "Percent": pct, "#Spikes":Nspikes, "Group": gname}]
             )
             compares = pd.concat([compares, df], ignore_index=True)
     return compares
@@ -250,14 +251,14 @@ colors = [(0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
           (0.09019607843137255, 0.7450980392156863, 0.8117647058823529),
           ]
 
-def summarize_patterns(reanalyze=False):
+def Figure4_Supplemental2_Patterns(reanalyze=False):
     if reanalyze:
         compares = get_pattern_data()
         compares.to_pickle("compares.pkl")
 
     compares = pd.read_pickle("compares.pkl")
     # print(compares.head(10))
-    f, ax = mpl.subplots(4, 4)
+    f, ax = mpl.subplots(4, 5)
     f.set_size_inches(7, 7)
     ax = ax.ravel()
     pats = [
@@ -269,6 +270,7 @@ def summarize_patterns(reanalyze=False):
         "2nd_largest+others",
         "3rd_largest+others",
         "4th_largest+others",
+        "5th_largest+others",
         "1st+2nd_alone",
         "1st+2nd+others",
         "1st+2nd+3rd+others",
@@ -330,7 +332,7 @@ def summarize_patterns(reanalyze=False):
             for lh in swp.legend_.legendHandles:
                 lh.set_alpha(1)
                 lh._sizes = [10]
-        ax[i].set_title(pats[i], fontsize=9)
+        ax[i].set_title(pats[i].replace("_", " "), fontsize=9)
         ax[i].set_ylim(0, 100)
     mpl.tight_layout()
 
@@ -341,7 +343,7 @@ def summarize_patterns(reanalyze=False):
     mpl.show()
 
 
-def Figure4F_pattern_plot(axin=None):
+def Figure4F_pattern_plot(axin=None, dataset="Spont"):
     """Plot the fraction of inputs for specific subsets of
     input patterns for cells 5, 30, 9 and 17
 
@@ -351,12 +353,13 @@ def Figure4F_pattern_plot(axin=None):
     ValueError
         _description_
     """
-    analyzed = Path("compares.pkl")
+    compare_file = f"compares_{dataset:s}.pkl"
+    analyzed = Path(compare_file)
     if not analyzed.is_file():
-        compares = get_pattern_data()
-        compares.to_pickle("compares.pkl")
+        compares = get_pattern_data(dataset)
+        compares.to_pickle(compare_file)
 
-    compares = pd.read_pickle("compares.pkl")
+    compares = pd.read_pickle(compare_file)
     print("compares:\n", compares.head(10))
     if axin is None:
         f, ax = mpl.subplots(1, 1)
@@ -372,6 +375,18 @@ def Figure4F_pattern_plot(axin=None):
         "3rd_largest_alone",
         "3rd_largest+others",
         "4th_largest+others",
+        "5th_largest+others",
+    ]
+
+    cumulative_patterns = [  # confirm that some of these sum up to < 1.0
+#        "1st_largest_alone",
+        "1st_largest+others",
+#        "2nd_largest_alone",
+        "2nd_largest+others",
+#        "3rd_largest_alone",
+        "3rd_largest+others",
+        "4th_largest+others",
+        "5th_largest+others",
     ]
     ax.tick_params(axis="x", direction="out")
     ax.tick_params(axis="y", direction="out")
@@ -401,6 +416,19 @@ def Figure4F_pattern_plot(axin=None):
         kind="swarm",
         ax=ax,
     )
+
+    c_cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+    cumulative = {cell: [] for cell in c_cells}
+    df = compares[compares["PatternName"].isin(cumulative_patterns) & compares["Cell"].isin(c_cells)]
+    # print(df['Percent'].values)
+    print(f"\n{'BC##':<6s} {'1st':^6s}  {'2nd':^6s}  {'3rd':^6s}  {'4th':^6s}  {'5th':^6s}  {'sum':^6s}")
+    for c in c_cells:
+        for cpat in cumulative_patterns:
+            cumulative[c].append(float(df.loc[(df['Cell'] == c) & (df['PatternName'] == cpat)]['Percent'].values[0]))
+        cout = " ".join([f" {x:6.3f}" for x in cumulative[c]])
+        print(f"BC{c:02d}: {str(cout):s}  {np.sum(cumulative[c]):6.3f}")
+        cumulative[c] = np.array(cumulative[c])/np.sum(cumulative[c])
+
     ax.set_xlabel("Input Patterns") # 
     # ax.text(x=0.5, y=1.0, s="Input Patterns", 
     #     fontdict={"fontsize": 9, "fontweight": "normal", "ha": "center"},
@@ -420,7 +448,9 @@ def Figure4F_pattern_plot(axin=None):
               "2nd_largest+others": "2nd+_other",
               "3rd_largest_alone": "3rd",
               "3rd_largest+others": "3rd+_other",
-              "4th_largest+others": "4th+_other"}
+              "4th_largest+others": "4th+_other",
+              "5th_largest+others": "5th+_other",
+    }
     tl = []
     for l in ax.get_xticklabels():
         tickl = str(l.get_text())
@@ -435,5 +465,5 @@ def Figure4F_pattern_plot(axin=None):
 
 
 if __name__ == "__main__":
-    summarize_patterns()
-    # Figure4F_pattern_plot()
+   # Figure4_Supplemental2_Patterns(reanalyze=True)  # supplemental plot for Figure 4
+    Figure4F_pattern_plot()
