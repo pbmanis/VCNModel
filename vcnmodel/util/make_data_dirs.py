@@ -335,7 +335,7 @@ class BuildDataSet():
     def do_copy(self, src, dest):
         if self.testmode:
             cpc = 'm'
-            if not dest.is_file() or (src.stat().st_size != dest.stat().st_size) or (src.stat.st_mtime > dest.stat.st_mtime):
+            if not dest.is_file() or (src.stat().st_size != dest.stat().st_size) or (src.stat().st_mtime > dest.stat().st_mtime):
                 cprint(cpc, f"        Would be Copying:")
                 cprint(cpc, f"           from: {str(src.parent):s}")
                 cprint(cpc, f"               + {str(src.name):s}" )           
@@ -350,7 +350,7 @@ class BuildDataSet():
             # first check that file does not exist and if it does,
             # check that the dest date is more recent than dest, otherwise
 
-            if not dest.is_file() or (src.stat().st_size != dest.stat().st_size) or (src.stat.st_mtime > dest.stat.st_mtime):
+            if not dest.is_file() or (src.stat().st_size != dest.stat().st_size) or (src.stat().st_mtime > dest.stat().st_mtime):
                 shutil.copy2(src, dest)
                 cprint(cpc, f"        Copying:")
                 cprint(cpc, f"           from: {str(src.parent):s}")
