@@ -450,7 +450,8 @@ class VS_Plots:
 
     def plot_VS_summary(self, cell, axin=None, legendflag=True, legend_type="inputs",
                         barwidth=240, show_cell=True,
-                        mode:str="line"):
+                        mode:str="line", xscale:str="log", yscale:str="linear",
+                        figure8_xscale=False):
         """Summarize the VS for one cell for all conditions/frequencies.
         This is similar to the plotnine routine above, but just
         uses matplotlib to acheive the same plot
@@ -468,6 +469,17 @@ class VS_Plots:
         legendtypes : str
             Inputs: use the input experiment description
             Pruning:  use the pruning experiment description
+        barwidth: int (default 240)
+            width of ANF VS bar if used
+        mode: str (default="line")
+            whether to plot data with a line or with points 
+        xscale: str (default="log")
+            plot frequency axis as log or linear scale
+        yscale: str (default="log")
+            plot VS axis as log or linear scale
+        figure8_xscale: bool (default: False)
+            put fewer numbers on x ticks (replace 200 with a minor tick)
+
         """
         label_font = {"fontsize": 8, "fontweight": "normal"}
         title_font = {"fontsize": 9, "fontweight": "normal"}
@@ -509,21 +521,32 @@ class VS_Plots:
                 ax.errorbar(x, y, yerr=ye, marker='o', mfc='none', ms=1, mec='none', mew=0, color='grey')
                 ax.scatter(x, y, marker='o', c=mfc, s=12)
                 ax.plot(x_an, y_an, '-', color="firebrick", lw=1.5, zorder=-100)  # in back of data
+                ax.set_clip_on(False)
         elif mode == "line":
             for icfg, cfg in enumerate(sorted(set(dfl['Configuration']))):
                 run = dfl[dfl['Configuration'] == cfg]
-                x = np.arange(8) # run['frequency'].values
-                y = run['VS_mean'].values
+                if xscale == 'linear':
+                    x = np.arange(8) # run['frequency'].values
+                else:
+                    x = np.log10([50, 100, 200, 300, 400, 500, 750, 1000]) # np.arange(8) # run['frequency'].values
+                if yscale == 'linear':
+                    y = run['VS_mean'].values
+                    y_an = run['AN_VS'].values
+                else:
+                    y = np.log10(run['VS_mean'].values)
+                    y_an = np.log10(run['AN_VS'].values)
+
                 ye = run['VS_SD'].values
-                x_an = np.arange(8)
-                y_an = run['AN_VS'].values
+                x_an = x  # np.arange(8)
                 mfc = cfg_color[cfg]
-                ax.errorbar(x, y, yerr=ye, marker='o', mfc=mfc, ms=4, mec='none', mew=0, color='grey', label=cfg)
+                ax.get_xaxis().set_clip_on(False)
+                ax.errorbar(x, y, yerr=ye, marker='o', mfc=mfc, ms=4, mec='none', mew=0, color='grey', label=cfg, clip_on=False)
                 if icfg == 0:
                     label = "ANF"
                 else:
                     label = None
                 ax.plot(x_an, y_an, '-', color="firebrick", lw=0.5, zorder=-100, label=label)  # in back of data
+
         else:
             raise ValueError("Mode must be one of 'V' or 'line' for VS plot")
             # print(x_an, y_an)
@@ -531,25 +554,50 @@ class VS_Plots:
         if mode == "V":
             freq_list = range(len(freqs))
             xticks_str = [f"{int(f):d}" for f in freqs]
-            minor_list = []
+            xminor_list = []
         else:
-            freq_list = np.arange(8) # [0, 50, 250, 500,  750, 1000]
-            xticks_str=['50', '100', '200', '300', '400', '500', '750', '1000']
-            minor_list = [] # [100, 200, 400, 500]
+            print(xscale, figure8_xscale)
+            if xscale == 'linear':
+                freq_list = np.arange(8) # [0, 50, 250, 500,  750, 1000]
+                xtick_list_str=['50', '100', '200', '300', '400', '500', '750', '1000']
+                xtick_minor_list = [] # [100, 200, 400, 500]
+                ax.set_xlim(0, 7)
+            elif xscale == 'log':
+                if figure8_xscale:
+                    freq_list = np.log10([50, 100,  300,  500,  1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
+                    xtick_list_str=['50', '100', '300',  '500',  '1000']
+                    xtick_minor_list = np.log10([200, 400, 750]) # [100, 200, 400, 500]
+                else:
+                    freq_list = np.log10([50, 100, 200, 300,  500,  1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
+                    xtick_list_str=['50', '100', '200', '300',  '500',  '1000']
+                    xtick_minor_list = np.log10([400, 750]) # [100, 200, 400, 500]
+
+                ax.set_xlim(np.log10(50), np.log10(1000))
+            if yscale == 'linear':
+                ytick_list = [0, 0.2, 0.4, 0.6, 0.8, 1.0]
+                ytick_list_str= ['0.1', '0.2', '0.4', '0.6', '0.8', '1.0'] 
+                y_tick_minor=[0.1, 0.3, 0.5, 0.7, 0.9]
+                ax.set_ylim(0, 1)
+            elif yscale == 'log':
+                ytick_list = np.log10(np.arange(0.1, 1.01, 0.1)) # [0, 0.2, 0.4, 0.6, 0.8, 1.0],
+                ytick_list_str= [f"{x:.1f}" for x in np.arange(0.1, 1.01, 0.1)] # ['0.0', '0.2', '0.4', '0.6', '0.8', '1.0'], 
+                y_tick_minor=[] # 0.2, 0.3, 0.5, 0.7, 0.9]
+                ax.set_ylim(-1, 0)
+
         configs = sorted(set(dfl['Configuration']))
 
         PH.set_axes_ticks(
             ax=ax,
             xticks=freq_list,
-            xticks_str=xticks_str,
+            xticks_str=xtick_list_str,
             xticks_pad=None,
-            x_minor = minor_list,
+            x_minor = xtick_minor_list,
             major_length=3.0,
             minor_length=1.5,
-            yticks = [0, 0.2, 0.4, 0.6, 0.8, 1.0],
-            yticks_str= ['0.0', '0.2', '0.4', '0.6', '0.8', '1.0'], 
+            yticks = ytick_list,
+            yticks_str= ytick_list_str, 
             yticks_pad=None,
-            y_minor=[0.1, 0.3, 0.5, 0.7, 0.9],
+            y_minor=y_tick_minor,
             y_rotation=0., 
             fontsize=8,
         )
@@ -595,7 +643,7 @@ class VS_Plots:
         #         linewidth=2,
         #         alpha=0.3,
         #     )
-        ax.set_ylim(0, 1)
+
         xl = ax.get_xticklabels()  # do this before niceplot...
         xl = ax.get_xticklabels()
         newxl = [f"{int(float(x.get_text())):d}" for x in xl if x.get_text() != ""]
@@ -711,7 +759,7 @@ class VS_Plots:
             if i == 0:
                 legend = True
             self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
-                barwidth=180)
+                barwidth=180, figure8_xscale=True)
 
         if ax is not None:
             return
@@ -722,7 +770,7 @@ class VS_Plots:
         fig.filename = set_figure_path(
             fignum=8, filedescriptor="BC09_Uninnervated_V1"
         )
-        title = "SBEM Project Supplemental Figure 7 Modeling : Vector Strength Summary"
+        title = "SBEM Project Supplemental Figure 8 Modeling : Vector Strength Summary"
         fig.title["title"] = title
         mpl.show()
         mpl.savefig(
@@ -772,10 +820,10 @@ class VS_Plots:
                 #     continue
                 run = dfl[dfl['Configuration'] == cfg]
                 x = np.log10([50, 100, 200, 300, 400, 500, 750, 1000]) # np.arange(8) # run['frequency'].values
-                y = np.log10(run['VS_mean'].values)
+                y = run['VS_mean'].values
                 ye = run['VS_SD'].values
                 x_an = x # np.arange(8)
-                y_an = np.log10(run['AN_VS'].values)
+                y_an = run['AN_VS'].values
                 ax.errorbar(x, y, yerr=ye, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc, label=f"BC{cell:02d}")
                 if icell == 0:
                     label = "ANF"
@@ -797,15 +845,15 @@ class VS_Plots:
                 x_minor = minor_list,
                 major_length=3.0,
                 minor_length=1.5,
-                yticks = np.log10(np.arange(0.1, 1.01, 0.1)), # [0, 0.2, 0.4, 0.6, 0.8, 1.0],
-                yticks_str= [f"{x:.1f}" for x in np.arange(0.1, 1.01, 0.1)], # ['0.0', '0.2', '0.4', '0.6', '0.8', '1.0'], 
+                yticks =  [0, 0.2, 0.4, 0.6, 0.8, 1.0],
+                yticks_str=  ['0.0', '0.2', '0.4', '0.6', '0.8', '1.0'], 
                 yticks_pad=None,
                 y_minor=[0.1, 0.3, 0.5, 0.7, 0.9],
                 y_rotation=0., 
                 fontsize=8,
             )
 
-            ax.set_ylim(-1, 0)
+            ax.set_ylim(0, 1)
             xl = ax.get_xticklabels()  # do this before niceplot...
             xl = ax.get_xticklabels()
             newxl = [f"{int(float(x.get_text())):d}" for x in xl if x.get_text() != ""]
