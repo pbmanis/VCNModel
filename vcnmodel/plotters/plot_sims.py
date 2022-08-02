@@ -2091,7 +2091,6 @@ class PlotSims:
                 SDRatio,
                 nsites,
             ]
-        u = df.head(n=nfiles)
         self.textappend(df.to_csv(sep="\t"))
         P.figure_handle.show()
 

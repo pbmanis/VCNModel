@@ -411,7 +411,7 @@ def revcorr(
     RCD.pre_st = [[]] * RCP.ninputs
     for isite in range(RCP.ninputs):
         # print(isite, len(pre_intervals[isite]))
-        print(pre_intervals[isite])
+        # print(pre_intervals[isite])
         RCD.mean_pre_intervals[isite] = np.mean(pre_intervals[isite])
         RCD.pre_st[isite] = pre_intervals[isite]
     RCD.mean_post_intervals = np.mean(post_intervals)

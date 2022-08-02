@@ -33,6 +33,7 @@ import vcnmodel.cell_config as cell_config
 import vcnmodel.plotters.figure_data as FD
 import vcnmodel.plotters.plot_sims as PS
 import vcnmodel.util.readmodel as readmodel
+from matplotlib.lines import Line2D
 from vcnmodel.util.set_figure_path import set_figure_path
 from pylibrary.tools import cprint as CP
 from pylibrary.plotting import plothelpers as PH
@@ -251,12 +252,14 @@ colors = [(0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
           (0.09019607843137255, 0.7450980392156863, 0.8117647058823529),
           ]
 
-def Figure4_Supplemental2_Patterns(reanalyze=False):
+def Figure4_Supplemental2_Patterns(reanalyze=False, dataset:str="Spont"):
+    assert dataset in ["Spont", "30dB"]
+    compare_file = f"pattern_compares_{dataset:s}.pkl"
     if reanalyze:
-        compares = get_pattern_data()
-        compares.to_pickle("compares.pkl")
+        compares = get_pattern_data(dataset=dataset)
+        compares.to_pickle(compare_file)
 
-    compares = pd.read_pickle("compares.pkl")
+    compares = pd.read_pickle(compare_file)
     # print(compares.head(10))
     f, ax = mpl.subplots(4, 5)
     f.set_size_inches(7, 7)
@@ -343,9 +346,23 @@ def Figure4_Supplemental2_Patterns(reanalyze=False):
     mpl.show()
 
 
-def Figure4F_pattern_plot(axin=None, dataset="Spont"):
+
+def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
     """Plot the fraction of inputs for specific subsets of
     input patterns for cells 5, 30, 9 and 17
+
+    Parameters
+    ----------
+    axin : matplotlib axes instance (default: None)
+        If none, make a stand-alone plot
+        else, place plot into the specified axes object.
+    
+    dataset: Which dataset to compute from (default: "Spont")
+
+    mode : which plotting mode to use. (default: mmcd)
+        Plot either multiple sets of patterns ("multi"), or plot
+        just the ones that include a specific input as the 
+        largest ("mmcd" mode)
 
 
     Raises
@@ -353,94 +370,150 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont"):
     ValueError
         _description_
     """
-    compare_file = f"compares_{dataset:s}.pkl"
+    assert mode in ['mmcd', 'multi']
+    assert dataset in ["Spont", "15dB", "30dB"]
+    compare_file = f"pattern_compares_{dataset:s}.pkl"
     analyzed = Path(compare_file)
     if not analyzed.is_file():
         compares = get_pattern_data(dataset)
         compares.to_pickle(compare_file)
 
     compares = pd.read_pickle(compare_file)
-    print("compares:\n", compares.head(10))
+    print("pattern comparisions:\n", compares.head(10))
     if axin is None:
         f, ax = mpl.subplots(1, 1)
         f.set_size_inches(5, 5)
     else:
         ax = axin
     
-    pats = [
-        "1st_largest_alone",
-        "1st_largest+others",
-        "2nd_largest_alone",
-        "2nd_largest+others",
-        "3rd_largest_alone",
-        "3rd_largest+others",
-        "4th_largest+others",
-        "5th_largest+others",
-    ]
+    if mode == 'multi': # this was the mode for the early paper development
+        pats = [
+            "1st_largest_alone",
+            "1st_largest+others",
+            "2nd_largest_alone",
+            "2nd_largest+others",
+            "3rd_largest_alone",
+            "3rd_largest+others",
+            "4th_largest+others",
+            "5th_largest+others",
+        ]
 
-    cumulative_patterns = [  # confirm that some of these sum up to < 1.0
-#        "1st_largest_alone",
-        "1st_largest+others",
-#        "2nd_largest_alone",
-        "2nd_largest+others",
-#        "3rd_largest_alone",
-        "3rd_largest+others",
-        "4th_largest+others",
-        "5th_largest+others",
-    ]
-    ax.tick_params(axis="x", direction="out")
-    ax.tick_params(axis="y", direction="out")
-    # print(list(ax.spines.keys()))
-    # print(dir(ax.spines['left']))
-    # ax.spines['left'].set_position(('outward', 0.02))
-    # ax.spines['bottom'].set_position(('outward', 0.02))
-    cells = [5, 30, 9, 17]
-    # print(compares.values)
-    df = compares[compares["PatternName"].isin(pats) & compares["Cell"].isin(cells)]
-    # remap colors for the selected cells
-    subset_palette = [colors[1], colors[3], colors[7], colors[9]]
-    sns.set_palette(subset_palette)
-    sns.pointplot(
-        x="PatternName",
-        y="Percent",
-        hue="Cell",
-        style="Group",
-        data=df,
-        markers=[
-            "o",
-            "o",
-            "o",
-            "o",
-        ],
-        scale=0.75,
-        kind="swarm",
-        ax=ax,
-    )
+    elif mode == 'mmcd':
+        pats = [  # plot for just the largest
+    #        "1st_largest_alone",
+            "1st_largest+others",
+    #        "2nd_largest_alone",
+            "2nd_largest+others",
+    #        "3rd_largest_alone",
+            "3rd_largest+others",
+            "4th_largest+others",
+            "5th_largest+others",
+        ]
 
-    c_cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
-    cumulative = {cell: [] for cell in c_cells}
-    df = compares[compares["PatternName"].isin(cumulative_patterns) & compares["Cell"].isin(c_cells)]
-    # print(df['Percent'].values)
-    print(f"\n{'BC##':<6s} {'1st':^6s}  {'2nd':^6s}  {'3rd':^6s}  {'4th':^6s}  {'5th':^6s}  {'sum':^6s}")
-    for c in c_cells:
-        for cpat in cumulative_patterns:
-            cumulative[c].append(float(df.loc[(df['Cell'] == c) & (df['PatternName'] == cpat)]['Percent'].values[0]))
-        cout = " ".join([f" {x:6.3f}" for x in cumulative[c]])
-        print(f"BC{c:02d}: {str(cout):s}  {np.sum(cumulative[c]):6.3f}")
-        cumulative[c] = np.array(cumulative[c])/np.sum(cumulative[c])
+    if mode == "multi":
+        cells = [5, 30, 9, 17]
+        # print(compares.values)
+        df = compares[compares["PatternName"].isin(pats) & compares["Cell"].isin(cells)]
+
+        # remap colors for the selected cells
+        subset_palette = [colors[1], colors[3], colors[7], colors[9]]
+        sns.set_palette(subset_palette)
+        sns.pointplot(
+            x="PatternName",
+            y="Percent",
+            hue="Cell",
+            style="Group",
+            data=df,
+            markers=[
+                "o",
+                "o",
+                "o",
+                "o",
+            ],
+            scale=0.75,
+            kind="swarm",
+            ax=ax,
+        )
+    
+    elif mode == "mmcd":
+        c_cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+        i_cells = range(len(c_cells))
+        cumulative = {cell: [] for cell in c_cells}
+        df = compares[compares["PatternName"].isin(pats) & compares["Cell"].isin(c_cells)].copy()
+        # mask = df["Group"] == "Coincidence"
+        # df["marker"] = None
+        df.loc[:, "marker"] = df.apply(lambda row: "o" if row.Group == "Coincidence" else "s", axis=1)
+        df.loc[:, "Input"] = df.apply(lambda row: int(row.PatternName[0]), axis=1)
+        # function for the lambda in apply:
+        def get_ASA(cell, input, scale=1.0):
+            SC, syninfo = get_synaptic_info(cell)
+            return syninfo[1][input-1][0]/scale
+        
+        df.loc[:, "ASA"] = df.apply(lambda row: get_ASA(row.Cell, row.Input) , axis=1)
+        maxASA = np.max(df["ASA"].values)
+        df.loc[:, "ScaledASA"] = df.apply(lambda row: get_ASA(row.Cell, row.Input, scale=maxASA), axis=1)
+        def get_pos(input, group):
+            if group == "Coincidence":
+                pos = -0.15
+            else:
+                pos = 0.15
+            return(input+pos)
+        
+        df.loc[:, "pn"] = df.apply(lambda row: get_pos(row.Input, row.Group), axis=1)
+        print(f"\n{'BC##':<6s} {'1st':^6s}  {'2nd':^6s}  {'3rd':^6s}  {'4th':^6s}  {'5th':^6s}  {'sum':^6s}")
+        marker_list = []
+        print(df.head(30))
+        for ic, c in enumerate(c_cells):
+            for cpat in pats:
+                cumulative[c].append(float(df.loc[(df['Cell'] == c) & (df['PatternName'] == cpat)]['Percent'].values[0]))
+            cout = " ".join([f" {x:6.3f}" for x in cumulative[c]])
+            print(f"BC{c:02d}: {str(cout):s}  {np.sum(cumulative[c]):6.3f}")
+            cumulative[c] = np.array(cumulative[c])/np.sum(cumulative[c])
+        sns.set_palette(colors)
+
+        fg = sns.scatterplot(x="pn", 
+            y="Percent", hue="Cell", size="ASA",
+            sizes=(50, 280), alpha=0.8, palette=colors,
+            style="Group",
+            markers={"Coincidence": 'o', "First-in": 'h'},
+            x_jitter=True,
+            data=df,ax=ax,
+            clip_on = False)
+
+    # custom legend
+    custom_legend = []
+    l = Line2D([0], [0], label=f"Cell", color='w')
+    custom_legend.append(l)
+    for i, cell in enumerate(c_cells):
+        l = Line2D([0], [0], marker=df[df["Cell"]==cell]["marker"].values[0], 
+            color=colors[i], markerfacecolor=colors[i], markersize=6, label=f"BC{cell:02d}")
+        custom_legend.append(l)
+    l = Line2D([0], [0], label = "\nASA (um2)", color='w')
+    custom_legend.append(l)
+    for d in [50, 100, 200, 250]:
+        l = Line2D([0], [0], marker='o', color="grey", markersize=np.sqrt(np.array(d)), label=f"{d:>3d}")
+        custom_legend.append(l)
+    l = Line2D([0], [0], label = "\nGroup", color='w')
+    custom_legend.append(l)
+    l = Line2D([0], [0], marker='o', color="grey", markersize=6, label=f"Coincidence")
+    custom_legend.append(l)
+    l = Line2D([0], [0], marker='h', color="grey", markersize=6, label=f"Mixed-Mode")
+    custom_legend.append(l)
+
+    ax.legend(handles=custom_legend, handlelength=1, 
+            loc="upper right", bbox_to_anchor=(0.96, 1.0),
+            fontsize=7, labelspacing=0.35)
+        
+    
+    mpl.setp(ax.get_legend().get_texts(), fontsize='9')
 
     ax.set_xlabel("Input Patterns") # 
-    # ax.text(x=0.5, y=1.0, s="Input Patterns", 
-    #     fontdict={"fontsize": 9, "fontweight": "normal", "ha": "center"},
-    #     transform=ax.transAxes)
     ax.set_ylabel("% of spikes evoked by input pattern")
     ax.set_clip_on(False)
-    # PH.nice_plot(ax, position=(-0.02), direction="outward")
-
     ax.set_ylim(0, 100)
-    ax.tick_params('both', which='major', length=3, pad=1.5)
-    ax.tick_params('both', which='minor', length=1.5)
-    ax.legend().remove()
+
+    if axin is not None:
+        ax.legend().remove()
     # remap the database names to a more user-friendly name
     namemap = {"1st_largest_alone": "1st",
               "1st_largest+others": "1st+_other",
@@ -452,18 +525,20 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont"):
               "5th_largest+others": "5th+_other",
     }
     tl = []
-    for l in ax.get_xticklabels():
-        tickl = str(l.get_text())
-        if tickl in list(namemap.keys()):
-            tickl = namemap[tickl]
-        t = tickl.replace("_", "\n")
+    for i, name in enumerate(namemap):
+        if i not in [1, 3, 5, 6, 7]:
+            continue
+        t = name.replace("_", "\n")
         tl.append(t)
-    ax.set_xticklabels(tl, rotation=0, fontdict={"fontsize": 6.5, "fontweight": "normal"})
+    PH.set_axes_ticks(ax=ax, xticks=[1,2,3,4,5], xticks_str=tl, yticks=[0, 25, 50, 75, 100],
+    yticks_str = ['0', '25', '50', '75', '100'], fontsize=8)
+        # ax.set_xticklabels(tl, rotation=0, fontdict={"fontsize": 6.5, "fontweight": "normal"})
+    PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)
     if axin is None:
         mpl.tight_layout()
         mpl.show()
 
 
 if __name__ == "__main__":
-   # Figure4_Supplemental2_Patterns(reanalyze=True)  # supplemental plot for Figure 4
-    Figure4F_pattern_plot()
+    # Figure4_Supplemental2_Patterns(reanalyze=True, dataset="30dB")  # supplemental plot for Figure 4
+    Figure4F_pattern_plot(dataset="30dB")
