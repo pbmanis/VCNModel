@@ -1631,8 +1631,8 @@ class Figures(object):
             plot_single_input(P.axdict["H"], legend=False)
 
             # input pattern plot
-            PATSUM.Figure4F_pattern_plot(axin=P.axdict["E"])
-
+            # PATSUM.Figure4F_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode="multi")
+            PATSUM.Figure4F_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode='mmcd')  
             # participation
             ds = self._load_rcdata("Spont")
             drc = self._load_rcdata(f"{participation_dB:2d}dB")
@@ -2433,10 +2433,10 @@ class Figures(object):
                 # right side, summary plots
                 ("O1", {"pos": [col3, xw, yposr[2], yhtr], "labelpos": [-0.1, 1.05]}),
                 ("O2", {"pos": [col4, xw, yposr[2], yhtr], "labelpos": [-0.1, 1.05]}),
-                ("P1", {"pos": [col3, xw, yposr[1], yhtr], "labelpos": [-0.1, 1.05]}),
-                ("P2", {"pos": [col4, xw, yposr[1], yhtr], "labelpos": [-0.1, 1.05]}),
-                ("P3", {"pos": [col3, xw, yposr[0], yhtr], "labelpos": [-0.1, 1.05]}),
-                ("P4", {"pos": [col4, xw, yposr[0], yhtr], "labelpos": [-0.1, 1.05]}),
+                ("O3", {"pos": [col3, xw, yposr[1], yhtr], "labelpos": [-0.1, 1.05]}),
+                ("O4", {"pos": [col4, xw, yposr[1], yhtr], "labelpos": [-0.1, 1.05]}),
+                ("P1", {"pos": [col3, xw, yposr[0], yhtr], "labelpos": [-0.1, 1.05]}),
+                ("P2", {"pos": [col4, xw, yposr[0], yhtr], "labelpos": [-0.1, 1.05]}),
             ]
         )  # dict elements are [left, width, bottom, height] for the axes in the plot.
 
@@ -2553,15 +2553,15 @@ class Figures(object):
 
         """
         VSP15 = SAM_VS_vplots.VS_Plots(dBSPL=15)
-        VSP15.plot_VS_Data(axin=P.axdict["O1"])
+        VSP15.plot_VS_Data(axin=P.axdict["P1"])
         VSP30 = SAM_VS_vplots.VS_Plots(dBSPL=30)
-        VSP30.plot_VS_Data(axin=P.axdict["O2"], legendflag=False)
+        VSP30.plot_VS_Data(axin=P.axdict["P2"], legendflag=False)
 
         VSP = SAM_VS_vplots.VS_Plots(dBSPL=15)
-        VSP.plot_VS_summary(2, axin=P.axdict["P1"], legendflag=False)
-        VSP.plot_VS_summary(30, axin=P.axdict["P2"], legendflag=False)
-        VSP.plot_VS_summary(9, axin=P.axdict["P3"], legendflag=False)
-        VSP.plot_VS_summary(17, axin=P.axdict["P4"], legendflag=False)
+        VSP.plot_VS_summary(2, axin=P.axdict["O1"], legendflag=False)
+        VSP.plot_VS_summary(30, axin=P.axdict["O2"], legendflag=False)
+        VSP.plot_VS_summary(9, axin=P.axdict["O3"], legendflag=False)
+        VSP.plot_VS_summary(17, axin=P.axdict["O4"], legendflag=False)
 
 
         fig = FigInfo()

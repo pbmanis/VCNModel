@@ -28,6 +28,7 @@ import matplotlib.pyplot as mpl
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from sklearn import discriminant_analysis
 import toml
 import vcnmodel.cell_config as cell_config
 import vcnmodel.plotters.figure_data as FD
@@ -383,8 +384,10 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
     if axin is None:
         f, ax = mpl.subplots(1, 1)
         f.set_size_inches(5, 5)
+        asa_scale = 1.0
     else:
         ax = axin
+        asa_scale = 0.6
     
     if mode == 'multi': # this was the mode for the early paper development
         pats = [
@@ -442,7 +445,7 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
         df = compares[compares["PatternName"].isin(pats) & compares["Cell"].isin(c_cells)].copy()
         # mask = df["Group"] == "Coincidence"
         # df["marker"] = None
-        df.loc[:, "marker"] = df.apply(lambda row: "o" if row.Group == "Coincidence" else "s", axis=1)
+        df.loc[:, "marker"] = df.apply(lambda row: "o" if row.Group == "Coincidence" else "h", axis=1)
         df.loc[:, "Input"] = df.apply(lambda row: int(row.PatternName[0]), axis=1)
         # function for the lambda in apply:
         def get_ASA(cell, input, scale=1.0):
@@ -450,7 +453,7 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
             return syninfo[1][input-1][0]/scale
         
         df.loc[:, "ASA"] = df.apply(lambda row: get_ASA(row.Cell, row.Input) , axis=1)
-        maxASA = np.max(df["ASA"].values)
+        maxASA = np.max(df["ASA"].values)*asa_scale
         df.loc[:, "ScaledASA"] = df.apply(lambda row: get_ASA(row.Cell, row.Input, scale=maxASA), axis=1)
         def get_pos(input, group):
             if group == "Coincidence":
@@ -470,10 +473,10 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
             print(f"BC{c:02d}: {str(cout):s}  {np.sum(cumulative[c]):6.3f}")
             cumulative[c] = np.array(cumulative[c])/np.sum(cumulative[c])
         sns.set_palette(colors)
-
+        asa_sizes = tuple(np.array([50, 200])*asa_scale)
         fg = sns.scatterplot(x="pn", 
             y="Percent", hue="Cell", size="ASA",
-            sizes=(50, 280), alpha=0.8, palette=colors,
+            sizes=asa_sizes, alpha=0.8, palette=colors,
             style="Group",
             markers={"Coincidence": 'o', "First-in": 'h'},
             x_jitter=True,
@@ -482,30 +485,47 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
 
     # custom legend
     custom_legend = []
-    l = Line2D([0], [0], label=f"Cell", color='w')
-    custom_legend.append(l)
-    for i, cell in enumerate(c_cells):
-        l = Line2D([0], [0], marker=df[df["Cell"]==cell]["marker"].values[0], 
-            color=colors[i], markerfacecolor=colors[i], markersize=6, label=f"BC{cell:02d}")
+    # l = Line2D([0], [0], label=f"Cell\n  CD     MM", color='w')
+    # custom_legend.append(l)
+    legorder = [0, 1, 2, 4, 6, 9, 3, 5, 7, 8, None]
+    for i in range(11):
+        legn = legorder[i]
+        if legn is None:
+            l = Line2D([], [], linewidth=0, label="")
+            custom_legend.append(l)
+        else:
+            cell = c_cells[legn]
+            l = Line2D([], [], marker=df[df["Cell"]==cell]["marker"].values[0], 
+                color=colors[legn], markerfacecolor=colors[legn], linewidth = 0, markersize=5, label=f"BC{cell:02d}")
         custom_legend.append(l)
-    l = Line2D([0], [0], label = "\nASA (um2)", color='w')
-    custom_legend.append(l)
-    for d in [50, 100, 200, 250]:
-        l = Line2D([0], [0], marker='o', color="grey", markersize=np.sqrt(np.array(d)), label=f"{d:>3d}")
-        custom_legend.append(l)
-    l = Line2D([0], [0], label = "\nGroup", color='w')
-    custom_legend.append(l)
-    l = Line2D([0], [0], marker='o', color="grey", markersize=6, label=f"Coincidence")
-    custom_legend.append(l)
-    l = Line2D([0], [0], marker='h', color="grey", markersize=6, label=f"Mixed-Mode")
-    custom_legend.append(l)
+    # l = Line2D([0], [0], label = "\nASA (um2)", color='w')
+    # custom_legend.append(l)
+    legend2 = []
+    diams = [50, 100, 200, 250]
+    for d in diams:
+        l = Line2D([], [], marker='o', color="grey", linewidth=0, markersize=np.sqrt(np.array(d))*asa_scale, label=f"{d:>3d}")
+        legend2.append(l)
+    # l = Line2D([0], [0], label = "\nGroup", color='w')
+    # custom_legend.append(l)
+    # l = Line2D([0], [0], marker='o', color="grey", markersize=6, label=f"Coincidence")
+    # custom_legend.append(l)
+    # l = Line2D([0], [0], marker='h', color="grey", markersize=6, label=f"Mixed-Mode")
+    # custom_legend.append(l)
 
-    ax.legend(handles=custom_legend, handlelength=1, 
-            loc="upper right", bbox_to_anchor=(0.96, 1.0),
-            fontsize=7, labelspacing=0.35)
-        
+    legend1 = ax.legend(handles=custom_legend, handlelength=1, 
+            loc="upper center", bbox_to_anchor=(0.8, 1.2),
+            fontsize=6, labelspacing=0.35, ncol=2, title="     Cell   \n CD      MM "
+            )
+    mpl.setp(legend1.get_title(), fontsize='7')
+    legend2 = ax.legend(handles=legend2, labels=diams,
+            loc="upper center", bbox_to_anchor=(0.8, 0.7),
+            labelspacing=0.9,
+            title="ASA", fontsize=6)
+
+    ax.add_artist(legend1)
     
-    mpl.setp(ax.get_legend().get_texts(), fontsize='9')
+    ax.add_artist(legend2)
+    mpl.setp(ax.get_legend().get_title(), fontsize='7')
 
     ax.set_xlabel("Input Patterns") # 
     ax.set_ylabel("% of spikes evoked by input pattern")
@@ -516,22 +536,24 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
         ax.legend().remove()
     # remap the database names to a more user-friendly name
     namemap = {"1st_largest_alone": "1st",
-              "1st_largest+others": "1st+_other",
+              "1st_largest+others": "1st+",
               "2nd_largest_alone": "2nd",
-              "2nd_largest+others": "2nd+_other",
+              "2nd_largest+others": "2nd+",
               "3rd_largest_alone": "3rd",
-              "3rd_largest+others": "3rd+_other",
-              "4th_largest+others": "4th+_other",
-              "5th_largest+others": "5th+_other",
+              "3rd_largest+others": "3rd+",
+              "4th_largest+others": "4th+",
+              "5th_largest+others": "5th+",
     }
     tl = []
     for i, name in enumerate(namemap):
         if i not in [1, 3, 5, 6, 7]:
             continue
-        t = name.replace("_", "\n")
+        t = namemap[name].replace("_", "\n")
         tl.append(t)
     PH.set_axes_ticks(ax=ax, xticks=[1,2,3,4,5], xticks_str=tl, yticks=[0, 25, 50, 75, 100],
-    yticks_str = ['0', '25', '50', '75', '100'], fontsize=8)
+        yticks_str = ['0', '25', '50', '75', '100'], 
+        y_minor = [5, 10, 15, 20, 30, 35, 40, 45, 55, 60, 65, 70, 80, 85, 90, 95],
+       fontsize=8)
         # ax.set_xticklabels(tl, rotation=0, fontdict={"fontsize": 6.5, "fontweight": "normal"})
     PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)
     if axin is None:
@@ -541,4 +563,4 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
 
 if __name__ == "__main__":
     # Figure4_Supplemental2_Patterns(reanalyze=True, dataset="30dB")  # supplemental plot for Figure 4
-    Figure4F_pattern_plot(dataset="30dB")
+    Figure4F_pattern_plot(dataset="Spont")
