@@ -569,7 +569,7 @@ class Figures(object):
             secax.set_ylim(-0.6, 0.2)
             secax.set_ylabel(phase_label)
             secax.set_xlabel("Frequency (Hz)")
-            PH.nice_plot(secax, position=self.axis_offset, direction="outward")
+            PH.nice_plot(secax, position=self.axis_offset, direction="outward", ticklength=3)
 
         # PH.show_figure_grid(self.P.figure_handle)
 
@@ -666,7 +666,8 @@ class Figures(object):
         ax_rin.set_ylim(0, 30.0)
         ax_rin.set_ylabel(res_label)
         ax_rin.set_xlabel("Dendrite Decoration")
-
+        ax_rin.set_xticklabels(["Passive", "Half-active", "Active"])
+        PH.nice_plot(ax_rin, position=-0.03, direction="outward", ticklength=3)
         sns.boxplot(
             data=df_tau,
             x="dendrites",
@@ -686,6 +687,9 @@ class Figures(object):
         )
         ax_tau.set_ylim(0, 2.5)
         ax_tau.set_ylabel(tau_label)
+        ax_tau.set_xticklabels(["Passive", "Half-active", "Active"])
+        PH.nice_plot(ax_tau, position=-0.03, direction="outward", ticklength=3)
+
         ax_tau.set_xlabel("Dendrite Decoration")
 
 
@@ -789,6 +793,7 @@ class Figures(object):
         )
         cellpath = self.config["cellDataDirectory"]
         png_path = Path(self.config["baseDataDirectory"], self.config["pngDirectory"])
+        column_titles = {'Passive': 'Passive', 'Normal': "Half-active", 'Active': "Active"}
 
         for rax, iv in enumerate(FD.figure_AllIVs.keys()):
             # if iv not in [9, 10]:
@@ -807,6 +812,7 @@ class Figures(object):
                     self.P.axarr[rax, 0].set_xlim(-1200, 1500)
                 PH.noaxes(self.P.axarr[rax, 0])
             # plot 3 dendrite decorations
+
             for iax, dendmode in enumerate(["passive", "normal", "active"]):
                 dendm = self.get_dendmode(dendmode)
                 sfi = Path(
@@ -851,7 +857,9 @@ class Figures(object):
                     axis_index=iax,
                 )
                 if rax == 0:
-                    self.P.axarr[rax, jax].set_title(dendmode.title())
+                    self.P.axarr[rax, jax].set_title(column_titles[dendmode.title()], 
+                        x=55.0, y=20., transform=self.P.axarr[rax, jax].transData,
+                        ha="center")
                 if iax == 0 and not show_pngs:
                     self.P.axarr[rax, 0].text(
                         -0.05, 0.5, f"BC{iv:02d}", 
@@ -1382,6 +1390,14 @@ class Figures(object):
         return fig
 
     def Figure4_Supplemental2(self):
+        """Plot AIS and efficacy
+
+        Returns:
+            _type_: _description_
+
+            NOTE: The rest of this figure is made in PRISM..... 
+
+        """
         fig = EF.eff_ais(EF.data_Full, save_fig=True, figinfo=FigInfo(show_figure_name=False))
         return fig
 
@@ -2553,12 +2569,12 @@ class Figures(object):
 
         """
         VSP15 = SAM_VS_vplots.VS_Plots(dBSPL=15)
-        VSP15.plot_VS_Data(axin=P.axdict["P1"])
+        VSP15.plot_VS_Data(axin=P.axdict["P1"], legendflag=False)
         VSP30 = SAM_VS_vplots.VS_Plots(dBSPL=30)
         VSP30.plot_VS_Data(axin=P.axdict["P2"], legendflag=False)
 
         VSP = SAM_VS_vplots.VS_Plots(dBSPL=15)
-        VSP.plot_VS_summary(2, axin=P.axdict["O1"], legendflag=False)
+        VSP.plot_VS_summary(2, axin=P.axdict["O1"], legendflag=True)
         VSP.plot_VS_summary(30, axin=P.axdict["O2"], legendflag=False)
         VSP.plot_VS_summary(9, axin=P.axdict["O3"], legendflag=False)
         VSP.plot_VS_summary(17, axin=P.axdict["O4"], legendflag=False)

@@ -399,15 +399,15 @@ def do_plot(df, sacs, max_CI: float = 60.0):
         palette=spalette,
     )
     ax2[0].set_ylim(0, 1.0)
-    legend = ax2[0].legend(
-            bbox_to_anchor=(0.45, 0.25),
-            loc="upper left",
-            borderaxespad=0,
-            fontsize=9,
-            markerscale=0.5,
-            frameon=True,
-            edgecolor="black",
-        )
+    # legend = ax2[0].legend(
+    #         bbox_to_anchor=(0.45, 0.25),
+    #         loc="upper left",
+    #         borderaxespad=0,
+    #         fontsize=9,
+    #         markerscale=0.5,
+    #         frameon=True,
+    #         edgecolor="black",
+    #     )
 
     sns.stripplot(
         data=df,
@@ -425,16 +425,26 @@ def do_plot(df, sacs, max_CI: float = 60.0):
     ax2[1].get_legend().remove()
     # reorder the legends  -- needed because 
     handles, labels = ax2[0].get_legend_handles_labels()
+    legdict = {"all": "All Inputs", "largestonly": "Largest input only", 
+    "removelargest": "Largest input removed", "removetwolargest": "Two largest inputs removed"}
+    labels = [legdict[label] for label in labels]
     order = [0, 2, 1]
     ax2[0].legend([handles[idx] for idx in order],[labels[idx] for idx in order],
-            bbox_to_anchor=(0.45, 0.25),
-            loc="upper left",
+            bbox_to_anchor=(0.5, 0.01),
+            loc="lower center",
             borderaxespad=0,
             fontsize=9,
             markerscale=0.5,
             frameon=True,
             edgecolor="black",
             )
+    # legdict = {"all": "All Inputs", "largestonly": "Largest input only", 
+    # "removelargest": "Largest input removed", "removetwolargest": "Two largest inputs removed"}
+    # ltexts = ax2[0].legend().get_texts()
+    # for ik, this_l in enumerate(ltexts):
+    #     labeltext = this_l.get_text()
+    #     if labeltext in list(legdict.keys()):
+    #         this_l.set_text(legdict[labeltext])
 
     for ax in ax2:
         PH.nice_plot(ax, direction="outward", ticklength=4)

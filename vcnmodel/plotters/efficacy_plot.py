@@ -522,7 +522,8 @@ def eff_ais(data: str, save_fig: bool = False, figinfo: Union[object, None] = No
         s=32,
         clip_on=False,
     )
-    P.axdict["A"].set_xlabel(r"AIS length (${\mu m}$)")
+    xlabel = r"AIS length (${\mu m}$)"
+    P.axdict["A"].set_xlabel(f"{xlabel:s}")
     P.axdict["A"].set_ylabel("Efficacy")
     P.axdict["A"].plot(xa, ya, color="k", linewidth=0.5)
     P.axdict["A"].set_xlim(3000, 4500)

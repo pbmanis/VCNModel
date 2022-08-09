@@ -38,6 +38,19 @@ rc("mathtext", fontset="stixsans")
 sns.set_style(rc={"pdf.fonttype": 42})
 mpl.style.use("~/.matplotlib/figures.mplstyle")
 
+# seaborn default palette, first 10 colors
+sns_colors = [
+    (0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
+    (1.0, 0.4980392156862745, 0.054901960784313725),
+    (0.17254901960784313, 0.6274509803921569, 0.17254901960784313),
+    (0.8392156862745098, 0.15294117647058825, 0.1568627450980392),
+    (0.5803921568627451, 0.403921568627451, 0.7411764705882353),
+    (0.5490196078431373, 0.33725490196078434, 0.29411764705882354),
+    (0.8901960784313725, 0.4666666666666667, 0.7607843137254902),
+    (0.4980392156862745, 0.4980392156862745, 0.4980392156862745),
+    (0.7372549019607844, 0.7411764705882353, 0.13333333333333333),
+    (0.09019607843137255, 0.7450980392156863, 0.8117647058823529),
+]
 
 class PlotZ:
     def __init__(self, pg=False):
@@ -177,7 +190,7 @@ class PlotZ:
             g_axon = (1./d2['zin'])
             rho_axon = g_ds/g_axon
 
-            P.axarr[1, 2].plot(d1['f'], rho_axon, marker=self.syms[i], markersize=1.5, label=f"BC{fin:02d}")
+            P.axarr[1, 2].plot(d1['f'], rho_axon, color=sns_colors[i], marker=self.syms[i], markersize=1.5, label=f"BC{fin:02d}")
         P.axarr[1, 2].set_xlabel("Frequency (Hz)")
         rholabel = r"$\rho_{axon}$"
         P.axarr[1, 2].set_ylabel(rholabel)
@@ -185,14 +198,14 @@ class PlotZ:
 
         save_file = set_figure_path(fignum=3, filedescriptor="Zin_decorated", suppnum=3)
 #        "Figure3/Figure3_supp/Figure3_Supplemental3_Zin_undecorated.pdf"
-        P.figure_handle.text(
-            0.99,
-            0.99,
-            save_file.name,
-            transform=P.figure_handle.transFigure,
-            horizontalalignment="right",
-            verticalalignment="top",
-        )
+        # P.figure_handle.text(
+        #     0.99,
+        #     0.99,
+        #     save_file.name,
+        #     transform=P.figure_handle.transFigure,
+        #     horizontalalignment="right",
+        #     verticalalignment="top",
+        # )
         mpl.savefig(
             save_file,
             metadata={
@@ -231,7 +244,7 @@ class PlotZ:
             print(f"File read: {str(filename):s}")
             # print("dkeys: ", d.keys())  # col = pg.intColor(i, hues=len(f))
             ax[0, col].plot(
-                d["f"], d["zin"], marker=self.syms[i], markersize=1., label=label[:7]
+                d["f"], d["zin"], color=sns_colors[i], marker=self.syms[i], markersize=1., label=label[:7]
             )
 
             ax[0, col].set_ylim(0, 100.0)
@@ -249,6 +262,7 @@ class PlotZ:
                 ax[1, col].plot(
                     d["f"],
                     d["phase"],
+                    color=sns_colors[i], 
                     marker=self.syms[i],
                     markersize=1.0,
                     # label=filename
@@ -261,7 +275,7 @@ class PlotZ:
             zi = np.tan(d["phase"]) * zr
 
             ax[2, col].plot(
-                zr, -zi, marker=self.syms[i], markersize=1,
+                zr, -zi, color=sns_colors[i], marker=self.syms[i], markersize=1,
             )
             if col < 2:
                 ax[2, col].set_ylim(-10.0, 60.0)

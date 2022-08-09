@@ -576,8 +576,9 @@ class PlotSims:
                 linewidth=0.5,
                 clip_on=clipping,
             )
+            print(cmd)
             if ax2 is not None:
-                ax2.plot(AR.MC.time_base[xclip], cmd, linewidth=0.5)
+                ax2.plot(AR.MC.time_base[xclip], cmd[xclip], linewidth=0.5)
             if "spikeTimes" in list(data["Results"][icurr].keys()):
                 # cprint('r', 'spiketimes from results')
                 # print(data["Results"][icurr]["spikeTimes"])
@@ -872,6 +873,7 @@ class PlotSims:
             trace_ax.set_ylim((-1, 15))
             trace_ax.set_clip_on(True)
             self.analyzeVC(P.axarr[i * 3 + 2, 0], sfi[i], PD, protocol=protocol[i])
+            PH.nice_plot(P.axarr[i * 3 + 2, 0], position=-0.03, direction="outward", ticklength=3)
             trace_ax.text(
                 0.5,
                 1.1,
@@ -1098,8 +1100,8 @@ class PlotSims:
         # ax[0].plot(tfit+AR.MC.time_base[t0], exp_result.best_fit*1e9, 'r-')
         # ax[0].plot(tfit+AR.MC.time_base[t0], ifit*1e9, 'g--')
 
-        ax.plot(vss_sel * 1e3, gss_sel * 1e9, "ko", markersize=2)
-        ax.plot(boltz_x * 1e3, boltz_fit * 1e9, "r-")
+        ax.plot(vss_sel * 1e3, gss_sel * 1e9, "ko", markersize=2, clip_on=False)
+        ax.plot(boltz_x * 1e3, boltz_fit * 1e9, "r-", clip_on=False)
         ax.set_ylim(0, 100.0)
         ax.set_xlim(-100.0, 40.0)
         PH.talbotTicks(
@@ -1111,26 +1113,40 @@ class PlotSims:
             tickPlacesAdd={"x": 0, "y": 0},
             floatAdd={"x": 0, "y": 0},
         )
-        # print('vhalf: ', result.params['vhalf'])
-        textstr = r"g$_{max}$  = "
-        textstr += f"{boltz_result.params['gmax'].value*1e9:.1f} nS\n"
-        textstr += r"$V_{0.5}$  = "
-        textstr += f"{boltz_result.params['vhalf'].value*1e3:.1f} mV\n"
-        textstr += f"k  = {1e3*boltz_result.params['k'].value:.1f}\n"
-        textstr += f"Cm = {cm*1e12:.1f} pF\n"
-        textstr += r"$tau_{0}$ = "
-        textstr += f"{tau*1e3:.3f} ms"
+        # Align the parameters on the = sign by making 2 texts right and left justified
+        textstr1 = r"g$_{max}$" + f" = {boltz_result.params['gmax'].value*1e9:.1f} nS"
+        textstr2 = r"$V_{0.5}$" + f" = {boltz_result.params['vhalf'].value*1e3:.1f} mV"
+        textstr3 = f"k  = {1e3*boltz_result.params['k'].value:.1f}"
+        textstr4 = f"Cm = {cm*1e12:.1f} pF"
+        textstr5 = r"${\tau_{0}}$" + f" = {tau*1e3:.3f} ms"
+        texts = [textstr1, textstr2, textstr3, textstr4, textstr5]
         props = dict(boxstyle="square", facecolor="None", alpha=0.5)
-        cprint("c", textstr)
-        ax.text(
-            1.0,
-            0.05,
-            textstr,
+
+        y = 0.40
+        x = 0.60
+        for i, txt in enumerate(texts):
+            tx1, tx2 = txt.split('=')
+            ax.text(
+            x,
+            y - i*0.1,
+            tx1,
             transform=ax.transAxes,
+          #  fontfamily="monospace",
             size=8,
             verticalalignment="bottom",
             horizontalalignment="right",
-            bbox=props,
+            # bbox=props,
+            )
+            ax.text(
+            x,
+            y - i*0.1,
+            ' = ' + tx2,
+            transform=ax.transAxes,
+           # fontfamily="monospace",
+            size=8,
+            verticalalignment="bottom",
+            horizontalalignment="left",
+            # bbox=props,
         )
         ax.set_xlabel("V (mV)")
         ax.set_ylabel("I (nA)")

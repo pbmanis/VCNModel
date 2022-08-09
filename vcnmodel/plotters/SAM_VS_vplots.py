@@ -451,7 +451,7 @@ class VS_Plots:
     def plot_VS_summary(self, cell, axin=None, legendflag=True, legend_type="inputs",
                         barwidth=240, show_cell=True,
                         mode:str="line", xscale:str="log", yscale:str="linear",
-                        figure8_xscale=False):
+                        figure8_xscale=False, show2out=True):
         """Summarize the VS for one cell for all conditions/frequencies.
         This is similar to the plotnine routine above, but just
         uses matplotlib to acheive the same plot
@@ -479,6 +479,9 @@ class VS_Plots:
             plot VS axis as log or linear scale
         figure8_xscale: bool (default: False)
             put fewer numbers on x ticks (replace 200 with a minor tick)
+        show2out: bool (default: True)
+            include the "remove2largest" symbol on the legend if it is not
+            a dataset in the current plot.
 
         """
         label_font = {"fontsize": 8, "fontweight": "normal"}
@@ -540,12 +543,21 @@ class VS_Plots:
                 x_an = x  # np.arange(8)
                 mfc = cfg_color[cfg]
                 ax.get_xaxis().set_clip_on(False)
-                ax.errorbar(x, y, yerr=ye, marker='o', mfc=mfc, ms=4, mec='none', mew=0, color='grey', label=cfg, clip_on=False)
+                ax.errorbar(x, y, yerr=ye, marker='o', mfc=mfc, ms=4, mec=mfc, 
+                    mew=0, color=mfc, label=cfg, clip_on=False)
                 if icfg == 0:
                     label = "ANF"
                 else:
                     label = None
                 ax.plot(x_an, y_an, '-', color="firebrick", lw=0.5, zorder=-100, label=label)  # in back of data
+            if "removetwolargest" not in set(dfl['Configuration']) and show2out:
+                # add the 2-out just for the legend in case it is not part of this plot (but it
+                # might be in other plots)
+                c2out = cfg_color["removetwolargest"]
+                ax.errorbar([], [], yerr=[], marker='o', mfc=c2out, ms=4, mec=c2out, mew=0, color=c2out,
+                     label="removetwolargest", clip_on=False)
+            # retext the legend to make more sense
+
 
         else:
             raise ValueError("Mode must be one of 'V' or 'line' for VS plot")
@@ -556,7 +568,6 @@ class VS_Plots:
             xticks_str = [f"{int(f):d}" for f in freqs]
             xminor_list = []
         else:
-            print(xscale, figure8_xscale)
             if xscale == 'linear':
                 freq_list = np.arange(8) # [0, 50, 250, 500,  750, 1000]
                 xtick_list_str=['50', '100', '200', '300', '400', '500', '750', '1000']
@@ -660,7 +671,15 @@ class VS_Plots:
                     ]
                 ax.legend(handles=custom_legend, handlelength=1, loc="lower left", fontsize=7, labelspacing=0.33, markerscale=0.5)
             else:
-                ax.legend()
+                legdict = {"all": "All Inputs", "largestonly": "Largest input only", 
+                "removelargest": "Largest input removed", "removetwolargest": "Two largest inputs removed"}
+                ltexts = ax.legend().get_texts()
+                for ik, this_l in enumerate(ltexts):
+                    labeltext = this_l.get_text()
+                    if labeltext in list(legdict.keys()):
+                        this_l.set_text(legdict[labeltext])
+
+
         if isinstance(cell, str):
             cellname = f"BC{int(cell[0]):02d}"
         else:
@@ -679,6 +698,7 @@ class VS_Plots:
         return ax
 
     def Figure7_Supplemental2(self, mode:str="line"):
+        show2out = False
         V1 = VS_Plots(dBSPL=15)
 
         cells = [5, 6, 10, 11, 13, 18]
@@ -700,7 +720,7 @@ class VS_Plots:
             else:
                 legend = False
             self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
-                barwidth=180, mode=mode)
+                barwidth=180, mode=mode, show2out=show2out)
 
         fig = FigInfo()
         fig.P = P
