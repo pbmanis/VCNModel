@@ -1058,8 +1058,14 @@ def spike_pattern_analysis(model_data, printflag=False):
         "3rd_largest+others": PatternData(  # 3rd largest, exclude any with 1 or 2nd largest
             name="3rd_largest+others", mask=0x04, mask_exclude=0x03, logic="atleast"
         ),
+        "4th_largest_alone": PatternData(
+            name="4th_largest_alone", mask=0x08, logic="exact"
+        ),
         "4th_largest+others": PatternData(  # rth largest, exclude any with 1st, 2nd or 3rd largest
             name="4th_largest+others", mask=0x08, mask_exclude=0x07, logic="atleast"
+        ),
+        "5th_largest_alone": PatternData(
+            name="5th_largest_alone", mask=0x10, logic="exact"
         ),
         "5th_largest+others": PatternData(  # rth largest, exclude any with 1st, 2nd or 3rd largest
             name="5th_largest+others", mask=0x10, mask_exclude=0x0F, logic="atleast"
@@ -1076,8 +1082,10 @@ def spike_pattern_analysis(model_data, printflag=False):
         "not_3_largest": PatternData(
             name="not_3_largest", mask=0x07, logic="except"
         ),  # none of the 3 largest
+        "not_4_largest": PatternData(
+            name="not_4_largest", mask=0x0F, logic="except"
+        ),  # none of the 4 largest
     }
-
     for trial in range(RCP.ntrials):  # accumulate across all trials
 
         spikeindex = [int(t / (srate)) for t in data["Results"][trial]["spikeTimes"]]

@@ -214,6 +214,7 @@ def get_pattern_data(dataset:str="Spont"):
             "AN",
             fn + ".pkl",
         )
+        print("Getting compares from: ", filename)
         pklf = read_pkl_file(filename)
         # PSC.compute_revcorr(
         #     P=None,
@@ -253,7 +254,7 @@ colors = [(0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
           (0.09019607843137255, 0.7450980392156863, 0.8117647058823529),
           ]
 
-def Figure4_Supplemental2_Patterns(reanalyze=False, dataset:str="Spont"):
+def Figure4_Supplemental3_Patterns(reanalyze=False, dataset:str="Spont"):
     assert dataset in ["Spont", "30dB"]
     compare_file = f"pattern_compares_{dataset:s}.pkl"
     if reanalyze:
@@ -262,27 +263,36 @@ def Figure4_Supplemental2_Patterns(reanalyze=False, dataset:str="Spont"):
 
     compares = pd.read_pickle(compare_file)
     # print(compares.head(10))
-    f, ax = mpl.subplots(4, 5)
-    f.set_size_inches(7, 7)
+    nrows = 4
+    ncols = 5
+    f, ax = mpl.subplots(nrows, ncols)
+    f.set_size_inches(9, 7)
     ax = ax.ravel()
     pats = [
         "1st_largest_alone",
         "2nd_largest_alone",
         "3rd_largest_alone",
-        "",
+        "4th_largest_alone",
+        "5th_largest_alone",
+        # end of row 1
         "1st_largest+others",
         "2nd_largest+others",
         "3rd_largest+others",
         "4th_largest+others",
         "5th_largest+others",
+        # end of row 2
         "1st+2nd_alone",
         "1st+2nd+others",
         "1st+2nd+3rd+others",
         "",
+        "",
+        # end of row 3
         "not_largest",
         "not_2_largest",
         "not_3_largest",
         "",
+        "",
+        # end of row 4
     ]
     pnames = sorted(set(pats))
     pdatanames = sorted(set(compares["PatternName"].values))
@@ -296,51 +306,79 @@ def Figure4_Supplemental2_Patterns(reanalyze=False, dataset:str="Spont"):
             raise ValueError(f"Pattern {p:s} is missing from pdatanames")
 
     # create your own color array
-    bar_colors = [(0.8, 0.8, 0.8, 0.2), (0.0, 0.0, 1.0, 0.5)]
+    bar_colors = [(0.9, 0.9, 0.9, 0.2), (0.0, 0.0, 1.0, 0.3)]
 
     # add color array to set_palette
     # function of seaborn
     sns.set_palette(bar_colors, desat=0.2)
+    ylims = [25, 75, 25, 75]
+    yticks = [[0, 5, 10, 15, 20, 25],
+               [0, 25, 50, 75],
+               [0, 5, 10, 15, 20, 25],
+               [0, 25, 50, 75],
+               ]
+    yticks_str = [[f"{y:2d}" for y in yticks[yi]] for yi in range(len(yticks))]
 
     for i, axl in enumerate(pats):
-        # with sns.set_palette(bar_colors):
-        if axl == "":
-            PH.noaxes(ax[i])
-            continue
-        axt = sns.boxplot(
-            data=compares[compares["PatternName"] == pats[i]],
-            x="Group",
-            y="Percent",
-            width=0.5,
-            ax=ax[i],
-        )
-        # # adding transparency to colors
-        # for patch in axt.artists:
-        #     r, g, b, a = patch.get_facecolor()
-        #     # patch.set_facecolor((r, g, b, 0.3))
-        #     patch.set(alpha=None, facecolor=((r,g,b,0.3)))
+        irow = i // ncols
+        icol = i % ncols
+        # print(compares[compares["PatternName"] == pats[i]].head(25))
+        if len(axl) > 0:
+            axt = sns.boxplot(
+                data=compares[compares["PatternName"] == pats[i]],
+                x="Group",
+                y="Percent",
+                width=0.5,
+                ax=ax[i],
+            )
+            # # adding transparency to colors
+            # for patch in axt.artists:
+            #     r, g, b, a = patch.get_facecolor()
+            #     # patch.set_facecolor((r, g, b, 0.3))
+            #     patch.set(alpha=None, facecolor=((r,g,b,0.3)))
 
-        swp = sns.swarmplot(
-            data=compares[compares["PatternName"] == pats[i]],
-            x="Group",
-            y="Percent",
-            hue="Cell",
-            ax=ax[i],
-            size=3,
-        )
+            swp = sns.swarmplot(
+                data=compares[compares["PatternName"] == pats[i]],
+                x="Group",
+                y="Percent",
+                hue="Cell",
+                ax=ax[i],
+                size=3,
+            )
 
-        if i < len(pats) - 1:
-            swp.legend_.remove()
+            if i < len(pats) - 1:
+                swp.legend_.remove()
+            # else:
+            #     f.legend(labelspacing=0.18, fontsize=6.5, loc="lower right") # (1.5, 0.))
+            #     for lh in swp.legend_.legendHandles:
+            #         lh.set_alpha(1)
+            #         lh._sizes = [10]
+            ax[i].set_title(pats[i].replace("_", " "), fontsize=9)
+
+            ax[i].set_ylim(0, ylims[irow])
+            PH.set_axes_ticks(ax=ax[i], 
+                yticks = yticks[irow],
+                yticks_str = yticks_str[irow], 
+            fontsize=8)
         else:
-            f.legend(labelspacing=0.18, fontsize=6.5, loc="lower right") # (1.5, 0.))
-            for lh in swp.legend_.legendHandles:
-                lh.set_alpha(1)
-                lh._sizes = [10]
-        ax[i].set_title(pats[i].replace("_", " "), fontsize=9)
-        ax[i].set_ylim(0, 100)
+            PH.noaxes(ax[i])
+
+        print(irow, icol)
+        if irow == 2 and icol == 3:
+            print("**********************************")
+            custom_legend = []
+            for ic, cell in enumerate([2, 5, 6, 9, 10, 11, 13, 17, 18, 30]):
+                custom_legend.append(
+                Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[ic], markersize=5, label=f"BC{cell:02d}"))
+            
+            ax[i].legend(handles=custom_legend, handlelength=1, loc="center left", fontsize=7, title="Cell", labelspacing=0.33)
+        # if irow == 2 and icol == 3:
+        #     ax[i].text(0.7, 0.95, dataset, fontsize=8)
+    dsnames = {"Spont": "Spontaneous Activity", "30dB": "30dB SPL Tone"}
+    mpl.suptitle(dsnames[dataset], fontsize=10, fontweight="bold")
     mpl.tight_layout()
 
-    fn = set_figure_path(fignum=4, filedescriptor="Patterns_V1", suppnum=3)
+    fn = set_figure_path(fignum=4, filedescriptor="Patterns_V2", suppnum=3)
     mpl.savefig(fn)
     fn2 = fn.with_suffix(".png")
     mpl.savefig(fn2)
@@ -562,5 +600,5 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
 
 
 if __name__ == "__main__":
-    # Figure4_Supplemental2_Patterns(reanalyze=True, dataset="30dB")  # supplemental plot for Figure 4
-    Figure4F_pattern_plot(dataset="Spont")
+    Figure4_Supplemental3_Patterns(reanalyze=False, dataset="Spont")  # supplemental plot for Figure 4
+    # Figure4F_pattern_plot(dataset="Spont")

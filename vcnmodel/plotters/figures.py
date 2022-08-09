@@ -1767,7 +1767,7 @@ class Figures(object):
         return fig
 
     def Figure4_Supplemental3(self):
-        PATSUM.summarize_patterns()  # writes its own figure to the directory
+        PATSUM.Figure4_Supplemental3_Patterns()  # writes its own figure to the directory
 
     def plot_all_revcorr(self):
         for cell in grAList():
