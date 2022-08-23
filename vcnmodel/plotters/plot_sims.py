@@ -90,6 +90,7 @@ import pyqtgraph as pg  # type: ignore
 import seaborn as sns
 import toml
 import vcnmodel.cell_config as cell_config
+import vcnmodel.group_defs as GRPDEF
 import vcnmodel.util.readmodel as readmodel
 from ephys.ephysanalysis import RmTauAnalysis, SpikeAnalysis
 from lmfit import Model  # type: ignore
@@ -161,11 +162,12 @@ orient_cells = {
 }
 
 
-def grAList() -> list:
-    """ Return a list of the 'grade A' cells from the SBEM project
-    """
+# now in group_defs.py
+# def grAList() -> list:
+#     """ Return a list of the 'grade A' cells from the SBEM project
+#     """
 
-    return [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+#     return [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
 
 
 SpirouChoices = [
@@ -182,14 +184,14 @@ SpirouChoices = [
 # note that we use data classes to store related sets of
 # variables and results.
 
-
+def defemptylist():
+    return []
 @dataclass
 class PData:
     """
     data class for some parameters that control what we read
     """
-
-    gradeA: list = field(default_factory=grAList)
+    gradeA: list = field(default_factory=defemptylist)
     default_modelName: str = "XM13_nacncoop"
     soma_inflate: bool = True
     dend_inflate: bool = True
@@ -289,13 +291,16 @@ class PlotSims:
     def newPData(self):
         """
         Return Pdata with the paths set from self.config
+        and the GradeA Cell list.
 
         Returns:
             PData: dataclass
         """
         return PData(
+            gradeA=GRPDEF.gradeACells,
             basepath=self.config["baseDataDirectory"],
             renderpath=str(Path(self.config["codeDirectory"], "Renderings")),
+            revcorrpath=self.config["revcorrDataDirectory"],
         )
 
     def textclear(self):

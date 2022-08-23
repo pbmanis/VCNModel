@@ -20,7 +20,8 @@ import toml
 import numpy as np
 import matplotlib.pyplot as mpl
 from plot_sims import PlotSims
-from plot_sims import grAList
+import vcnmodel.group_defs as GRPDEF
+#  from plot_sims import grAList
 from plot_sims import get_changetimestamp
 from pylibrary.plotting import plothelpers as PH
 
@@ -30,7 +31,7 @@ class PData:
     data class for some parameters that control what we read
     """
 
-    gradeA: list = field(default_factory=grAList)
+    gradeA: list = field(default_factory=GRPDEF.grAList())
     default_modelName: str = "XM13_nacncoop"
     soma_inflate: bool = True
     dend_inflate: bool = True
@@ -315,7 +316,7 @@ def getCommands():
     #
     #     print("   ... All configuration file variables read OK")
     # now copy into the dataclass
-    PD = PData()
+    PD = PData(gradeA=GRPDEF.gradeACells)
     # for key, value in vargs.items():
     #      if key in parnames:
     #          # print('key: ', key)

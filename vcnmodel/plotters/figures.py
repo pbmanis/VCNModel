@@ -58,15 +58,9 @@ from vcnmodel.plotters import \
 from vcnmodel.plotters import plot_functions as PF
 from vcnmodel.plotters import plot_z as PZ
 from vcnmodel.util.set_figure_path import set_figure_path
+from vcnmodel import group_defs as GRPDEF
 
 cprint = CP.cprint
-
-
-def grAList() -> list:
-    """
-    Return a list of the 'grade A' cells from the SBEM project
-    """
-    return [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
 
 
 syms = ["s", "o", "x", "s", "o", "x", "s", "o", "x"]
@@ -109,7 +103,7 @@ class PData:
     data class for some parameters that control what we read
     """
 
-    gradeA: list = field(default_factory=grAList)
+    gradeA: list = field(default_factory=GRPDEF.gradeACells)
     default_modelName: str = "XM13_nacncoop"
     soma_inflate: bool = True
     dend_inflate: bool = True
@@ -169,11 +163,13 @@ class Figures(object):
     def newPData(self):
         """
         Return Pdata with the paths set from self.config
+        and the GradeA Cell list.
 
         Returns:
             PData: dataclass
         """
         return PData(
+            gradeA=GRPDEF.gradeACells,
             basepath=self.config["baseDataDirectory"],
             renderpath=str(Path(self.config["codeDirectory"], "Renderings")),
             revcorrpath=self.config["revcorrDataDirectory"],
@@ -318,7 +314,7 @@ class Figures(object):
         """
         Plot an IV for every cell in the grade A cell list
         """
-        for cell in grAList():
+        for cell in GRPDEF.grAList():
             self.plotIV(cell)
 
     def get_dendmode(self, dendmode: str = ""):
@@ -1091,7 +1087,7 @@ class Figures(object):
         Parameters
         ----------
         cells : a list of ints (if none, default is to use all of the cells in the
-            gradeAList defined at the top of this file)
+            GRPDEF.gradeAList)
         figure: Figure handle for the plot passed to plot_traces in plot_sims.py)
         axes : a list
              of axes passed to plot_traces in plot_sims.py
@@ -1110,7 +1106,7 @@ class Figures(object):
         """
         assert simulation_experiment in ["Full", "NoUninnervated2"]
         if cells is None:
-            cells = grAList()
+            cells = GRPDEF.grAList()
         trace_ht = 80  # mV
         if maxtraces >= maxstack:
             maxtraces = maxstack
@@ -1232,7 +1228,7 @@ class Figures(object):
 
     def plot_efficacy_supplement(self, cells=None, parent_figure=None, traces=True):
         if cells is None:
-            cells = grAList()
+            cells = GRPDEF.grAList()
         print("Efficacy Supplement Plot")
         effp = []
         simulation_experiment = "Full"
@@ -1555,9 +1551,10 @@ class Figures(object):
                 [ap, bp],
                 "-",
                 color=color,
+
             )
-            ax.scatter(a[n][0].sites / synperum2, ap, marker="o", color=color)
-            ax.scatter(a[n][0].sites / synperum2, bp, marker="x", color=color)
+            ax.scatter(a[n][0].sites / synperum2, ap, marker="o", color=color, alpha=0.6)
+            ax.scatter(a[n][0].sites / synperum2, bp, marker="x", color=color, alpha=0.6)
             ax.set_xlabel(r"Input ASA (${\mu m^2}$)")
             ax.set_xlim(0, 300)
             ax.set_ylim(0, 1.0)
@@ -1567,14 +1564,18 @@ class Figures(object):
         def plot_diff_participation(ax, n, a, b, dB=0, color=None, legend=True):
             ap = a[n][0].participation / a[n][0].npost_spikes
             bp = b[n][0].participation / b[n][0].npost_spikes
+            mark = GRPDEF.get_group_symbol(n)
             ax.scatter(
                 a[n][0].sites / synperum2,
                 bp / ap,
-                marker="o",
+                marker=mark,
                 color=color,
+                edgecolors='w',
+                linewidths=0.5,
                 label=f"BC{n:02d}",
                 clip_on=False,
-                s=12,
+                s=36,
+                alpha=0.6
             )
             ax.set_xlabel(r"Input ASA (${\mu m^2}$)")
             ax.set_xlim(0, 350)
@@ -1767,7 +1768,7 @@ class Figures(object):
         else:
             fig.P = P
         if not supplemental1:
-            fig.filename = set_figure_path(fignum=4, filedescriptor="Ephys_2_main_v14")
+            fig.filename = set_figure_path(fignum=4, filedescriptor="Ephys_2_main_v15")
             fig.title[
                 "title"
             ] = "SBEM Project Figure 4 (main) Modeling: singles inputs, efficacy and revcorr, revised version 8"
@@ -1786,7 +1787,7 @@ class Figures(object):
         PATSUM.Figure4_Supplemental3_Patterns()  # writes its own figure to the directory
 
     def plot_all_revcorr(self):
-        for cell in grAList():
+        for cell in GRPDEF.grAList():
             fig = self.plot_revcorr(cell)
             if fig is not None:
                 self.save_figure(fig)
@@ -2044,7 +2045,7 @@ class Figures(object):
         save_calcs: bool = False,  # set to True if need to update.
     ):
         if cells is None:
-            cells = grAList()
+            cells = GRPDEF.grAList()
         ncells = len(cells)
 
         if parent_figure is None:
@@ -2122,7 +2123,7 @@ class Figures(object):
 
         i_plot = 0
         if cells is None:
-            cells = grAList()
+            cells = GRPDEF.grAList()
 
         for i, cell_number in enumerate(cells):
 
@@ -2911,7 +2912,7 @@ class Figures(object):
         ax.set_title("AN")
 
     def plot_All_PSTH(self):
-        for cell in grAList():
+        for cell in GRPDEF.grAList():
             fig = self.plot_PSTH(cellN=cell)
         return fig
 
@@ -3518,7 +3519,7 @@ class Figures(object):
         pght = 10
 
         P = PH.regular_grid(
-            rows=len(grAList()),
+            rows=len(GRPDEF.grAList()),
             cols=4,
             order="rowsfirst",
             figsize=(8, pght),
@@ -3552,7 +3553,7 @@ class Figures(object):
             P2.axarr[0, c].yaxis.set_ticklabels([])
 
         PH.cleanAxes(P.axarr.ravel())
-        ncells = len(grAList())
+        ncells = len(GRPDEF.grAList())
         # center labels over columns
         cdata = {
             0: f"Soma Voltage",
@@ -3579,7 +3580,7 @@ class Figures(object):
 
         PH.cleanAxes(P.axarr.ravel())
 
-        for i, cell_number in enumerate(grAList()):
+        for i, cell_number in enumerate(GRPDEF.grAList()):
             print("Plotting psth for cell: ", cell_number)
             show_label = False
             if i == ncells - 1:
@@ -3790,13 +3791,13 @@ class Figures(object):
             if f"VS_datasets_{dB:d}dB" not in list(dir()):
                 import VS_datasets_30dB as VS_datasets
                 outfile = f"VS_data_{dB:d}dB_{timestamp_str:s}.py"
-                TASKS = [s for s in grAList()]
+                TASKS = [s for s in GRPDEF.grAList()]
 
         if dB == 15 and not bc09:
             if f"VS_datasets_{dB:d}dB" not in list(dir()):
                 import VS_datasets_15dB as VS_datasets
                 outfile = f"VS_data_{dB:d}dB_{timestamp_str:s}.py"
-                TASKS = [s for s in grAList()]
+                TASKS = [s for s in GRPDEF.grAList()]
 
         elif dB == 15 and bc09:
             if f"VS_datasets_{dB:d}dB_BC09_NoUninnervated" not in list(dir()):

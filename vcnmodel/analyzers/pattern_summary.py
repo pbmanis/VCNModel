@@ -40,18 +40,11 @@ from pylibrary.tools import cprint as CP
 from pylibrary.plotting import plothelpers as PH
 from pyrsistent import PSet
 from vcnmodel.analyzers import reverse_correlation as REVCORR
+import vcnmodel.group_defs as GRPDEF
 
 cprint = CP.cprint
 
 PSC = PS.PlotSims(parent=None)
-
-
-def grAList() -> list:
-    """
-    Return a list of the 'grade A' cells from the SBEM project
-    """
-    return [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
-
 
 @dataclass
 class PData:
@@ -59,7 +52,7 @@ class PData:
     data class for some parameters that control what we read
     """
 
-    gradeA: list = field(default_factory=grAList)
+    gradeA: list = field(default_factory=GRPDEF.grAList)
     default_modelName: str = "XM13_nacncoop"
     soma_inflate: bool = True
     dend_inflate: bool = True
@@ -200,10 +193,10 @@ def get_pattern_data(dataset:str="Spont"):
     fig_data = FD.figure_revcorr
     db = dataset
     #    group = {"First-in": [9, 11, 13, 17], "Coincidence": [2, 5, 6, 10, 18, 30]}
-    group = {"First-in": [9, 11, 17, 18], "Coincidence": [2, 5, 6, 10, 13, 30]}
+    group = {"MixedMode": GRPDEF.MixedMode, "Coincidence": GRPDEF.Coincidence}
 
     compares = pd.DataFrame(columns=["Cell", "PatternName", "Percent", "#Spikes", "Group"])
-    for gbc in grAList():
+    for gbc in GRPDEF.grAList():
         BC = f"VCN_c{gbc:02d}"
         cprint("g", f"\nBushy cell: {BC:s}")
         fn = fig_data[gbc][db]
@@ -224,11 +217,11 @@ def get_pattern_data(dataset:str="Spont"):
         #     protocol="runANPSTH",
         #     revcorrtype="RevcorrSPKS",
         # )
-        if gbc in group["First-in"]:
-            gname = "First-in"
+        if gbc in group["MixedMode"]:
+            gname = "Mixed Mode"
         else:
             gname = "Coincidence"
-        RCP, RCD, PAT = revcorr(gbc, pklf.files[0], PD=PData())
+        RCP, RCD, PAT = revcorr(gbc, pklf.files[0], PD=PData(gradeA=GRPDEF.gradeACells))
         for t in PAT.filttable.keys():
             pat = PAT.filttable[t]
             # pat.print()
@@ -241,18 +234,7 @@ def get_pattern_data(dataset:str="Spont"):
     return compares
 
 
-# seaborn default palette, first 10 colors
-colors = [(0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
-          (1.0, 0.4980392156862745, 0.054901960784313725),
-          (0.17254901960784313, 0.6274509803921569, 0.17254901960784313), 
-          (0.8392156862745098, 0.15294117647058825, 0.1568627450980392),
-          (0.5803921568627451, 0.403921568627451, 0.7411764705882353),
-          (0.5490196078431373, 0.33725490196078434, 0.29411764705882354),
-          (0.8901960784313725, 0.4666666666666667, 0.7607843137254902),
-          (0.4980392156862745, 0.4980392156862745, 0.4980392156862745),
-          (0.7372549019607844, 0.7411764705882353, 0.13333333333333333),
-          (0.09019607843137255, 0.7450980392156863, 0.8117647058823529),
-          ]
+
 
 def Figure4_Supplemental3_Patterns(reanalyze=False, dataset:str="Spont"):
     assert dataset in ["Spont", "30dB"]
@@ -262,6 +244,7 @@ def Figure4_Supplemental3_Patterns(reanalyze=False, dataset:str="Spont"):
         compares.to_pickle(compare_file)
 
     compares = pd.read_pickle(compare_file)
+    print("compares", compares.head())
     # print(compares.head(10))
     nrows = 4
     ncols = 5
@@ -369,7 +352,7 @@ def Figure4_Supplemental3_Patterns(reanalyze=False, dataset:str="Spont"):
             custom_legend = []
             for ic, cell in enumerate([2, 5, 6, 9, 10, 11, 13, 17, 18, 30]):
                 custom_legend.append(
-                Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[ic], markersize=5, label=f"BC{cell:02d}"))
+                Line2D([0], [0], marker='o', color='w', markerfacecolor=GRPDEF.sns_colors[ic], markersize=5, label=f"BC{cell:02d}"))
             
             ax[i].legend(handles=custom_legend, handlelength=1, loc="center left", fontsize=7, title="Cell", labelspacing=0.33)
         # if irow == 2 and icol == 3:
@@ -419,6 +402,17 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
 
     compares = pd.read_pickle(compare_file)
     print("pattern comparisions:\n", compares.head(10))
+    # remap the grouping
+    def get_Group(cell):
+        if cell in GRPDEF.MixedMode:
+            return "MixedMode"
+        if cell in GRPDEF.Coincidence:
+            return "Coincidence"
+        else:
+            raise ValueError("Encoutnered cell not in the group definitions")
+
+    compares.loc[:, "Group"] = compares.apply(lambda row: get_Group(row.Cell) , axis=1)
+
     if axin is None:
         f, ax = mpl.subplots(1, 1)
         f.set_size_inches(5, 5)
@@ -451,39 +445,40 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
             "5th_largest+others",
         ]
 
-    if mode == "multi":
-        cells = [5, 30, 9, 17]
+    if mode == "multi":  # a panel with mixed up groups.
+        c_cells = [5, 30, 9, 17]
+        
         # print(compares.values)
-        df = compares[compares["PatternName"].isin(pats) & compares["Cell"].isin(cells)]
+        df = compares[compares["PatternName"].isin(pats) & compares["Cell"].isin(c_cells)]
+        markers = []
+        for c in c_cells:
+            markers.append(GRPDEF.get_group_symbol(c))
+        df.loc[:, "Marker"] = df.apply(lambda row: GRPDEF.get_group_symbol(row.Group), axis=1)
 
         # remap colors for the selected cells
+        colors = GRPDEF.sns_colors
         subset_palette = [colors[1], colors[3], colors[7], colors[9]]
         sns.set_palette(subset_palette)
         sns.pointplot(
             x="PatternName",
             y="Percent",
             hue="Cell",
-            style="Group",
+            style="Markers", # "Group",
             data=df,
-            markers=[
-                "o",
-                "o",
-                "o",
-                "o",
-            ],
+            # markers=markers,
             scale=0.75,
             kind="swarm",
             ax=ax,
         )
     
     elif mode == "mmcd":
-        c_cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+        c_cells = GRPDEF.gradeACells
         i_cells = range(len(c_cells))
         cumulative = {cell: [] for cell in c_cells}
         df = compares[compares["PatternName"].isin(pats) & compares["Cell"].isin(c_cells)].copy()
         # mask = df["Group"] == "Coincidence"
         # df["marker"] = None
-        df.loc[:, "marker"] = df.apply(lambda row: "o" if row.Group == "Coincidence" else "h", axis=1)
+        df.loc[:, "Marker"] = df.apply(lambda row: GRPDEF.get_group_symbol(row.Group), axis=1)
         df.loc[:, "Input"] = df.apply(lambda row: int(row.PatternName[0]), axis=1)
         # function for the lambda in apply:
         def get_ASA(cell, input, scale=1.0):
@@ -495,37 +490,43 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
         df.loc[:, "ScaledASA"] = df.apply(lambda row: get_ASA(row.Cell, row.Input, scale=maxASA), axis=1)
         def get_pos(input, group):
             if group == "Coincidence":
-                pos = -0.15
+                pos = -0.25+np.random.uniform(low=-0.125, high=0.125)
             else:
-                pos = 0.15
+                pos = 0.25+np.random.uniform(low=-0.125, high=0.125)
             return(input+pos)
         
-        df.loc[:, "pn"] = df.apply(lambda row: get_pos(row.Input, row.Group), axis=1)
+        df.loc[:, "pn"] = df.apply(lambda row: get_pos(row.Input, row.Group), axis=1)  # x axis position/offset
         print(f"\n{'BC##':<6s} {'1st':^6s}  {'2nd':^6s}  {'3rd':^6s}  {'4th':^6s}  {'5th':^6s}  {'sum':^6s}")
-        marker_list = []
-        print(df.head(30))
+        # marker_list = []
+
         for ic, c in enumerate(c_cells):
             for cpat in pats:
                 cumulative[c].append(float(df.loc[(df['Cell'] == c) & (df['PatternName'] == cpat)]['Percent'].values[0]))
             cout = " ".join([f" {x:6.3f}" for x in cumulative[c]])
-            print(f"BC{c:02d}: {str(cout):s}  {np.sum(cumulative[c]):6.3f}")
+          #  print(f"BC{c:02d}: {str(cout):s}  {np.sum(cumulative[c]):6.3f}")
             cumulative[c] = np.array(cumulative[c])/np.sum(cumulative[c])
-        sns.set_palette(colors)
+        sns.set_palette(GRPDEF.sns_colors)
         asa_sizes = tuple(np.array([50, 200])*asa_scale)
         fg = sns.scatterplot(x="pn", 
             y="Percent", hue="Cell", size="ASA",
-            sizes=asa_sizes, alpha=0.8, palette=colors,
+            sizes=asa_sizes, alpha=0.6, palette=GRPDEF.sns_colors,
             style="Group",
-            markers={"Coincidence": 'o', "First-in": 'h'},
+            markers={'Coincidence': GRPDEF.get_group_symbol('Coincidence'),
+                    "MixedMode": GRPDEF.get_group_symbol('MixedMode')},
             x_jitter=True,
-            data=df,ax=ax,
+            data=df,
+            ax=ax,
             clip_on = False)
 
     # custom legend
     custom_legend = []
     # l = Line2D([0], [0], label=f"Cell\n  CD     MM", color='w')
     # custom_legend.append(l)
-    legorder = [0, 1, 2, 4, 6, 9, 3, 5, 7, 8, None]
+    # legorder = [0, 1, 2, 4, 6,  9, 3, 5,  7,  8, None]
+    legorder = [0, 1, 2, 4, 8, 9, 3, 5,  6, 7, None]
+    # cell ord  2  5  6  9  10  11 13 17  18  30
+    # neword    0  1  2  3   4   5  6  7   8   9
+    colors = GRPDEF.sns_colors
     for i in range(11):
         legn = legorder[i]
         if legn is None:
@@ -533,7 +534,7 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
             custom_legend.append(l)
         else:
             cell = c_cells[legn]
-            l = Line2D([], [], marker=df[df["Cell"]==cell]["marker"].values[0], 
+            l = Line2D([], [], marker=df[df["Cell"]==cell]["Marker"].values[0], 
                 color=colors[legn], markerfacecolor=colors[legn], linewidth = 0, markersize=5, label=f"BC{cell:02d}")
         custom_legend.append(l)
     # l = Line2D([0], [0], label = "\nASA (um2)", color='w')
@@ -600,5 +601,5 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
 
 
 if __name__ == "__main__":
-    Figure4_Supplemental3_Patterns(reanalyze=False, dataset="Spont")  # supplemental plot for Figure 4
-    # Figure4F_pattern_plot(dataset="Spont")
+    #Figure4_Supplemental3_Patterns(reanalyze=False, dataset="Spont")  # supplemental plot for Figure 4
+    Figure4F_pattern_plot(dataset="Spont", mode='mmcd')

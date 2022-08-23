@@ -53,23 +53,12 @@ from sklearn import preprocessing
 from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.feature_selection import SelectFromModel
 from vcnmodel.util.set_figure_path import set_figure_path
-
+import vcnmodel.group_defs as GRPDEF
 # from sklearn.datasets import make_blobs
 
-sns_colors = [
-    (0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
-    (1.0, 0.4980392156862745, 0.054901960784313725),
-    (0.17254901960784313, 0.6274509803921569, 0.17254901960784313),
-    (0.8392156862745098, 0.15294117647058825, 0.1568627450980392),
-    (0.5803921568627451, 0.403921568627451, 0.7411764705882353),
-    (0.5490196078431373, 0.33725490196078434, 0.29411764705882354),
-    (0.8901960784313725, 0.4666666666666667, 0.7607843137254902),
-    (0.4980392156862745, 0.4980392156862745, 0.4980392156862745),
-    (0.7372549019607844, 0.7411764705882353, 0.13333333333333333),
-    (0.09019607843137255, 0.7450980392156863, 0.8117647058823529),
-]
-matplotlib.rcParams["mathtext.fontset"] = "stixsans"
 
+matplotlib.rcParams["mathtext.fontset"] = "stixsans"
+matplotlib.rcParams["text.usetex"] = True
 cprint = CP.cprint
 
 
@@ -516,7 +505,7 @@ def eff_ais(data: str, save_fig: bool = False, figinfo: Union[object, None] = No
         y="Eff",
         hue="Cell",
         data=df0,
-        palette=sns_colors,  # "tab10",
+        palette=GRPDEF.sns_colors,
         ax=P.axdict["A"],
         legend=False,  # we make a custom legend later
         s=32,
@@ -545,7 +534,7 @@ def eff_ais(data: str, save_fig: bool = False, figinfo: Union[object, None] = No
         0.05, 0.92, line_fita, fontsize=9, transform=P.axdict["A"].transAxes
     )
 
-    new_labels = [f"BC{x:02d}" for x in [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]]
+    new_labels = [f"BC{x:02d}" for x in GRPDEF.gradeACells]
     # new_labels[0:2] = " "
     custom_legend = []
     for k, lab in enumerate(new_labels):
@@ -557,7 +546,7 @@ def eff_ais(data: str, save_fig: bool = False, figinfo: Union[object, None] = No
                 [0],
                 marker="o",
                 color="w",
-                markerfacecolor=sns_colors[k],
+                markerfacecolor=GRPDEF.sns_colors[k],
                 markersize=6,
                 label=lab,
             )
@@ -592,9 +581,7 @@ def eff_ais(data: str, save_fig: bool = False, figinfo: Union[object, None] = No
 def eff_one_input(ax=None, legend=True):
     """Plot the dendritic area against the efficacy for a constant input"""
     dataset = data_one_input
-    eff_one_input = np.zeros((10, 2))
     spc = re.compile("[ ;,\t\f\v]+")  # format replacing all spaces with tabs
-    dataiter = re.finditer(spc, dataset)
     dataset = re.sub(spc, ",", dataset)
 
     sio = io.StringIO(dataset)
@@ -607,30 +594,40 @@ def eff_one_input(ax=None, legend=True):
         x = df.loc[(df["Cell"].values == ident) & (df["syn#"].values == 0)]
         dendarea = DendAreas[f"{ident:02d}"]
         df.loc[x.index, "Dendrite Area (um2)"] = dendarea
-    df0 = df[df["syn#"].values == 0]
+        y = df.loc[(df["Cell"].values == ident)]
+        df.loc[y.index, "Group"] = GRPDEF.get_BC_Group(ident)
+    # df0 = df[df["syn#"].values == 0]
 
+    # print(df.head(40))
     if ax is None:
-        axr = sns.scatterplot(
+        fig, axr = mpl.subplots(1,1)
+
+        sns.scatterplot(
             x="Dendrite Area (um2)",
             y="Eff",
             data=df,
             hue="Cell",
+            style="Group",
+            markers=GRPDEF.group_symbols,
             palette=pal,
-            s=25,
+            s=50,
             legend=legend,
+            ax = axr
         )
     else:
+        axr = ax
         sns.scatterplot(
             x="Dendrite Area (um2)",
             y="Eff",
             data=df,
             hue="Cell",
             palette=pal,
+            style="Group",
+            markers=GRPDEF.group_symbols,
             ax=ax,
             legend=legend,
-            s=25,
+            s=30,
         )
-        axr = ax
     axr.set_xlim(3000, 5000)
     PH.nice_plot([axr], position=-0.02, direction="outward")
     PH.set_axes_ticks(
@@ -658,7 +655,9 @@ def eff_one_input(ax=None, legend=True):
         ha="left",
         fontdict={"fontsize": 8, "fontweight": "normal"},
     )
-    axr.set_xlabel(r"Dendrite Area (${\mu m^2}$)")
+
+    xlabel = r"Dendrite Area (${\mu m^2}$)"
+    axr.set_xlabel(f"{xlabel:s}")
     axr.set_ylabel("Efficacy")
     if ax is None:
         mpl.show()
@@ -696,7 +695,7 @@ class EfficacyPlots(object):
             "NoUninnervated2_ctl": data_Full,
         }  # map from simulation manipulation to dataset above
         self.pal = sns.color_palette("tab10", n_colors=10)  # base palette
-        self.all_cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+        self.all_cells = GRPDEF.gradeACells
 
     def make_figure(self, loc):
         """Create a figure if one was not given
@@ -1151,7 +1150,7 @@ class EfficacyPlots(object):
         dataset = self.dmap[datasetname]
         x, df = prepare_data(dataset)
         method = "leastsq"
-        cells1 = [9, 11, 13, 17]
+        cells1 = GRPDEF.MixedMode
 
         df1 = df[df.Cell.isin(cells1)]
         self.plot_fit(
@@ -1164,7 +1163,7 @@ class EfficacyPlots(object):
             color="#ff0000",
         )
 
-        cells2 = [2, 5, 6, 10, 30, 18]
+        cells2 = GRPDEF.Coincidence
         df2 = df[df.Cell.isin(cells2)]
         self.plot_fit(
             df2,
@@ -1494,10 +1493,12 @@ def cluster_dbscan(data=None, eff_crit: float = 0.0):
 
 
 if __name__ == "__main__":
-    eff_ais(data_Full)  # generate plot of efficacy vs ais length (supplemental)
-    exit()
-    # eff_one_input()
+    # eff_ais(data_Full)  # generate plot of efficacy vs ais length (supplemental)
     # exit()
+    eff_one_input()
+    print("showing")
+
+    exit()
     eff_plot(
         "Full", datasetname_added="Added", show_fits="Full", clean=True
     )  # generate plot of efficay vs ASA

@@ -11,6 +11,8 @@ import matplotlib.pyplot as mpl
 import numpy as np
 import scipy as sp
 
+import vcnmodel.group_defs as GRPDEF
+
 
 aisdata="""cell,DendAreas,OrigThr,OrigStd,MeshInfl,NewStandardized
 2,4674.18,0.655,0.530,nan,0.617
@@ -37,20 +39,7 @@ AIS_Length,6,9,10,11,13,17,18,30
 24,0.461,0.425,0.491,0.37,0.369,0.381,0.413,0.505
 """
 
-# seaborn default palette, first 10 colors
-colors = [
-    (0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
-    (1.0, 0.4980392156862745, 0.054901960784313725),
-    (0.17254901960784313, 0.6274509803921569, 0.17254901960784313),
-    (0.8392156862745098, 0.15294117647058825, 0.1568627450980392),
-    (0.5803921568627451, 0.403921568627451, 0.7411764705882353),
-    (0.5490196078431373, 0.33725490196078434, 0.29411764705882354),
-    (0.8901960784313725, 0.4666666666666667, 0.7607843137254902),
-    (0.4980392156862745, 0.4980392156862745, 0.4980392156862745),
-    (0.7372549019607844, 0.7411764705882353, 0.13333333333333333),
-    (0.09019607843137255, 0.7450980392156863, 0.8117647058823529),
-]
-gradeACells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+
 
 class AIS():
     def __init__(self):
@@ -61,6 +50,16 @@ class AIS():
         df = pd.read_table(sio, sep=",")
         return df
 
+    def plot_scatter(self, ax, df, cells, symbol):
+        colorl = []
+        dfs = df[df["cell"].isin(cells)]
+        for i, cell in enumerate(cells):
+            bc_index = GRPDEF.gradeACells.index(int(cell))
+            colorl.append(GRPDEF.sns_colors[bc_index])
+        # note the table uses MeshInfl as the Threshold value (referncing the cell area correction)
+        # and NewStandardized for cells 2 and 5 for the axon.
+        ax.scatter(dfs["DendAreas"], dfs["MeshInfl"], s=20, marker=symbol, c=colorl)
+    
     def DendvsThr(self, ax=None):
         df = self.prepare_data(aisdata)
         show = False
@@ -69,18 +68,22 @@ class AIS():
             show = True
         colorl = []
         # map colors
-        cells = df['cell'].values
-        for i, cell in enumerate(cells):
-            bc_index = gradeACells.index(int(cell))
-            colorl.append(colors[bc_index])
-        ax.scatter(df["DendAreas"], df["MeshInfl"], s=12, marker='o', c=colorl)
+        cells0 = GRPDEF.get_cells_in_group(1)
+        self.plot_scatter(ax, df, cells0, symbol=GRPDEF.group_symbols[0])
+        cells1 = GRPDEF.get_cells_in_group(2)
+        self.plot_scatter(ax, df, cells1, symbol=GRPDEF.group_symbols[1])
+        # note the table uses MeshInfl as the Threshold value (referncing the cell area correction)
+        # and NewStandardized for cells 2 and 5 for the axon.
+#        ax.scatter(df["DendAreas"], df["MeshInfl"], s=12, marker=marks, c=colorl)
         # 2 and 5 are plotted separately here
         dfs = df[df["MeshInfl"].isnull()]
         colorl = []
         for cell in [2, 5]:
-            bc_index = gradeACells.index(int(cell))
-            colorl.append(colors[bc_index])
-            ax.scatter(dfs["DendAreas"], dfs["NewStandardized"], s=20, marker='o', edgecolors=colorl, facecolors=["w", "w"], linewidths=1)
+            mark = GRPDEF.get_group_symbol(cell)
+            bc_index = GRPDEF.gradeACells.index(int(cell))
+            colorl.append(GRPDEF.sns_colors[bc_index])
+            ax.scatter(dfs["DendAreas"], dfs["NewStandardized"], 
+                s=20, marker=mark, edgecolors=colorl, facecolors=["w", "w"], linewidths=1)
         dfn = df[df["MeshInfl"].notnull()]
         res = sp.stats.linregress(dfn["DendAreas"], dfn["MeshInfl"])
         xp = np.linspace(3000, 4500, 100)
@@ -94,7 +97,7 @@ class AIS():
             transform=ax.transAxes)
         ax.set_xlim(3000, 5000)
         ax.set_ylim(0.35, 0.65)
-        ax.set_xlabel("Dendritic Area ($\mu m^2$)")
+        ax.set_xlabel("Dendrite Area ($\mu m^2$)")
         ax.set_ylabel("Threshold (nA)")
         xtpos = np.arange(3000, 5001, 500)
         ytpos = np.arange(0.35, 0.66, 0.05)
@@ -126,21 +129,23 @@ class AIS():
         # print("colnames: ", colnames)
         # print(df["AIS_Length"])
         syms = ['o', 'o', '^', 's', 'v', 'd', 'o', 'o', '^', 'v']
-        facecolors = colors
+        facecolors = GRPDEF.sns_colors
         # edgecolors = [None]*len(colors)
 
         for i, coln in enumerate(colnames):
             if i == 0:
                 continue
-            bc_index = gradeACells.index(int(coln))
-            color = colors[bc_index]
+            celln = int(coln)
+            bc_index = GRPDEF.gradeACells.index(celln)
+            color = GRPDEF.sns_colors[bc_index]
             sym = syms[bc_index]
-            if int(coln) in [13, 18, 30]:
+            if celln in [13, 18, 30]:
                 mk_face = "none"
                 mk_edge = facecolors[bc_index]
             else:
                 mk_face = facecolors[bc_index]
                 mk_edge = mk_face
+            
             print(coln, bc_index, color, sym, mk_face, mk_edge)
             bc_num = f"BC{int(coln):02d}"
             ax.plot(df["AIS_Length"].values, df[coln].values, 
@@ -176,5 +181,5 @@ if __name__ == "__main__":
     A = AIS()
     df = A.prepare_data(aisdata)
     print(df.head())
-    #A.DendvsThr()
-    A.AISLengthThr()
+    A.DendvsThr()
+    #A.AISLengthThr()

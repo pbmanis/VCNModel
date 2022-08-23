@@ -16,6 +16,7 @@ from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
 from vcnmodel.analyzers import sac as SAC
 from vcnmodel.util.set_figure_path import set_figure_path
+import vcnmodel.group_defs as GRPDEF
 
 ReadModel = readmodel.ReadModel()
 cprint = CP.cprint
@@ -70,7 +71,7 @@ def one_sac(cell_id, protocol, pname):
     fndir = Path(basefn, simfile)
     files = list(fndir.glob("*.p"))
     filename = Path(fndir, files[0])
-    PD = plot_sims.PData()
+    PD = plot_sims.PData(GRPDEF.gradeACells)
     print(f"Getting data for gbc: {gbc:s}")
     SC, syninfo = PS.get_synaptic_info(gbc)
     # mtime = Path(fn).stat().st_mtime

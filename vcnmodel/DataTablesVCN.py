@@ -98,6 +98,7 @@ from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot
 from vcnmodel.plotters import plot_functions
 from vcnmodel.plotters import SAC_plots
+import vcnmodel.group_defs as GRPDEF
 import vcnmodel.analyzers.pattern_summary
 import vcnmodel.analyzers.vector_strength
 from vcnmodel.plotters import AIS_thresholds
@@ -130,7 +131,7 @@ all_modules = [
     vcnmodel.analyzers.sac,
     vcnmodel.analyzers.pattern_summary,
     vcnmodel.analyzers.vector_strength,
-
+    GRPDEF,
     vcnmodel.util.fixpicklemodule,
     vcnmodel.util.readmodel,
     vcnmodel.util.trace_calls,
@@ -1039,7 +1040,7 @@ class DataTablesVCN:
         print("selected files: ", selected.files)
         # if nfiles > 1: self.PLT.textappend('Please select only one file to
         #     view') else:
-        PD = plot_sims.PData()
+        PD = plot_sims.PData(gradeA=GRPDEF.gradeACells)
         self.PLT.trace_viewer(selected.files[0], PD, selected.runProtocol)
 
     def analyze_traces(self, ana_name=None):
@@ -1107,7 +1108,7 @@ class DataTablesVCN:
         if selected is None:
             return
         P = self.PLT.setup_PSTH()
-        PD = plot_sims.PData()
+        PD = plot_sims.PData(gradeA=GRPDEF.gradeACells)
         sfi = Path(selected.simulation_path, selected.files[0])
         self.PLT.plot_AN_response(P, sfi, PD, selected.runProtocol)
         P.figure_handle.show()

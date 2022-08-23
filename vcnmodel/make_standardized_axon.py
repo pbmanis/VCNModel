@@ -33,6 +33,7 @@ from neuronvis import hocRender, swc_to_hoc
 from scipy.spatial.transform import Rotation as R
 
 from vcnmodel import cell_config as cell_config
+import vcnmodel.group_defs as GRPDEF
 from vcnmodel.adjust_areas import AdjustAreas
 
 pp = pprint.PrettyPrinter(indent=4)
@@ -152,9 +153,9 @@ class ModifiableAxon:
 List of axons : includes all 10 gradeA Cells, plus axon
     reconstructions from other bushy cells
 """
-gradeACells = [2, 5, 9, 10, 11, 13, 17, 18, 30]
+
 additional_axons = [12, 14, 15, 16, 19, 20, 21, 22, 23, 24, 27, 29]
-all_cells = gradeACells + additional_axons
+all_cells = GRPDEF.gradeACells + additional_axons
 
 """
 Regular expression definitions for parts of HOC file
@@ -981,7 +982,7 @@ if __name__ == "__main__":
             make_modified_axons(cell, write=True, AIS_length=aislen)
     #
     # make_standard_axon(cell, write=True)
-    # for cell in  gradeACells:
+    # for cell in  GRPDEF.gradeACells:
     # PA = MakeStandardAxon(revised=False)
     # PA.convert_swc_hoc(cell)
     # make_standard_axon(cell, write=True)
