@@ -10,7 +10,7 @@
 # This script runs to get the thresholds for current injection for one
 # spike. 
 #######################################################
-CELLNAMES="02 05 06 09 10 11 13 17 18 30"
+CELLNAMES="02 05" #  06 09 10 11 13 17 18 30"
 #CELLNAMES="05"
 AISL="010.00 012.00 014.00 016.00 018.00 020.00 022.00 024.00"
 CONFIG="--configfile xm13a_multisite_testSpikeThr.toml"
@@ -24,12 +24,12 @@ do
     for ais in $AISL
 	do
 	    AXON="-A AIS="$ais
-	    case $f in
-	        02 | 05)
-	            AXON="-A standardized"
-	            ;;
-	    esac
-		echo $AXON
+	    # case $f in
+	    #     02 | 05)
+	    #         AXON="-A standardized"
+	    #         ;;
+	    # esac
+		# echo $AXON
 		python vcnmodel/model_run2.py VCN_c$f  -D Full $AXON -P initIV -r 1 $CONFIG $DATATABLE
 		python vcnmodel/model_run2.py VCN_c$f  -D Full $AXON -P runIVSpikeThreshold -r 1 $CONFIG $DATATABLE
     	if [ $? -ne 0 ]; then
@@ -41,5 +41,7 @@ done
 wait
 
 echo IV threshold runs complete
+echo Output of threshold measures is in the file 'thrun.txt'
+
 # with "A", we do all cells in grade A
 # python vcnmodel/plotters/plot_gbc_ivresults_2.py "A" -s
