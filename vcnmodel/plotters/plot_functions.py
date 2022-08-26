@@ -141,6 +141,7 @@ def plot_psth(
             histtype="stepfilled",
             facecolor=face_color,
             edgecolor=edge_color,
+            linewidth=0,
             alpha=alpha,
         )
     else:
