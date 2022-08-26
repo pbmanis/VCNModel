@@ -197,6 +197,7 @@ class PData:
     dend_inflate: bool = True
     basepath: str = ""  # config["baseDataDirectory"]
     renderpath: str = ""  # " str(Path(self.config["codeDirectory"], "Renderings"))
+    revcorrpath: str = ""
     thiscell: str = ""
 
 
@@ -581,7 +582,6 @@ class PlotSims:
                 linewidth=0.5,
                 clip_on=clipping,
             )
-            print(cmd)
             if ax2 is not None:
                 ax2.plot(AR.MC.time_base[xclip], cmd[xclip], linewidth=0.5)
             if "spikeTimes" in list(data["Results"][icurr].keys()):
