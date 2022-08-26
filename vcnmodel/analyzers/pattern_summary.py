@@ -58,6 +58,7 @@ class PData:
     dend_inflate: bool = True
     basepath: str = ""  # config["baseDataDirectory"]
     renderpath: str = ""  # " str(Path(self.config["codeDirectory"], "Renderings"))
+    revcorrpath: str = ""  # config["revcorrDataDirectory"]
     thiscell: str = ""
 
 
