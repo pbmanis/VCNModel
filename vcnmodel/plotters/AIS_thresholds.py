@@ -3,6 +3,12 @@ Plot two panels showing how threshold changes with either AIS length
 or dendrite surface area.
 This replaces two plots previously made in Prism (Hillock-AIS-Threshold.pfzx)
 aisdata and aisthrdata are taken from the data tables in that file
+
+The threshold data as printed out by model_run2.py into thrrun.txt has been accumulated
+by hand into the folder "VCN_ThresholdTest_Results" in the VCN-SBEM-Data folder.
+The data in aisthrdata is a restructured vrsion of the 10.05.2021 and 08.26.2022 runs listed
+in that file.
+
 """
 from pylibrary.plotting import plothelpers as PH
 import pandas as pd
@@ -28,15 +34,15 @@ aisdata="""cell,DendAreas,OrigThr,OrigStd,MeshInfl,NewStandardized
 """
 
 aisthrdata="""
-AIS_Length,6,9,10,11,13,17,18,30
-10,0.778,0.722,0.841,0.616,0.609,0.628,0.691,0.873
-12,0.7,0.648,0.753,0.556,0.552,0.569,0.623,0.781
-14,0.639,0.591,0.686,0.509,0.506,0.522,0.569,0.709
-16,0.589,0.544,0.631,0.472,0.469,0.484,0.527,0.652
-18,0.552,0.509,0.589,0.442,0.439,0.455,0.492,0.608
-20,0.517,0.478,0.552,0.416,0.413,0.427,0.463,0.569
-22,0.488,0.45,0.519,0.392,0.389,0.403,0.436,0.534
-24,0.461,0.425,0.491,0.37,0.369,0.381,0.413,0.505
+AIS_Length,2,5,6,9,10,11,13,17,18,30
+10,0.850,0.802,0.778,0.722,0.841,0.616,0.609,0.628,0.691,0.873
+12,0.763,0.719,0.7,0.648,0.753,0.556,0.552,0.569,0.623,0.781
+14,0.694,0.655,0.639,0.591,0.686,0.509,0.506,0.522,0.569,0.709
+16,0.639,0.605,0.589,0.544,0.631,0.472,0.469,0.484,0.527,0.652
+18,0.598,0.566,0.552,0.509,0.589,0.442,0.439,0.455,0.492,0.608
+20,0.561,0.530,0.517,0.478,0.552,0.416,0.413,0.427,0.463,0.569
+22,0.528,0.498,0.488,0.45,0.519,0.392,0.389,0.403,0.436,0.534
+24,0.498,0.472,0.461,0.425,0.491,0.37,0.369,0.381,0.413,0.505
 """
 
 
