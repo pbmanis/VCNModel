@@ -764,7 +764,7 @@ class ModelRun:
         cprint("c", f"Using hoc file at path: {str(hoc_filename):s}")
         # confirm hoc file exists
         if not hoc_filename.is_file():
-            cprint("r", f"No Hoc file matching: {str(hoc_filename):s}")
+            cprint("r", f"No Hoc file matching:   {str(hoc_filename):s}")
             exit()  # fatal error
         else:
             with (open(hoc_filename, "r")) as fh:
