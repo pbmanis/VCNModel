@@ -7,10 +7,10 @@ Notes on installation 8/10/2021
 
 The standard installation involves creating a local environment that has all of the 
 components needed for the modeling runs. This is done by running the bash/zsh script
-"make_local_env.sh" at the command line. This will download and install the specified
+"make_env.sh" at the command line. This will download and install the specified
 versions of the modules, and create a basic working environment (with black, isort, 
 jupyter lab, spyder, etc))
 
-The script will also run the basic tests on cnmodel, and compile all the Neuron
+The script will also run the basic tests on cnmodel, install cochlea, and compile all the Neuron
 mechanisms that are used. 
 

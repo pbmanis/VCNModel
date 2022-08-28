@@ -16,16 +16,18 @@ The code directory is vcnmodel::
             docs  (sphinx documentation)
             nb  (jupyter lab notebooks)
             scripts  (shell scripts that perform batch runs of specific simulations)
+            styles (holds the matplotlib style file)
             toml  (parameter files for specific simulations and path locations)
             (vcn_venv) : The pipenv that is created on installation
             vcnmodel  (sources)
                     |
                     analyzers  (code for performing specific analyses)
+                          |
+                          tests (a couple of test routines for analyses)
                     archived  (old code and data - delete)
                     model_data  (data tables used by cnmodel for specific simulations)
                     plotters  (routines for plotting results, including calling analyses)
                     simulators  (python routines that run simulations: obselete)
-                    tests  (a test routine for cross-correlations)
                     util  (a variety of utility files, some of which are not used)
 
 Data

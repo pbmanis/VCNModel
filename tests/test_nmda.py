@@ -123,7 +123,6 @@ results = {}
 vcmds = range(-100, 60, 10)
 f, ax = mpl.subplots(3, 1)
 ax = np.ravel(ax)
-print(dir(post_cell.soma(0.5)))
 ivdat = np.zeros((2, len(vcmds)))
 for i, vc in enumerate(vcmds):
     vccontrol.amp[1] = vc
@@ -160,16 +159,22 @@ ipk = np.argmax(itrace)
 t = np.arange(0, (len(itrace)-ipk)*dt, dt)
 gmodel = ExponentialModel(independent_vars=['x']) #, prefix='', missing=None, name=None, **kwargs)
 result = gmodel.fit(itrace[ipk:], x=t, amplitude=0.02, decay=20.)
+print("\nExponential Fit: ")
 print(result.fit_report())
+print("")
 ax[0].plot(t+ipk*dt, result.best_fit, 'r-')
 
 # IV curve...
 wresult = wmodel.fit(ivdat[1,:], x=ivdat[0,:]/1000., amp=1, ko=1.9, delta=0.5)
+print("\nWoodhull fit:")
 print(wresult.fit_report())
+print("")
 ax[2].plot(ivdat[0,:], wresult.best_fit, 'r--')
 
+print("\nBoltzman fit: ")
 bresult = bmodel.fit(ivdat[1,:], x=ivdat[0,:]/1000., amp=1, vh=0., vr=0.02)
 print(bresult.fit_report())
+print("")
 ax[2].plot(ivdat[0,:], bresult.best_fit, 'b--')
 
 mpl.show()

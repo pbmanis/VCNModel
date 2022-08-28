@@ -26,7 +26,8 @@ import toml
 # In[63]:
 
 def plot_cells():
-    config = toml.load(open("wheres_my_data.toml", "r"))
+    with open("wheres_my_data.toml", "r") as fh:
+        config = toml.load(fh)
     
     fn = Path(config['baseDataDirectory'], 'VCN-CellImages-1-2020/Bushy_Cells')
     print(fn)

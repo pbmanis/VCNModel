@@ -58,8 +58,11 @@ from numba import jit, njit
 from numba.typed import List
 
 pyximport.install()
+import warnings
+
 from vcnmodel.analyzers import sac_cython
 
+warnings.simplefilter("error", RuntimeWarning)
 
 
 
@@ -470,11 +473,48 @@ class SAC(object):
         win_data = np.where((-twin <= bins) & (bins < twin))[0]
         win_data = yh[win_data[:-1]]
         CI = np.max(win_data)
-        peaks, _ = scipy.signal.find_peaks(win_data)
-        center = [int((len(win_data)-1)/2)]  # only analyze the center peak
-        half_widths = scipy.signal.peak_widths(win_data, center, rel_height=0.5)
-        full_widths = scipy.signal.peak_widths(win_data, center, rel_height=1.0)
-        return CI, peaks, half_widths, full_widths
+        peaks, _ = scipy.signal.find_peaks(win_data, distance=5)
+
+        centerpos = [int((len(win_data)-1)/2)]  # only analyze the center peak
+        # find peak closest to the center position
+        if len(peaks) > 0:
+            try:
+                center = np.argmin(np.fabs(peaks-centerpos))
+                centpeak = [peaks[center]]
+            except:
+                print("Failed to find peak in : ", peaks)
+                print("    with centerpos = ", centerpos)
+                raise ValueError
+            try:
+                half_widths = scipy.signal.peak_widths(win_data, centpeak, rel_height=0.5)
+            except:
+                print("Half width: Peak prominence and/or width=0")
+                print("win_data points: ", len(win_data))
+                print("twin: ", twin)
+                print(win_data)
+                print("center: ", centpeak)
+                raise ValueError
+            try:
+                full_widths = scipy.signal.peak_widths(win_data, centpeak, rel_height=1.0)
+            except:
+                print("Full width: Peak prominence and/or width=0")
+                print(win_data)
+                print(centpeak)
+                raise ValueError
+            return CI, peaks, half_widths, full_widths
+        else:
+            return CI, [], None, None  # no peaks identified, so just use the center position
+        #t = bins[(-twin<=bins) & (bins < twin)][:-1]
+        # print("peaks: ", peaks)
+        # print("centerpos: ", centerpos)
+        # print("peak closest to center: ", center)
+        # mpl.close('all')
+        # mpl.plot(t, win_data, 'b-')
+        # mpl.plot(t[peaks], win_data[peaks], 'ro')
+        # mpl.plot(t[center], win_data[center], 'gx')
+        # mpl.show()
+
+        
         
         
         

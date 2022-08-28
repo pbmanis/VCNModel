@@ -238,7 +238,7 @@ class ReadModel:
                     raise ValueError("Cannot find rate for data mode: ", mode)
 
             run_protocol = dinfo.runProtocol
-            if dinfo.runProtocol in ["runIV", "initIV", "testIV"]:
+            if dinfo.runProtocol in ["runIV", "initIV", "testIV", "runIVSpikeThreshold"]:
                 ntr = len(df["Results"])
                 V = [[]] * ntr
                 I = [[]] * ntr

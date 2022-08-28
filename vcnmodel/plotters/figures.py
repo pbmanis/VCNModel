@@ -21,14 +21,18 @@ Distributed under MIT/X11 license. See license.txt for more infomation.
 
 import datetime
 import importlib
+import multiprocessing as MPROC
 import pickle
+import platform
 import string
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Union, List
+from ssl import SSL_ERROR_EOF
+from typing import List, Union
 
 import matplotlib
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as mpl
 import numpy as np
 import pandas as pd
@@ -36,7 +40,6 @@ import seaborn as sns
 import toml
 import vcnmodel.util.fixpicklemodule as FPM
 import vcnmodel.util.readmodel as readmodel
-from vcnmodel.util.set_figure_path import set_figure_path
 from matplotlib import image as mpimg
 from matplotlib.lines import Line2D
 from pylibrary.plotting import plothelpers as PH
@@ -44,24 +47,20 @@ from pylibrary.tools import cprint as CP
 from pyqtgraph import multiprocess as MP
 from vcnmodel.analyzers import analyze_data
 from vcnmodel.analyzers import isi_cv as ISI
-from vcnmodel.analyzers import sac as SAC
 from vcnmodel.analyzers import pattern_summary as PATSUM
+from vcnmodel.analyzers import sac as SAC
+from vcnmodel.plotters import AIS_thresholds
+from vcnmodel.plotters import SAC_plots as SACP
 from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot as EF
 from vcnmodel.plotters import \
     figure_data as FD  # table of simulation runs used for plotting figures
 from vcnmodel.plotters import plot_functions as PF
 from vcnmodel.plotters import plot_z as PZ
-
+from vcnmodel.util.set_figure_path import set_figure_path
+from vcnmodel import group_defs as GRPDEF
 
 cprint = CP.cprint
-
-
-def grAList() -> list:
-    """
-    Return a list of the 'grade A' cells from the SBEM project
-    """
-    return [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
 
 
 syms = ["s", "o", "x", "s", "o", "x", "s", "o", "x"]
@@ -104,7 +103,7 @@ class PData:
     data class for some parameters that control what we read
     """
 
-    gradeA: list = field(default_factory=grAList)
+    gradeA: list = field(default_factory=GRPDEF.gradeACells)
     default_modelName: str = "XM13_nacncoop"
     soma_inflate: bool = True
     dend_inflate: bool = True
@@ -125,6 +124,7 @@ class FigInfo:
     """
 
     P: object = None
+    show_figure_name: bool = False  # if True, figure filename appears in top right corner
     filename: Union[str, Path] = ""
     title: dict = field(default_factory=title_data)
     title2: dict = field(default_factory=title_data)
@@ -134,7 +134,7 @@ class Figures(object):
     """
     This class generates final figures for the SBEM manuscript by reaching back
     to the original simulation data, including, in some cases, refitting. Both
-    primary "examplar" figures, and supplemental figures, are generated. The
+    primary "exemplar" figures, and supplemental figures, are generated. The
     figures are made consistent by using both sns.set_style and mpl.style for
     figures.mplstyle, which overrides some defaults in mpl. The resulting
     figures are editable in Illustrator without any missing fonts.
@@ -142,7 +142,7 @@ class Figures(object):
     This is overall ugly code, but it gets the job done. Note that some plots
     are modifications of what is present in plot_sims, and also that plot_sims
     is used here, accessed through self.parent.PLT. Some plotting routines have
-    been moved into plot_functions.
+    been moved into plot_functions.py.
 
     This is part of the DataTablesVCN interactive analysis tool for the
     simulations in the SBEM project.
@@ -151,9 +151,9 @@ class Figures(object):
 
     def __init__(self, parent):
         self.parent = parent  # point back to caller's space
-        self.config = toml.load(
-            open("wheres_my_data.toml", "r")
-        )  # sorry, have to reload it here.
+        with open("wheres_my_data.toml", "r") as fh:
+            self.config = toml.load(fh)
+        # sorry, have to reload it here.
         self.axis_offset = -0.02
         self.ReadModel = readmodel.ReadModel()
         self.ReadModel.set_parent(
@@ -163,11 +163,13 @@ class Figures(object):
     def newPData(self):
         """
         Return Pdata with the paths set from self.config
+        and the GradeA Cell list.
 
         Returns:
             PData: dataclass
         """
         return PData(
+            gradeA=GRPDEF.gradeACells,
             basepath=self.config["baseDataDirectory"],
             renderpath=str(Path(self.config["codeDirectory"], "Renderings")),
             revcorrpath=self.config["revcorrDataDirectory"],
@@ -188,10 +190,11 @@ class Figures(object):
             "Figure3-Supplemental5_PSTH": self.Figure3_Supplemental5_PSTH,
             "Figure4-Ephys_2_Main": self.Figure4_Main,
             "Figure4-Ephys_2_Supplemental1": self.Figure4_Supplemental1,
+            "Figure4-Ephys_2_Supplemental2": self.Figure4_Supplemental2,
             "Figure4-Ephys_2_Supplemental3": self.Figure4_Supplemental3,
             "Figure7-Ephys_3_Main": self.Figure7_Main,
-            "Figure7-Ephys_3_Supplemental1": self.Figure7_Supplemental1,
             "Figure7-Ephys_3_Supplemental2": self.Figure7_Supplemental2,
+            "Figure7-Ephys_3_Supplemental3": self.Figure7_Supplemental3,
             "Figure8-Ephys_4": self.Figure8_Panels_IJK,
             # Misc figures follow
             "Figure: IV Figure": self.plotIV,
@@ -220,7 +223,7 @@ class Figures(object):
         else:
             cprint("r", f"Figure name '{figure_name:s}' was not in dispatch table.")
 
-    def save_figure(self, fig):
+    def save_figure(self, fig, show_figure_name:bool=False):
         """
         Save a figure to a disk file.
         This routine adds metadata to the figure, along with
@@ -236,28 +239,29 @@ class Figures(object):
         Nothing
         """
 
-        fig.P.figure_handle.text(
-            0.98,
-            1.0,
-            str(fig.filename.name),  # .replace('_', '\_'),
-            transform=fig.P.figure_handle.transFigure,
-            fontdict = {"fontsize": 7, "fontweight": "normal",
-                "horizontalalignment": "right",
-                "verticalalignment": "top",
-            }
-        )
+        if show_figure_name:
+            fig.P.figure_handle.text(
+                0.98,
+                1.0,
+                str(fig.filename.name),  # .replace('_', '\_'),
+                transform=fig.P.figure_handle.transFigure,
+                fontdict = {"fontsize": 7, "fontweight": "normal",
+                    "horizontalalignment": "right",
+                    "verticalalignment": "top",
+                }
+            )
 
-        if hasattr(
-            fig, "title2"
-        ):  # ggplot figures do not have a title or title2 attribute
-            if fig.title2["title"] is not None or len(fig.title2["title"]) > 0:
-                fig.P.figure_handle.text(
-                    fig.title2["x"],
-                    fig.title2["y"],
-                    fig.title2["title"],  # .replace('_', '\_'),
-                    transform=fig.P.figure_handle.transFigure,
-                    horizontalalignment="right",
-                    verticalalignment="top",
+            if hasattr(
+                fig, "title2"
+            ):  # ggplot figures do not have a title or title2 attribute
+                if fig.title2["title"] is not None or len(fig.title2["title"]) > 0:
+                    fig.P.figure_handle.text(
+                        fig.title2["x"],
+                        fig.title2["y"],
+                        fig.title2["title"],  # .replace('_', '\_'),
+                        transform=fig.P.figure_handle.transFigure,
+                        horizontalalignment="right",
+                        verticalalignment="top",
                 )
         if isinstance(fig.filename, str):
             fig.filename = Path(fig.filename)
@@ -310,7 +314,7 @@ class Figures(object):
         """
         Plot an IV for every cell in the grade A cell list
         """
-        for cell in grAList():
+        for cell in GRPDEF.grAList():
             self.plotIV(cell)
 
     def get_dendmode(self, dendmode: str = ""):
@@ -561,7 +565,7 @@ class Figures(object):
             secax.set_ylim(-0.6, 0.2)
             secax.set_ylabel(phase_label)
             secax.set_xlabel("Frequency (Hz)")
-            PH.nice_plot(secax, position=self.axis_offset, direction="outward")
+            PH.nice_plot(secax, position=self.axis_offset, direction="outward", ticklength=3)
 
         # PH.show_figure_grid(self.P.figure_handle)
 
@@ -658,7 +662,8 @@ class Figures(object):
         ax_rin.set_ylim(0, 30.0)
         ax_rin.set_ylabel(res_label)
         ax_rin.set_xlabel("Dendrite Decoration")
-
+        ax_rin.set_xticklabels(["Passive", "Half-active", "Active"])
+        PH.nice_plot(ax_rin, position=-0.03, direction="outward", ticklength=3)
         sns.boxplot(
             data=df_tau,
             x="dendrites",
@@ -678,6 +683,9 @@ class Figures(object):
         )
         ax_tau.set_ylim(0, 2.5)
         ax_tau.set_ylabel(tau_label)
+        ax_tau.set_xticklabels(["Passive", "Half-active", "Active"])
+        PH.nice_plot(ax_tau, position=-0.03, direction="outward", ticklength=3)
+
         ax_tau.set_xlabel("Dendrite Decoration")
 
 
@@ -691,6 +699,8 @@ class Figures(object):
         into Illustrator to make the figure)
         
         Panels D and E are taken from Figure3_Supplemental2_CC.pdf, for BC17.
+        Panels F, G and H are from Figure3_Supplemental5_PSTH.pdf for BC17, with the stimuli underneath
+
         """
         cprint("y", message)
 
@@ -779,6 +789,7 @@ class Figures(object):
         )
         cellpath = self.config["cellDataDirectory"]
         png_path = Path(self.config["baseDataDirectory"], self.config["pngDirectory"])
+        column_titles = {'Passive': 'Passive', 'Normal': "Half-active", 'Active': "Active"}
 
         for rax, iv in enumerate(FD.figure_AllIVs.keys()):
             # if iv not in [9, 10]:
@@ -797,6 +808,7 @@ class Figures(object):
                     self.P.axarr[rax, 0].set_xlim(-1200, 1500)
                 PH.noaxes(self.P.axarr[rax, 0])
             # plot 3 dendrite decorations
+
             for iax, dendmode in enumerate(["passive", "normal", "active"]):
                 dendm = self.get_dendmode(dendmode)
                 sfi = Path(
@@ -841,7 +853,9 @@ class Figures(object):
                     axis_index=iax,
                 )
                 if rax == 0:
-                    self.P.axarr[rax, jax].set_title(dendmode.title())
+                    self.P.axarr[rax, jax].set_title(column_titles[dendmode.title()], 
+                        x=55.0, y=20., transform=self.P.axarr[rax, jax].transData,
+                        ha="center")
                 if iax == 0 and not show_pngs:
                     self.P.axarr[rax, 0].text(
                         -0.05, 0.5, f"BC{iv:02d}", 
@@ -1073,7 +1087,7 @@ class Figures(object):
         Parameters
         ----------
         cells : a list of ints (if none, default is to use all of the cells in the
-            gradeAList defined at the top of this file)
+            GRPDEF.gradeAList)
         figure: Figure handle for the plot passed to plot_traces in plot_sims.py)
         axes : a list
              of axes passed to plot_traces in plot_sims.py
@@ -1092,7 +1106,7 @@ class Figures(object):
         """
         assert simulation_experiment in ["Full", "NoUninnervated2"]
         if cells is None:
-            cells = grAList()
+            cells = GRPDEF.grAList()
         trace_ht = 80  # mV
         if maxtraces >= maxstack:
             maxtraces = maxstack
@@ -1214,7 +1228,7 @@ class Figures(object):
 
     def plot_efficacy_supplement(self, cells=None, parent_figure=None, traces=True):
         if cells is None:
-            cells = grAList()
+            cells = GRPDEF.grAList()
         print("Efficacy Supplement Plot")
         effp = []
         simulation_experiment = "Full"
@@ -1371,6 +1385,18 @@ class Figures(object):
         fig = self.Figure4_Main(supplemental1=True)
         return fig
 
+    def Figure4_Supplemental2(self):
+        """Plot AIS and efficacy
+
+        Returns:
+            _type_: _description_
+
+            NOTE: The rest of this figure is made in PRISM..... 
+
+        """
+        fig = EF.eff_ais(EF.data_Full, save_fig=True, figinfo=FigInfo(show_figure_name=False))
+        return fig
+
     def Figure4_assign_panel(self, supplemental1: bool = False, index: int = 0):
         if not supplemental1:
             revcorr_panel = f"B{index:d}"
@@ -1404,39 +1430,53 @@ class Figures(object):
 
         start_letter = "A"
         parent_figure = None
-
+        yrow0 = 0.75
+        yrow1 = 2.50+0.75
         yh = 1.75
-        xw = 0.85 * yh
+        #xw = 0.85 * yh
+        xw = 1.15 * yh
         xl = 1.05
 
-        xlp = [xl + (xw + 0.72) * i for i in range(5)]
-        lpos = (-0.15, 1.02)
+        xlp = [xl + (xw + 0.72) * i for i in range(4)]
+        lpos = (-0.12, 1.06)
         if not supplemental1:
             sizer = {
                 # "B": {"pos": [6.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
                 # "C": {"pos": [9.5, 2.2, 4.25, 2.5], "labelpos": (-0.15, 1.02),},
                 # "F": {"pos": [6.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
                 # "G": {"pos": [9.5, 2.2, 0.5, 2.5], "labelpos": (-0.15, 1.02),},
-                "D": {"pos": [xlp[0], xw, 0.75, yh], "labelpos": lpos},
+                "D": {
+                    "pos": [xlp[0], xw, yrow1, yh],
+                    "labelpos": lpos},
                 "E": {
-                    "pos": [xlp[1], xw, 0.75, yh],
+                    "pos": [xlp[1], xw, yrow1, yh],
                     "labelpos": lpos,
                 },
                 "F": {
-                    "pos": [xlp[2], xw, 0.75, yh],
+                    "pos": [xlp[2], xw, yrow1, yh],
                     "labelpos": lpos,
                 },
 
                 "G": {
-                    "pos": [xlp[3], xw, 0.75, yh],
+                    "pos": [xlp[3], xw, yrow1, yh],
                     "labelpos": lpos,
                 },
                 "H": {
-                    "pos": [xlp[4], xw, 0.75, yh],
+                    "pos": [xlp[0], xw, yrow0, yh],
                     "labelpos": lpos,
                 },
+                "I": {
+                    "pos": [xlp[1], xw, yrow0, yh],
+                    "labelpos": lpos,
+
+                },
+                "J": {
+                    "pos": [xlp[2], xw, yrow0, yh],
+                    "labelpos": lpos,
+
+                },
             }
-            figsize = (12, 8)
+            figsize = (12, 8+2.5)
             cal_pos = 0
         else:
             sizer = {}
@@ -1454,9 +1494,9 @@ class Figures(object):
             yh1 = 3.75
         else:
             yh2 = 1.2
-            yb2 = 3.5 + 2.7 - 0.5
-            yb3 = 3.5 + 0.6 - 0.5
-            yb1 = 3.25 - 0.5
+            yb2 = 3.5 + 2.7 - 0.5 + 2.5
+            yb3 = 3.5 + 0.6 - 0.5 + 2.5
+            yb1 = 3.25 - 0.5 +2.5
             yh1 = 4.25
         for j in range(len(example_cells)):
             i = j + 1
@@ -1511,9 +1551,10 @@ class Figures(object):
                 [ap, bp],
                 "-",
                 color=color,
+
             )
-            ax.scatter(a[n][0].sites / synperum2, ap, marker="o", color=color)
-            ax.scatter(a[n][0].sites / synperum2, bp, marker="x", color=color)
+            ax.scatter(a[n][0].sites / synperum2, ap, marker="o", color=color, alpha=0.6)
+            ax.scatter(a[n][0].sites / synperum2, bp, marker="x", color=color, alpha=0.6)
             ax.set_xlabel(r"Input ASA (${\mu m^2}$)")
             ax.set_xlim(0, 300)
             ax.set_ylim(0, 1.0)
@@ -1523,14 +1564,18 @@ class Figures(object):
         def plot_diff_participation(ax, n, a, b, dB=0, color=None, legend=True):
             ap = a[n][0].participation / a[n][0].npost_spikes
             bp = b[n][0].participation / b[n][0].npost_spikes
+            mark = GRPDEF.get_group_symbol(n)
             ax.scatter(
                 a[n][0].sites / synperum2,
                 bp / ap,
-                marker="o",
+                marker=mark,
                 color=color,
+                edgecolors='w',
+                linewidths=0.5,
                 label=f"BC{n:02d}",
                 clip_on=False,
-                s=12,
+                s=36,
+                alpha=0.6
             )
             ax.set_xlabel(r"Input ASA (${\mu m^2}$)")
             ax.set_xlim(0, 350)
@@ -1592,7 +1637,7 @@ class Figures(object):
 
         if not supplemental1:
             # Efficacy plot vs. input size (all)
-            for s in ["D", "E", "F", "G", "H"]:
+            for s in ["D", "E", "F", "G", "H", "I", "J"]:
                 P.axdict[s].set_zorder(100)
             EFP = EF.EfficacyPlots(parent_figure=P)
             EFP.plot_efficacy(
@@ -1600,11 +1645,11 @@ class Figures(object):
             )
 
             # efficacy for a single sized input vs. dendritic area
-            plot_single_input(P.axdict["E"], legend=False)
+            plot_single_input(P.axdict["H"], legend=False)
 
             # input pattern plot
-            PATSUM.Figure4F_pattern_plot(axin=P.axdict["F"])
-
+            # PATSUM.Figure4F_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode="multi")
+            PATSUM.Figure4F_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode='mmcd')  
             # participation
             ds = self._load_rcdata("Spont")
             drc = self._load_rcdata(f"{participation_dB:2d}dB")
@@ -1613,7 +1658,7 @@ class Figures(object):
             for i, c in enumerate(ds.keys()):
                 # plot_participation(P.axdictax[0], c, ds, drc, dB=dB, color=palette[i])
                 plot_diff_participation(
-                    P.axdict["G"],
+                    P.axdict["F"],
                     c,
                     ds,
                     drc,
@@ -1626,12 +1671,12 @@ class Figures(object):
             # Cumulative plots
             self.plot_revcorr_compare(
                 parent_figure=P,
-                axlist=[P.axdict["H"]],
+                axlist=[P.axdict["G"]],
                 dBSPLs=["Spont", "30dB"],
                 legend=False,
             )
-            # the folowing is set in plot_revcorr compare
-            PH.set_axes_ticks(ax=P.axdict["H"],
+            # the following is set in plot_revcorr compare
+            PH.set_axes_ticks(ax=P.axdict["G"],
                 xticks =     [0,    4,   8,   12],
                 xticks_str = ["0", "4", "8", "12"],
                 xticks_pad=None,
@@ -1644,7 +1689,11 @@ class Figures(object):
                 y_minor=None,
                 fontsize=8,
             )
-            PH.nice_plot(P.axdict["H"], position=self.axis_offset, direction="outward", ticklength=3)
+            PH.nice_plot(P.axdict["G"], position=self.axis_offset, direction="outward", ticklength=3)
+            ATHR = AIS_thresholds.AIS()
+            ATHR.DendvsThr(ax=P.axdict["I"])
+            ATHR.AISLengthThr(ax=P.axdict["J"])
+
             synlabel_num = 5  # this sets which cell the scale bar will be plotted with
         else:
             synlabel_num = 10
@@ -1719,7 +1768,7 @@ class Figures(object):
         else:
             fig.P = P
         if not supplemental1:
-            fig.filename = set_figure_path(fignum=4, filedescriptor="Ephys_2_main_v14")
+            fig.filename = set_figure_path(fignum=4, filedescriptor="Ephys_2_main_v15")
             fig.title[
                 "title"
             ] = "SBEM Project Figure 4 (main) Modeling: singles inputs, efficacy and revcorr, revised version 8"
@@ -1735,10 +1784,10 @@ class Figures(object):
         return fig
 
     def Figure4_Supplemental3(self):
-        PATSUM.summarize_patterns()  # writes its own figure to the directory
+        PATSUM.Figure4_Supplemental3_Patterns()  # writes its own figure to the directory
 
     def plot_all_revcorr(self):
-        for cell in grAList():
+        for cell in GRPDEF.grAList():
             fig = self.plot_revcorr(cell)
             if fig is not None:
                 self.save_figure(fig)
@@ -1996,7 +2045,7 @@ class Figures(object):
         save_calcs: bool = False,  # set to True if need to update.
     ):
         if cells is None:
-            cells = grAList()
+            cells = GRPDEF.grAList()
         ncells = len(cells)
 
         if parent_figure is None:
@@ -2074,7 +2123,7 @@ class Figures(object):
 
         i_plot = 0
         if cells is None:
-            cells = grAList()
+            cells = GRPDEF.grAList()
 
         for i, cell_number in enumerate(cells):
 
@@ -2401,10 +2450,10 @@ class Figures(object):
                 # right side, summary plots
                 ("O1", {"pos": [col3, xw, yposr[2], yhtr], "labelpos": [-0.1, 1.05]}),
                 ("O2", {"pos": [col4, xw, yposr[2], yhtr], "labelpos": [-0.1, 1.05]}),
-                ("P1", {"pos": [col3, xw, yposr[1], yhtr], "labelpos": [-0.1, 1.05]}),
-                ("P2", {"pos": [col4, xw, yposr[1], yhtr], "labelpos": [-0.1, 1.05]}),
-                ("P3", {"pos": [col3, xw, yposr[0], yhtr], "labelpos": [-0.1, 1.05]}),
-                ("P4", {"pos": [col4, xw, yposr[0], yhtr], "labelpos": [-0.1, 1.05]}),
+                ("O3", {"pos": [col3, xw, yposr[1], yhtr], "labelpos": [-0.1, 1.05]}),
+                ("O4", {"pos": [col4, xw, yposr[1], yhtr], "labelpos": [-0.1, 1.05]}),
+                ("P1", {"pos": [col3, xw, yposr[0], yhtr], "labelpos": [-0.1, 1.05]}),
+                ("P2", {"pos": [col4, xw, yposr[0], yhtr], "labelpos": [-0.1, 1.05]}),
             ]
         )  # dict elements are [left, width, bottom, height] for the axes in the plot.
 
@@ -2419,7 +2468,7 @@ class Figures(object):
         )
         
         # title the 2 left columns
-        mpl.text(x=1.5, y=8.3, s=f"BC{example_cell_number:02d}  200Hz SAM", fontdict={
+        mpl.text(x=1.5, y=8.3, s=f"BC{example_cell_number:02d}  200Hz 100% SAM", fontdict={
                 "fontsize": 10, "fontweight": "bold", "ha": "center"},
                 transform=P.figure_handle.dpi_scale_trans)
         mpl.text(x=4.5, y=8.3, s=f"BC{example_cell_number:02d}  60 Hz Click Train", fontdict={
@@ -2452,7 +2501,7 @@ class Figures(object):
         P.axdict["F"].set_ylabel("Spike Count", fontdict=label_font)
     
         # P.axdict["G"].set_title("Stimulus", fontdict=title_font)
-        P.axdict["G"].set_ylabel("Amplitude (Pa)", fontdict=label_font)
+        P.axdict["G"].set_ylabel("Stimulus", fontdict=label_font)
         P.axdict["G"].set_xlabel("Time (s)", fontdict=label_font)
 
         # column 2 Click train
@@ -2474,14 +2523,13 @@ class Figures(object):
         )
         P.axdict["L"].set_ylabel("Spikes/second", fontdict=label_font)
 
-        P.axdict["M"].set_title("SAC", fontdict=title_font)
         P.axdict["M"].set_ylabel("CI", fontdict=label_font)
         P.axdict["M"].set_title("SAC", fontdict=title_font, verticalalignment="top", y=0.95)
         P.axdict["M"].set_ylim(0, 25)
         PH.talbotTicks(P.axdict["M"], axes='y', density=(1.0, 1.0), 
             tickPlacesAdd= {'x':2, "y": 0})
         # P.axdict["N"].set_title("Stimulus", fontdict=title_font)
-        P.axdict["N"].set_ylabel("Amplitude (Pa)", fontdict=label_font)
+        P.axdict["N"].set_ylabel("Stimulus", fontdict=label_font)
         P.axdict["N"].set_xlabel("Time (s)", fontdict=label_font)
 
         for axl in [
@@ -2518,18 +2566,19 @@ class Figures(object):
             pan = ["H", "I", "J", "K", "L", "M", "N"],
         )
 
-        """ Now do the right side with the VS plots and "V" plots
+        """ Now do the right side with the VS plots and "V" or line plots
 
         """
-        VSP = SAM_VS_vplots.VS_Plots(dBSPL=15)
-        VSP.plot_VS_Data(axin=P.axdict["O1"])
+        VSP15 = SAM_VS_vplots.VS_Plots(dBSPL=15)
+        VSP15.plot_VS_Data(axin=P.axdict["P1"], legendflag=False)
         VSP30 = SAM_VS_vplots.VS_Plots(dBSPL=30)
-        VSP30.plot_VS_Data(axin=P.axdict["O2"], legendflag=False)
+        VSP30.plot_VS_Data(axin=P.axdict["P2"], legendflag=False)
 
-        VSP.plot_VS_summary(5, axin=P.axdict["P1"], legendflag=True)
-        VSP.plot_VS_summary(30, axin=P.axdict["P2"], legendflag=False)
-        VSP.plot_VS_summary(9, axin=P.axdict["P3"], legendflag=False)
-        VSP.plot_VS_summary(17, axin=P.axdict["P4"], legendflag=False)
+        VSP = SAM_VS_vplots.VS_Plots(dBSPL=15)
+        VSP.plot_VS_summary(2, axin=P.axdict["O1"], legendflag=True)
+        VSP.plot_VS_summary(30, axin=P.axdict["O2"], legendflag=False)
+        VSP.plot_VS_summary(9, axin=P.axdict["O3"], legendflag=False)
+        VSP.plot_VS_summary(17, axin=P.axdict["O4"], legendflag=False)
 
 
         fig = FigInfo()
@@ -2554,13 +2603,13 @@ class Figures(object):
             "Simulations",
             "AN",
         )
-        print('dataset: ', dataset)
-        print('keys: ', dataset.keys())
-        print('mode: ', mode)
-        print('cellpath: ', cellpath)
-        print("cell_number: ", cell_number)
-        print(dataset.keys())
-        print('dataset[mode]: ', dataset[cell_number][mode])
+        # print('dataset: ', dataset)
+        # print('keys: ', dataset.keys())
+        # print('mode: ', mode)
+        # print('cellpath: ', cellpath)
+        # print("cell_number: ", cell_number)
+        # print(dataset.keys())
+        # print('dataset[mode]: ', dataset[cell_number][mode])
 
         sfi = Path(cellpath, Path(dataset[cell_number][mode]).name)
         if not sfi.is_dir():
@@ -2672,10 +2721,11 @@ class Figures(object):
                 engine=sac_engine,
                 dither=1e-3 * si.dtIC / 2.0,
             )
+            # plot bu as red
             P.axdict[pan[5]].plot(
                 bu_sacbins[:-1] * 1e3,
                 bu_sac,
-                "k-",
+                "r-",
                 # label=sac_label,
             )
             an_sac, an_sacbins = S.SAC_with_histo(
@@ -2687,9 +2737,13 @@ class Figures(object):
             P.axdict[pan[5]].plot(
                 an_sacbins[:-1] * 1e3,
                 an_sac,
-                "r-",
+                "k-",
                 # label=sac_label,
             )
+            custom_legend = [Line2D([0], [0], marker=None, color="k", lw=1, label='AN'),
+                             Line2D([0], [0], marker=None, color="r", lw=1, label="BC"),
+                    ]
+            P.axdict[pan[5]].legend(handles=custom_legend, handlelength=1, loc="upper right", fontsize=7, labelspacing=0.33, markerscale=0.5)
             P.axdict[pan[5]].set_xlabel("Time (ms)")
         else:
             phasewin = [
@@ -2717,6 +2771,7 @@ class Figures(object):
                 est_binw = est_binw1
             # print('est_binw: ', est_binw, est_binw1, dt, nints, per)
 
+            # plot AN red
             PF.plot_psth(
                 vs_an.circ_phase,
                 run_info=ri,
@@ -2725,9 +2780,10 @@ class Figures(object):
                 ax=P.axdict[pan[5]],
                 bin_fill=False,
                 xunits="radians",
-                edge_color="r",
+                edge_color="k",
                 alpha=0.5,
             )
+            # plot BU black
             PF.plot_psth(
                 vs_bu.circ_phase,
                 run_info=ri,
@@ -2736,7 +2792,7 @@ class Figures(object):
                 bin_fill=False,
                 ax=P.axdict[pan[5]],
                 xunits="radians",
-                edge_color='k',
+                edge_color='r',
                 alpha=0.5,
             )
             # P.axdict["E"].hist(
@@ -2746,30 +2802,36 @@ class Figures(object):
             #     edgecolor="k",
             # )
             P.axdict[pan[5]].set_xlim((0.0, 2 * np.pi))
-            P.axdict[pan[5]].text(x=0.05, y=1.0,
-                s=f"VS: AN = {vs_an.vs:5.3f}\n    BU = {vs_bu.vs:5.3f}",
-                fontdict={
-                    "fontsize": 8,
-                    "fontweight": "normal",
-                    "verticalalignment": "top",
-                },
-                transform=P.axdict[pan[5]].transAxes,
-            )
+            custom_legend = [Line2D([0], [0], marker=None, color="k", lw=3, alpha=0.5, label=f"AN VS = {vs_an.vs:5.3f}"),
+                             Line2D([0], [0], marker=None, color="r", lw=3, alpha=0.5, label=f"BC VS = {vs_bu.vs:5.3f}"),
+                    ]
+            P.axdict[pan[5]].legend(handles=custom_legend, handlelength=1, loc="upper left", fontsize=7, labelspacing=0.33, markerscale=0.5)
+            # P.axdict[pan[5]].text(x=0.05, y=1.0,
+            #     s=f"VS: AN = {vs_an.vs:5.3f}\n    BU = {vs_bu.vs:5.3f}",
+            #     fontdict={
+            #         "fontsize": 8,
+            #         "fontweight": "normal",
+            #         "verticalalignment": "top",
+            #     },
+            #     transform=P.axdict[pan[5]].transAxes,
+            # )
 
-    def Figure7_Supplemental1(self):
+    def Figure7_Supplemental2(self):
         V = SAM_VS_vplots.VS_Plots()
-        fig, P = V.make_figure()
+        #fig, P = V.make_figure()
+        fig, P = V.Figure7_Supplemental2()
         return fig
     
-    def Figure7_Supplemental2(self):
-        pass
+    def Figure7_Supplemental3(self):
+        fig = SACP.plot_sacs(figinfo=FigInfo(show_figure_name=False))
+        return fig
 
     def plot_psth_psth(
         self,
         ax: object,
         data: object,
         ri: dict,
-        psth_binw: float = 0.0005,
+        psth_binw: float = 0.001,
         psth_win: Union[list, np.array] = [0.0, 1.0],
         ntr: int = 1,
         ninputs: int = 1,
@@ -2781,7 +2843,7 @@ class Figures(object):
             max_time=psth_win[1],
             bin_width=psth_binw,
             ax=ax,
-            scale=1.0 / ntr / psth_binw / ninputs,
+            scale=1.0 / ninputs,
         )
         ax.set_xlim(0, np.fabs(np.diff(psth_win)))
         PH.talbotTicks(
@@ -2826,7 +2888,7 @@ class Figures(object):
             f"\nSSL: {np.nanmean(grand_ssl):.3f} (SD {np.nanstd(grand_ssl):.3f})"
         )
         ax.text(
-            0.20,
+            0.18,
             0.95,
             fsl_text,
             # N={np.count_nonzero(~np.isnan(fsl)):3d})",
@@ -2850,7 +2912,7 @@ class Figures(object):
         ax.set_title("AN")
 
     def plot_All_PSTH(self):
-        for cell in grAList():
+        for cell in GRPDEF.grAList():
             fig = self.plot_PSTH(cellN=cell)
         return fig
 
@@ -3007,6 +3069,7 @@ class Figures(object):
         stim_win: tuple = (0, 0.25),
         color='b',
         scale:str='sec', # or "ms"
+        y_label:bool=False,  # turn off mPa
     ):
         # stimulus waveform
         trd = d["Results"][ntrace]
@@ -3029,16 +3092,13 @@ class Figures(object):
             linewidth=0.5,
         )  # stimulus underneath
         ax.set_xlim(0, timescale*(stim_win[1] - stim_win[0]))
-        # PH.talbotTicks(
-        #     ax,
-        #     axes="xy",
-        #     density=(1.0, 0.5),
-        #     insideMargin=0.02,
-        #     # pointSize=ticklabelsize,
-        #     tickPlacesAdd={"x": 2, "y": 1},
-        #     floatAdd={"x": 2, "y": 1},
-        # )
-        ax.set_ylabel("mPa")
+        PH.nice_plot(ax, position={'bottom': -0.03}, direction='outward', ticklength=3)
+
+        if y_label:
+            ax.set_ylabel("mPa")
+        else:
+            tl = ax.get_yticklabels()
+            ax.set_yticklabels([""]*len(tl))
 
     
     def get_bu_spikearray(self, AR, d):
@@ -3204,7 +3264,7 @@ class Figures(object):
                 )
             PH.set_axes_ticks(stim_tr_ax,
                 yticks = [-1, -0, 1],
-                yticks_str = ["-1", "", "1"],
+                yticks_str = [], # ["-1", "", "1"],
                 xticks = [0, 0.1, 0.2],
                 xticks_str = ["0.0", "0.1", "0.2"],
                 x_minor = [0.05, 0.15, 0.25],
@@ -3237,8 +3297,8 @@ class Figures(object):
             else:
                 xticks_str = None
             PH.set_axes_ticks(bupsth_ax,
-                yticks = [0, 25, 50, 75],
-                yticks_str = ["0", "25", "50", "75"],
+                yticks = [0,  500,  1000, 1500],
+                yticks_str = ["0", "500",  "1000", "1500"],
                 xticks = [0, 0.1, 0.2],
                 xticks_str = xticks_str,
                 x_minor = [0.05, 0.15, 0.25],
@@ -3249,7 +3309,7 @@ class Figures(object):
                     )
                 PH.set_axes_ticks(stim_psth_ax,
                     yticks = [-1, -0, 1],
-                    yticks_str = ["-1", "", "1"],
+                    yticks_str = [], # ["-1", "", "1"],
                     xticks = [0, 0.1, 0.2],
                     xticks_str = ["0", "0.1", "0.2"],
                     x_minor = [0.05, 0.15, 0.25],
@@ -3313,7 +3373,7 @@ class Figures(object):
                 stim_fsl_ax.set_xlabel("Time (ms)")
                 PH.set_axes_ticks(stim_fsl_ax,
                     yticks = [-1, -0, 1],
-                    yticks_str = ["-1", "", "1"],
+                    yticks_str = [], # ["-1", "", "1"],
                     xticks = [0, 5, 10, 15, 20, 25],
                     xticks_str = ["0", "5", "10", "15", "20", "25"],
                 )
@@ -3398,6 +3458,7 @@ class Figures(object):
         cv_ax.set_ylim(0, 1.2)
         cv_ax.set_xlim(0, 1e3 * (cv_win[1] - cv_win[0]) - 20.0)
         if stim_ax is not None:
+            # print("Plotting CV waveform")
             self.plot_stim_waveform(
                 ax=stim_ax, ntrace=self.stim_data["ntrace"], 
                 d=self.stim_data["d"], 
@@ -3408,10 +3469,10 @@ class Figures(object):
             stim_ax.set_ylim(-1, 1)
             stim_ax.set_xlim(0, 1e3 * (cv_win[1] - cv_win[0]) - 20.0)
             stim_ax.set_xlabel("Time (ms)")
-            PH.nice_plot(stim_ax, direction="outward", ticklength=3)
+            # PH.nice_plot(stim_ax, direction="outward", ticklength=3)
             PH.set_axes_ticks(stim_ax,
                 yticks = [-1, -0, 1],
-                yticks_str = ["-1", "", "1"],
+                yticks_str = [], # ["-1", "", "1"],
                 xticks = [0, 20, 40, 60, 80],
                 xticks_str = ["0", "20", "40", "60", "80"],
                 x_minor=[10, 30, 50, 70],
@@ -3435,15 +3496,15 @@ class Figures(object):
             ) 
         cv_ax.set_ylim(0, 1.2)
 
-        cvlabel = r"$CV\prime$"
+        cvlabel = "" # r"$CV\prime$: "
         cv_ax.text(
-            1.0,
-            1.15,
-            f"{cvlabel:s}: {CVp:4.2f}",
+            1.02,
+            CVp,
+            f"{cvlabel:s}{CVp:4.2f}",
             transform=cv_ax.transAxes,
             fontsize=7,
-            horizontalalignment="right",
-            verticalalignment="top",
+            horizontalalignment="left",
+            verticalalignment="center",
         )
         cv_ax.set_ylabel("CV")
         if label_x_axis:
@@ -3458,7 +3519,7 @@ class Figures(object):
         pght = 10
 
         P = PH.regular_grid(
-            rows=len(grAList()),
+            rows=len(GRPDEF.grAList()),
             cols=4,
             order="rowsfirst",
             figsize=(8, pght),
@@ -3492,7 +3553,7 @@ class Figures(object):
             P2.axarr[0, c].yaxis.set_ticklabels([])
 
         PH.cleanAxes(P.axarr.ravel())
-        ncells = len(grAList())
+        ncells = len(GRPDEF.grAList())
         # center labels over columns
         cdata = {
             0: f"Soma Voltage",
@@ -3519,7 +3580,7 @@ class Figures(object):
 
         PH.cleanAxes(P.axarr.ravel())
 
-        for i, cell_number in enumerate(grAList()):
+        for i, cell_number in enumerate(GRPDEF.grAList()):
             print("Plotting psth for cell: ", cell_number)
             show_label = False
             if i == ncells - 1:
@@ -3555,7 +3616,15 @@ class Figures(object):
                 t_grace=0.0,
                 stim_ax=stim_ax_cv,
             )
-
+           # Shim CV slightly to the right so that label does not overlap text in FSL?SSL_ERROR_EOF
+            pos = P.axarr[i, 3].get_position()
+            pos.x0 = pos.x0 + 0.02
+            P.axarr[i, 3].set_position(pos)
+            # also shi the stim plot
+            if stim_ax_cv is not None:
+                pos = stim_ax_cv.get_position()
+                pos.x0 = pos.x0 + 0.02
+                stim_ax_cv.set_position(pos)
 
             P.axarr[i, 0].text(
                 -0.40,
@@ -3597,11 +3666,13 @@ class Figures(object):
     
     def analyze_VS_data(
         self, VS_data, cell_number, fout, firstline=False, sac_flag=False, test=False,
+        dBSPL:int=0, make_VS_raw:bool=True,
     ):
         """
         Generate tables of Vector Strength measures for all cells
         across the frequencies listed
         """
+        
         # self.parent.PLT.textclear()  # just at start
         PD = self.newPData()
         P = None
@@ -3612,7 +3683,7 @@ class Figures(object):
         else:
             cell_n = cell_number
         self.parent.cellID = cell_number
-        print(VS_data.samdata.keys())
+    
         for i, filename in enumerate(VS_data.samdata[cell_number]):
             print(f"Cell: {str(cell_number):s}  Filename: {filename:s}")
             cellpath = Path(
@@ -3628,7 +3699,8 @@ class Figures(object):
                 with open(sfi, "rb") as fh:
                     d = FPM.pickle_load(fh)
                 self.parent.PLT.plot_AN_response(
-                    P, d.files[0], PD, "runANPSTH", sac_flag=sac_flag
+                    P, d.files[0], PD, "runANPSTH", sac_flag=sac_flag,
+                    filename=filename, make_VS_raw=make_VS_raw,
                 )
                 # note that VSline has results of VS computation to put in the table
                 if firstline:
@@ -3708,9 +3780,10 @@ class Figures(object):
         The datasets that to be analyzed are listed in VS_datasets_nndB.py 
         or VS_datasets_15dB_BC09_NoUninnervated.py (if bc09 is True) 
         """
-        parallel = False
-        if parallel:
-            import multiprocessing as MPROC
+        parallel = True
+        if platform.system() == "Darwin":
+            parallel = False # not easy from here to run parallel
+
         start_timestamp = datetime.datetime.now()
         timestamp_str = start_timestamp.strftime("%Y-%m-%d-%H.%M.%S")
 
@@ -3718,13 +3791,13 @@ class Figures(object):
             if f"VS_datasets_{dB:d}dB" not in list(dir()):
                 import VS_datasets_30dB as VS_datasets
                 outfile = f"VS_data_{dB:d}dB_{timestamp_str:s}.py"
-                TASKS = [s for s in grAList()]
+                TASKS = [s for s in GRPDEF.grAList()]
 
         if dB == 15 and not bc09:
             if f"VS_datasets_{dB:d}dB" not in list(dir()):
                 import VS_datasets_15dB as VS_datasets
                 outfile = f"VS_data_{dB:d}dB_{timestamp_str:s}.py"
-                TASKS = [s for s in grAList()]
+                TASKS = [s for s in GRPDEF.grAList()]
 
         elif dB == 15 and bc09:
             if f"VS_datasets_{dB:d}dB_BC09_NoUninnervated" not in list(dir()):
@@ -3733,11 +3806,11 @@ class Figures(object):
                 TASKS = [s for s in VS_datasets.samdata.keys()]
 
             
-        importlib.reload(VS_datasets)  # make sure have the current one
+        # importlib.reload(VS_datasets)  # make sure have the current one
         print("VS_datasets: ", VS_datasets)
         print(f"Data set keys found: {str(list(VS_datasets.samdata.keys())):s}")
-        config = toml.load(open("wheres_my_data.toml", "r"))
-
+        with open("wheres_my_data.toml", "r") as fh:
+            self.config = toml.load(fh)
         """
         Generate the table in VS_data.py by analyzing the data from 
         VS_datasets.py
@@ -3750,10 +3823,15 @@ class Figures(object):
 
         fl = True
         tresults = [None] * len(TASKS)
+ 
         results = {}
         # run using pyqtgraph's parallel support
+        nWorkers = MPROC.cpu_count()-2
+
         if parallel:
-            nWorkers = MPROC.cpu_count()
+            print("Tasks: ", TASKS)
+            print("parallel: ", parallel)
+            print("N workers: ", nWorkers)
             cprint("m", f"VS_DataAnalysis : Parallel with {nWorkers:d} processes")
             self.parent.PLT.in_Parallel = True  # notify caller
             with MP.Parallelize(
@@ -3762,8 +3840,10 @@ class Figures(object):
                     for j, celln in tasker:
                         if j > 0:
                             fl = False
+                        cprint("m", f"Cell: {celln:d}  j={j:d}")
+                        VS_file_raw = f"VS_raw_SAM_{dB:02d}_{celln:02d}.txt"
                         tresults = self.analyze_VS_data(VS_datasets, celln, fout, 
-                            firstline=fl, sac_flag=True, test=False)
+                            firstline=fl, sac_flag=True, test=False, dBSPL=dB, make_VS_raw=True)
                         tasker.results[j] = tresults
             self.parent.PLT.in_Parallel = False
             print("Results: \n", [r+'\n' for r in tresults])
@@ -3776,7 +3856,7 @@ class Figures(object):
         else:
             for j, celln in enumerate(TASKS):
                 tresults = self.analyze_VS_data(VS_datasets, celln, fout, 
-                    firstline=fl, sac_flag=True, test=False)
+                    firstline=fl, sac_flag=True, test=False, make_VS_raw=True)
                 if j > 0:
                     fl = False
                 with open(fout, "a") as fh:
@@ -3796,9 +3876,11 @@ class Figures(object):
 
 
     def Figure8_Panels_IJK(self):
-                # Traces
-        import matplotlib.patches as mpatches
+        """Make the lower panels for Figure 8
 
+        Returns:
+            FigData: The figure object
+        """        
         rows = 1
         cols = 5
         bmar = 0.5
@@ -3820,6 +3902,7 @@ class Figures(object):
                 "rightmargin": 0.25,
                 "topmargin": tmar,
             },
+
             labelposition=(-0.05, 1.05),
             parent_figure=None,
             panel_labels=panels,
@@ -3833,6 +3916,7 @@ class Figures(object):
             "Simulations",
             "IV",
         )
+        # get the filenames that will be overplotted
         fns = []
         for fd in FD.figure_No_Dend[cellN].keys():
             dfile = FD.figure_No_Dend[cellN][fd]
@@ -3844,14 +3928,17 @@ class Figures(object):
             if len(fng) == 0:
                 raise ValueError("no files found")
             fns.append(fng[0])
-
+        print(fns)
         ymin = -140.0
         ymax = 20.0
         iax = 0
+        spkmarkcolors = ['c', 'r']
+        spkmarksizes = [2.5, 3.5]
+        spkmarkshape = ["^", "o"]
         ivaxis = self.P.axdict["J"]
         for i, fn in enumerate(fns):
             sfi = Path(sfi, fn)
- 
+
             self.parent.PLT.plot_traces(
                 self.P.axdict["I"],
                 sfi,
@@ -3865,11 +3952,19 @@ class Figures(object):
                 ivaxis=ivaxis,  # accumulate IV's
                 ivcolor=colors[i],
                 trace_color=colors[i],
+                iv_spike_color = spkmarkcolors[i],
+                spike_marker_size = spkmarksizes[i],
+                spike_marker_color= spkmarkcolors[i],
+                spike_marker_shape = spkmarkshape[i],
                 calx=100.0,
                 caly=-110.0,
                 show_title=False,
                 axis_index = 1,
             )
+        pos = self.P.axdict["I"].get_position()
+        pos.y0 = pos.y0 - 0.15
+        self.P.axdict["I"].set_position(pos)
+
         PH.set_axes_ticks(self.parent.PLT.crossed_iv_ax,
                 yticks =     [-140,    -120, -100, -80, -60, -40,  -20],
                 yticks_str = ["-140", "-120", "-100",   "-80",  "", "-40", "-20 mV"],
@@ -3879,7 +3974,10 @@ class Figures(object):
                 x_minor = [-0.5, 0.5, 1.5],
             )
         self.parent.PLT.crossed_iv_ax.tick_params(axis='both', which="both", direction="inout")
-        
+        pos = ivaxis.get_position()
+        pos = pos.translated(-0.03, 0)
+        pos.y0 = pos.y0-0.1
+        ivaxis.set_position(pos)
         # plot the singles responses in the third panel
 
         cal_pos = 0
@@ -3898,7 +3996,13 @@ class Figures(object):
         )
         for ax in axl:
             ax.set_zorder(0)
-        
+            pos = ax.get_position()
+            pos = pos.translated(-0.03, 0)
+            pos.y0 = pos.y0 - 0.08
+            ax.set_position(pos)
+
+        # plot the efficacy curves and points in the 4th panel
+
         EFP = EF.EfficacyPlots(parent_figure=self.P.figure_handle)
         EFP.plot_efficacy(datasetname="NoUninnervated2", ax=self.P.axdict["L"], clean=True)
         EFP.plot_efficacy(datasetname="NoUninnervated2_ctl", ax=self.P.axdict["L"], clean=True)
@@ -3923,31 +4027,34 @@ class Figures(object):
                 Line2D([0], [0], color="#94c8ff", lw=1, label='Group 2'),
                 ]
         self.P.axdict["L"].legend(handles=custom_legend, handlelength=1, 
-            loc="upper left", bbox_to_anchor=(-0.07, 1.8),
+            loc="upper left", bbox_to_anchor=(-0.07, 1.0),
             fontsize=7, labelspacing=0.33)
+        
+        # Plot the Vector Strength for SAM at different frequencies in the 5th panel
         # panel M : compare 9I(intact) and 9U (NoUninnervated) VS across frequencies
+
         VSP = SAM_VS_vplots.VS_Plots(sels=[9], dBSPL=15, dends="9I9U")
-        VSP.plot_VS_summary(axin=self.P.axdict["M"], cell=9, barwidth=75, legendflag=True)
+        VSP.plot_VS_summary(axin=self.P.axdict["M"], cell=9, barwidth=75, legendflag=True, xscale="log", figure8_xscale=True)
         self.P.adjust_panel_labels(fontsize=28, fontweight="light", fontname="myriad")
         custom_legend = [Line2D([0], [0], marker="_", markersize=2, color="firebrick", lw=2, label='AN'),
                 Line2D([0], [0], marker='o', color='w', markerfacecolor=sns_colors[0], markersize=5, label="Intact"),
                 Line2D([0], [0], marker='o', color='w', markerfacecolor=sns_colors[1], markersize=5, label="Pruned"),
                 ]
         self.P.axdict["M"].legend(handles=custom_legend, handlelength=1, loc="lower left", fontsize=7, labelspacing=0.33)
-        PH.set_axes_ticks(ax=self.P.axdict["M"],
-            xticks = [0, 1, 2, 3, 4, 5, 6, 7],
-            xticks_str = ['0', '100', '200', '300', '400', '500', '750', '1000'],
-            # xticks_pad:Union[List, None]=None,
-            x_minor = None,
-            x_rotation=60.,
-            major_length = 3.0,
-            minor_length =1.5,
-            fontsize=8,
-        )        
+        # PH.set_axes_ticks(ax=self.P.axdict["M"],
+        #     xticks = [0, 1, 2, 3, 4, 5, 6, 7],
+        #     xticks_str = ['50', '100', '200', '300', '400', '500', '750', '1000'],
+        #     # xticks_pad:Union[List, None]=None,
+        #     x_minor = None,
+        #     x_rotation=60.,
+        #     major_length = 3.0,
+        #     minor_length =1.5,
+        #     fontsize=8,
+        # )        
 
         fig = FigInfo()
         fig.P = self.P
-        fig.filename = set_figure_path(fignum=8, filedescriptor="Ephys_Pruning_IJKLM_V2")
+        fig.filename = set_figure_path(fignum=8, filedescriptor="Ephys_Pruning_IJKLM_V3")
         fig.title[
             "title"
         ] = "SBEM Project Figure 8 (main) Modeling: Dendrite pruning effects"

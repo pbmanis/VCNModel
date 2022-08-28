@@ -2,17 +2,22 @@
 This program provides a graphical interface for model results for the SBEM
 reconstruction project. The display appears as 3 panels: One on the left with
 controls, one on the top right that is tabbed,
-    showing either the current table, or the traces, and one on the bottom for
-    text output.
+showing either the current table, or the traces, and one on the bottom for
+text output.
+
 The left panel provides a set of organized controls:
+
     Selections:
+
         Run Type (AN, IV) corresponding to auditory nerve input or current
         injection protocols Cells (from list of cells that are available to
-        model)
-            Selecting one of these will population the simulation table on the
-            right with valid simulations.
+        model).
+        Selecting one of these will population the simulation table on the
+        right with valid simulations.
         ModelType Mode, Experiment, Analysis, Dendrites: inactive.
+
     Analysis:
+
         This provides different fixed kinds of analysis for the model data.
         Traces: just plot the traces, stacked, for reference. IV : plot
         current-voltage relationships and calculate Rin, Taum, find spikes. VC :
@@ -25,28 +30,33 @@ The left panel provides a set of organized controls:
         reverse correlation calculation. RevcorrSTTC : not implemented. PSTH :
         Plot PSTH, raster, for bu cell and AN input; also compute phase locking
         to AM if needed.
+
     Filters:
         This provides data selection in the table. Most entries provide a
-        drop-down list. The values that are not 
-            None are applied with "and" logic. The filters are not applied until
-            the Apply button is pressed; The filters are cleared by the Clear
-            button.
+        drop-down list. The values that are not  None are applied with "and" 
+        logic. The filters are not applied until the Apply button is pressed.
+        The filters are cleared by the Clear button.
+
     Options:
         These are options for the TraceViewer mode. Nubmer of traces Plot Vm or
         dVm/dt Movie button generates a movie through time. Frame interval sets
         the time between frames in the movie, in msec.
+
     Figures:
         Interface to figure generation. Figures are generated from the model
         data directly as much as possible. Some figures are generated from
         analysis data that is either compiled manually, or using a script.
+
     Tools:
         Reload: for all modules under DataTables, reload the code. Mostly used
         during development. View IndexFile: Print the index file in the text
         window. Print File Info: Prints the file info for the selected entries
         into the text window. Delete Selected Sim : for deleting simulations
         that are broken (or stopped early). 
+
     Quit:
         Exit the program.
+
 Uses pyqtgraph tablewidget to build a table showing simulation files/runs and
 enabling analysis via a GUI
 
@@ -87,7 +97,11 @@ from vcnmodel.plotters import plot_z
 from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot
 from vcnmodel.plotters import plot_functions
-from vcnmodel.analyzers import pattern_summary
+from vcnmodel.plotters import SAC_plots
+import vcnmodel.group_defs as GRPDEF
+import vcnmodel.analyzers.pattern_summary
+import vcnmodel.analyzers.vector_strength
+from vcnmodel.plotters import AIS_thresholds
 from pylibrary.tools import cprint as CP
 import vcnmodel.analyzers.spikestatistics
 import ephys
@@ -105,7 +119,9 @@ all_modules = [
     plot_z,
     SAM_VS_vplots,
     efficacy_plot,
+    SAC_plots,
     cell_config,
+    AIS_thresholds,
     vcnmodel.analyzers.spikestatistics,
     vcnmodel.analyzers.analysis,
     vcnmodel.analyzers.analyze_data,
@@ -114,6 +130,8 @@ all_modules = [
     vcnmodel.analyzers.sttc,
     vcnmodel.analyzers.sac,
     vcnmodel.analyzers.pattern_summary,
+    vcnmodel.analyzers.vector_strength,
+    GRPDEF,
     vcnmodel.util.fixpicklemodule,
     vcnmodel.util.readmodel,
     vcnmodel.util.trace_calls,
@@ -188,6 +206,11 @@ run_dates = [
     "2022-01-01",
     "2022-02-01",
     "2022-03-01",
+    "2022-04-01",
+    "2022-05-01",
+    "2022-06-01",
+    "2022-07-01",
+    "2022-08-01",
     
 ]
 # Modes for synapse model runs - not all are used.
@@ -202,7 +225,7 @@ revcorrtypes = [
     "RevcorrSTTC",
 ]
 # For Filter dropdown: 10 dB steps
-dbValues = list(range(0, 91, 10))
+dbValues = list(range(0, 91, 5))
 dbValues.insert(0, "None")
 
 # SR possibilities
@@ -278,7 +301,7 @@ class DataTablesVCN:
         self.app.setPalette(dark_palette)
         self.app.setStyleSheet("QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }")
 
-        self.win = pg.QtGui.QMainWindow()
+        self.win = pg.QtWidgets.QMainWindow()
         # use dock system instead of layout.
         self.dockArea = PGD.DockArea()
         self.win.setCentralWidget(self.dockArea)
@@ -370,25 +393,25 @@ class DataTablesVCN:
                     {
                         "name": "Run Type",
                         "type": "list",
-                        "values": runtypes,
+                        "limits": runtypes,
                         "value": runtypes[0],
                     },
                     {
                         "name": "Cells",
                         "type": "list",
-                        "values": cellvalues,
+                        "limits": cellvalues,
                         "value": 2,
                     },
                     {
                         "name": "Start Date",
                         "type": "list",
-                        "values": run_dates,
+                        "limits": run_dates,
                         "value": run_dates[0],
                     },
                     {
                         "name": "End Date",
                         "type": "list",
-                        "values": run_dates,
+                        "limits": run_dates,
                         "value": run_dates[0],
                     },
                      # {
@@ -485,62 +508,62 @@ class DataTablesVCN:
                     {
                         "name": "SRType",
                         "type": "list",
-                        "values": SRValues,
+                        "limits": SRValues,
                         "value": "None",
                     },
                     {
                         "name": "Depr",
                         "type": "list",
-                        "values": DeprValues,
+                        "limits": DeprValues,
                         "value": 0,
                     },
                     {
                         "name": "dBspl",
                         "type": "list",
-                        "values": dbValues,
+                        "limits": dbValues,
                         "value": "None",
                     },
                     {
                         "name": "nReps",
                         "type": "list",
-                        "values": ["None", 1, 5, 10, 20, 25, 50, 100],
+                        "limits": ["None", 1, 5, 10, 20, 25, 50, 100],
                         "value": "None",
                     },
                     {
                       "name": "pipDur",
                       "type": "list",
-                      "values": ["None", 0.05, 0.1, 0.2, 0.25, 0.5, 1.0, 2.0, 10.0],
+                      "limits": ["None", 0.05, 0.1, 0.2, 0.25, 0.5, 1.0, 2.0, 10.0],
                       "value": "None",  
                     },
                     {
                         "name": "Protocol",
                         "type": "list",
-                        "values": ["None", "runIV", "runANPSTH", "runANSingles"],
+                        "limits": ["None", "runIV", "runANPSTH", "runANSingles"],
                         "value": "None",
                     },
                     {
                         "name": "Experiment",
                         "type": "list",
-                        "values": experimenttypes,
+                        "limits": experimenttypes,
                         "value": "None",
                     },
                     {
                         "name": "modelName",
                         "type": "list",
-                        "values": modeltypes,
+                        "limits": modeltypes,
                         "value": "None",
                     },
                     {"name": "dataTable", "type": "str", "value": "None"},
                     {
                         "name": "dendMode",
                         "type": "list",
-                        "values": ["None", "actdend", "normal", "pasdend"],
+                        "limits": ["None", "actdend", "normal", "pasdend"],
                         "value": "None",
                     },
                     {
                         "name": "soundType",
                         "type": "list",
-                        "values": [
+                        "limits": [
                             "None",
                             "tonepip",
                             "noise",
@@ -555,7 +578,7 @@ class DataTablesVCN:
                     {
                         "name": "fmod",
                         "type": "list",
-                        "values": ["None", 10, 20, 50, 100, 200, 300, 400, 500, 750, 1000],
+                        "limits": ["None", 10, 20, 50, 100, 200, 300, 400, 500, 750, 1000],
                         "value": "None",
                     },
                     {
@@ -575,20 +598,20 @@ class DataTablesVCN:
                     {
                         "name": "Viewer #traces",
                         "type": "list",
-                        "values": self.trvalues,
+                        "limits": self.trvalues,
                         "value": self.n_trace_sel,
                     },
                     {
                         "name": "Vm or dV/dt",
                         "type": "list",
-                        "values": self.V_disp,
+                        "limits": self.V_disp,
                         "value": self.V_disp_sel,
                     },
                     {"name": "Movie", "type": "action"},
                     {
                         "name": "Frame Interval",
                         "type": "list",
-                        "values": self.frame_intervals,
+                        "limitss": self.frame_intervals,
                         "value": self.frame_interval,
                     },
                 ],
@@ -602,7 +625,7 @@ class DataTablesVCN:
                 "type": "group",
                 "children": [
                     {"name": "Figures", "type": "list", 
-                    "values":  [
+                    "limits":  [
                                 "-------Figure 3-------",
                                 "Figure3-Ephys_1_Main",
                                 "Figure3-Supplemental2_VC",
@@ -612,10 +635,12 @@ class DataTablesVCN:
                                 "-------Figure 4--------",
                                 "Figure4-Ephys_2_Main",
                                 "Figure4-Ephys_2_Supplemental1",
+                                "Figure4-Ephys_2_Supplemental2",
                                 "Figure4-Ephys_2_Supplemental3",
                                 "-------Figure 7--------",
                                 "Figure7-Ephys_3_Main",
-                                "Figure7-Ephys_3_Supplemental1",
+                                "Figure7-Ephys_3_Supplemental2",
+                                "Figure7-Ephys_3_Supplemental3",
                                 "-------Figure 8--------",
                                 "Figure8-Ephys_4",
                                 "---------Misc----------",
@@ -682,7 +707,7 @@ class DataTablesVCN:
         self.trace_selector_plot.addItem(self.frameTicks, ignoreBounds=True)
         self.trace_selector_plot.addItem(self.trace_selector)
         self.trace_selector_plot.setMaximumHeight(100)
-        self.trace_plots.setContentsMargins(10.0, 10.0, 10.0, 10.0)
+        self.trace_plots.setContentsMargins(10, 10, 10, 10)
 
         # print(dir(self.trace_selector_plot))
         self.Dock_Traces.addWidget(
@@ -695,7 +720,7 @@ class DataTablesVCN:
         self.Dock_Report.addWidget(self.textbox)
 
         self.win.show()
-        self.table.setSelectionMode(pg.QtGui.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.table.setSelectionMode(pg.QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.table.setSelectionBehavior(QtWidgets.QTableView.SelectionBehavior.SelectRows)
         self.table_manager = table_manager.TableManager(
             parent=self,
@@ -1015,7 +1040,7 @@ class DataTablesVCN:
         print("selected files: ", selected.files)
         # if nfiles > 1: self.PLT.textappend('Please select only one file to
         #     view') else:
-        PD = plot_sims.PData()
+        PD = plot_sims.PData(gradeA=GRPDEF.gradeACells)
         self.PLT.trace_viewer(selected.files[0], PD, selected.runProtocol)
 
     def analyze_traces(self, ana_name=None):
@@ -1083,7 +1108,7 @@ class DataTablesVCN:
         if selected is None:
             return
         P = self.PLT.setup_PSTH()
-        PD = plot_sims.PData()
+        PD = plot_sims.PData(gradeA=GRPDEF.gradeACells)
         sfi = Path(selected.simulation_path, selected.files[0])
         self.PLT.plot_AN_response(P, sfi, PD, selected.runProtocol)
         P.figure_handle.show()
@@ -1123,7 +1148,7 @@ def main():
     # code...
     D = DataTablesVCN()  # must retain a pointer to the class, else we die!
     if (sys.flags.interactive != 1) or not hasattr(QtCore, "PYQT_VERSION"):
-        QtGui.QApplication.instance().exec()
+        QtWidgets.QApplication.instance().exec()
 
 
 if __name__ == "__main__":

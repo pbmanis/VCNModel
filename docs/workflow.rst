@@ -60,7 +60,9 @@ Running simulations
 Simulations are directly run using `model_run2.py`, which accesses
 the parameter data used for each simulation, and handles different kinds of simulations. See
 the API documentation for `model_run2.py` for details of all of the command line parameters
-that are available. See the scripts directory for how this program is called to execute different
+that are available. There are a large number of commands that allow one to vary certain
+experimental parameters, stimulus conditions, etc. 
+See the scripts directory for how this program is called to execute different
 kinds of simulations.
 
 Analysis

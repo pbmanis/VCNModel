@@ -23,7 +23,7 @@ from typing import Union
 
 import vcnmodel.model_params as model_params
 
-MP = model_params.ModelParams()
+MP = model_params.Params()
 pp = pprint.PrettyPrinter()
 
 

@@ -31,7 +31,7 @@ def analyze_data(
     spike_shape=False,
 ) -> tuple:
     """
-    Perform analysis of psike times and IVs from model data.
+    Perform analysis of spike times and IVs from model data.
     
     Parameters
     ----------
@@ -71,7 +71,8 @@ def analyze_data(
         SP.analyzeSpikeShape()
     SP.analysis_summary["pulseDuration"] = 0.1
     if protocol == "IV":
-        SP.fitOne(function="fitOneOriginal")
+        print("Read Model MC: ", ReadModel.MC.tstart, ReadModel.MC.tend)
+        # SP.fitOne(function="fitOneOriginal")
         RM.analyze(
             rmpregion=[0.0, ReadModel.MC.tstart - 0.001],
             tauregion=[

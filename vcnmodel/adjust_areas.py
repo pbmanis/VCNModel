@@ -1043,5 +1043,6 @@ if __name__ == "__main__":
     # if args.compare:
     #     compare(cell_no, args)
     #     exit()
-    config = toml.load(open("wheres_my_data.toml", "r"))
+    with open("wheres_my_data.toml", "r") as fh:
+        self.config = toml.load(fh)
     rescale(cell_no, config, args)

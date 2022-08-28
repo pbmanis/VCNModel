@@ -86,7 +86,8 @@ def plot_psth(
         matplotlib axis instance for this plotm by default None
         note: if None, no plot is generated
     scale : float, optional
-        Weights for the bins, optional and not used, by default 1.0
+        Weights for the histogram optional. Used to scale (for example,
+        by the number of cells or fibers)
     bin_fill : bool, optional
         Fill the bins, or leave open (transparent), by default True
     edge_color : str, optional
@@ -108,7 +109,6 @@ def plot_psth(
     Nothing
     """
     num_trials = run_info.nReps
-    bins = np.arange(0.0, max_time - zero_time, bin_width)
     spf = []
     for x in spike_times:
         if isinstance(x, list):
@@ -116,7 +116,8 @@ def plot_psth(
         else:
             spf.extend([x])
     spike_times_flat = np.array(spf, dtype=object).ravel() - zero_time
-    # h, b = np.histogram(spike_times_flat, bins=bins)
+    spike_times_flat = spike_times_flat[np.where(spike_times_flat < max_time)]
+
     bins = np.arange(0.0, max_time - zero_time, bin_width)
     if bin_fill:
         face_color = edge_color
@@ -136,10 +137,11 @@ def plot_psth(
             x=spike_times_flat,
             bins=bins,
             density=False,
-            # weights=scale * np.ones_like(spike_times_flat),
+            weights=(1./(bin_width*num_trials)) * np.ones_like(spike_times_flat),
             histtype="stepfilled",
             facecolor=face_color,
             edgecolor=edge_color,
+            linewidth=0,
             alpha=alpha,
         )
     else:
@@ -158,7 +160,7 @@ def plot_psth(
         tick_labels = ["0", r"$\pi /2$", r"$\pi$", r"$3\pi /2$", r"$2\pi$"]
         ax.set_xticks(ticks, tick_labels)
     
-    ax.set_ylim(0, ax.get_ylim()[1])
+    # ax.set_ylim(0, ax.get_ylim()[1])
     if stimbar is not None:
         add_stimbar(stimbar, zero_time, max_time, ax)
 
@@ -292,6 +294,7 @@ def plot_spike_raster(
     mode: str='postsynaptic',
     n_inputs: int = 0,
     i_trial: int = 0,
+    n_trials: int = 10, 
     spike_times: List = [],
     data_window: List = [],
     panel: Union[str, None] = None,
@@ -311,6 +314,8 @@ def plot_spike_raster(
         number of inputs for ell, by default 0
     i_trial : int, optional
         trial number, by default 0. Only used if mode is "presynaptic"
+    n_trials : int, optional (default 10)
+        number of trials, by default 10. 
     spike_times : List
         A list of spike times or a list of lists of spike times, by default []
     data_window : List, optional
@@ -324,18 +329,19 @@ def plot_spike_raster(
     plot_dur = np.fabs(np.diff(data_window))
 
     if mode == "postsynaptic":
-        ispt = [
-            i
-            for i in range(len(spike_times))
-            if spike_times[i] >= data_window[0] and spike_times[i] < data_window[1]
-        ]
-        P.axdict[panel].plot(
-            np.array(spike_times[ispt]) - data_window[0],
-            i_trial * np.ones(len(ispt)),
-            "|",
-            markersize=1.5,
-            color="b",
-        )
+        for j in range(n_trials):
+            ispt = [
+                i
+                for i in range(len(spike_times[j]))
+                if spike_times[j][i] >= data_window[0] and spike_times[j][i] < data_window[1]
+            ]
+            P.axdict[panel].plot(
+                np.array(spike_times[j][ispt]) - data_window[0],
+                j * np.ones(len(ispt)),
+                "|",
+                markersize=1.5,
+                color="b",
+            )
         P.axdict[panel].set_xlim(0, plot_dur)
     elif mode == "presynaptic":
         for k in range(n_inputs):  # raster of input spikes
@@ -385,7 +391,6 @@ def plot_spiketrain_raster(
         )
 
 def plot_stacked_spiketrain_rasters(
-
     spike_times_by_input,
     ax,
     si,

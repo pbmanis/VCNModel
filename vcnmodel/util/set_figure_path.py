@@ -29,7 +29,8 @@ def set_figure_path(fignum:int, filedescriptor:str, suppnum:Union[int, None]=Non
     Path object
         Full path to the output file
     """    
-    config = toml.load(open("wheres_my_data.toml", "r"))
+    with open("wheres_my_data.toml", "r") as fh:
+        config = toml.load(fh)
     figpath = Path(config["baseDataDirectory"], config["figureDirectory"], f"Figure{fignum:d}")
     if suppnum is None:
         figpath = Path(figpath, f"Figure{fignum:d}_{filedescriptor:s}")

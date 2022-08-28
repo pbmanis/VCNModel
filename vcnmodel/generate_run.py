@@ -628,10 +628,12 @@ class GenerateRun:
             #     pl.setTitle('%s' % self.Params.cell)
             # else:
             #     pl.setTitle('_execute_run, no filename')
-        print("    Run finished")
         np_monitor = {}
-        for k in self.monitor.keys():
-            np_monitor[k] = np.array(self.monitor[k])
+        for k in list(self.monitor.keys()):
+            try:
+                np_monitor[k] = np.array(self.monitor[k])
+            except: # the monitor dict element may not really have any data, so... skip
+                pass
 
         np_allsecVec = OrderedDict()
         for k in self.allsecVec.keys():

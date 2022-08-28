@@ -12,20 +12,18 @@ Support::
 Copyright 2017-2022 Paul B. Manis
 Distributed under MIT/X11 license. See license.txt for more infomation. 
 """
-import sys
 from pathlib import Path
 from typing import Union
 import numpy as np
-import matplotlib.pyplot as mpl
-import pandas as pd
-import argparse
+
 import re
 import datetime
 import neuron
 from neuron import h
 
 import toml
-config = toml.load(open("wheres_my_data.toml", "r"))
+with open("wheres_my_data.toml", "r") as fh:
+    config = toml.load(fh)
 
 
 re_pts = re.compile('\s*(pt3dadd\()([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)')
@@ -210,7 +208,7 @@ class ParseHoc(object):
 
         now = datetime.datetime.now()
         header += '\n// on: ' + now.replace(microsecond=0).isoformat(' ') + '\n'
-        fno = 'test.hoc'
+        fno = 'tests/test_data/test.hoc'
         with open(fno, 'w') as fh:
             fh.write(header)
             for o in olines:

@@ -16,7 +16,8 @@ from pprint import pprint
 from pathlib import Path
 import matplotlib.pyplot as mpl
 import toml
-config = toml.load(open("wheres_my_data.toml", "r"))
+with open("wheres_my_data.toml", "r") as fh:
+    self.config = toml.load(fh)
 
 import vcnmodel.cell_config as cell_config
 from vcnmodel import h_reader
@@ -662,7 +663,7 @@ def recon_hoc():
     ax[3].set_ylabel("3d Area inflated")
     ax[3].set_xlabel("3D Area before inflation")
     ax[2].set_title("Areas re inflation")
-    mpl.savefig("../VCN-SBEM-Data/AreaCalc_Section.pdf")
+    mpl.savefig(Path(config["baseDataDirectory"], "AreaCalc_Section.pdf"))
     mpl.show()
 
 

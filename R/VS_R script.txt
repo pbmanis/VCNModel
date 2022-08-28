@@ -1,0 +1,144 @@
+library(multcomp)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(mgcv)
+library(ARTool)
+library(scales)
+library(rstatix)
+library(emmeans)
+library(repr)
+library(GFD)
+
+
+cells = c('02', '05', '06', '09', '10', '11', '13', '17', '18', '30')
+ncells = length(cells)
+
+
+do_one <- function(cn) {
+	cells = c('02', '05', '06', '09', '10', '11', '13', '17', '18', '30')
+	print("================================\n")
+	s = sprintf("Cell: %s", cells[cn])
+	print(s)
+	print("================================\n")
+	fn = toString(sprintf("/Users/pbmanis/Desktop/Python/VCNModel/VS_raw_SAM_%2s_15", toString(cells[cn])))
+	d02 = read.table(file=fn, header=T, skip=0, sep=",")
+	d02 = d02[d02$fmod > 50,]
+	d02$experiment<-as.factor(d02$experiment) # the synapse input configuration is a factor... 
+	d02$fmod<-as.factor(d02$fmod)
+
+
+	p1 = ggline(d02, x="fmod", y="VS", color="experiment", add = c("mean_sd", "jitter")) #, position=position_dodge(width=20))
+
+	res.aov2<-aov(VS~fmod+experiment, data=d02)
+	aov_residuals = residuals(object = res.aov2)
+	swt = shapiro.test(x = aov_residuals)
+	print(swt)
+	p2 = ggqqplot(d02, x="VS", color="experiment")
+
+	# In general the SW test is telling us that the data is NOT normally distributed.
+	# This is not surprising, as the VS scale only goes from 0 to 1
+
+	# print("aov2:--------------------- ")
+# 	print(res.aov2)
+# 	print(summary(res.aov2))
+
+	# contrasts(d02$fmod) <- contr.sum
+	contrasts(d02$experiment) <- contr.sum
+	model2<-GFD(VS ~ fmod*experiment, data=d02)
+	print(summary(model))
+	
+
+	# print("Effect of input pattern on VS at each frequency")
+	# r2 = d02 %>% group_by("fmod") %>% anova_test(VS ~ fmod+experiment)
+	# print(r2)
+	# print("tukey: ----------------------")
+	# print(TukeyHSD(res.aov2, "experiment"))
+
+	# model=glm(VS~(fmod*experiment)^2, data=d02)
+	# print("glm: ---------------------")
+	# print(anova(model))
+	# print(TukeyHSD(model, "experiment"))
+	# print(summary(model))
+	# # p2 = plot(res.aov2, 1)
+
+	# library(ARTool)
+	# library(scales)
+	#
+	# m.art = art(VS~fmod*experiment+(1|trial), data=d02)
+	# print(anova(m.art))
+	# print("CONTRASTS ----------------------")
+	# b = art.con(m.art, ~ fmod*experiment, interaction=FALSE, adjust="holm")
+	# print(b)
+
+	# p3 = plot(res.aov2, 1)
+
+	# p3 = ggplot(d02, aes(fmod, VS)) #+ geom_point(aes(size=0.5), alpha=0.5)# stat_smooth(method=glm, formula = y ~ x)
+	# add_summary(p3, data=d02, fun="mean_sd",)
+
+
+	p1 = ggline(d02, x="fmod", y="VS", color="experiment", plot_type='l', size=0.5, dotsize=0.1, add = c("mean_sd")) + 	theme(axis.text.x = element_text(size = 5),
+        axis.text.y = element_text(size = 5), axis.title=element_text(size=7)) 
+		#, position=position_dodge(width=20))
+
+	return(p1)
+	# p3 = ggplot(d02, aes(fmod, VS, color="experiment")) + geom_point() + stat_smooth(method=gam, formula = y ~ s(x))
+
+	# print(summary(res.aov2))
+	#
+	# print(summary(glht(res.aov2, linfct=mcp(experiment="Tukey"))))
+
+	#. Using ART
+	# library(ARTool)
+	# library(scales)
+
+	# m = art(VS~fmod*experiment, data=d02)
+	# print(anova(m))
+	# a = art.con(m, "fmod:experiment", adjust="holm")
+	# print(summary(a))
+}
+
+summarize <- function(cn) {
+	cells = c('02', '05', '06', '09', '10', '11', '13', '17', '18', '30')
+	print("================================\n")
+	s = sprintf("Cell: %s", cells[cn])
+	print(s)
+	print("================================\n")
+	fn = toString(sprintf("/Users/pbmanis/Desktop/Python/VCNModel/VS_raw_SAM_%2s_15", toString(cells[cn])))
+	d02 = read.table(file=fn, header=T, skip=0, sep=",")
+	# d02 = d02[d02$fmod > 50,]
+	# d02$experiment<-as.factor(d02$experiment) # the synapse input configuration is a factor...
+	# d02$fmod<-as.factor(d02$fmod)
+	d03 = d02[d02$experiment=="all",]
+
+	# p1 = ggline(d03, x="fmod", y="VS", color="celln", add = c("mean_sd", "jitter")) #, position=position_dodge(width=20))
+
+	p1 = ggline(d03, x="fmod", y="VS", color="celln", plot_type='l', size=0.5, dotsize=0.1, add = c("mean_sd")) + 	theme(axis.text.x = element_text(size = 5),
+	        axis.text.y = element_text(size = 5), axis.title=element_text(size=7))
+		#, position=position_dodge(width=20))
+
+	return(p1)
+
+}
+
+# plots <-  vector('list', ncells)
+# i = 0
+# for (i in 1:ncells){
+# 	cell = cells[i]
+# 	print(cell)
+# 	plots[[i]] = do_one(toString(sprintf("/Users/pbmanis/Desktop/Python/VCNModel/VS_raw_SAM_%2s_15", toString(cell))))
+# }
+#
+# g = ggarrange(plots, labels=cells, ncol=2, nrow=5)
+#
+# show(g)
+
+# plots <- lapply(1:ncells, do_one)
+# g = ggarrange(plotlist = plots, labels=cells, ncol=3, nrow=4)
+# options(repr.g.width=8,repr.g.height=10)
+# show(g)
+
+plot2s <- lapply(1:ncells, summarize)
+g = ggarrange(plotlist = plot2s, labels=cells, ncol=3, nrow=4)
+show(g)

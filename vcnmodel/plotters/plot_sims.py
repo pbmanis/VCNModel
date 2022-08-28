@@ -90,6 +90,7 @@ import pyqtgraph as pg  # type: ignore
 import seaborn as sns
 import toml
 import vcnmodel.cell_config as cell_config
+import vcnmodel.group_defs as GRPDEF
 import vcnmodel.util.readmodel as readmodel
 from ephys.ephysanalysis import RmTauAnalysis, SpikeAnalysis
 from lmfit import Model  # type: ignore
@@ -161,11 +162,12 @@ orient_cells = {
 }
 
 
-def grAList() -> list:
-    """ Return a list of the 'grade A' cells from the SBEM project
-    """
+# now in group_defs.py
+# def grAList() -> list:
+#     """ Return a list of the 'grade A' cells from the SBEM project
+#     """
 
-    return [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+#     return [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
 
 
 SpirouChoices = [
@@ -182,19 +184,20 @@ SpirouChoices = [
 # note that we use data classes to store related sets of
 # variables and results.
 
-
+def defemptylist():
+    return []
 @dataclass
 class PData:
     """
     data class for some parameters that control what we read
     """
-
-    gradeA: list = field(default_factory=grAList)
+    gradeA: list = field(default_factory=defemptylist)
     default_modelName: str = "XM13_nacncoop"
     soma_inflate: bool = True
     dend_inflate: bool = True
     basepath: str = ""  # config["baseDataDirectory"]
     renderpath: str = ""  # " str(Path(self.config["codeDirectory"], "Renderings"))
+    revcorrpath: str = ""
     thiscell: str = ""
 
 
@@ -281,20 +284,24 @@ class PlotSims:
         self.firstline = True
         self.VS = VS.VectorStrength()
         self.axis_offset = -0.02
-        self.config = toml.load(open("wheres_my_data.toml", "r"))
+        with open("wheres_my_data.toml", "r") as fh:
+            self.config = toml.load(fh)
         self.allspikes = None
         self.in_Parallel = False # flag to prevent graphics access during parallel processing.
 
     def newPData(self):
         """
         Return Pdata with the paths set from self.config
+        and the GradeA Cell list.
 
         Returns:
             PData: dataclass
         """
         return PData(
+            gradeA=GRPDEF.gradeACells,
             basepath=self.config["baseDataDirectory"],
             renderpath=str(Path(self.config["codeDirectory"], "Renderings")),
+            revcorrpath=self.config["revcorrDataDirectory"],
         )
 
     def textclear(self):
@@ -413,6 +420,7 @@ class PlotSims:
         iv_spike_color: str = "r",
         spike_marker_size: float = 2.5,
         spike_marker_color: str = "r",
+        spike_marker_shape: str = "o",
         calx: Union[float, None] = 0.0,
         caly: Union[float, None] = 0.0,
         calt: Union[float, None] = 10.0,
@@ -468,6 +476,8 @@ class PlotSims:
             size of spike marker in traces, by default 2.5
         spike_marker_color : str, optional
             color of spike marker in traces, by default "r"
+        spike_marker_shape : str, optional
+            shape of spike marker in traces, by default "o"
         calx : Union[float, None], optional
             calibration bar x length, by default 0.0
         caly : Union[float, None], optional
@@ -573,7 +583,7 @@ class PlotSims:
                 clip_on=clipping,
             )
             if ax2 is not None:
-                ax2.plot(AR.MC.time_base[xclip], cmd, linewidth=0.5)
+                ax2.plot(AR.MC.time_base[xclip], cmd[xclip], linewidth=0.5)
             if "spikeTimes" in list(data["Results"][icurr].keys()):
                 # cprint('r', 'spiketimes from results')
                 # print(data["Results"][icurr]["spikeTimes"])
@@ -583,17 +593,18 @@ class PlotSims:
                     for t in data["Results"][icurr]["spikeTimes"]
                 ]
             else:
-                # cprint('r', 'spikes from SP.spikeIndices')
+                cprint('r', 'spikes from SP.spikeIndices')
                 spikeindex = SP.spikeIndices[trial]
             # print(f"Trial: {trial:3d} Nspikes: {len(spikeindex):d}")
             # plot spike peaks
             ax1.plot(
                 AR.MC.time_base[spikeindex],
                 AR.MC.traces[trial][spikeindex] + yoffset,
-                "o",
+                marker = spike_marker_shape, # "o",
                 color=spike_marker_color,
                 markerfacecolor=spike_marker_color,
                 markersize=spike_marker_size,
+                linestyle="none",
             )
             sinds = np.array(spikeindex) * AR.MC.sample_rate[trial]
             # print('sinds: ', sinds, deadtime, ri.stimDelay, ri.stimDur)
@@ -654,7 +665,9 @@ class PlotSims:
         if protocol in ["IV"]:
             cprint("r", f"RM analysis taum: {RM.analysis_summary['taum']:.2f}")
             if show_title:
-                toptitle += f"\nRin={RM.analysis_summary['Rin']:.1f} M$\Omega$  $\\tau_m$={RM.analysis_summary['taum']:.2f} ms"
+                omega = r"$\Omega$"
+                tau_m = r"$\tau_m$"
+                toptitle += f"\nRin={RM.analysis_summary['Rin']:.1f} M{omega:s}  {tau_m}{RM.analysis_summary['taum']:.2f} ms"
 
             if iax is not None and calx is not None:
                 PH.calbar(
@@ -709,8 +722,8 @@ class PlotSims:
                 secax.plot(
                     RM.ivss_cmd_all[ispikethr] * 1e9,
                     RM.ivss_v_all[ispikethr] * 1e3,
-                    "o",
-                    markersize=3,
+                    marker=spike_marker_shape,
+                    markersize=spike_marker_size,
                     color=iv_spike_color,
                     markerfacecolor=iv_spike_color,
                     zorder=100,
@@ -865,6 +878,7 @@ class PlotSims:
             trace_ax.set_ylim((-1, 15))
             trace_ax.set_clip_on(True)
             self.analyzeVC(P.axarr[i * 3 + 2, 0], sfi[i], PD, protocol=protocol[i])
+            PH.nice_plot(P.axarr[i * 3 + 2, 0], position=-0.03, direction="outward", ticklength=3)
             trace_ax.text(
                 0.5,
                 1.1,
@@ -1091,8 +1105,8 @@ class PlotSims:
         # ax[0].plot(tfit+AR.MC.time_base[t0], exp_result.best_fit*1e9, 'r-')
         # ax[0].plot(tfit+AR.MC.time_base[t0], ifit*1e9, 'g--')
 
-        ax.plot(vss_sel * 1e3, gss_sel * 1e9, "ko", markersize=2)
-        ax.plot(boltz_x * 1e3, boltz_fit * 1e9, "r-")
+        ax.plot(vss_sel * 1e3, gss_sel * 1e9, "ko", markersize=2, clip_on=False)
+        ax.plot(boltz_x * 1e3, boltz_fit * 1e9, "r-", clip_on=False)
         ax.set_ylim(0, 100.0)
         ax.set_xlim(-100.0, 40.0)
         PH.talbotTicks(
@@ -1104,26 +1118,40 @@ class PlotSims:
             tickPlacesAdd={"x": 0, "y": 0},
             floatAdd={"x": 0, "y": 0},
         )
-        # print('vhalf: ', result.params['vhalf'])
-        textstr = r"g$_{max}$  = "
-        textstr += f"{boltz_result.params['gmax'].value*1e9:.1f} nS\n"
-        textstr += r"$V_{0.5}$  = "
-        textstr += f"{boltz_result.params['vhalf'].value*1e3:.1f} mV\n"
-        textstr += f"k  = {1e3*boltz_result.params['k'].value:.1f}\n"
-        textstr += f"Cm = {cm*1e12:.1f} pF\n"
-        textstr += r"$tau_{0}$ = "
-        textstr += f"{tau*1e3:.3f} ms"
+        # Align the parameters on the = sign by making 2 texts right and left justified
+        textstr1 = r"g$_{max}$" + f" = {boltz_result.params['gmax'].value*1e9:.1f} nS"
+        textstr2 = r"$V_{0.5}$" + f" = {boltz_result.params['vhalf'].value*1e3:.1f} mV"
+        textstr3 = f"k  = {1e3*boltz_result.params['k'].value:.1f}"
+        textstr4 = f"Cm = {cm*1e12:.1f} pF"
+        textstr5 = r"${\tau_{0}}$" + f" = {tau*1e3:.3f} ms"
+        texts = [textstr1, textstr2, textstr3, textstr4, textstr5]
         props = dict(boxstyle="square", facecolor="None", alpha=0.5)
-        cprint("c", textstr)
-        ax.text(
-            1.0,
-            0.05,
-            textstr,
+
+        y = 0.40
+        x = 0.60
+        for i, txt in enumerate(texts):
+            tx1, tx2 = txt.split('=')
+            ax.text(
+            x,
+            y - i*0.1,
+            tx1,
             transform=ax.transAxes,
+          #  fontfamily="monospace",
             size=8,
             verticalalignment="bottom",
             horizontalalignment="right",
-            bbox=props,
+            # bbox=props,
+            )
+            ax.text(
+            x,
+            y - i*0.1,
+            ' = ' + tx2,
+            transform=ax.transAxes,
+           # fontfamily="monospace",
+            size=8,
+            verticalalignment="bottom",
+            horizontalalignment="left",
+            # bbox=props,
         )
         ax.set_xlabel("V (mV)")
         ax.set_ylabel("I (nA)")
@@ -2084,7 +2112,6 @@ class PlotSims:
                 SDRatio,
                 nsites,
             ]
-        u = df.head(n=nfiles)
         self.textappend(df.to_csv(sep="\t"))
         P.figure_handle.show()
 
@@ -2192,7 +2219,7 @@ class PlotSims:
         return P
 
     @trace_calls.winprint_continuous
-    def print_VS(self, d, freq, dmod, dB, experiment):
+    def print_VS(self, d, freq, dmod, dB, experiment, filename:str=""):
         print("Getting data")
         SC, syninfo = self.get_synaptic_info(self.parent.cellID)
         amax = 0
@@ -2203,16 +2230,24 @@ class PlotSims:
             if area > amax:
                 amax = area
             sites[isite] = int(np.around(area * SC.synperum2))
-
-        self.VS_colnames = f"Cell,Configuration,carrierfreq,frequency,dmod,dB,VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,AN_VS,AN_phase,AN_phasesd,SAC_AN,SAC_Bu,SAC_AN_HW,SAC_Bu_HW,maxArea,ninputs"
-        line = f"{str(self.parent.cellID):s},{experiment:s},"
+        
+        self.VS_colnames = f"Cell,Filename,Configuration,carrierfreq,frequency,dmod,dB,"
+        line = f"{str(self.parent.cellID):s},{filename:s},{experiment:s},"
         line += f"{d.carrier_frequency:.1f},{freq:06.1f},{dmod:.1f},{dB:.1f},"
+
+        self.VS_colnames += f"VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,VS_mean,VS_SD,VS_Ns,VS_groups,"
         line += f"{d.vs:.4f},"
         line += f"{d.n_spikes:d},"
         line += f"{d.circ_phaseMean:.4f},"
         line += f"{d.circ_phaseSD:.4f},"
         line += f"{d.Rayleigh:.4f},"
         line += f"{d.pRayleigh:.4e},"
+        line += f"{d.vs_mean:.4f},"
+        line += f"{d.vs_sd:.4f},"
+        line += f"{int(d.vs_Ns):d},"
+        line += f"{int(d.vs_groups):d},"
+
+        self.VS_colnames += f"AN_VS,AN_phase,AN_phasesd,SAC_AN,SAC_Bu,SAC_AN_HW,SAC_Bu_HW,maxArea,ninputs"
         line += f"{d.an_vs:.4f},"
         line += f"{d.an_circ_phaseMean:.4f},"
         line += f"{d.an_circ_phaseSD:.4f},"
@@ -2403,7 +2438,7 @@ class PlotSims:
             if ri.soundtype.endswith("Clicks"):
                 sac_label = f"Expt: {ri.Spirou:14s} {ri.dB:3.0f} dBSPL  HW={1e3*sac_bu_hw:.3f} ms  CI={sac_bu_CI:6.2f}"
             else:
-                sac_label = f"Expt: {ri.Spirou:14s} {ri.dB:3.0f} dBSPL Fmod={ri.fmod:5.1}fHz Dmod={ri.dmod:5.1f}\%"
+                sac_label = f"Expt: {ri.Spirou:14s} {ri.dB:3.0f} dBSPL Fmod={ri.fmod:5.1}fHz Dmod={ri.dmod:5.1f}%"
 
             # return
             P.axdict["A"].plot(
@@ -2449,7 +2484,7 @@ class PlotSims:
                 self.firstline = True
             else:
                 self.firstline = False
-            self.plot_AN_response(P, sfi, PD, selected.runProtocol)
+            self.plot_AN_response(P, sfi, PD, fn = selected.runProtocol)
         self.firstline = True
 
     def _ntrials(self, spike_times: Union[list, np.ndarray]):
@@ -2490,8 +2525,6 @@ class PlotSims:
             dmod = ri.dmod
         return totaldur, soundtype, pip_start, pip_duration, F0, dB, fmod, dmod
 
-
-
     @trace_calls.winprint_continuous
     @TRC()
     def plot_AN_response(
@@ -2502,16 +2535,23 @@ class PlotSims:
         protocol: str = "",
         sac_flag: bool = True,  # set true to compute SAC as well as standard VS
         sac_engine: str = "cython",
+        filename: str="",
+        make_VS_raw:bool=False
     ):
         if isinstance(self.parent.cellID, str):
-            gbc = f"VCN_c{int(self.parent.cellID[0]):02d}"
+            if ("U" in self.parent.cellID) or ("I" in self.parent.cellID):
+                gbc = f"VCN_c{int(self.parent.cellID[0:1]):02d}"
+                cellN = int(self.parent.cellID[0])
+            else:
+                gbc = f"VCN_c{int(self.parent.cellID[0:2]):02d}"
+                cellN = int(self.parent.cellID[0:2])
         else:
             gbc = f"VCN_c{int(self.parent.cellID):02d}"
+            cellN = self.parent.cellID
         
         plotflag = False
+        SC, syninfo = self.get_synaptic_info(cellN)
 
-
-        
         model_data = self.ReadModel.get_data(fn, PD, protocol)
         AR = model_data.AR
         data = model_data.data
@@ -2539,7 +2579,7 @@ class PlotSims:
             plotflag = True
             sim_dir = fn.parts[-2]
             tstring = f"{gbc:s}_{str(sim_dir):s}_{ri.soundtype:s}.pdf"
-            mpl.get_current_fig_manager().canvas.set_window_title(tstring)
+            mpl.get_current_fig_manager().set_window_title(tstring)
             bu_voltage_panel = "A"
             bu_raster_panel = "B"
             bu_psth_panel = "C"
@@ -2553,7 +2593,7 @@ class PlotSims:
         # AR time_base is in milliseconds, so convert to seconds
         all_an_st = []
         all_bu_st = []
-        all_bu_st_trials = []
+        all_bu_st_trials = []  # bushy spike times, but per trial
 
         an_st_by_input = [
             [] for x in range(n_inputs)
@@ -2572,7 +2612,7 @@ class PlotSims:
 
         for i_trial in range(ntr):  # for all trials in the measure.
             if i_trial == show_vtrial:
-                vtrial = AR.MC.traces[i_trial] * 1e3  # convert to mV
+                v_show_trial = AR.MC.traces[i_trial] * 1e3  # save for display, and convert to mV
             time_base = AR.MC.time_base / 1000.0  # convert to seconds
             dt = si.dtIC / 1000.0  # convert from msec to seconds
             trd = data["Results"][i_trial]
@@ -2631,19 +2671,59 @@ class PlotSims:
         x = np.array(all_an_st)
         v = np.where((phasewin[0] <= x) & (x < phasewin[1]))[0]
         an_spikesinwin = x[v]
-
+        cprint('r', len(all_bu_st_trials))
+        
         if soundtype in [
             "SAM",
             "stationaryNoise",
             "regularClicks",
             "poissonClicks",
         ]:  # also calculate vs and plot histogram
+
+            print(soundtype, fmod)
+
+            # break into 10 groups of 10 trials (if 100 total) and 
+            # compute vs for each group, then get mean and sd to report
+            n_vs_groups = int(len(all_bu_st_trials)/10)
+            cprint("c", f"n vs groups:  {n_vs_groups:d}")
+            cprint("c", f"len bust trials: {len(all_bu_st_trials):d}")
+            vs_n = np.zeros(n_vs_groups)
+            vs_nspikes = np.zeros(n_vs_groups)
+            bu_vs_data = []
+            for i in range(n_vs_groups):  # divide trials into trial groups (of 10)
+                bu_vs_data = []
+                for j in range(i*n_vs_groups, (i+1)*n_vs_groups):  # within each 
+                    v = np.where((phasewin[0] <= all_bu_st_trials[j]) & (all_bu_st_trials[j] < phasewin[1]))[0]
+                    bu_vs_data.extend(all_bu_st_trials[j][v])
+                vs_calc = self.VS.vector_strength(
+                            bu_vs_data, fmod
+                        )  # vs expects spikes in msec
+                vs_n[i] = vs_calc.vs
+                vs_nspikes[i] = int(vs_calc.n_spikes)
+                if make_VS_raw:
+                    VS_file_raw = Path(f"VS_raw_SAM_{cellN:02d}_{int(dB):02d}")
+                    if not VS_file_raw.is_file():  # if file does not exist, write header
+                        with open(VS_file_raw, "w") as fh:
+                            fh.write(f"celln,experiment,trial,fmod,VS,nspikes\n")
+                    with open(VS_file_raw, "a") as fh:  # add the data to this file
+                        fh.write(f"{cellN:02d},{ri.Spirou:s},{i:d},{int(fmod):d},{vs_calc.vs:.5f},{vs_calc.n_spikes:d}\n")
+
+            print('vs_nspikes: ', vs_nspikes)
+            print("vs by group: ", vs_n)
+            cprint("c", f"mean VS: {np.mean(vs_n):8.4f}  SD={np.std(vs_n):8.4f}, total spikes: {int(np.sum(vs_nspikes)):d}")
+
             vs = self.VS.vector_strength(
                 bu_spikesinwin, fmod
             )  # vs expects spikes in msec
+            cprint("c", f"Grand mean VS: {vs.vs:8.4f}  N={vs.n_spikes:6d}")
+            vs.vs_mean = np.mean(vs_n)
+            vs.vs_sd = np.std(vs_n)
+            vs.vs_Ns = np.sum(vs_nspikes)
+            vs.vs_groups = n_vs_groups
+
             vs.carrier_frequency = F0
             vs.n_inputs = n_inputs
-            if sac_flag:
+            if sac_flag and len(all_bu_st) > 50:
                 S = SAC.SAC()
                 spars = SAC.SACPars()
                 spars.binw = 3 * si.dtIC * 1e-3
@@ -2664,17 +2744,25 @@ class PlotSims:
                     engine=sac_engine,
                     dither=1e-3 * si.dtIC / 2.0,
                 )
-                vs.sac_bu_CI, peaks, HW, FW = S.SAC_measures(bu_sac, bu_sacbins)
-                vs.sac_bu_hw = HW[0][0] * spars.binw
+                print("fmod, 10/ri.fmod: ", ri.fmod, 10.0/ri.fmod)
+                vs.sac_bu_CI, peaks, HW, FW = S.SAC_measures(bu_sac, bu_sacbins, twin=spars.twin)
+                if HW is not None:
+                    vs.sac_bu_hw = HW[0][0] * spars.binw
+                    left_ips = HW[2][0]
+                    right_ips = HW[3][0]
+                else:
+                    vs.sac_bu_hw = np.nan
+                    left_ips = np.nan
+                    right_ips = np.nan
                 print("BU SAC Report: \n  ")
                 print(
-                    f"    HW:    {vs.sac_bu_hw:.6f}  CI: {vs.sac_bu_CI:.2f}  Left IPS: {HW[2][0]:.2f}  Right IPS: {HW[3][0]:.2f}"
+                    f"    HW:    {vs.sac_bu_hw:.6f}  CI: {vs.sac_bu_CI:.2f}  Left IPS: {left_ips:.2f}  Right IPS: {right_ips:.2f}, Binw: {spars.binw:.6f}"
                 )
             else:
                 bu_sac = None
                 bu_sacbins = None
                 vs.sac_bu_CI = 0.0
-                vs.sac_bu_hw = 0.0
+                vs.sac_bu_hw = np.nan
             print(
                 "CN Vector Strength at %.1f: %7.3f, dispersion=%.2f (us) Rayleigh: %7.3f  p = %.3e  n_spikes = %d"
                 % (
@@ -2723,7 +2811,7 @@ class PlotSims:
                         peaks,
                         an_hw[i_an],
                         an_fw[i_an],
-                    ) = S.SAC_measures(an_sac[i_an], an_sacbins)
+                    ) = S.SAC_measures(an_sac[i_an], an_sacbins, twin=spars.twin)
                 an_hw = np.array(an_hw).T[0]  # reorganize the data
                 vs.sac_an_hw = np.mean(an_hw[0, :]) * spars.binw
                 CI = np.mean(an_hw[1, :])
@@ -2765,7 +2853,7 @@ class PlotSims:
             vs.an_circ_phaseSD = vs_an.circ_phaseSD
             vs.an_circ_timeSD = vs_an.circ_timeSD
 
-            self.print_VS(vs, fmod, dmod, dB, ri.Spirou)
+            self.print_VS(vs, fmod, dmod, dB, ri.Spirou, filename=str(filename))
 
 #########################
 
@@ -2774,29 +2862,36 @@ class PlotSims:
         
         # Otherwise, lets do some plotting:
             # plot the raster of spikes
-        PF.plot_spike_raster(P, mode='postsynaptic', n_inputs=1, spike_times=sptimes,
-            data_window=data_window, panel=an_raster_panel)
-        PF.plot_spike_raster(P, mode='presynaptic', n_inputs=1, spike_times=trd["inputSpikeTimes"],
-            data_window=data_window, panel=an_raster_panel)
+        PF.plot_spike_raster(P, mode='postsynaptic', spike_times=all_bu_st_trials,
+            data_window=data_window, panel=bu_raster_panel)
+        PF.plot_stacked_spiketrain_rasters( 
+            spike_times_by_input=an_st_by_input,
+            ax=P.axdict[an_raster_panel],
+            si = si,
+            syninfo = syninfo,
+            plot_win = data_window,
+            max_trials=5,
+        )
+        # PF.plot_spike_raster(P, mode='presynaptic', n_inputs=1, spike_times=trd["inputSpikeTimes"],
+        #     data_window=data_window, panel=an_raster_panel)
 
+        # be sure we are using the right data, not overwriting
+        time_base = AR.MC.time_base / 1000.0  # convert to seconds
+        dt = si.dtIC / 1000.0  # convert from msec to seconds
         i_trial = 0
         P.axdict[bu_voltage_panel].plot(
             np.array(time_base[idx[0] : idx[1]] - data_window[0]),
-            np.array(vtrial[idx[0] : idx[1]]),
+            np.array(v_show_trial[idx[0] : idx[1]]),
             "k-",
             linewidth=0.5,
         )
+        # get the spike indices for the trial that will be shown at the top
         spikeindex = [
-            int(t / dt) for t in sptimes if not np.isnan(t)
-        ]  # dt is in sec, but spiketimes is in msec
-        ispt = [
-            t
-            for t in range(len(sptimes))
-            if sptimes[t] >= data_window[0] and sptimes[t] < data_window[1]
+            int(t / dt) for t in all_bu_st_trials[show_vtrial] if not np.isnan(t) and t >= data_window[0] and t < data_window[1]
         ]
         P.axdict[bu_voltage_panel].plot(
-            sptimes[ispt] - data_window[0],
-            vtrial[spikeindex][ispt],
+            np.array(time_base[spikeindex]-data_window[0]),
+            v_show_trial[spikeindex],
             "ro",
             markersize=1.5,
         )

@@ -30,7 +30,8 @@ import toml
 
 
 def list_dirs():
-    config = toml.load(open("wheres_my_data.toml", "r"))
+    with open("wheres_my_data.toml", "r") as fh:
+        config = toml.load(fh)
 
     print("Starting at top directory: ", config["cellDataDirectory"])
     alldirs = sorted(list(Path(config["cellDataDirectory"]).glob("*")))

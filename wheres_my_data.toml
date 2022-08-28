@@ -6,7 +6,8 @@
 #
 # Read this file as:
 # import toml
-# config = toml.load(open("wheres_my_data.toml", "r"))
+# with open("wheres_my_data.toml", "r") as fh:
+#   config = toml.load(fh)
 # Dec 2020: Move simulation result storage off to RAID disk for space reasons.
 
 baseDataDirectory = "/Volumes/Pegasus_002/VCN-SBEM-Data" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
@@ -17,7 +18,7 @@ codeDirectory="/Users/pbmanis/Desktop/Python/vcnmodel"
 pngDirectory="VCN-CellImages-1-2020/Bushy_Cells"  # png files, in baseDataDirectory
 impedanceDirectory="Impedance_Calculations"  # Zin calculations in cellDataDirectory
 figureIntermediateDirectory="IntermediateResults"
-figureDirectory="Figures"
+figureDirectory="SBEM-paper Figures"
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_pbm_14Oct2019_v1.xlsx'
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_6_March_2020.xlsx'
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_2_April_2020.xlsx'

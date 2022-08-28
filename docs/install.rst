@@ -8,23 +8,22 @@ Script
 ======
 
 In order to control the environment in which *vcnmodel* is run, an installation script is provided. 
-This script will run under Unix-based (Posix) systems; it may need to be modified as a batch
-file to run under Windows; a better solution might be to run under the Linux subsystem on a Windows machine.
+This script will run under Unix-based (Posix) systems. It may be possible to reconfigure it as a batch
+file to run under Windows. However, a better solution might be to run under the Linux subsystem on a Windows machine.
 
-The script (`make_local.sh`) will create a local environment, named `vcn_venv`. This environment
-will have Python3.8, cnmodel, cochlea, and a host of standard Python modules, plus a few specific others,
+The script (`make_env.sh`) will create a local environment, named `vcn_venv`. This environment
+will have Python3.9, cnmodel, cochlea, and a host of standard Python modules, plus a few specific others,
 needed to run the various
 programs. Note that the environment also includes some packages that are only used during development, such as
 black, isort, flake8. The script also compiles *cochlea* and the mechanisms used by *cnmodel*. If there are any
 red lines in the print out during this setup, you will have to figure out how to fix the problem, clean the
-vcn_venv directory (remove it), and run the script again. 
+vcn_venv directory (remove it, although the latest version of the script does this for you), and run the script again. 
 
 The install script also calls setup.py, which installs some console shortcuts::
 
   'console_scripts': [
        'model_run=vcnmodel.model_run2:main',
        'allgbcivs=vcnmodel.all_gbc_iv:main',
-       'show_swc=scnmodel.util.show_swc:main',
        'render=vcnmodel.util.render:main',
        'plot_sims=vcnmodel.plotters.plot_sims:main',
        'datatable=vcnmodel.DataTablesVCN:main',
@@ -51,7 +50,9 @@ Paths
 =====
 
 Next, the path to the directory where the results will be stored needs to be set up and populated with the morphology files. The
-location of this directory is specified in the "wheres_my_data.toml" file at the top level of the repository. 
+location of this directory is specified in the "wheres_my_data.toml" file at the top level of the repository. Please examine this file
+carefully as it has all of the path definitions that are needed.  
 
-6 December 2021 pbm.
+6 December 2021 pbm
+Updated 14 June 2022
 

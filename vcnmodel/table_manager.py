@@ -716,7 +716,7 @@ class TableManager:
         self.table.setStyleSheet(style)
         if QtCore is not None:
             # print('sorting by a column')
-            self.table.sortByColumn(1, QtCore.Qt.AscendingOrder)
+            self.table.sortByColumn(1, QtCore.Qt.SortOrder.AscendingOrder)
         self.altColors()  # reset the coloring for alternate lines
         # self.table.setStyle(QtGui.QFont('Arial', 6))
         self.table.resizeRowsToContents()
@@ -728,8 +728,8 @@ class TableManager:
         """
         self.filters = {'Use Filter': False, 'dBspl': None, 'nReps': None,
         'Protocol': None,
-                'Experiment': None, 'modelName': None, 'dendMode': None,
-                "dataTable": None,}
+        'Experiment': None, 'modelName': None, 'dendMode': None,
+        "dataTable": None,}
         """
         if not self.parent.filters[
             "Use Filter"

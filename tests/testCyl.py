@@ -21,7 +21,7 @@ class testcyl():
         self.show()
 
     def show(self):
-        QtGui.QApplication.instance().exec_()
+        QtGui.QApplication.instance().exec()
 
 
     def draw_model(self, mode = "cylinder"):

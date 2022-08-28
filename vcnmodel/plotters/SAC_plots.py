@@ -1,25 +1,28 @@
-import datetime
-import os
+
 from pathlib import Path
+from typing import List, Union
 
 import matplotlib.pyplot as mpl
 import numpy as np
+import pandas as pd
+import seaborn as sns
 import toml
-from pylibrary.plotting import plothelpers as PH
-import vcnmodel.util.readmodel as readmodel
 import vcnmodel.plotters.figure_data as FD
 import vcnmodel.plotters.plot_sims as plot_sims
-from vcnmodel.analyzers import sac as SAC
-import seaborn as sns
-from matplotlib import collections as mc
-from pylibrary.tools import cprint as CP
-import pandas as pd
+import vcnmodel.util.readmodel as readmodel
 from lmfit.models import GaussianModel
+from matplotlib import collections as mc
+from pylibrary.plotting import plothelpers as PH
+from pylibrary.tools import cprint as CP
+from vcnmodel.analyzers import sac as SAC
+from vcnmodel.util.set_figure_path import set_figure_path
+import vcnmodel.group_defs as GRPDEF
 
 ReadModel = readmodel.ReadModel()
 cprint = CP.cprint
 
-config = toml.load(open("wheres_my_data.toml", "r"))
+with open("wheres_my_data.toml", "r") as fh:
+    config = toml.load(fh)
 # print(config)
 # os.chdir(config['codeDirectory'])
 PS = plot_sims.PlotSims(parent=None)
@@ -68,7 +71,7 @@ def one_sac(cell_id, protocol, pname):
     fndir = Path(basefn, simfile)
     files = list(fndir.glob("*.p"))
     filename = Path(fndir, files[0])
-    PD = plot_sims.PData()
+    PD = plot_sims.PData(GRPDEF.gradeACells)
     print(f"Getting data for gbc: {gbc:s}")
     SC, syninfo = PS.get_synaptic_info(gbc)
     # mtime = Path(fn).stat().st_mtime
@@ -190,7 +193,7 @@ def one_sac(cell_id, protocol, pname):
         if ri.soundtype.endswith("Clicks"):
             sac_label = f"Expt: {ri.Spirou:14s} {ri.dB:3.0f} dBSPL  HW={1e3*sac_bu_hw:.3f} ms  CI={sac_bu_CI:6.2f}"
         else:
-            sac_label = f"Expt: {ri.Spirou:14s} {ri.dB:3.0f} dBSPL Fmod={ri.fmod:5.1}fHz Dmod={ri.dmod:5.1f}\%"
+            sac_label = f"Expt: {ri.Spirou:14s} {ri.dB:3.0f} dBSPL Fmod={ri.fmod:5.1}fHz Dmod={ri.dmod:5.1f}%"
     else:
         print("No spikes ")
         sac_bu_hw = np.nan
@@ -266,8 +269,9 @@ def do_plot(df, sacs, max_CI: float = 60.0):
     max_CI : float, optional
         largest scale factor, by default 5.0
     """
-    from matplotlib.gridspec import GridSpec
     import string
+
+    from matplotlib.gridspec import GridSpec
 
     labels = [s for s in string.ascii_uppercase]
     rowassign = {
@@ -356,6 +360,7 @@ def do_plot(df, sacs, max_CI: float = 60.0):
                     linewidth=0.5,
                 )
             this_ax.set_ylim(0, max_CI)
+            this_ax.set_ylabel("CI")
 
             # this_ax.text(-0.05, 1.05, s=labels[ij], transform=this_ax.transAxes,
             #     va="bottom", ha="right", fontsize=12)
@@ -395,15 +400,15 @@ def do_plot(df, sacs, max_CI: float = 60.0):
         palette=spalette,
     )
     ax2[0].set_ylim(0, 1.0)
-    legend = ax2[0].legend(
-            bbox_to_anchor=(0.45, 0.25),
-            loc="upper left",
-            borderaxespad=0,
-            fontsize=9,
-            markerscale=0.5,
-            frameon=True,
-            edgecolor="black",
-        )
+    # legend = ax2[0].legend(
+    #         bbox_to_anchor=(0.45, 0.25),
+    #         loc="upper left",
+    #         borderaxespad=0,
+    #         fontsize=9,
+    #         markerscale=0.5,
+    #         frameon=True,
+    #         edgecolor="black",
+    #     )
 
     sns.stripplot(
         data=df,
@@ -417,22 +422,35 @@ def do_plot(df, sacs, max_CI: float = 60.0):
         palette=spalette,
     )
     ax2[1].set_ylim(0, 75)
+    ax2[1].set_ylabel("CI")
     ax2[1].get_legend().remove()
     # reorder the legends  -- needed because 
     handles, labels = ax2[0].get_legend_handles_labels()
+    legdict = {"all": "All Inputs", "largestonly": "Largest input only", 
+    "removelargest": "Largest input removed", "removetwolargest": "Two largest inputs removed"}
+    labels = [legdict[label] for label in labels]
     order = [0, 2, 1]
     ax2[0].legend([handles[idx] for idx in order],[labels[idx] for idx in order],
-            bbox_to_anchor=(0.45, 0.25),
-            loc="upper left",
+            bbox_to_anchor=(0.5, 0.01),
+            loc="lower center",
             borderaxespad=0,
             fontsize=9,
             markerscale=0.5,
             frameon=True,
             edgecolor="black",
             )
+    # legdict = {"all": "All Inputs", "largestonly": "Largest input only", 
+    # "removelargest": "Largest input removed", "removetwolargest": "Two largest inputs removed"}
+    # ltexts = ax2[0].legend().get_texts()
+    # for ik, this_l in enumerate(ltexts):
+    #     labeltext = this_l.get_text()
+    #     if labeltext in list(legdict.keys()):
+    #         this_l.set_text(legdict[labeltext])
 
     for ax in ax2:
         PH.nice_plot(ax, direction="outward", ticklength=4)
+    return P
+
     mpl.savefig(
         Path(
             config["baseDataDirectory"],
@@ -557,8 +575,7 @@ def remeasure(df, twin: float = 2):
 
     return df
 
-
-if __name__ == "__main__":
+def plot_sacs(save_fig:bool=True, figinfo: Union[object, None] = None):
     pd_file = Path(
         config["baseDataDirectory"],
         config["figureDirectory"],
@@ -571,9 +588,29 @@ if __name__ == "__main__":
     df["gfitx"] = "nan"  # df['gfitx'].astype(object)
     df["gfity"] = "nan"  # df['gfity'].astype(object)
     df2 = remeasure(df)
-    # pd.set_option('display.max_columns', None)
-    # print(df2.head(10))
-    #
-    do_plot(df2, sacs)
+
+    P = do_plot(df2, sacs)
     # print(sacs)
     # sac2plot(df)
+
+    if save_fig:
+        figinfo.P = P
+        figinfo.show_name = False
+        figinfo.filename = set_figure_path(
+            fignum=7, filedescriptor="SAC_Clicks_SynapseConfigs", suppnum=3
+        )
+        # "Figure7_Supplemental3_SAC_Clicks_SynapseConfigs.pdf",
+        figinfo.title[
+            "title"
+        ] = "SBEM Project Figure 7 Modeling: Supplemental 3: SAC_Clicks_SynapseConfigs"
+        title2 = {"title": f"", "x": 0.99, "y": 0.01}
+        return figinfo
+    else:
+        mpl.show()
+        return None
+
+def main():
+    pass  # keep sphinx from running this
+
+if __name__ == "__main__":
+    main()

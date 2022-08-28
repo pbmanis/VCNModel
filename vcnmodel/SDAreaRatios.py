@@ -95,7 +95,8 @@ def area(fn):
 
 if __name__ == "__main__":
 
-    config = toml.load(open("wheres_my_data.toml", "r"))
+    with open("wheres_my_data.toml", "r") as fh:
+        config = toml.load(fh)
     ar = OrderedDict()
     for i, fn in enumerate(allcells):
         basefilename = (

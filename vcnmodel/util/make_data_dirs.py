@@ -22,21 +22,30 @@ Support::
 Copyright 2014- Paul B. Manis
 Distributed under MIT/X11 license. See license.txt for more infomation. 
 """
+# import multiprocessing
 import shutil
 import subprocess
 from pathlib import Path
+from typing import List
 
 import toml
+from pylibrary.tools import cprint as CP
 from vcnmodel.plotters import \
     figure_data as FD  # table of simulation runs used for plotting figures
+import vcnmodel.util.ptree as ptree
 
-config = toml.load(open("wheres_my_data.toml", "r"))
+cprint = CP.cprint
+
+with open("wheres_my_data.toml", "r") as fh:
+    config = toml.load(fh)
 sourcepath = Path(config["baseDataDirectory"])
 
-simpath = Path("/Volumes/Pegasus_002/BU_simulation_data")
-
-intermediates = Path(simpath, "IntermediateAnalyses")
-intermediates.mkdir(exist_ok=True, parents=True)
+#simpath = Path("/Volumes/Pegasus_002/BU_simulation_data")
+simpath = Path("/Volumes/T7SSD/BU_simulation_data")
+figpath = Path("/Volumes/Pegasus_002/VCN-SBEM-Data/SBEM-paper Figures")
+intermediate = Path(simpath, "IntermediateAnalyses")
+intermediate.mkdir(exist_ok=True, parents=True)
+intermediate_source = Path(figpath, "IntermediateResults")
 
 simulations = Path(simpath, "Simulations")
 simulations.mkdir(exist_ok=True, parents=True)
@@ -44,6 +53,8 @@ simulations.mkdir(exist_ok=True, parents=True)
 Zin_dest_dir = Path(simulations, "Impedance_Calculations")
 Zin_dest_dir.mkdir(exist_ok=True, parents=True)
 Zin_source_dir = Path(sourcepath, "VCN_Cells", "Impedance_Calculations")
+
+
 
 
 readmefilecontents="""This VCN_SBEM_readme.txt file was generated on 2022-04-07
@@ -66,10 +77,11 @@ reconstructions of globular bushy cells from the mouse ventral cochlear nucleus.
         Name: George A. Spirou Institution: Univesity of South Florida Address:
         Tampa FL Email: gspirou@usf.edu
 
-< 3. Date of data collection (single date, range, approximate date): 2014-01-01
-to 2022-04-15
+3. Date of data collection (single date, range, approximate date): 2014-01-01
+to 2022-05-15
 
-4. Geographic location of data collection : Chapel Hill, NC USA 
+4. Geographic location of data collection : Chapel Hill, NC USA, Morgantown, WV,
+    Tampa, FL.
 
 5. Information about funding sources that supported the collection of the data: 
     NIH grants: DC R01 DC015901 (Spirou, Manis, Ellisman), DC R01 DC004551
@@ -315,115 +327,205 @@ by vcnmodel/util/inspect_simulation_file.py
 File List: (Appended automatically by the vcnmodel/util/make_data_dirs.py,
 write_the_readme function)
 """
+class BuildDataSet():
+    def __init__(self, testmode:bool=False):
+        self.testmode = testmode
+        self.ncopy = 0
 
-allcells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
-cdirs = {}
-sdirs = {}
-for cn in allcells:
-    cell_id = f"VCN_c{cn:02d}"
-    celldir = Path(simulations, cell_id)
-    cdirs[cn] = Path(simulations, celldir)
-    cdirs[cn].mkdir(exist_ok=True)
-    for ddir in ["Simulations/AN", "Simulations/IV", "Simulations/VC", "Morphology"]:
-        Path(cdirs[cn], ddir).mkdir(exist_ok=True, parents=True)
-    sdirs[cn] = Path(sourcepath, "VCN_Cells", cell_id)
+    def do_copy(self, src, dest):
+        if self.testmode:
+            cpc = 'm'
+            if not dest.is_file() or (src.stat().st_size != dest.stat().st_size) or (src.stat().st_mtime > dest.stat().st_mtime):
+                cprint(cpc, f"        Would be Copying:")
+                cprint(cpc, f"           from: {str(src.parent):s}")
+                cprint(cpc, f"               + {str(src.name):s}" )           
+                cprint(cpc, f"             to: {str(dest):s}\n")
+            else:
+                cpc = "y"   
+                cprint(cpc, f"        File exists looks the same, no copy:")
+                cprint(cpc, f"           from: {str(src.parent):s}")
+                cprint(cpc, f"               + {str(src.name):s}" )     
+        else:
+            cpc = 'g'
+            # first check that file does not exist and if it does,
+            # check that the dest date is more recent than dest, otherwise
 
-# for p in list(simpath.glob("*/**")):
-#     print(p)
+            if not dest.is_file() or (src.stat().st_size != dest.stat().st_size) or (src.stat().st_mtime > dest.stat().st_mtime):
+                shutil.copy2(src, dest)
+                cprint(cpc, f"        Copying:")
+                cprint(cpc, f"           from: {str(src.parent):s}")
+                cprint(cpc, f"               + {str(src.name):s}" )           
+                cprint(cpc, f"             to: {str(dest):s}\n")
+            else:
+                cpc = "y"   
+                cprint(cpc, f"        File exists looks the same, no copy:")
+                cprint(cpc, f"           from: {str(src.parent):s}")
+                cprint(cpc, f"               + {str(src.name):s}" )           
 
+        self.ncopy += 1
 
-def mk_cellid(cellN):
-    return f"VCN_c{cellN:02d}"
+    def mk_cellid(self, cellN):   
+        if isinstance(cellN, int):
+            return f"VCN_c{cellN:02d}", cellN
+        elif isinstance(cellN, str):
+            return f"VCN_c{int(cellN[0]):02d}", int(cellN[0])
+        
+    def write_the_readme(self):
+        with open(Path(simpath, "README.txt"), "wb") as fh:
+            fh.write(bytearray(readmefilecontents.encode('utf-8')))
+        # add the full file tree to the readme.
+        #r = subprocess.run(["./vcnmodel/util/tree.sh", simpath], capture_output=True)
+        r = ptree.ptree(simpath)
+        with open(Path(simpath, "README.txt"), "a") as fh:
+            #fh.write(r.stdout.decode())
+            fh.write(r)
 
+    def copy_morphology(self, allcells, sdirs, cdirs):
+        for cn in allcells:
+            cell_id = f"VCN_c{cn:02d}"
+            source_morph = list(Path(sdirs[cn], "Morphology").glob("*.hoc"))
+            source_morph.extend(list(Path(sdirs[cn], "Morphology").glob("*.swc")))
+            dest_morph = Path(cdirs[cn], "Morphology")
+            for f in source_morph:
+                dest_file = Path(dest_morph, f.name)
+                print(f"File to copy: {str(dest_file):s}")
+                if not dest_file.is_file():  # only copy if not already there
+                    print("copying ", f, " to ", dest_morph)
+                    self.do_copy(f, dest_morph)
+                else:
+                    print(f"Morphology file {cell_id:s}  {str(f):s}  already present")
+                    print("    dest file was: ", dest_file)
 
-def find_data(pkldir):
-    pass
+    def copy_simresults(self, FD, simcopy:bool=True, sdirs:List=[], cdirs:List=[]):
+        for fig in FD.all_figures:
+            figd = FD.all_figures[fig]
+            if fig in ["IV_ex", "IV_all", "VC_ex"]:
+                for cell_id in list(figd.keys()):
+                    filelist = []
+                    cell = self.mk_cellid(cell_id)
+                    sourcedir = Path(sdirs[cell_id], "Simulations", fig[:2])
+                    targetdir = Path(cdirs[cell_id], "Simulations", fig[:2])
+                    print("\n", "=" * 80, "\n", fig, " target dir: ", targetdir)
+                    for expt in figd[cell_id].keys():  # for each expt in the list
+                        sourcefile = Path(sourcedir, figd[cell_id][expt])
+                        sourcefilepkl = Path(sourcefile.with_suffix(sourcefile.suffix + ".pkl"))
+                        if expt.startswith("Z_"):  # capture impedance runs
+                            sourcefile = Path(Zin_source_dir, figd[cell_id][expt])
+                            if sourcefile.is_file and sourcefile.suffix == ".pkl":
+                                filelist.append({"src": sourcefile, "dest": Zin_dest_dir})
+                                # self.do_copy(sourcefile, Zin_dest_dir)
 
-def write_the_readme():
-    with open(Path(simpath, "README.txt"), "wb") as fh:
-        fh.write(bytearray(readmefilecontents.encode('utf-8')))
-    # add the full file tree to the readme.
-    r = subprocess.run(["tree", simpath], capture_output=True)
-    with open(Path(simpath, "README.txt"), "a") as fh:
-        fh.write(r.stdout.decode())
+                        elif sourcefile.is_dir() and simcopy:  # make and fill the subdirectory
+                            targetsubdir = Path(targetdir, sourcefile.name)
+                            targetsubdir.mkdir(exist_ok=True)
+                            sourcefiles = sourcefile.glob("*.p")
+                            for f in sourcefiles:
+                                filelist.append({"src": f, "dest": targetsubdir})
+                                # self.do_copy(f, targetsubdir)
+                        elif sourcefilepkl.is_file():
+                              filelist.append({"src": sourcefilepkl, "dest": targetdir})
+                              # self.do_copy(sourcefilepkl, targetdir)
+                    # pool = multiprocessing.Pool(processes=16)
+                    for file in filelist:
+                        self.do_copy(file['src'], file['dest'])
+                    #     pool.apply_async(self.do_copy, args=(file['src'], file['dest'],))
+                    # pool.close()
+                    # pool.join()
+            elif fig in [
+                "AN_PSTH",
+                "AN_revcorr",
+                "AN_ex_revcorr",
+                "AN_efficacy",
+                "AN_SAC",
+                "AN_SAM_SAC",
+                "AN_BC_09_Pruned",
+                # "AN_VS_15", # removed for size
+              #  "AN_VS_30",  # removed for size
+                "AN_VS_15_BC09",
+            ]:
+                for cell_idx in list(figd.keys()):
+                    cell, cell_id = self.mk_cellid(cell_idx)
+                    sourcedir = Path(sdirs[cell_id], "Simulations", fig[:2])
+                    targetdir = Path(cdirs[cell_id], "Simulations", fig[:2])
+                    print("\n", "=" * 80, "\n", fig, " target dir: ", targetdir)
+                    if isinstance(figd[cell_idx], list):
+                        expts = figd[cell_idx]
+                    elif isinstance(figd[cell_idx], dict):
+                        expts = list(figd[cell_idx].keys())
+                    filelist = []
+                    for expt in expts:  # for each expt in the list
+                        print("   Simulation: ", expt)
+                        sourcefile = Path(sourcedir, expt)
+                        sourcefilepkl = Path(sourcefile.with_suffix(sourcefile.suffix + ".pkl"))
+                        if sourcefile.is_dir() and simcopy:  # make and fill the subdirectory
+                            targetsubdir = Path(targetdir, sourcefile.name)
+                            targetsubdir.mkdir(exist_ok=True)
+                            sourcefiles = list(sourcefile.glob("*.p"))
+                            for sourcef in sourcefiles:
+                                print("        sourcefile: ", sourcef.parent)
+                                print("                  + ", sourcef.name)
+                            for f in sourcefiles:
+                                filelist.append({'src':f, "dest": targetsubdir}) 
+                                # self.do_copy(f, targetsubdir)
+                        elif sourcefilepkl.is_file():
+                            self.do_copy(sourcefilepkl, targetdir)
+                    for file in filelist:
+                        self.do_copy(file['src'], file['dest'])
+                    # pool = multiprocessing.Pool(processes=16)
+                    # for file in filelist:
+                    #     pool.apply_async(self.do_copy, args=(file['src'], file['dest'],))
+                    # pool.close()
+                    # pool.join()
+    
+        # intermediate results:
+        # SAM clicks, SAM
+        target1 = Path(intermediate, 'SAC_Results_Clicks.pkl')
+        source1 = Path(intermediate_source, 'SAC_Results_Clicks.pkl')
+        self.do_copy(source1, target1)
+        target2 = Path(intermediate, 'SAC_Results_SAM.pkl')
+        source2 = Path(intermediate_source, 'SAC_Results_SAM.pkl')
+        self.do_copy(source2, target2)
+        source_VS15 = Path(config['codeDirectory'], 'VS_data_15dB.py')
+        target_VS15 = Path(intermediate, 'VS_data_15dB.py')
+        self.do_copy(source_VS15, target_VS15)
+        source_VS15_BC09 = Path(config['codeDirectory'], 'VS_data_15dB_BC09.py')
+        target_VS15_BC09 = Path(intermediate, 'VS_data_15dB_BC09.py')
+        self.do_copy(source_VS15_BC09, target_VS15_BC09)
+        source_VS30 = Path(config['codeDirectory'], 'VS_data_30dB.py')
+        target_VS30 = Path(intermediate, 'VS_data_30dB.py')
+        self.do_copy(source_VS30, target_VS30)
 
-def copy_morphology(allcells):
+def test_tree():
+    r = subprocess.run(["./vcnmodel/util/tree.sh", simpath], capture_output=True)
+    x = str(r.stdout).split('\\n')
+    for l in x:
+        print(l)
+
+def main():
+
+    allcells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+    cdirs = {}
+    sdirs = {}
+    # make the directory structure for all the cells
     for cn in allcells:
         cell_id = f"VCN_c{cn:02d}"
-        source_morph = list(Path(sdirs[cn], "Morphology").glob("*.hoc"))
-        source_morph.extend(list(Path(sdirs[cn], "Morphology").glob("*.swc")))
-        dest_morph = Path(cdirs[cn], "Morphology")
-        for f in source_morph:
-            dest_file = Path(dest_morph, f.name)
-            print(f"File to copy: {str(dest_file):s}")
-            if not dest_file.is_file():  # only copy if not already there
-                print("copying ", f, " to ", dest_morph)
-                shutil.copy2(f, dest_morph)
-            else:
-                print(f"Morphology file {cell_id:s}  {str(f):s}  already present")
-                print("    dest file was: ", dest_file)
+        celldir = Path(simulations, cell_id)
+        cdirs[cn] = Path(simulations, celldir)
+        cdirs[cn].mkdir(exist_ok=True)
+        for ddir in ["Simulations/AN", "Simulations/IV", "Simulations/VC", "Morphology"]:
+            Path(cdirs[cn], ddir).mkdir(exist_ok=True, parents=True)
+        sdirs[cn] = Path(sourcepath, "VCN_Cells", cell_id)
 
+    # for p in list(simpath.glob("*/**")):
+    #     print(p)
+    MD = BuildDataSet(testmode=False)
+    MD.copy_morphology(allcells, sdirs=sdirs, cdirs=cdirs)
+    MD.copy_simresults(FD, simcopy=True, sdirs=sdirs, cdirs=cdirs)
+    # finally, complete the README.txt file
+    MD. write_the_readme()
+    cprint("g", f"Copied {MD.ncopy:d} files")
 
-def copy_simresults(FD, simcopy=True):
-    for fig in FD.all_figures:
-        figd = FD.all_figures[fig]
-        if fig in ["IV_ex", "IV_all", "VC_ex"]:
-            for cell_id in list(figd.keys()):
-                cell = mk_cellid(cell_id)
-                sourcedir = Path(sdirs[cell_id], "Simulations", fig[:2])
-                targetdir = Path(cdirs[cell_id], "Simulations", fig[:2])
-                print("\n", "=" * 80, "\n", fig, " target dir: ", targetdir)
-                for expt in figd[cell_id].keys():  # for each expt in the list
-                    sourcefile = Path(sourcedir, figd[cell_id][expt])
-                    sourcefilepkl = Path(sourcefile.with_suffix(sourcefile.suffix + ".pkl"))
-                    if expt.startswith("Z_"):  # capture impedance runs
-                        sourcefile = Path(Zin_source_dir, figd[cell_id][expt])
-                        if sourcefile.is_file and sourcefile.suffix == ".pkl":
-                            print("   Zin pkl copying ", sourcefile, " to ", Zin_dest_dir)
-                            shutil.copy2(sourcefile, Zin_dest_dir)
-
-                    elif sourcefile.is_dir() and simcopy:  # make and fill the subdirectory
-                        targetsubdir = Path(targetdir, sourcefile.name)
-                        targetsubdir.mkdir(exist_ok=True)
-                        sourcefiles = sourcefile.glob("*.p")
-                        for f in sourcefiles:
-                            print("   data copying ", f, " to ", targetsubdir)
-                            shutil.copy2(f, targetsubdir)
-                    elif sourcefilepkl.is_file():
-                        print("   pkl copying ", sourcefilepkl, " to ", targetdir)
-                        shutil.copy2(sourcefilepkl, targetdir)
-        elif fig in [
-            "AN_PSTH",
-            "AN_revcorr",
-            "AN_ex_revcorr",
-            "AN_efficacy",
-            "AN_SAC",
-            "AN_SAM_SAC",
-        ]:
-            for cell_id in list(figd.keys()):
-                cell = mk_cellid(cell_id)
-                sourcedir = Path(sdirs[cell_id], "Simulations", fig[:2])
-                targetdir = Path(cdirs[cell_id], "Simulations", fig[:2])
-                print("\n", "=" * 80, "\n", fig, " target dir: ", targetdir)
-                for expt in figd[cell_id].keys():  # for each expt in the list
-                    print("   expt: ", expt)
-                    sourcefile = Path(sourcedir, figd[cell_id][expt])
-                    sourcefilepkl = Path(sourcefile.with_suffix(sourcefile.suffix + ".pkl"))
-
-                    if sourcefile.is_dir() and simcopy:  # make and fill the subdirectory
-                        targetsubdir = Path(targetdir, sourcefile.name)
-                        targetsubdir.mkdir(exist_ok=True)
-                        sourcefiles = sourcefile.glob("*.p")
-                        for f in sourcefiles:
-                            print("   data copying ", f, " to ", targetsubdir)
-                            shutil.copy2(f, targetsubdir)
-                    elif sourcefilepkl.is_file():
-                        print("   pkl copying ", sourcefilepkl, " to ", targetdir)
-                        shutil.copy2(sourcefilepkl, targetdir)
-
-
-
-copy_morphology(allcells)
-copy_simresults(FD, simcopy=False)
-# finally, complete the README.txt file
-write_the_readme()
+if __name__ == "__main__":
+    main()
+    # MD = BuildDataSet(testmode=True)
+    # MD.write_the_readme()
