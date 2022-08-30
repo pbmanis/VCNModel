@@ -395,7 +395,6 @@ class ModelRun:
 
         This routine generates two names:
             1. The name of the initizlization file. This name
-
                  includes the model name, the model type (for that name),
                  soma and dendrite inflation factors if relevenat.
                  Other parameters can be added if needed
@@ -409,7 +408,7 @@ class ModelRun:
 
         self.Params.cellID = Path(
             self.Params.cell
-        ).stem  # os.path.splitext(self.Params.cell)[0]
+        ).stem
         # pick up parameters that should be in both init and run filenames:
         # Run / init type independent parameters:
         if self.Params.verbose:
@@ -428,7 +427,6 @@ class ModelRun:
             model_Pars += f"_dend={self.Params.dendrite_inflation:.3f}"
         if self.Params.ASA_inflation != 1.0:
             model_Pars += f"_ASA={self.Params.ASA_inflation:.3f}"
-        # if self.Params.dendriteMode != 'normal':
         model_Pars += f"_{self.Params.dendriteMode:s}"
 
         add_Pars = None
@@ -589,7 +587,7 @@ class ModelRun:
             "c",
             f"{simMode:s} Simulation data file:  {str(self.Params.simulationFilename.name):s}",
         )
-        cprint("c", f"Full sim path: {str(simPath):s}")
+        cprint("c", f"Full simulation path: {str(simPath):s}")
 
     def set_spontaneousrate(self, spont_rate_type: int):
         """
@@ -616,14 +614,14 @@ class ModelRun:
 
     def set_starttime(self, starttime: float):
         """
-        store the simulation start time...
+        Get the simulation start time.
         """
         self.Params.StartTime = starttime
 
     def mkdir_p(self, path: Union[str, Path]):
         """
         Make a set of directories along the path if needed to ensure that the
-        data has a home
+        simulation output data has a home.
 
         Parameters
         ----------
@@ -641,9 +639,9 @@ class ModelRun:
 
     def fix_singlets(self, h: object, harsh: bool = False):
         """
-        Sometimes the hoc file has sections that consist of a single point.
+        Sometimes the Hoc file has sections that consist of a single point.
         Here we replace those sections with ones that include the last point
-        of the left connecting, or parent, section( assuming you go left to right).
+        of the left connecting, or parent, section (going left to right).
 
         """
         badsecs = []
@@ -665,7 +663,7 @@ class ModelRun:
                 print(f"Bad sections: ', {b.name():s}")
             exit()
         else:
-            cprint("g", "**** No singlets were found in this hoc file")
+            cprint("g", "**** No singlets were found in this Hoc file")
         badsecs = []
         for sec in h.allsec():
             if sec.n3d() == 1:
@@ -680,12 +678,12 @@ class ModelRun:
     def setup_model(self, par_map: dict = None):
         """
         Main entry routine for running all models.
-        Here we assig various parameters, deal
+        Here we assign various parameters, deal
         with various morphological manipulations such as inflating areas, generate
         filenames, and read the relevant data tables into cnmodel.
-        Probably too much for just one function, but hey, it all has to happen.
+        Probably too much for just one function.
 
-        NOTE: This is the ONLY place where cells are instantiated.
+        NOTE: This is the ONLY place in the code where cells are instantiated.
         
         Parameters
         ----------
@@ -752,7 +750,7 @@ class ModelRun:
 
             self.Params.hocfile += ".hoc"  # now we can add extension
 
-        cprint("c", f"Using {label:s} hoc file: {self.Params.hocfile:s}")
+        cprint("c", f"Using {label:s} Hoc file: {self.Params.hocfile:s}")
 
         hoc_filename = Path(
             self.baseDirectory,
@@ -805,10 +803,11 @@ class ModelRun:
                 nach = "nav11"
             CHAN = importlib.import_module(table_name)
             """
-            save the channel data and compartment data tables, as pulled from the 
-            file we just imported, directly into the simulations
-            This makes sure the file has even more (if not all) of the data needed to specify the
-            run parameters
+            Save the channel data and compartment data tables, as pulled from the 
+            file we just imported, directly into the RunInfo simulation dataclass.
+            This is done to provide the data file contains not only the simulation results
+            but also all of the information needed to specify the
+            model run parameters.
             """
             self.RunInfo.tableData["ChannelData"] = CHAN.ChannelData
             self.RunInfo.tableData["ChannelCompartments"] = CHAN.ChannelCompartments
@@ -878,7 +877,7 @@ class ModelRun:
         )
         self.post_cell.hr.h.celsius = self.post_cell.status[
             "temperature"
-        ]  # this is set by prepareRun in generateRun. Only place it should be changed
+        ]  # this is set by prepareRun in generateRun. This is the only place it should be changed
         self.post_cell.hr.h.Ra = self.Params.Ra
         print(f"Specified Temperature = {self.post_cell.hr.h.celsius:8.1f} degC ")
         print("Ra (ohm.cm) = {:8.1f}".format(self.post_cell.hr.h.Ra))
@@ -948,7 +947,6 @@ class ModelRun:
             )[0]
             self.RunInfo.electrodeSectionName = "Axon_Initial_Segment"
         self.RunInfo.electrodeSection = self.post_cell.hr.get_section(electrode_section)
-        # self.hg = hoc_graphics
         self.get_hoc_file(self.post_cell.hr)
 
         if self.Params.verbose:
@@ -1035,14 +1033,12 @@ class ModelRun:
 
             if self.Params.verbose:
                 print("  SRtype, srindex: ", self.Params.SRType, srindex)
-            # print(self.Params.ANSynapseType)
 
             # note that we provide the opportunity to split the number of zones
-            # between multiple sites
+            # between multiple sites/sections 
             for pl in syn["postlocations"]:
                 postsite = syn["postlocations"][pl]
                 plsecs = list(thisCell.hr.sec_groups[pl])
-                # print('plsecs: ', plsecs)
                 firstplsec = plsecs[0]  # get the first one (for soma)
                 plsecn = re.split(r"[\[\]+]", firstplsec)
                 # note this will need to be mapped later to put synapses on the right
@@ -1094,7 +1090,7 @@ class ModelRun:
         if not self.Params.setup:
             self.setup_model(par_map=par_map)
         return
-        # until we figure out opengl on mac osx Big Sur
+        # until we have time to figure out opengl on mac osx Big Sur
         # import neuronvis as NV
         #
         # if self.Params.cellID in list(vcnmodel.model_params.display_orient_cells):
@@ -1155,7 +1151,7 @@ class ModelRun:
         dispatcher[self.RunInfo.runProtocol]()
 
     # ===============================================================================
-    # The following methods are all of the initialization and run routines for the
+    # The following methods include all of the initialization and run routines for the
     # model.
     # ===============================================================================
 
@@ -1190,7 +1186,6 @@ class ModelRun:
 
         self.Params.initialization_time = 500.0
         self.init_iv()
-        # print(dir(self.post_cell.hr.h))
         Z = self.post_cell.hr.h.Impedance(0.5, measure_section)
         freqs = np.logspace(0, 4, 50)
         Zin = np.zeros_like(freqs)
@@ -1349,30 +1344,18 @@ class ModelRun:
 
         """
         print("iv_run_spike_threshold: starting")
-        # start_time = timeit.default_timer()
-
-        # if self.RunInfo.sequence != "":  # replace sequence?
-        #      self.RunInfo.stimInj = {"pulse": np.linspace(0.01, 1.60, endpoint=True)}
-        #  self.R = GenerateRun(
-        #      self.Params, self.RunInfo, self.post_cell, idnum=self.idnum, starttime=None,
-        #  )
         self.RunInfo.folder = Path(
             self.baseDirectory, self.Params.cellID, self.simDirectory, "IV"
         )
         if self.Params.verbose:
             print("iv_run_spike_threshold: calling do_run")
         nworkers = self.Params.nWorkers
-        #        print(self.Params.Parallel)
-        # if self.Params.Parallel is False:
-        #     nworkers = 1
-        #        print('Number of workers available on this machine: ', nworkers)
         # coarse run first:
-        self.RunInfo.stimDur = 20.0  # msec short pulses are sufficient
+        self.RunInfo.stimDur = 20.0  # in msec. Short pulses are sufficient
 
-        current_I = 0.4  # start near middle of the range
+        current_I = 0.4  # start near the middle of the range
         precision = 0.001  # measure to nearest 10 pA
         step = current_I / 2.0
-        # nworkers = 1
         niter = 0
         last_spike_thr = current_I
         while step > precision:
@@ -1479,51 +1462,7 @@ class ModelRun:
             print("   vc_run: do_run completed")
         elapsed = timeit.default_timer() - start_time
         print(f"   VC_Rin: Elapsed time: {elapsed:2f} seconds")
-        # isteps = self.R.VCResult["I"]
-        # if self.Params.verbose:
-        #     for k, i in enumerate(self.R.IVResult["tauih"].keys()):
-        #         print(
-        #             "   ih: %3d (%6.1fnA) tau: %f"
-        #             % (i, isteps[k], self.R.IVResult["tauih"][i]["tau"])
-        #         )
-        #         print("           dV : %f" % self.R.IVResult["tauih"][i]["a"])
-        #     for k, i in enumerate(self.R.IVResult["taus"].keys()):
-        #         print(
-        #             "   i: %3d (%6.1fnA) tau: %f"
-        #             % (i, isteps[k], self.R.IVResult["taus"][i]["tau"])
-        #         )
-        #         print("          dV : %f" % (self.R.IVResult["taus"][i]["a"]))
-        #
-        # # print('   Nspike, Ispike: ', self.R.IVResult['Nspike'], self.R.IVResult['Ispike'])
-        # print("   N spikes:   {0:d}".format(int(np.sum(self.R.IVResult["Nspike"]))))
-        # print("   Rinss:      {0:.1f} Mohm".format(self.R.IVResult["Rinss"]))
-        # print(
-        #     "   Tau(mean):  {0:.3f} ms".format(
-        #         np.mean(
-        #             [
-        #                 self.R.IVResult["taus"][i]["tau"]
-        #                 for i in range(len(self.R.IVResult["taus"]))
-        #             ]
-        #         )
-        #     )
-        # )
-        # print("   Vm:         {0:.1f} mV".format(np.mean(self.R.IVResult["Vm"])))
-        # if len(list(self.R.IVResult["taus"].keys())) == 0:
-        #      taum_mean = 0.0
-        #      tauih_mean = 0.0
-        #  else:
-        #      taum_mean = np.mean(
-        #          [
-        #              self.R.IVResult["taus"][i]["tau"]
-        #              for k, i in enumerate(self.R.IVResult["taus"].keys())
-        #          ]
-        #      )
-        #      tauih_mean = np.mean(
-        #          [
-        #              self.R.IVResult["tauih"][i]["tau"]
-        #              for k, i in enumerate(self.R.IVResult["tauih"].keys())
-        #          ]
-        #      )
+     
         # construct dictionary for return results:
         self.VCSummary = {
             "basefile": self.R.basename,
@@ -1531,9 +1470,6 @@ class ModelRun:
             "ID": self.idnum,
             "sequence": self.RunInfo.stimInj,
             "Vm": np.mean(self.R.VCResult["Vm"]),
-            # "Rin": self.R.VCResult["Rinss"],
-            # "taum": taum_mean,
-            # "tauih": tauih_mean,
         }
         return self.VCSummary
 
@@ -1630,7 +1566,6 @@ class ModelRun:
                 (nReps, len(synapseConfig))
             )
             seeds = seeds + startingseed
-        # print('AN Seeds: ', seeds)
 
         return seeds
 
@@ -1657,7 +1592,6 @@ class ModelRun:
         gMax = np.zeros(len(synapses))  # total g for each synapse
         nSyn = np.zeros(len(synapses))  # # sites each synapse
         ngMax = np.zeros(len(synapses))
-        # print('# syn: ', len(synapses))
         if self.Params.ANSynapseType == "simple":
             for i, s in enumerate(synapses):
                 gMax[i] = gMax[i] + float(s.psd.terminal.netcon.weight[0])
@@ -1674,7 +1608,6 @@ class ModelRun:
             print("  getsyn")
             print("  Syn#    nsites    AMPA gmax    NMDA gmax   synperum2    SRType")
             for i, s in enumerate(synapses):
-                # print(self.Params.SynapseConfig[i])
                 print(
                     f"  {i:>4d}   {int(nSyn[i]):>5d}    {eng(gMax[i]):>9s}    {eng(ngMax[i]):>9s}",
                     end="",
@@ -1725,7 +1658,6 @@ class ModelRun:
         dendriteVoltage = np.array(tresults["Vdend"])
         stimWaveform = np.array(tresults["stimWaveform"])
         stimTimebase = np.array(tresults["stimTimebase"])
-        # print('input spikes: ', inputSpikeTimes)
         result = {
             "spikeTimes": spikeTimes,
             "inputSpikeTimes": inputSpikeTimes,
@@ -1793,7 +1725,6 @@ class ModelRun:
         )
 
         self.Params.SynapseConfig = synapseConfig
-        # print("SynapseConfig: ", self.Params.SynapseConfig)
 
         self.start_time = time.time()
         # compute delays in a simple manner
@@ -1834,9 +1765,6 @@ class ModelRun:
         self.RunInfo.seeds = seeds  # keep the seed values too.
 
         celltime = [None] * nReps
-        # allDendriteVoltages = (
-        #     {}
-        # )  # Saving of all dendrite voltages is controlled by --saveall flag
         result = {}
         self.setup_time = time.time() - self.start_time
         self.nrn_run_time = 0.0
@@ -1914,7 +1842,6 @@ class ModelRun:
                     synapse[i], 0.0, 0.0,
                 )
             gm, gnm, ns = self.get_synapses(synapse, printvalues=True)
-            # exit()
 
         elif self.RunInfo.Spirou in ["largestonly"]:
             nlarge = 1
@@ -1994,7 +1921,7 @@ class ModelRun:
         This routine is special - it runs nReps for each synapse, turning off all of the other synapses
         by setting the synaptic conductance to 0 (to avoid upsetting initialization)
         if the "Exclude" flag is set, it turns OFF each synapse, leaving the others running.
-        The output file either says "Syn", or "ExclSyn"
+        The output file is tagged with "Syn", or "ExclSyn"
 
         Parameters
         ----------
@@ -2146,7 +2073,6 @@ class ModelRun:
         2. The number of zones is adjusted using a linear estimator until the
             the target_ratio of bushy spikes to AN spikes is attained.
         Note: this may get caught bouncing between two input sizes until it
-
         reaches the maxiter terminations. This is probably ok.
 
         """
@@ -2576,9 +2502,6 @@ class ModelRun:
             self.post_cell.hr.h.tstop, self.post_cell.hr.h.dt, "an.dat"
         )
         nrn_run_time += time.time() - nrn_start
-        # if len(rectime) == 0:
-        #     npts = np.array(Vsoma).shape[0]
-        #     rectime = np.linspace(0., npts*self.post_cell.hr.h.dt, num=npts)
         if dendsite is None:
             Vdend = np.zeros_like(Vsoma)
 
@@ -2591,16 +2514,13 @@ class ModelRun:
             "stimWaveform": stimWaveform,
             "stimTimebase": stimTimebase,
         }
-        # print("max time: ", max(anresult["time"]))
-        # mpl.plot(anresult["time"], anresult["Vsoma"], 'k-')
-        # mpl.show()
         if self.Params.save_all_sections:
             anresult["allsecVec"] = self.allsecVec
         return anresult
 
     def plot_an(self, celltime, result):
         """
-        Plot the cell's voltage reponse to the AN inputs
+        Plot the cell voltage reponse to the AN inputs
 
         Parameters
         ----------
@@ -2615,14 +2535,10 @@ class ModelRun:
         """
         if not self.Params.plotFlag:
             return
-        # if self.Params.Parallel:
-        #     return  # no plots when doing parallel runs...
-        # nReps = self.RunInfo.nReps
+
         threshold = self.RunInfo.threshold
         fig, ax = mpl.subplots(3, 1, sharex=True)
         fig.suptitle("AN Inputs")
-        # win = pgh.figure(title='AN Inputs')
-        # layout = pgh.LayoutMaker(cols=1,rows=2, win=win, labelEdges=True, ticks='talbot')
         for j, N in enumerate(range(len(result))):
             dt = np.mean(np.diff(celltime[N]))
             ax[0].plot(celltime[N], result[N]["somaVoltage"], c="k", linewidth=0.75)
@@ -2644,7 +2560,6 @@ class ModelRun:
                 celltime[N]
             )  # show in mV/ms
             ax[1].plot(celltime[N][:-1], dvdt, c="k", linewidth=0.75)
-            # layout.getPlot(0).setXLink(layout.getPlot(1))
         if (
             "dendVoltage" in list(result[N].keys())
             and result[N]["dendVoltage"] is not None
@@ -2675,8 +2590,7 @@ class ModelRun:
         ):
             runinfo.dendriticElectrodeSection = str(
                 self.dendriticElectrodeSection.name()
-            )  # dendriticElectrodeSection,
-        # dendriticSectionDistance = 100.0  # microns.
+            )
         return runinfo
 
     def analysis_filewriter(self, result: dict, tag: str = ""):
