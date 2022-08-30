@@ -257,7 +257,7 @@ def run_sac_analysis():
     return df
 
 
-def do_plot(df, sacs, max_CI: float = 60.0):
+def do_plot(df, sacs, max_CI: float = 60.0, fits:bool=False):
     """Make a supplemental plot of the SAC results for all cells
 
     Parameters
@@ -344,21 +344,22 @@ def do_plot(df, sacs, max_CI: float = 60.0):
             this_ax.plot(
                 bins.values[0][:-1] * 1e3, yh.values[0], color=colors[ik], label=label
             )
-            if len(df[(df["Cell"] == j) & (df["Expt"] == k)]["gfitx"]) > 0:
-                fitbins = df[(df["Cell"] == j) & (df["Expt"] == k)]["gfitx"].values[0]
-                fitgauss = df[(df["Cell"] == j) & (df["Expt"] == k)]["gfity"].values[0]
-                for rep in ["[", "]", "\n"]:
-                    fitbins = fitbins.replace(rep, "")
-                    fitgauss = fitgauss.replace(rep, "")
-                fitbins = np.fromstring(fitbins, sep=" ")
-                fitgauss = np.fromstring(fitgauss, sep=" ")
-                this_ax.plot(
-                    fitbins * 1e3,
-                    fitgauss,
-                    color="r",  # colors[ik],
-                    linestyle="--",
-                    linewidth=0.5,
-                )
+            if fits:
+                if len(df[(df["Cell"] == j) & (df["Expt"] == k)]["gfitx"]) > 0:
+                    fitbins = df[(df["Cell"] == j) & (df["Expt"] == k)]["gfitx"].values[0]
+                    fitgauss = df[(df["Cell"] == j) & (df["Expt"] == k)]["gfity"].values[0]
+                    for rep in ["[", "]", "\n"]:
+                        fitbins = fitbins.replace(rep, "")
+                        fitgauss = fitgauss.replace(rep, "")
+                    fitbins = np.fromstring(fitbins, sep=" ")
+                    fitgauss = np.fromstring(fitgauss, sep=" ")
+                    this_ax.plot(
+                        fitbins * 1e3,
+                        fitgauss,
+                        color="r",  # colors[ik],
+                        linestyle="--",
+                        linewidth=0.5,
+                    )
             this_ax.set_ylim(0, max_CI)
             this_ax.set_ylabel("CI")
 
@@ -457,12 +458,12 @@ def do_plot(df, sacs, max_CI: float = 60.0):
             "Figures",
             "Figure7",
             "Figure7_supp",
-            "Figure7_Supplemental3_SAC_Clicks_SynapseConfigs.pdf",
+            "Figure7_Supplemental3_SAC_Clicks_SynapseConfigs_V2.pdf",
         ),
         metadata={
             "Creator": "Paul Manis",
             "Author": "Paul Manis",
-            "Title": "Figure 7 Supplemental Figure 3",
+            "Title": "Figure 7 Supplemental Figure 3 V2",
         },
     )
     mpl.show()
@@ -575,7 +576,7 @@ def remeasure(df, twin: float = 2):
 
     return df
 
-def plot_sacs(save_fig:bool=True, figinfo: Union[object, None] = None):
+def plot_sacs(save_fig:bool=True, figinfo: Union[object, None] = None, fits:bool=False):
     pd_file = Path(
         config["baseDataDirectory"],
         config["figureDirectory"],
@@ -589,7 +590,7 @@ def plot_sacs(save_fig:bool=True, figinfo: Union[object, None] = None):
     df["gfity"] = "nan"  # df['gfity'].astype(object)
     df2 = remeasure(df)
 
-    P = do_plot(df2, sacs)
+    P = do_plot(df2, sacs, fits=fits)
     # print(sacs)
     # sac2plot(df)
 
