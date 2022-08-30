@@ -33,7 +33,16 @@ def get_cells_by_group(group:str):
     elif group in ["MixedMode", "First-in"]:
         return MixedMode
     else:
-        raise ValueError("Group must be either 1 or 2")
+        raise ValueError("Group must be either Mixed Mode/First-in or Coiincidence")
+
+# remap the grouping
+def remap_Group(cell):
+    if cell in MixedMode:
+        return "Mixed-mode"
+    if cell in Coincidence:
+        return "Coincidence"
+    else:
+        raise ValueError("Encoutnered cell not in the group definitions")
 
 group_symbols = ['o', 'D'] 
 

@@ -290,7 +290,7 @@ def Figure4_Supplemental3_Patterns(reanalyze=False, dataset:str="Spont"):
             raise ValueError(f"Pattern {p:s} is missing from pdatanames")
 
     # create your own color array
-    bar_colors = [(0.9, 0.9, 0.9, 0.2), (0.0, 0.0, 1.0, 0.3)]
+    bar_colors = [(0.8, 1.0, 0.8, 0.05), (0.8, 0.8, 1.0, 0.05)]
 
     # add color array to set_palette
     # function of seaborn
@@ -302,7 +302,7 @@ def Figure4_Supplemental3_Patterns(reanalyze=False, dataset:str="Spont"):
                [0, 25, 50, 75],
                ]
     yticks_str = [[f"{y:2d}" for y in yticks[yi]] for yi in range(len(yticks))]
-
+    compares.loc[:, "Group"] = compares.apply(lambda row: GRPDEF.remap_Group(row.Cell) , axis=1)
     for i, axl in enumerate(pats):
         irow = i // ncols
         icol = i % ncols
@@ -326,8 +326,9 @@ def Figure4_Supplemental3_Patterns(reanalyze=False, dataset:str="Spont"):
                 x="Group",
                 y="Percent",
                 hue="Cell",
+                palette=GRPDEF.sns_colors,
                 ax=ax[i],
-                size=3,
+                size=4.5,
             )
 
             if i < len(pats) - 1:
@@ -347,9 +348,9 @@ def Figure4_Supplemental3_Patterns(reanalyze=False, dataset:str="Spont"):
         else:
             PH.noaxes(ax[i])
 
-        print(irow, icol)
+        # print(irow, icol)
         if irow == 2 and icol == 3:
-            print("**********************************")
+            # print("**********************************")
             custom_legend = []
             for ic, cell in enumerate([2, 5, 6, 9, 10, 11, 13, 17, 18, 30]):
                 custom_legend.append(
@@ -367,6 +368,8 @@ def Figure4_Supplemental3_Patterns(reanalyze=False, dataset:str="Spont"):
     fn2 = fn.with_suffix(".png")
     mpl.savefig(fn2)
     mpl.show()
+
+
 
 
 
@@ -402,15 +405,8 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
         compares.to_pickle(compare_file)
 
     compares = pd.read_pickle(compare_file)
-    print("pattern comparisions:\n", compares.head(10))
-    # remap the grouping
-    def get_Group(cell):
-        if cell in GRPDEF.MixedMode:
-            return "MixedMode"
-        if cell in GRPDEF.Coincidence:
-            return "Coincidence"
-        else:
-            raise ValueError("Encoutnered cell not in the group definitions")
+    print("pattern comparisons:\n", compares.head(10))
+
 
     compares.loc[:, "Group"] = compares.apply(lambda row: get_Group(row.Cell) , axis=1)
 
