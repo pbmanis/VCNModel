@@ -4,7 +4,7 @@ to remove the dendrites from a hoc file. This is run as a script from the
 command line. Run with python break_dendrites.py --help to see the command
 arguments.
 
-Note: replaced by compare_hoc.py (use that instead!)
+Note: *** DEPRECATED ***: replaced by compare_hoc.py (use that instead!)
 
 This module is part of *vcnmodel*.
 
@@ -131,6 +131,8 @@ def test_one():
 
 
 if __name__ == "__main__":
+    print("This code is deprecated. Use compare_hoc.py instead")
+    exit()
     parser = argparse.ArgumentParser(
         description="Manipulate and break dendrites or other parts off cell",
         argument_default=argparse.SUPPRESS,

@@ -5,6 +5,10 @@
  This was taken from model_run2.py, and is a stand-alone version,
  and the parameters are taken from model_params.py
 
+ It is used by vcnmodel.plotters.plot_runs and
+ vcnmodel.plotters.plot_sims to show the stimulus waveforms
+ associated with a simulation run.
+
  """
 from dataclasses import dataclass, field
 from typing import Tuple

@@ -13,7 +13,7 @@ the data in those blocks.
 
 This was taken from somewhere on the web years ago before dataclasses
 existed, and has been modified over time. Apologies to whoever first
-created it. 
+created it, and thanks for doing so! 
  
 """
 

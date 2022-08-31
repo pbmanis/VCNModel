@@ -112,13 +112,12 @@ class SRMap:
 
 class CellConfig:
     """
-    Data sets are from George Spirou & Co. (Michael Morehead, Nathan Spencer, Matthew Kersting)
+    Data sets are from George Spirou & Co. (esp. Matthew Kersting)
 
     This version **imports** data from an excel spreadsheet in VCN_Cells.
     The location of the spreadsheet is defined in wheres_my_data.toml
 
     When spreadsheets are updated with new data, we can just read them to build a new table.
-    last modified: 11 Oct 2019  pbm
     
     `cell_config` generates the configuration of synaptic inputs and defines a cell
 
