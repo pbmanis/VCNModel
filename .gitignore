@@ -27,7 +27,17 @@ Untitled*.ipynb
 *.mtl
 
 .DS_Store
+.vscode
+.pytest_cache/
+.github
+vcnmodel_venv/
 
+arm64/
+x86_64/
+build/
+docs/html/
+docs/_build/
+docs/_static/
 # C extensions
 *.so
 *.o
