@@ -190,6 +190,7 @@ class CellConfig:
         with open("wheres_my_data.toml", "r") as fh:
             self.config = toml.load(fh)
         self.dendqualfile = Path(self.config["baseMorphologyDirectory"], self.config["dendriteQualityFile"])
+        print(f"Using dendrite Qual File: {str(self.dendqualfile):s}")
         self.inputs = [f"Input {i+1:d}" for i in range(20)]  # input column labels, up to 20
 
         assert spont_mapping in ["HS", "LS", "MS", "mixed1", None]
@@ -400,11 +401,12 @@ class CellConfig:
             self.VCN_Inputs[cell][1][i][2] = srg
 
     def print_cell_inputs_json(self, r: str):
+        print("\n\nExamining Cell Inputs (by cell, as ASA (sr group) 2=HS")
         if self.verbose:
-            print("\nCell Inputs:")
             print(json.dumps(r, indent=4))
 
     def print_cell_inputs(self, r: dict):
+        print("\n\nExamining Cell Inputs (by cell, as ASA (sr group) 2=HS")
         chs = "Cell ID, ASA (sr)"
         cht = chs.split(", ")
         slen = max([len(c) for c in cht]) + 2
@@ -522,6 +524,7 @@ class CellConfig:
         -------
         Nothing
         """
+        print("\n\nSummarizing Release sites")
         cells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]  # just grade A cells
         synsizes = [0.65, 0.7686, 0.7990]
         for j, cell in enumerate(cells):
@@ -627,6 +630,7 @@ class CellConfig:
         Generate a variety of plots summarizing the patterns of the inputs
         from the excel table data
         """
+        print("\n\nSummarizing inputs graphically")
         P = PH.regular_grid(
             2,
             3,
@@ -760,7 +764,7 @@ class CellConfig:
 
 if __name__ == "__main__":
     # Check the formatting and display the results
-    cc = CellConfig(spont_mapping="mixed1")
+    # cc = CellConfig(spont_mapping="mixed1")
     cc = CellConfig(spont_mapping="HS", add_inputs="101730")
     # make sure all is working
     cc.summarize_release_sites()

@@ -23,11 +23,13 @@ figureDirectory="SBEM-paper Figures"
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_6_March_2020.xlsx'
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_2_April_2020.xlsx'
 
-# most recent table. Note that the table hass been annotated a few times since the stated date
+# most recent table. Note that the table has been annotated a few times since the stated date
 # of the file. These include: updating estimage of c18's soma and dendrite area, and
 # updating synapse counts from Matthew Kersting.
 #dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_29_June_2020.xlsx'
-dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_17_June_2021.xlsx'  # updated for cell 18
+#dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_17_June_2021.xlsx'  # updated for cell 18
+
+dendriteQualityFile = 'Dendrite Quality and Surface Areas_for_Sims_Cleaned_8-30-2022.xlsx'  # updated for cell 18
 
 # names of excel tabs in the dendrite quality file
 # asaData = "Input_ASA_FromASAProtocol(Holco"
