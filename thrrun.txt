@@ -1,0 +1,16 @@
+08.26.2022 14:54:33 Prec. 0.001 pA,  0.850 niter= 19 VCN_c02_Full_MeshInflate_AIS=010.00.hoc
+08.26.2022 14:54:55 Prec. 0.001 pA,  0.763 niter= 20 VCN_c02_Full_MeshInflate_AIS=012.00.hoc
+08.26.2022 14:55:18 Prec. 0.001 pA,  0.694 niter= 21 VCN_c02_Full_MeshInflate_AIS=014.00.hoc
+08.26.2022 14:55:40 Prec. 0.001 pA,  0.639 niter= 20 VCN_c02_Full_MeshInflate_AIS=016.00.hoc
+08.26.2022 14:56:04 Prec. 0.001 pA,  0.598 niter= 23 VCN_c02_Full_MeshInflate_AIS=018.00.hoc
+08.26.2022 14:56:27 Prec. 0.001 pA,  0.561 niter= 21 VCN_c02_Full_MeshInflate_AIS=020.00.hoc
+08.26.2022 14:56:48 Prec. 0.001 pA,  0.528 niter= 19 VCN_c02_Full_MeshInflate_AIS=022.00.hoc
+08.26.2022 14:57:12 Prec. 0.001 pA,  0.498 niter= 22 VCN_c02_Full_MeshInflate_AIS=024.00.hoc
+08.26.2022 14:57:41 Prec. 0.001 pA,  0.802 niter= 19 VCN_c05_Full_MeshInflate_AIS=010.00.hoc
+08.26.2022 14:58:11 Prec. 0.001 pA,  0.719 niter= 20 VCN_c05_Full_MeshInflate_AIS=012.00.hoc
+08.26.2022 14:58:42 Prec. 0.001 pA,  0.655 niter= 20 VCN_c05_Full_MeshInflate_AIS=014.00.hoc
+08.26.2022 14:59:11 Prec. 0.001 pA,  0.605 niter= 19 VCN_c05_Full_MeshInflate_AIS=016.00.hoc
+08.26.2022 14:59:42 Prec. 0.001 pA,  0.566 niter= 20 VCN_c05_Full_MeshInflate_AIS=018.00.hoc
+08.26.2022 15:00:12 Prec. 0.001 pA,  0.530 niter= 20 VCN_c05_Full_MeshInflate_AIS=020.00.hoc
+08.26.2022 15:00:45 Prec. 0.001 pA,  0.498 niter= 22 VCN_c05_Full_MeshInflate_AIS=022.00.hoc
+08.26.2022 15:01:15 Prec. 0.001 pA,  0.472 niter= 20 VCN_c05_Full_MeshInflate_AIS=024.00.hoc

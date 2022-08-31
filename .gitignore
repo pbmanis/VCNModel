@@ -13,11 +13,13 @@ src/vcnmodel/VS_data_mar2021.py
 src/vcnmodel/VS_datasets_Nov2020.py
 src/vcnmodel/model_data/Old_data_tables/
 src/vcnmodel/analyzers/tests/test_cross_correlation.py
+src/vcnmodel/analyzers/sttc_cython.c
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+VS_data*
 
 # temporary ipy/jupyter notebooks
 Untitled*.ipynb
