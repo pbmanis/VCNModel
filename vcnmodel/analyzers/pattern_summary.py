@@ -408,7 +408,7 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
     print("pattern comparisons:\n", compares.head(10))
 
 
-    compares.loc[:, "Group"] = compares.apply(lambda row: get_Group(row.Cell) , axis=1)
+    compares.loc[:, "Group"] = compares.apply(lambda row: GRPDEF.get_BC_Group(row.Cell) , axis=1)
 
     if axin is None:
         f, ax = mpl.subplots(1, 1)

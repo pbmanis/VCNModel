@@ -1,0 +1,44 @@
+# ***************************************************
+# THIS IS A DUMMY VERSION OF THIS FILE SO THAT SPHINX CAN GENERATE DOCUMENTTION
+# ANy changes made here will NOT be refleted when you run the code in vcnmodel.
+# ####################################################
+# filenames and paths
+# Use this to set the directories and paths where you put the data files
+# that can drive the simulations. 
+# This file is mostly used by cell_config.py, but it is also imported
+# elsewhere rather than harcoding some of the paths.
+#
+# Read this file as:
+# import toml
+# with open("wheres_my_data.toml", "r") as fh:
+#   config = toml.load(fh)
+# Dec 2020: Move simulation result storage off to RAID disk for space reasons.
+
+baseDataDirectory = "/Volumes/Pegasus_002/VCN-SBEM-Data" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
+cellDataDirectory = "/Volumes/Pegasus_002/VCN-SBEM-Data/VCN_Cells" #"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
+revcorrDataDirectory = "/Volumes/Pegasus_002/VCN-SBEM-Data//VCN_Revcorr_Summaries" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Revcorr_Summaries"
+baseMorphologyDirectory = "/Volumes/Pegasus_002/VCN-SBEM-Data/MorphologyData/VCN" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/MorphologyData/VCN"
+codeDirectory="/Users/pbmanis/Desktop/Python/vcnmodel"
+pngDirectory="VCN-CellImages-1-2020/Bushy_Cells"  # png files, in baseDataDirectory
+impedanceDirectory="Impedance_Calculations"  # Zin calculations in cellDataDirectory
+figureIntermediateDirectory="IntermediateResults"
+figureDirectory="SBEM-paper Figures"
+# dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_pbm_14Oct2019_v1.xlsx'
+# dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_6_March_2020.xlsx'
+# dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_2_April_2020.xlsx'
+
+# most recent table. Note that the table has been annotated a few times since the stated date
+# of the file. These include: updating estimage of c18's soma and dendrite area, and
+# updating synapse counts from Matthew Kersting.
+#dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_29_June_2020.xlsx'
+#dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_17_June_2021.xlsx'  # updated for cell 18
+
+dendriteQualityFile = 'Dendrite Quality and Surface Areas_for_Sims_Cleaned_8-30-2022.xlsx'  # updated for cell 18
+
+# names of excel tabs in the dendrite quality file
+# asaData = "Input_ASA_FromASAProtocol(Holco"
+# asaHeaderSkip = 3
+asaData = "Input_ASA_FromautoASA.py"
+asaHeaderSkip = 0
+SomaAndDendriteData = "SomaDendrite_Summary"
+

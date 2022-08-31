@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 """
 This module handles various aspects of cell initialization.
 This includes:
@@ -306,3 +304,7 @@ def test_initial_conditions(
     # pl = pg.plot(np.array(monitor['time']), np.array(monitor['Velectrode']))
     # pl.setTitle(filename)
     # QtGui.QApplication.instance().exec_()
+
+
+if __name__ == "__main__":
+    pass

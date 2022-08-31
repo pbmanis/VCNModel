@@ -126,9 +126,7 @@ rc("text.latex", preamble=r"\usepackage{xcolor}")
 rc("mathtext", fontset="stixsans")
 
 sns.set_style(rc={"pdf.fonttype": 42})
-thisdir = Path.cwd()
-print("\n", "*"*80, "\n", thisdir)
-mpl.style.use(Path(thisdir, "styles", "figures.mplstyle"))
+
 
 modeltypes = ["mGBC", "XM13", "RM03", "XM13_nacncoop", "XM13A_nacncoop"]
 runtypes = ["AN", "an", "IO", "IV", "iv", "gifnoise"]
@@ -284,8 +282,9 @@ class PlotSims:
         self.firstline = True
         self.VS = VS.VectorStrength()
         self.axis_offset = -0.02
-        with open("wheres_my_data.toml", "r") as fh:
+        with open(Path(Path.cwd(), "wheres_my_data.toml"), "r") as fh:
             self.config = toml.load(fh)
+        mpl.style.use(Path(Path.cwd(), "styles", "figures.mplstyle"))
         self.allspikes = None
         self.in_Parallel = False # flag to prevent graphics access during parallel processing.
 

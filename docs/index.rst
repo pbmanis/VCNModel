@@ -40,6 +40,7 @@ Used in Spirou, Kersting, Ellisman and Manis (in preparation).
    plotting
    miscanalysis
    utility
+   api
 
 Indices and Modules
 

@@ -1,9 +1,8 @@
 """
-This program provides a graphical interface for model results for the SBEM
-reconstruction project. The display appears as 3 panels: One on the left with
-controls, one on the top right that is tabbed,
-showing either the current table, or the traces, and one on the bottom for
-text output.
+This program provides a graphical interface to help access model results for
+the SBEM reconstruction project. The display appears as 3 panels: One on the
+left with controls, one on the top right that is tabbed, showing either the
+current table, or the traces, and one on the bottom for text output.
 
 The left panel provides a set of organized controls:
 
@@ -1016,7 +1015,7 @@ class DataTablesVCN:
                 return index_row, selected
 
     # Next we provide dispatches for a few specific actions. These are mostly
-    # routines in plot_sims.py
+    # to routines in plot_sims.py
     
     def analyze_singles(self, ana_name=None):
         """

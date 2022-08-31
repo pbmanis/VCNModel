@@ -1688,6 +1688,7 @@ class ModelRun:
         Establish AN inputs to soma, and run the model.
         Requires a synapseConfig list of dicts from cell_config.make_dict()
         each list element represents an AN fiber (SGC cell) with:
+
             * (N sites, delay (ms)
             * spont rate group [1=low, 2=high, 3=high],
             * type (e or i)
@@ -2068,10 +2069,13 @@ class ModelRun:
         """
         This routine finds the number of active zones needed to produce
         a target amount of (entrainment)
+
         Iterative process:
-        1. Only one terminal is active; the number of active zones is varied.
-        2. The number of zones is adjusted using a linear estimator until the
-            the target_ratio of bushy spikes to AN spikes is attained.
+
+            1. Only one terminal is active; the number of active zones is varied.
+            2. The number of zones is adjusted using a linear estimator until the
+                the target_ratio of bushy spikes to AN spikes is attained.
+
         Note: this may get caught bouncing between two input sizes until it
         reaches the maxiter terminations. This is probably ok.
 
@@ -2222,12 +2226,13 @@ class ModelRun:
         return result
 
     def an_run_IO_gSyn(self):
-        """
-        Establish AN inputs to soma, and run the model adjusting gmax over the reps from 0.5 to 4x.
+        """ Establish AN inputs to soma, and run the model adjusting gmax over the reps from 0.5 to 4x.
 
-        synapseConfig: list of tuples
+        synapseConfig: list of tuples:
+
             each tuple represents an AN fiber (SGC cell) with:
             (N sites, delay (ms), and spont rate group [1=low, 2=medium, 3=high])
+        
         This routine runs a series of nReps for each synapse, turning off all of the other synapses.
         and varying the synaptic conductance to 0 (to avoid upsetting initialization)
         The output file either says "SynIO" or

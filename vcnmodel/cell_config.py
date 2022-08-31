@@ -137,19 +137,20 @@ class CellConfig:
     connections. Note that we also use this to define the cell type, which determines the ion channels
     that population the cell.
 
-    Measurements:
-    
-    * Distances are in microns.
-    * Size is measured as radii (NOT diameter)
-          ``(ASA), nsyn(calculated), delay, SRgroup, delay2, axonlength, branch
-            length, syntype, postlocationdescriptor]``
-    * `syntype` sets the synapse type used for the input: 
-        * "AN" for auditory nerve, "AMPA", "AMPA+NMDA", "glycine", "GABA",
-        or can be more specific as to actual mechanism
-    * The location descriptor is as follows:
-        ``{{'soma': [0, 0.5, 1.0]}: [0, 0.5, 1.0]}``
-    * The synapse might be split across sections as follows:
-        `{'nameofsection': {nrnsection1#: [location, fractionofgmax], nrnsection2#: [location, fractionofgmax]}}`
+    Measurements::
+
+        [(ASA), nsyn(calculated), delay, SRgroup, delay2, axonlength, branch
+        length, syntype, postlocationdescriptor]
+
+        * Distances are in microns.
+        * Size is measured as radii (NOT diameter)
+        * `syntype` sets the synapse type used for the input: 
+            * "AN" for auditory nerve, "AMPA", "AMPA+NMDA", "glycine", "GABA",
+            or can be more specific as to actual mechanism
+        * The location descriptor is as follows:
+            ``{{'soma': [0, 0.5, 1.0]}: [0, 0.5, 1.0]}``
+        * The synapse might be split across sections as follows:
+            `{'nameofsection': {nrnsection1#: [location, fractionofgmax], nrnsection2#: [location, fractionofgmax]}}`
     
     If fraction of gmax is -1, then it is computed as the residual of the remaining gmax.
     (this allows you to split up a big ending that crosses anatomically defined boundaries)
