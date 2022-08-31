@@ -106,6 +106,7 @@ class Electrotonic:
         self.L = None
         self.Vfit = self.V[self.itstart : self.itend]
         self.Tfit = self.time[self.itstart : self.itend] - self.stepstart
+        self.eqs = "WMY"  # use eqs. from White et al. 1992, or set to "RD" to use eqs from Rose and Dagam.
 
     def nexp(self, I0, Rn, C=np.zeros(2), tau=np.array([10.0, 0.5]), N=2, noise=0.0):
         """
@@ -149,12 +150,13 @@ class Electrotonic:
         """
         dexpmodel = Model(doubleexp, independent_vars=["x"])
         params = dexpmodel.make_params(amp=amp, min=-100, max=0.0)
-        params.add("C0", value=0.5, min=-100, max=0.0)
-        params.add("cratio", value=3.0, min=0, max=100.0)
-        params.add("C1", expr="C0/cratio")
-        params.add("tau0", value=2.0, min=0.2, max=10.0)
-        params.add("tratio", value=6.0, min=3.0, max=100.0, vary=True)
-        params.add("tau1", expr="tau0/tratio")
+        params.add("C0", value=2.0, min=-50, max=-1.0)
+        params.add("cratio", value=0.5, min=0.2, max=1.0)
+        params.add("C1", expr="C0*cratio")
+       # params.add("C1", value=0.5, min=-100, max=-1.0)
+        params.add("tau0", value=2.0, min=0.2, max=50.0)
+        params.add("tratio", value=0.1, min=0.01, max=1./3., vary=True)
+        params.add("tau1", expr="tau0*tratio")
         # , C0=5, C1=1, tau0=1, tau1=0.1)
         print("Initial Params: ", [p for p in params.values()])
         self.fitresult = dexpmodel.fit(y, params, x=x)
@@ -196,15 +198,25 @@ class Electrotonic:
         print("ASt: {0:.3f}".format(self.ASt()))
         print("Ct: {0:.3f}, {1:.3f}".format(self.Ct(0), self.Ct(1)))
 
+    def alphas(self):
+        if self.eqs == "WMY":  # use White et al. 1992
+            return self.alphas_taud()
+        elif self.eqs == "RD":
+            return self.alpahs_Ctau()
+        else:
+            raise ValueError("Must choose 'WYM' or 'RD' method for alpha equations")
+
     def alphas_taud(self):
         """
         Compute the alphas from Eqn 10, White et al. 1992
         """
         a = np.zeros(2)
         for i in range(0, 2):
+#            print("i, taud/taui: ", i, self.tau_d/self.fitresult.params["tau%d" % i].value)
             a[i] = np.sqrt(
                 (self.tau_d / self.fitresult.params["tau%d" % i].value) - 1.0
             )
+ #       print('alphas taud: ', a, self.tau_d)
         return a
 
     def alphas_Ctau(self):
@@ -229,7 +241,7 @@ class Electrotonic:
         at1 = a[1] * np.tan(a[1] * self.L)
         at0 = a[0] * np.tan(a[0] * self.L)
         eta = at1 - at0
-        etan = (1 + a[0] * a[0]) * at1 + (1 + a[1] * a[1]) * at0
+        etan = (1.0 + a[0] * a[0]) * at1 + (1.0 + a[1] * a[1]) * at0
         eta = eta / etan
         return eta
 
@@ -260,7 +272,7 @@ class Electrotonic:
         a = self.alphas()
         b = self.betas(alpha=a)
         tau0 = self.fitresult.params["tau%d" % 0].value
-        x1 = -self.I0 * self.Rn * (2 * (self.rho + 1.0) * tau0 / self.tau_d)
+        x1 = -self.I0 * self.Rn * (2.0 * (self.rho + 1.0) * tau0 / self.tau_d)
         x1n = b[i] + 2.0 * self.eta()
         x1n = x1n + (
             np.power(a[i] * b[i] * self.L, 2.0) / (self.rho * self.L / np.tanh(self.L))
@@ -273,7 +285,7 @@ class Electrotonic:
         """
         tau0 = self.fitresult.params["tau%d" % 0].value
         tau1 = self.fitresult.params["tau%d" % 1].value
-        return np.pi / np.sqrt((tau0 / tau1) - 1)
+        return np.pi / np.sqrt((tau0 / tau1) - 1.0)
 
     def Err(self, wa=1.0):
         """
@@ -370,6 +382,8 @@ def generate_testdata(noise=0.0):
     ve = E.nexp(I0, Rn, C=C, noise=noise)
     tf = T[E.itstart :] - tstart
     yf = ve[E.itstart :]
+    mpl.plot(tf, yf)
+    mpl.show()
     return tf, yf, E
 
 
@@ -379,7 +393,7 @@ def test():
     from a current trace.
     """
 
-    tf, yf, E = generate_testdata(noise=5.0)
+    tf, yf, E = generate_testdata(noise=0.0)
     # rate = 0.01
     # dur = 50.
     # npts = int(dur/rate)
