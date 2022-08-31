@@ -7,10 +7,21 @@ Notes on installation 8/10/2021
 
 The standard installation involves creating a local environment that has all of the 
 components needed for the modeling runs. This is done by running the bash/zsh script
-"make_env.sh" at the command line. This will download and install the specified
+"make_local_env.sh" (or "make_local_env_M1.sh"at the command line. This will download and install the specified
 versions of the modules, and create a basic working environment (with black, isort, 
-jupyter lab, spyder, etc))
+jupyter lab, spyder, etc.). 
 
 The script will also run the basic tests on cnmodel, install cochlea, and compile all the Neuron
-mechanisms that are used. 
+mechanisms that are used.
+
+Paths specific to your system will need to be adjusted in "wheres_my_data.py". 
+A few of the scripts in the vcnmodel.util directory have hard-coded paths, which 
+will need to be changed as well if you are running them. These currently include:
+vcnmodel/plotters/Figure2_Supp1.py
+vcnmodel/plotters/Figure7_Supplement1.py
+vcnmodel/util/compare_hoc.py
+vcnmodel/util/inspect_simulation_file.py
+(vcnmodel/utilmake_data_dirs.py also has hard-coded paths, but this is used only
+for making an archive of the simulation results for distriution.)
+
 
