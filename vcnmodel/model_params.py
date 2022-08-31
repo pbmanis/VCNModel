@@ -1,9 +1,9 @@
 """
 Define data structures used for:
     
-    *Command line parsing
-    *Specifying model parameters (general)
-    *Specifying runInfo (run instance) parameters
+    *Command line parsing*
+    *Specifying model parameters (general)*
+    *Specifying runInfo (run instance) parameters*
 
 The aspiration is that all parameters that we vary between runs are defined 
 in either the Params dataclass or the RunInfo dataclass, and are stored along

@@ -51,11 +51,10 @@ cprint = CP.cprint
 file_full = Path(
     "/Volumes/Pegasus_002/VCN-SBEM-Data/VCN_Cells/VCN_c09/Morphology/VCN_c09_Full_MeshInflate.hoc"
 )
-print(" Full File found: ", file_full.is_file())
 file_trim = Path(
     "/Volumes/Pegasus_002/VCN-SBEM-Data/VCN_Cells/VCN_c09/Morphology/VCN_c09_NoUninnervated.hoc"
 )
-print(" Trimmed File found: ", file_trim.is_file())
+
 file_trim2 = Path(
     "/Volumes/Pegasus_002/VCN-SBEM-Data/VCN_Cells/VCN_c09/Morphology/VCN_c09_NoUninnervated_MeshInflate.hoc"
 )
@@ -69,8 +68,6 @@ file_swc_nodes_to_remove2 = Path(
      "/Volumes/Pegasus_002/VCN-SBEM-Data/VCN_Cells/VCN_c09/Morphology/VCN_09_swc_counting_points-5-19-2022.xlsx"
 )
 node_sheet2 = "BC09_counting_points_v3_05-19"
-
-print(" Remove nodes from an SWC list, and then remove all unparented sections")
 
 file_nodes_removed = Path(
     "/Volumes/Pegasus_002/VCN-SBEM-Data/VCN_Cells/VCN_c09/Morphology/VCN_c09_NoUninnervated2_MeshInflate.hoc"
@@ -465,9 +462,7 @@ def psections():
         d = sec.psection()
         print(d)
 
-
-
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(
         description="Trim dendrites from cell",
         argument_default=argparse.SUPPRESS,
@@ -490,6 +485,10 @@ if __name__ == "__main__":
     # )
     args = parser.parse_args()
     
+
+    print(" Full File found: ", file_full.is_file())
+    print(" Trimmed File found: ", file_trim.is_file())
+    print(" Remove nodes from an SWC list, and then remove all unparented sections")
     if args.mode == 'diff':
         file_trim2 = diff_files(file_full, file_trim, flag="comment")  # for comparison between 2 files
     
@@ -508,3 +507,6 @@ if __name__ == "__main__":
     #show_Tree(file_trim2)
     # psections()
     # clean_Tree(file_nodes_removed)
+
+if __name__ == "__main__":
+    main()
