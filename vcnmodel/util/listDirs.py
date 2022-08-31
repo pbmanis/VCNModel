@@ -1,8 +1,8 @@
 """
 List all of the data in the directories of the SBEM cells This mostly is to test
-the integrity of the data Note that a number of file 'types' are also handled,
-based on the data structure. Some of these are quite old formats. Very old data
-(well, sort of) had "params" structures embedded. These are skipped. The data
+the integrity of the data. Note that a number of file 'types' are also handled,
+based on the data structure. Some of these are quite old formats. Early simulation
+files had "params" structures embedded. These are skipped. The data
 structures have subsequently moved to dataclasses and dicts, which can be read
 by standard library routines.
 
