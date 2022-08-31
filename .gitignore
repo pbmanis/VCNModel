@@ -4,7 +4,13 @@ MorphologyData/  # misc morphology data not necessarily related to the project
 vcn_venv/ # virtual environment
 vcn_venv
 vcnmodel/archived
-VS_data*.py
+VS_data_15dB_2022*
+VS_data_15dB_2021*
+VS_data_30dB_2*
+VS_data_30dB_archive.py
+VS_data_15dB_BC09_2022*
+
+
 #vcnmodel/archived/plotters
 vcnmodel/util/testmpl.py
 src
