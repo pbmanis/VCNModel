@@ -40,8 +40,8 @@ with open("wheres_my_data.toml", "r") as fh:
     config = toml.load(fh)
 sourcepath = Path(config["baseDataDirectory"])
 
-#simpath = Path("/Volumes/Pegasus_002/BU_simulation_data")
-simpath = Path("/Volumes/T7SSD/BU_simulation_data")
+simpath = Path("/Volumes/Pegasus_002/BU_simulation_data")
+# simpath = Path("/Volumes/T7SSD/BU_simulation_data")
 figpath = Path("/Volumes/Pegasus_002/VCN-SBEM-Data/SBEM-paper Figures")
 intermediate = Path(simpath, "IntermediateAnalyses")
 intermediate.mkdir(exist_ok=True, parents=True)
@@ -57,7 +57,7 @@ Zin_source_dir = Path(sourcepath, "VCN_Cells", "Impedance_Calculations")
 
 
 
-readmefilecontents="""This VCN_SBEM_readme.txt file was generated on 2022-04-07
+readmefilecontents="""This VCN_SBEM_readme.txt file was generated on 2022-08-30
 by Paul B. Manis, Ph.D.
 
 
@@ -527,5 +527,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # MD = BuildDataSet(testmode=True)
-    # MD.write_the_readme()
+
