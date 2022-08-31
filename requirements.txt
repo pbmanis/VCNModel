@@ -53,7 +53,6 @@ pyparsing==2.4.0
 pyqt6==6.3.0
 pyqt6-sip==13.3.1
 pyqtgraph
-pytest==4.5.0
 
 openpyxl
 
