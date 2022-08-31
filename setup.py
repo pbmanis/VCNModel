@@ -3,7 +3,7 @@ from Cython.Build import cythonize
 import numpy
 
 """
-This set is for *vcnmodel*.
+This setup.py is for *vcnmodel*.
 
 Support::
 
@@ -15,7 +15,7 @@ Support::
 Paul B. Manis, 2014-2022
 """
 
-version = '0.9.5'
+version = '0.9.9'  # 30 August 2022
 extensions = [
     Extension("sttc_cython",  ["vcnmodel/analyzers/sttc_cython.pyx"],
                include_dirs=[numpy.get_include()])
@@ -30,9 +30,7 @@ setup(name='vcnmodel',
       packages=find_packages(include=['vcnmodel*']),
       ext_modules=cythonize(extensions),
 
-      python_requires='>=3.8',
-      # install_requires=['matplotlib>=3.0', 'numpy>=1.1',
-#           ],
+      python_requires='>=3.9',
       zip_safe=False,
       entry_points={
           'console_scripts': [
@@ -46,7 +44,7 @@ setup(name='vcnmodel',
                ],
       },
       classifiers = [
-             "Programming Language :: Python :: 3.6+",
+             "Programming Language :: Python :: 3.9+",
              "Development Status ::  Beta",
              "Environment :: Console",
              "Intended Audience :: Manis Lab",
