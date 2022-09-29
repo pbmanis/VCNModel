@@ -40,8 +40,8 @@ with open("wheres_my_data.toml", "r") as fh:
     config = toml.load(fh)
 sourcepath = Path(config["baseDataDirectory"])
 
-simpath = Path("/Volumes/Pegasus_002/BU_simulation_data")
-# simpath = Path("/Volumes/T7SSD/BU_simulation_data")
+# simpath = Path("/Volumes/Pegasus_002/BU_simulation_data")
+simpath = Path("/Volumes/T7SSD/BU_simulation_data")
 figpath = Path("/Volumes/Pegasus_002/VCN-SBEM-Data/SBEM-paper Figures")
 intermediate = Path(simpath, "IntermediateAnalyses")
 intermediate.mkdir(exist_ok=True, parents=True)
@@ -331,20 +331,30 @@ class BuildDataSet():
     def __init__(self, testmode:bool=False):
         self.testmode = testmode
         self.ncopy = 0
-
-    def do_copy(self, src, dest):
+        self.linebreak = "="*80
+        self.allexpttypes = ["Full", "NoDend",
+                "pasdend", "actdend", "normal",
+                "Z_normal", "Z_passive", "Z_active",
+                "Spont", "15dB", "30dB", "40dB",
+                "all", "largestonly", "removelargest", "removetwolargest",
+                "SAM", "SAC", 
+                "NoUninnervated2",
+                ]
+    def do_copy(self, src, dest, verbose=False):
         if self.testmode:
             cpc = 'm'
             if not dest.is_file() or (src.stat().st_size != dest.stat().st_size) or (src.stat().st_mtime > dest.stat().st_mtime):
-                cprint(cpc, f"        Would be Copying:")
-                cprint(cpc, f"           from: {str(src.parent):s}")
-                cprint(cpc, f"               + {str(src.name):s}" )           
-                cprint(cpc, f"             to: {str(dest):s}\n")
+                if verbose:
+                    cprint(cpc, f"        Would be Copying:")
+                    cprint(cpc, f"           from: {str(src.parent):s}")
+                    cprint(cpc, f"               + {str(src.name):s}" )           
+                    cprint(cpc, f"             to: {str(dest):s}\n")
             else:
-                cpc = "y"   
-                cprint(cpc, f"        File exists looks the same, no copy:")
-                cprint(cpc, f"           from: {str(src.parent):s}")
-                cprint(cpc, f"               + {str(src.name):s}" )     
+                if verbose:
+                    cpc = "y"   
+                    cprint(cpc, f"        File exists looks the same, no copy:")
+                    cprint(cpc, f"           from: {str(src.parent):s}")
+                    cprint(cpc, f"               + {str(src.name):s}" )     
         else:
             cpc = 'g'
             # first check that file does not exist and if it does,
@@ -388,13 +398,13 @@ class BuildDataSet():
             dest_morph = Path(cdirs[cn], "Morphology")
             for f in source_morph:
                 dest_file = Path(dest_morph, f.name)
-                print(f"File to copy: {str(dest_file):s}")
+                cprint("c", f"File to copy: {str(dest_file):s}")
                 if not dest_file.is_file():  # only copy if not already there
-                    print("copying ", f, " to ", dest_morph)
+                    cprint("c", f"copying {str(f):s} to  {str(dest_morph):s}")
                     self.do_copy(f, dest_morph)
                 else:
-                    print(f"Morphology file {cell_id:s}  {str(f):s}  already present")
-                    print("    dest file was: ", dest_file)
+                    cprint('y', f"Morphology file {cell_id:s}  {str(f):s}  already present")
+                    cprint('y', f"    dest file was: {str(dest_file):s}")
 
     def copy_simresults(self, FD, simcopy:bool=True, sdirs:List=[], cdirs:List=[]):
         for fig in FD.all_figures:
@@ -413,7 +423,7 @@ class BuildDataSet():
                             sourcefile = Path(Zin_source_dir, figd[cell_id][expt])
                             if sourcefile.is_file and sourcefile.suffix == ".pkl":
                                 filelist.append({"src": sourcefile, "dest": Zin_dest_dir})
-                                # self.do_copy(sourcefile, Zin_dest_dir)
+                                #self.do_copy(sourcefile, Zin_dest_dir)
 
                         elif sourcefile.is_dir() and simcopy:  # make and fill the subdirectory
                             targetsubdir = Path(targetdir, sourcefile.name)
@@ -421,10 +431,10 @@ class BuildDataSet():
                             sourcefiles = sourcefile.glob("*.p")
                             for f in sourcefiles:
                                 filelist.append({"src": f, "dest": targetsubdir})
-                                # self.do_copy(f, targetsubdir)
+                                #self.do_copy(f, targetsubdir)
                         elif sourcefilepkl.is_file():
                               filelist.append({"src": sourcefilepkl, "dest": targetdir})
-                              # self.do_copy(sourcefilepkl, targetdir)
+                              #self.do_copy(sourcefilepkl, targetdir)
                     # pool = multiprocessing.Pool(processes=16)
                     for file in filelist:
                         self.do_copy(file['src'], file['dest'])
@@ -443,34 +453,50 @@ class BuildDataSet():
               #  "AN_VS_30",  # removed for size
                 "AN_VS_15_BC09",
             ]:
+                cprint("r", f"\nFor Fig: {fig:s}, copying")
                 for cell_idx in list(figd.keys()):
+                    print("cell_idx: ", cell_idx, "fig: ", fig)
                     cell, cell_id = self.mk_cellid(cell_idx)
                     sourcedir = Path(sdirs[cell_id], "Simulations", fig[:2])
                     targetdir = Path(cdirs[cell_id], "Simulations", fig[:2])
-                    print("\n", "=" * 80, "\n", fig, " target dir: ", targetdir)
+                    cprint("g", f"\n{self.linebreak:s}\n   {fig:18s}:  target dir: {str(targetdir):s}")
                     if isinstance(figd[cell_idx], list):
                         expts = figd[cell_idx]
                     elif isinstance(figd[cell_idx], dict):
                         expts = list(figd[cell_idx].keys())
+                    # if len(expts) == 1 and expts[0] in self.allexpttypes:
+                    #     expts = [figd[cell_idx][expts[0]]]
                     filelist = []
-                    for expt in expts:  # for each expt in the list
-                        print("   Simulation: ", expt)
+                    print("expts: ", expts)
+                    for iexpt, expt_label in enumerate(expts):  # for each expt in the list
+                        if expt_label in self.allexpttypes:
+                            expt = figd[cell_idx][expt_label] # get the actual file
+                        else:
+                            expt = expt_label
+                        cprint("g", f"   Simulation: {expt:s} (from: {expt_label:s})")
                         sourcefile = Path(sourcedir, expt)
                         sourcefilepkl = Path(sourcefile.with_suffix(sourcefile.suffix + ".pkl"))
+                        print(sourcefile, sourcefile.is_dir())
+                        if not sourcefilepkl.is_file():
+                            print("failed on : ", sourcefilepkl)
+                            exit()
+                        # print(sourcefilepkl, sourcefilepkl.is_file())
+                        # print(simcopy)
                         if sourcefile.is_dir() and simcopy:  # make and fill the subdirectory
                             targetsubdir = Path(targetdir, sourcefile.name)
                             targetsubdir.mkdir(exist_ok=True)
                             sourcefiles = list(sourcefile.glob("*.p"))
                             for sourcef in sourcefiles:
-                                print("        sourcefile: ", sourcef.parent)
-                                print("                  + ", sourcef.name)
+                                cprint("y", f"        sourcefile: {str(sourcef.parent):s}")
+                                cprint("y", f"                  + , {str(sourcef.name):s}")
                             for f in sourcefiles:
                                 filelist.append({'src':f, "dest": targetsubdir}) 
                                 # self.do_copy(f, targetsubdir)
                         elif sourcefilepkl.is_file():
                             self.do_copy(sourcefilepkl, targetdir)
                     for file in filelist:
-                        self.do_copy(file['src'], file['dest'])
+                        cprint("c", f"{str(file['src']):s}")
+                        self.do_copy(file['src'], file['dest'], verbose=False)
                     # pool = multiprocessing.Pool(processes=16)
                     # for file in filelist:
                     #     pool.apply_async(self.do_copy, args=(file['src'], file['dest'],))
@@ -479,21 +505,26 @@ class BuildDataSet():
     
         # intermediate results:
         # SAM clicks, SAM
-        target1 = Path(intermediate, 'SAC_Results_Clicks.pkl')
-        source1 = Path(intermediate_source, 'SAC_Results_Clicks.pkl')
-        self.do_copy(source1, target1)
-        target2 = Path(intermediate, 'SAC_Results_SAM.pkl')
-        source2 = Path(intermediate_source, 'SAC_Results_SAM.pkl')
-        self.do_copy(source2, target2)
-        source_VS15 = Path(config['codeDirectory'], 'VS_data_15dB.py')
-        target_VS15 = Path(intermediate, 'VS_data_15dB.py')
-        self.do_copy(source_VS15, target_VS15)
-        source_VS15_BC09 = Path(config['codeDirectory'], 'VS_data_15dB_BC09.py')
-        target_VS15_BC09 = Path(intermediate, 'VS_data_15dB_BC09.py')
-        self.do_copy(source_VS15_BC09, target_VS15_BC09)
-        source_VS30 = Path(config['codeDirectory'], 'VS_data_30dB.py')
-        target_VS30 = Path(intermediate, 'VS_data_30dB.py')
-        self.do_copy(source_VS30, target_VS30)
+        # target1 = Path(intermediate, 'SAC_Results_Clicks.pkl')
+        # source1 = Path(intermediate_source, 'SAC_Results_Clicks.pkl')
+        # self.do_copy(source1, target1)
+        # target2 = Path(intermediate, 'SAC_Results_SAM.pkl')
+        # source2 = Path(intermediate_source, 'SAC_Results_SAM.pkl')
+        # self.do_copy(source2, target2)
+        # source_VS15 = Path(config['codeDirectory'], 'VS_data_15dB.py')
+        # target_VS15 = Path(intermediate, 'VS_data_15dB.py')
+        # self.do_copy(source_VS15, target_VS15)
+        # source_VS15_BC09 = Path(config['codeDirectory'], 'VS_data_15dB_BC09.py')
+        # target_VS15_BC09 = Path(intermediate, 'VS_data_15dB_BC09.py')
+        # self.do_copy(source_VS15_BC09, target_VS15_BC09)
+        # source_VS30 = Path(config['codeDirectory'], 'VS_data_30dB.py')
+        # target_VS30 = Path(intermediate, 'VS_data_30dB.py')
+        # self.do_copy(source_VS30, target_VS30)
+
+        # # Finally, copy the excel sheet with reconstructed areas to the top level
+        # mfile = "Dendrite Quality and Surface Areas_for_Sims_Cleaned_8-30-2022.xlsx"
+        # self.do_copy(Path("/Volumes/Pegasus_002/VCN-SBEM-Data/MorphologyData/VCN",
+        #     mfile), Path(simpath, mfile))
 
 def test_tree():
     r = subprocess.run(["./vcnmodel/util/tree.sh", simpath], capture_output=True)

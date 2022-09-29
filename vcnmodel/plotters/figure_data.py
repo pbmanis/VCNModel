@@ -406,7 +406,7 @@ figure_No_Dend = {
 figure_cell9_nouninnervated2 = {
     9: {
         "NoUninnervated2": "runANSingles-all-2022-05-23.14-34-45",
-        "Full": "runIV-all-2021-08-01.13-49-02",
+        "Full": "runANSingles-all-2022-04-15.12-09-24",
     }
 }
 
@@ -430,6 +430,7 @@ all_figures = {
     "AN_VS_30": figure_VS_SAM_30,
     "AN_VS_15_BC09": figure_VS_SAM_BC09,
 }
+
 
 
 if __name__ == "__main__":
