@@ -212,7 +212,8 @@ class CellConfig:
             print("CellConfig: configuration dict: ")
         with open(datafile, "rb") as fh:
             self.SDSummary = pd.read_excel(
-                fh, self.config["SomaAndDendriteData"], skiprows=3
+                fh, self.config["SomaAndDendriteData"],
+                skiprows=0
             )
 
         with open(datafile, "rb") as fh:
@@ -469,7 +470,7 @@ class CellConfig:
             end="",
         )
         print(
-            f"  HOC Soma area:     {hoc_soma_area:8.2f}  ", end="",
+            f" HOC Soma area:     {hoc_soma_area:8.2f}  ", end="",
         )
         print(f"    Soma Inflation ratio:     {inflateratio:6.3f}")
         return inflateratio
@@ -762,22 +763,28 @@ class CellConfig:
 
         mpl.show()
 
+def mixed1():
+    cc = CellConfig(spont_mapping="mixed1")
+    sm = cc.divide_SR_by_size()
+    print(sm)
+
+def add_inputs():
+    cc = CellConfig(spont_mapping="HS", add_inputs="101730")
+    for asa in [40.0, 80.0, 200.0, np.min(cc.allendings), np.max(cc.allendings)]:
+        indx = cc.get_SR_from_ASA(asa)
+        print(f"ASA {asa:.2f} is in group: {indx:d}")
 
 if __name__ == "__main__":
     # Check the formatting and display the results
-    # cc = CellConfig(spont_mapping="mixed1")
-    cc = CellConfig(spont_mapping="HS", add_inputs="101730")
-    # make sure all is working
+    # especially important after edits to make the Dendrite_Quality table
+    # match the strict formatting requirements for Dryad/Frictionless
+   
+    cc = CellConfig(spont_mapping="HS")
     cc.summarize_release_sites()
     cc.print_cell_inputs(cc.VCN_Inputs)
-    # cc.print_cell_inputs_json(cc.VCN_Inputs)
-    # for cellnum in cellsintable:
-    #     cc.get_soma_ratio(cellnum)
-    #     cc.get_dendrite_ratio(cellnum)
-    #
-    # sm = cc.divide_SR_by_size()
-    # # print(sm)
-    # for asa in [40.0, 80.0, 200.0, np.min(cc.allendings), np.max(cc.allendings)]:
-    #     indx = cc.get_SR_from_ASA(asa)
-    #     print(f"ASA {asa:.2f} is in group: {indx:d}")
+    cc.print_cell_inputs_json(cc.VCN_Inputs)
+    for cellnum in cellsintable:
+        cc.get_soma_ratio(cellnum)
+        cc.get_dendrite_ratio(cellnum)
+    
     cc.summarize_inputs()
