@@ -83,6 +83,7 @@ import matplotlib.colors  # type: ignore
 import mplcursors
 import numpy as np  # type: ignore
 import pandas as pd
+import pint
 import pyperclip
 import pyqtgraph as pg  # type: ignore
 
@@ -115,6 +116,7 @@ TRC = trace_calls.TraceCalls
 cprint = CP.cprint
 console = Console()
 
+UR = pint.UnitRegistry()
 # make a shortcut for each of the analysis classes from ephys
 
 SP = SpikeAnalysis.SpikeAnalysis()
@@ -781,7 +783,8 @@ class PlotSims:
                     font="Arial",
                 )
             else:
-                PH.noaxes(ax2)
+                if ax2 is not None:
+                    PH.noaxes(ax2)
         else:
             if calx is not None and iax is not None:
                 cprint("r", "**** making cal bar")
@@ -1033,7 +1036,7 @@ class PlotSims:
         mHypStep = np.argmin(np.fabs(vss - (-0.090)))
         sr = AR.MC.sample_rate[mHypStep]
         t0 = int(AR.MC.tstart / sr)
-
+        print(AR.MC.tstart, AR.MC.tdur, AR.MC.tend)
         pts = int(5.0 / sr)  # fit over first 5 msec
         tfit = AR.MC.time_base[t0 + 1 : t0 + pts] - AR.MC.time_base[t0]
         ifit = I[mHypStep, t0 + 1 : t0 + pts]
@@ -1047,54 +1050,63 @@ class PlotSims:
         expparams = expmodel.make_params()
         exp_result = expmodel.fit(ifit, expparams, x=tfit)
         # print(exp_result.params)
-        deltaV = vss[mHypStep] - vm[mHypStep]
-        deltaI = I[mHypStep][t0] - i0[mHypStep]
-        deltaI2 = exp_result.params["a0"].value + exp_result.params["a1"].value
-        Q = np.trapz(I[mHypStep, t0 : t0 + 2 * pts], dx=sr * 1e-3)
-        Cm = Q / deltaV
+        deltaV = (vss[mHypStep] - vm[mHypStep])*UR.V
+        deltaI = (I[mHypStep][t0] - i0[mHypStep])*UR.A
+        deltaI2 = (exp_result.params["a0"].value + exp_result.params["a1"].value)*UR.A
+        qpts = int(20.0/sr)  # 20 msec duration for integration
+        qend = int(AR.MC.tend / sr)
+        Q = np.trapz(I[mHypStep, t0 : t0 + qpts]
+             - np.mean(I[mHypStep, t0 + qpts : qend]), # remove DC part
+             dx=sr * 1e-3)*UR.C
+        Cm_U = (Q / deltaV).to(UR.F)   # with units
+        Aq = Cm_U/(0.9*UR.uF/(UR.cm*UR.cm))
+        Aq = Aq.to(UR.um*UR.um)
         self.textappend(
-            f"Q: {Q*1e12:.3f} pC  deltaV: {deltaV*1e3:.1f} mV, Cm: {Cm*1e12:.1f} pF"
+            f"Q: {Q:.3f#~P}  deltaV: {deltaV:.1f#~P}, Cm: {Cm_U:.1f#~P}  Area: {Aq:.1f#~P})"
         )
-        Rs_est = deltaV / deltaI2  # Estimate of Rs from peak current
-        self.textappend(f"Estimated Rs: {Rs_est*1e-6:.1f} MOhm")
+        Rs_est = (deltaV / deltaI2).to(UR.ohm)  # Estimate of Rs from peak current
+        self.textappend(f"Estimated Rs: {Rs_est:.1f#~P}")
         # print(deltaV, deltaI, deltaI2)
         # other approach: use fastest tau in voltage clamp
         #
-        tau0 = 1e-3 * exp_result.params["tau0"].value  # convert to seconds
-        tau1 = 1e-3 * exp_result.params["tau1"].value
-        a0 = exp_result.params["a0"].value
-        a1 = exp_result.params["a1"].value
+        tau0 = exp_result.params["tau0"].value * UR.ms
+        tau1 = exp_result.params["tau1"].value * UR.ms
+        a0 = exp_result.params["a0"].value * UR.A
+        a1 = exp_result.params["a1"].value * UR.A
         #
         # Here we use the fastest time constant and the
         # associated current from the fit to estimate cm (perisomatic)
         # Note: do not use total input resistance!
         # See Golowasch et al., J. Neurophysiol. 2009 and references therein
-
+        print(tau0, tau1)
         if tau0 < tau1:
             tau = tau0
-            R0 = deltaV / a0
-            cm = tau / R0
+            R0 = (deltaV / a0).to(UR.ohm)
+            cm = (tau / R0).to(UR.F)
         else:
             tau = tau1
-            R0 = deltaV / a1
-            cm = tau / R0
+            R0 = (deltaV / a1).to(UR.ohm)
+            cm = (tau / R0).to(UR.F)
         # for curiosity, weighted tau (as if compensation was done as
         # much as possible for the whole transient)
         #
         tauw = (a0 * tau0 + a1 * tau1) / (a0 + a1)
-        R0w = deltaV / a0
-        R1w = deltaV / a1
-        cm1 = tau1 / R1w
+        R0w = (deltaV / a0).to(UR.ohm)
+        R1w = (deltaV / a1).to(UR.ohm)
+        cm1 = (tau1 / R1w).to(UR.F)
         cmw = ((a0 * tau0 / R0w) + (a1 * tau1 / R1w)) / (a0 + a1)  # tauw/(R0w + R1w)
+        cmw = cmw.to(UR.F)
+        Acm = cm/(0.9*UR.uF/(UR.cm*UR.cm))
+        Acmw = cmw/(0.9*UR.uF/(UR.cm*UR.cm))
         self.textappend("By Coeffs: ")
         self.textappend(
-            f"RCoeff0 = {R0w*1e-6:.2f} MOhm, tau0: {tau0*1e3:.3f} ms,  cm0: {cm*1e12:.1f} pF"
+            f"    RCoeff0 = {R0w:.2f#~P}, tau0: {tau0:6.1f#~P},  cm0: {cm:.1f#~P}, Area: {Acm:.1f#~P}"
         )
         self.textappend(
-            f"RCoeff1 = {R1w*1e-6:.2f} MOhm, tau1: {tau1*1e3:.3f} ms,  cm1: {cm1*1e12:.1f} pF"
+            f"    RCoeff1 = {R1w:.2f#~P}, tau1: {tau1:6.1f#~P},  cm1: {cm1:.1f#~P}"
         )
         self.textappend(
-            f"Weighted: Rw={(R0w+R1w)*1e-6:.2f} tauw: {tauw*1e3:.3f} ms, Weighted cm: {cmw*1e12:.1f} pF"
+                f"Weighted: Rw={(R0w+R1w):.2f#~P} tauw: {tauw:6.1f#~P}, Weighted cm: {cmw:.1f#~P}, Area: {Acmw:.1f#~P}"
         )
         tfit2 = AR.MC.time_base[t0 : t0 + pts] - AR.MC.time_base[t0]
         expfit = expmodel.eval(params=exp_result.params, x=tfit2)
@@ -1118,11 +1130,11 @@ class PlotSims:
             floatAdd={"x": 0, "y": 0},
         )
         # Align the parameters on the = sign by making 2 texts right and left justified
-        textstr1 = r"g$_{max}$" + f" = {boltz_result.params['gmax'].value*1e9:.1f} nS"
+        textstr1 = r"g$_{max}$" + f" = {boltz_result.params['gmax'].value:.1f} nS"
         textstr2 = r"$V_{0.5}$" + f" = {boltz_result.params['vhalf'].value*1e3:.1f} mV"
         textstr3 = f"k  = {1e3*boltz_result.params['k'].value:.1f}"
-        textstr4 = f"Cm = {cm*1e12:.1f} pF"
-        textstr5 = r"${\tau_{0}}$" + f" = {tau*1e3:.3f} ms"
+        textstr4 = f"Cm = {cm:.1f#~P}"
+        textstr5 = r"${\tau_{0}}$" + f" = {tau:6.1f#~P}"
         texts = [textstr1, textstr2, textstr3, textstr4, textstr5]
         props = dict(boxstyle="square", facecolor="None", alpha=0.5)
 
