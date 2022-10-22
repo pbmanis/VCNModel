@@ -10,7 +10,7 @@ results
 This file is used both for plotting, and for extracting the original data for
 plots into a new directory structure for general release. Plotting is controlled
 by plot_sims.py and figures.py. Data extraction is controlled by
-util/make_data_dirs.py.
+util/make_shared_dataset.py.
 
 This module is part of *vcnmodel*.
 

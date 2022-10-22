@@ -21,7 +21,7 @@ vcnmodel/plotters/Figure2_Supp1.py
 vcnmodel/plotters/Figure7_Supplement1.py
 vcnmodel/util/compare_hoc.py
 vcnmodel/util/inspect_simulation_file.py
-(vcnmodel/utilmake_data_dirs.py also has hard-coded paths, but this is used only
+(vcnmodel/utilmake_shared_dataset.py also has hard-coded paths, but this is used only
 for making an archive of the simulation results for distriution.)
 
 

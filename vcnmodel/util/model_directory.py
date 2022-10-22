@@ -2,7 +2,7 @@
 Tool for making sure that the VCN cells are properly populated
 with hoc files, and to list the simulations in the cell directories
 
-Also see make_data_dirs.py in the util subdirectory.
+Also see make_shared_datasets.py in the util subdirectory.
 
 This module is part of *vcnmodel*.
 

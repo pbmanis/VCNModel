@@ -43,18 +43,12 @@ sourcepath = Path(config["baseDataDirectory"])
 # simpath = Path("/Volumes/Pegasus_002/BU_simulation_data")
 simpath = Path("/Volumes/T7SSD/BU_simulation_data")
 figpath = Path("/Volumes/Pegasus_002/VCN-SBEM-Data/SBEM-paper Figures")
+
 intermediate = Path(simpath, "IntermediateAnalyses")
-intermediate.mkdir(exist_ok=True, parents=True)
 intermediate_source = Path(figpath, "IntermediateResults")
-
 simulations = Path(simpath, "Simulations")
-simulations.mkdir(exist_ok=True, parents=True)
-
 Zin_dest_dir = Path(simulations, "Impedance_Calculations")
-Zin_dest_dir.mkdir(exist_ok=True, parents=True)
 Zin_source_dir = Path(sourcepath, "VCN_Cells", "Impedance_Calculations")
-
-
 
 
 readmefilecontents="""This VCN_SBEM_readme.txt file was generated on 2022-09-30
@@ -327,7 +321,7 @@ as follows for an example file: Example file:
 [Note that this file also holds the vcnmodel and cnmodel code hashes.] Generated
 by vcnmodel/util/inspect_simulation_file.py
 
-File List: (Appended automatically by the vcnmodel/util/make_data_dirs.py,
+File List: (Appended automatically by the vcnmodel/util/make_shared_dataset.py,
 write_the_readme function)
 """
 class BuildDataSet():
@@ -542,6 +536,9 @@ def test_tree():
         print(l)
 
 def main():
+    simulations.mkdir(exist_ok=True, parents=True)
+    Zin_dest_dir.mkdir(exist_ok=True, parents=True)
+    intermediate.mkdir(exist_ok=True, parents=True)
 
     allcells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
     cdirs = {}

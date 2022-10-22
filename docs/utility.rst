@@ -52,10 +52,10 @@ vcnmodel.util.listDirs
    :show-inheritance:
 
 
-vcnmodel.util.make\_data\_dirs
+vcnmodel.util.make\_shared\_dataset
 -------------------------------------
 
-.. automodule:: vcnmodel.util.make_data_dirs
+.. automodule:: vcnmodel.util.make_shared_dataset
    :members:
    :undoc-members:
    :show-inheritance:

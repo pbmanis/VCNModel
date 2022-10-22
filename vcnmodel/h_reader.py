@@ -340,11 +340,13 @@ class HocReader(object):
             names: list of variable names. Each name must refer to a list of
                    Sections in hoc. If a dict is supplied instead, then it
                    maps {hoc_list_name: section_group_name}.
+        
         Side effects (modifies):
            calls add_section_group
+        
         Returns
         -------
-        Nothing.
+        Nothing
         """
         # if a list is supplied, then the names of groups to create are
         # exactly the same as the names of hoc lists.

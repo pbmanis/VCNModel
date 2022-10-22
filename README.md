@@ -59,7 +59,7 @@ Documentation
 At this point, it is recommended to generate and read the documentation:
 
   ```
-  cd /docs
+  cd docs
   make html
   open html/index.html
   ```

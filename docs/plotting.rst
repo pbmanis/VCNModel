@@ -65,7 +65,7 @@ vcnmodel.plotters.plot\_allsecs
 
 
 vcnmodel.plotters.efficacy\_plot
--------------------------------
+--------------------------------
 
 .. automodule:: vcnmodel.plotters.efficacy_plot
    :members:
