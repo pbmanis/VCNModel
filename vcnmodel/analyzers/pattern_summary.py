@@ -237,7 +237,7 @@ def get_pattern_data(dataset:str="Spont"):
 
 
 
-def Figure4_Supplemental3_Patterns(reanalyze=False, dataset:str="Spont"):
+def Figure5_Supplemental2_Patterns(reanalyze=False, dataset:str="Spont"):
     assert dataset in ["Spont", "30dB"]
     compare_file = f"pattern_compares_{dataset:s}.pkl"
     if reanalyze:
@@ -373,7 +373,7 @@ def Figure4_Supplemental3_Patterns(reanalyze=False, dataset:str="Spont"):
 
 
 
-def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
+def Figure5F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
     """Plot the fraction of inputs for specific subsets of
     input patterns for cells 5, 30, 9 and 17
 
@@ -508,8 +508,10 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
             y="Percent", hue="Cell", size="ASA",
             sizes=asa_sizes, alpha=0.6, palette=GRPDEF.sns_colors,
             style="Group",
-            markers={'Coincidence': GRPDEF.get_group_symbol('Coincidence'),
-                    "MixedMode": GRPDEF.get_group_symbol('MixedMode')},
+            markers={1: GRPDEF.get_group_symbol('Coincidence'),
+                     2: GRPDEF.get_group_symbol('MixedMode'),
+                    # 2: GRPDEF.get_group_symbol('First-in')
+                    },
             x_jitter=True,
             data=df,
             ax=ax,
@@ -520,7 +522,7 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
     # l = Line2D([0], [0], label=f"Cell\n  CD     MM", color='w')
     # custom_legend.append(l)
     # legorder = [0, 1, 2, 4, 6,  9, 3, 5,  7,  8, None]
-    legorder = [0, 1, 2, 4, 8, 9, 3, 5,  6, 7, None]
+    legorder = [0, 1, 2, 4, 6, 9, 3, 5, 8, 7, None]
     # cell ord  2  5  6  9  10  11 13 17  18  30
     # neword    0  1  2  3   4   5  6  7   8   9
     colors = GRPDEF.sns_colors
@@ -531,9 +533,17 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
             custom_legend.append(l)
         else:
             cell = c_cells[legn]
-            l = Line2D([], [], marker=df[df["Cell"]==cell]["Marker"].values[0], 
-                color=colors[legn], markerfacecolor=colors[legn], linewidth = 0, markersize=5, label=f"BC{cell:02d}")
+            if cell in GRPDEF.MixedMode:
+                marker = 'D'
+                markersize = 4
+            else:
+                marker = 'o'
+                markersize=5
+            # print("Cell: ", cell, "Marker: ", df[df["Cell"]==cell]["Marker"].values)
+            l = Line2D([], [], marker=marker, # df[df["Cell"]==cell]["Marker"].values[0], 
+                color=colors[legn], markerfacecolor=colors[legn], linewidth = 0, markersize=markersize, label=f"BC{cell:02d}")
         custom_legend.append(l)
+
     # l = Line2D([0], [0], label = "\nASA (um2)", color='w')
     # custom_legend.append(l)
     legend2 = []
@@ -598,5 +608,5 @@ def Figure4F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
 
 
 if __name__ == "__main__":
-    #Figure4_Supplemental3_Patterns(reanalyze=False, dataset="Spont")  # supplemental plot for Figure 4
-    Figure4F_pattern_plot(dataset="Spont", mode='mmcd')
+    #Figure5_Supplemental3_Patterns(reanalyze=False, dataset="Spont")  # supplemental plot for Figure 4
+    Figure5F_pattern_plot(dataset="Spont", mode='mmcd')

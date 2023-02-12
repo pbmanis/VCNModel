@@ -567,10 +567,9 @@ def eff_ais(data: str, save_fig: bool = False, figinfo: Union[object, None] = No
         figinfo.filename = set_figure_path(
             fignum=4, filedescriptor="Efficacy_AIS_V2", suppnum=2
         )
-        # "Figure4/Figure4_supp/Figure4_Supplemental1_Revcorr_V4.pdf"
         figinfo.title[
             "title"
-        ] = "SBEM Project Figure 4 Modeling: Supplemental 2: Efficacy vs AIS length"
+        ] = "SBEM Project Figure 5 Modeling: Supplemental 2: Efficacy vs AIS length"
         title2 = {"title": f"", "x": 0.99, "y": 0.01}
         return figinfo
     else:

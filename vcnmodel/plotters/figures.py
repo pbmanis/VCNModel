@@ -6,6 +6,8 @@ made consistent by using both sns.set_style and mpl.style for figures.mplstyle,
 which overrides some defaults in mpl. The resulting figures are editable in
 Illustrator without any missing fonts.
 
+This is just "plotting code". No apologies for the length of the file.
+
 This module is part of *vcnmodel*.
 
 Support::
@@ -183,18 +185,18 @@ class Figures(object):
         self.reset_style()
         # dispatch
         dispatch_table = {
-            "Figure3-Ephys_1_Main": self.Figure3_Main,
-            "Figure3-Supplemental2_VC": self.Figure3_Supplemental2_VC,
-            "Figure3-Supplemental3_CC": self.Figure3_Supplemental3_CC,
-            "Figure3-Supplemental4_Zin": self.Figure3_Supplemental4_Zin,
-            "Figure3-Supplemental5_PSTH": self.Figure3_Supplemental5_PSTH,
-            "Figure4-Ephys_2_Main": self.Figure4_Main,
-            "Figure4-Ephys_2_Supplemental1": self.Figure4_Supplemental1,
-            "Figure4-Ephys_2_Supplemental2": self.Figure4_Supplemental2,
-            "Figure4-Ephys_2_Supplemental3": self.Figure4_Supplemental3,
-            "Figure7-Ephys_3_Main": self.Figure7_Main,
-            "Figure7-Ephys_3_Supplemental2": self.Figure7_Supplemental2,
-            "Figure7-Ephys_3_Supplemental3": self.Figure7_Supplemental3,
+            "Figure4-Ephys_1_Main": self.Figure4_Main,
+            "Figure4-Supplemental2_VC": self.Figure4_Supplemental2_VC,
+            "Figure4-Supplemental3_CC": self.Figure4_Supplemental3_CC,
+            "Figure4-Supplemental4_Zin_removed": self.Figure4_Supplemental4_Zin_removed,
+            "Figure4-Supplemental4_PSTH": self.Figure4_Supplemental4_PSTH,
+            "Figure5-Ephys_2_Main": self.Figure5_Main,
+            "Figure5-Ephys_2_Supplemental1": self.Figure5_Supplemental1,
+            "Figure5-Ephys_2_Supplemental2": self.Figure5_Supplemental2_removed,
+            "Figure5-Ephys_2_Supplemental2": self.Figure5_Supplemental2,
+            "Figure6-Ephys_3_Main": self.Figure6_Main,
+            "Figure6-Ephys_3_Supplemental2": self.Figure6_Supplemental2,
+            "Figure6-Ephys_3_Supplemental3": self.Figure6_Supplemental3,
             "Figure8-Ephys_4": self.Figure8_Panels_IJK,
             # Misc figures follow
             "Figure: IV Figure": self.plotIV,
@@ -689,7 +691,7 @@ class Figures(object):
         ax_tau.set_xlabel("Dendrite Decoration")
 
 
-    def Figure3_Main(self):
+    def Figure4_Main(self):
         message = """
         This Figure was made by using Illustrator to combine parts of other figures/files as follows:
         Panel A came from a syglass rendition of the obj (mesh).
@@ -698,13 +700,13 @@ class Figures(object):
         nb/Figure3_main_PanelC.ipynb, for the generation code; the matplotlib windows were then pulled
         into Illustrator to make the figure)
         
-        Panels D and E are taken from Figure3_Supplemental2_CC.pdf, for BC17.
-        Panels F, G and H are from Figure3_Supplemental5_PSTH.pdf for BC17, with the stimuli underneath
+        Panels D and E are taken from Figure4_Supplemental2_CC.pdf, for BC17.
+        Panels F, G and H are from Figure4_Supplemental5_PSTH.pdf for BC17, with the stimuli underneath
 
         """
         cprint("y", message)
 
-    def Figure3_Supplemental2_VC(self):
+    def Figure4_Supplemental2_VC(self):
         """
         Figure 3, Supplemental Figure 2
         Combined voltage clamp traces,  Rin, taum plots
@@ -744,19 +746,19 @@ class Figures(object):
         # P2 = self.plotIV(parent_figure=figp1.P, loc=(0, 8, 0.0, 4.0))
         fig = FigInfo()
         fig.P = P0
-        fig.filename = set_figure_path(fignum=3, filedescriptor="VC_Rin_Taum_V2",
+        fig.filename = set_figure_path(fignum=4, filedescriptor="VC_Rin_Taum_V2",
             suppnum=2)
-        fig.title["title"] = "SBEM Project Figure4 Supplemental Figure 2 VC_Rin_Taum"
+        fig.title["title"] = "SBEM Project Figure 4 Supplemental Figure 2 VC_Rin_Taum"
         return fig
 
-    def Figure3_Supplemental3_CC(self, parent_figure=None, show_pngs=False):
+    def Figure4_Supplemental3_CC(self, parent_figure=None, show_pngs=False):
         """
         Plot all of the IVS, for a supplemental figure
         Passive, normal, active, plus the crossed IV
         Also put the PNG for the cell on the left.
         """
         nivs = len(FD.figure_AllIVs)
-        cprint("c", "Plotting Figure3_Supplemental3_CC")
+        cprint("c", "Plotting Figure4_Supplemental3_CC")
         rows = nivs
         if show_pngs:
             cols = 5
@@ -866,17 +868,16 @@ class Figures(object):
         if parent_figure is None:
             fig = FigInfo()
             fig.P = self.P
-            # fig.filename = f"Figure3/Figure3_supp/Figure3_Supplemental3_CC.pdf"
-            fig.filename = set_figure_path(fignum=3, filedescriptor="CC", suppnum=3)
+            fig.filename = set_figure_path(fignum=4, filedescriptor="CC", suppnum=3)
             timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")
             fig.title[
                 "title"
-            ] = f"SBEM Project Figure 3 Modeling (Supplemental 3) ({timestamp_str:s})"
+            ] = f"SBEM Project Figure 4 Modeling (Supplemental 3) ({timestamp_str:s})"
             return fig
         else:
             return self.P
 
-    def Figure3_Supplemental4_Zin(self):
+    def Figure4_Supplemental4_Zin_removed(self):
         """
         All of the Zins for a supplemental figure
         """
@@ -1064,7 +1065,7 @@ class Figures(object):
         fig = FigInfo()
         fig.P = EFP.P
         fig.filename = save_file
-        fig.title["title"] = "SBEM Project Figure 2 Modeling: Efficacy and Revcorr"
+        fig.title["title"] = "SBEM Project Figure 5 Modeling: Efficacy and Revcorr"
         return fig
 
     def plot_stacked_traces(
@@ -1357,7 +1358,7 @@ class Figures(object):
                             },
                         )
 
-        title = "SBEM Project Figure 2 Modeling : Efficacy, Supplemental"
+        title = "SBEM Project Figure 5 Modeling : Efficacy, Supplemental"
         save_file = Path(
             self.config["figureIntermediateDirectory"],
             f"Fig_M2_Supplemental_{simulation_experiment:s}.pdf",
@@ -1380,38 +1381,15 @@ class Figures(object):
         with open(rc_datafile, "rb") as fh:
             d = FPM.pickle_load(fh)
         return d
+    
+    
 
-    def Figure4_Supplemental1(self):
-        fig = self.Figure4_Main(supplemental1=True)
-        return fig
-
-    def Figure4_Supplemental2(self):
-        """Plot AIS and efficacy
-
-        Returns:
-            _type_: _description_
-
-            NOTE: The rest of this figure is made in PRISM..... 
-
+    def Figure5_Main(self, supplemental1=False):
         """
-        fig = EF.eff_ais(EF.data_Full, save_fig=True, figinfo=FigInfo(show_figure_name=False))
-        return fig
-
-    def Figure4_assign_panel(self, supplemental1: bool = False, index: int = 0):
-        if not supplemental1:
-            revcorr_panel = f"B{index:d}"
-            vm_panel = f"C{index:d}"
-        else:
-            revcorr_panel = f"B{index:d}"
-            vm_panel = f"C{index:d}"
-        return revcorr_panel, vm_panel
-
-    def Figure4_Main(self, supplemental1=False):
-        """
-        Generate Figure 4 for the paper. Combined bits from various other plots
+        Generate Figure 5 for the paper. Combined bits from various other plots
         and revcorrs/singles
         """
-        print(f"Figure 4 main: supplemental1={str(supplemental1):s}")
+        print(f"Figure 5 main: supplemental1={str(supplemental1):s}")
         if supplemental1:
             example_cells = [
                 10,
@@ -1500,7 +1478,7 @@ class Figures(object):
             yh1 = 4.25
         for j in range(len(example_cells)):
             i = j + 1
-            pan_rev, pan_vm = self.Figure4_assign_panel(supplemental1, i)
+            pan_rev, pan_vm = self.Figure5_assign_panel(supplemental1, i)
             if not supplemental1:
                 xl1 = j * 1.25 + 0.75
                 xl2 = j * 1.25 + 6.5  # set panels to the right
@@ -1649,7 +1627,7 @@ class Figures(object):
 
             # input pattern plot
             # PATSUM.Figure4F_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode="multi")
-            PATSUM.Figure4F_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode='mmcd')  
+            PATSUM.Figure5F_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode='mmcd')  
             # participation
             ds = self._load_rcdata("Spont")
             drc = self._load_rcdata(f"{participation_dB:2d}dB")
@@ -1723,7 +1701,7 @@ class Figures(object):
         }
         # Revcorr axes cleanup
         for j, celln in enumerate(example_cells):
-            pan_rev, pan_vm = self.Figure4_assign_panel(supplemental1, j + 1)
+            pan_rev, pan_vm = self.Figure5_assign_panel(supplemental1, j + 1)
             ax = P.axdict[pan_rev]
             ax.set_ylim(0, 0.8)
             ax.set_xlim(-5.0, 2.5)
@@ -1768,23 +1746,48 @@ class Figures(object):
         else:
             fig.P = P
         if not supplemental1:
-            fig.filename = set_figure_path(fignum=4, filedescriptor="Ephys_2_main_v15")
+            fig.filename = set_figure_path(fignum=5, filedescriptor="Ephys_2_main_v17")
             fig.title[
                 "title"
-            ] = "SBEM Project Figure 4 (main) Modeling: singles inputs, efficacy and revcorr, revised version 8"
+            ] = "SBEM Project Figure 5 (main) Modeling: singles inputs, efficacy and revcorr, revised version 8"
         else:
-            fig.filename = set_figure_path(fignum=4, filedescriptor="Revcorr_V5", suppnum=1)
+            fig.filename = set_figure_path(fignum=5, filedescriptor="Revcorr_V5", suppnum=1)
             #"Figure4/Figure4_supp/Figure4_Supplemental1_Revcorr_V4.pdf"
             fig.title[
                 "title"
-            ] = "SBEM Project Figure 4 Modeling: Supplemental 1: other cells single inputs and revcorr"
+            ] = "SBEM Project Figure 5 Modeling: Supplemental 1: other cells single inputs and revcorr"
 
         title2 = {"title": f"", "x": 0.99, "y": 0.01}
         # fig.title2 = title2
         return fig
 
-    def Figure4_Supplemental3(self):
-        PATSUM.Figure4_Supplemental3_Patterns()  # writes its own figure to the directory
+    def Figure5_Supplemental1(self):
+        fig = self.Figure5_Main(supplemental1=True)
+        return fig
+
+    def Figure5_Supplemental2_removed(self):
+        """Plot AIS and efficacy
+
+        Returns:
+            _type_: _description_
+
+            NOTE: The rest of this figure is made in PRISM..... 
+
+        """
+        fig = EF.eff_ais(EF.data_Full, save_fig=True, figinfo=FigInfo(show_figure_name=False))
+        return fig
+
+    def Figure5_assign_panel(self, supplemental1: bool = False, index: int = 0):
+        if not supplemental1:
+            revcorr_panel = f"B{index:d}"
+            vm_panel = f"C{index:d}"
+        else:
+            revcorr_panel = f"B{index:d}"
+            vm_panel = f"C{index:d}"
+        return revcorr_panel, vm_panel 
+
+    def Figure5_Supplemental2(self):
+        PATSUM.Figure5_Supplemental2_Patterns()  # writes its own figure to the directory
 
     def plot_all_revcorr(self):
         for cell in GRPDEF.grAList():
@@ -2164,7 +2167,7 @@ class Figures(object):
                 else:
                     synlabel = False
 
-            ax_top_row_name, ax_bot_row_name = self.Figure4_assign_panel(
+            ax_top_row_name, ax_bot_row_name = self.Figure5_assign_panel(
                 supplemental1, index=i_plot + 1
             )
             ax_top_row = P.axdict[ax_top_row_name]
@@ -2287,10 +2290,10 @@ class Figures(object):
                 pickle.dump(all_RCD_RCP, fh)
         P.figure_handle.suptitle("")  # remove title.
         title = (
-            "SBEM Project Supplemental Figure 3 Modeling : Reverse Correlation Summary",
+            "SBEM Project Supplemental Figure 4 Modeling : Reverse Correlation Summary",
         )
-        save_file = set_figure_path(fignum=3, filedescriptor=f"Revcorr_Summary_Full_{dBSPL:s}", suppnum=99)
-#       save_file = Path("Figure3_supp", f"Fig_M3_supplemental_Full_{dBSPL:s}.pdf")
+        save_file = set_figure_path(fignum=4, filedescriptor=f"Revcorr_Summary_Full_{dBSPL:s}", suppnum=99)
+#       save_file = Path("Figure4_supp", f"Fig_M4_supplemental_Full_{dBSPL:s}.pdf")
         fig = FigInfo()
         fig.P = P
         fig.filename = save_file
@@ -2419,7 +2422,7 @@ class Figures(object):
         else:
             return None
 
-    def Figure7_Main(self, parent_figure=None):
+    def Figure6_Main(self, parent_figure=None):
         example_cell_number = 17
         lh = 0.5
         hsp = 0.7
@@ -2551,14 +2554,14 @@ class Figures(object):
             P.axdict[axl].sharex(P.axdict["H"])
 
 
-        self.Figure7_one_column(
+        self.Figure6_one_column(
             mode = "SAM",
             cell_number = example_cell_number,
             dataset = FD.figure_SAM_SAC,
             P = P,
             pan = ["A", "B", "C", "D", "E", "F", "G"],
         )
-        self.Figure7_one_column(
+        self.Figure6_one_column(
             mode = "SAC",
             cell_number = example_cell_number,
             dataset = FD.figure_SAM_SAC,
@@ -2586,13 +2589,13 @@ class Figures(object):
             fig.P = parent_figure
         else:
             fig.P = P
-        fig.filename = set_figure_path(fignum=7, filedescriptor="Ephys_3_main_v3")
-        fig.title["title"] = "SBEM Project Figure 7 Modeling: SAM, SAC"
+        fig.filename = set_figure_path(fignum=6, filedescriptor="Ephys_4_main_v4")
+        fig.title["title"] = "SBEM Project Figure 6 Modeling: SAM, SAC"
         title2 = {"title": f"", "x": 0.99, "y": 0.01}
         fig.title2 = title2
         return fig
 
-    def Figure7_one_column(
+    def Figure6_one_column(
         self, mode: str, cell_number: int, dataset: dict, P: object, pan: object
     ):
 
@@ -2816,13 +2819,13 @@ class Figures(object):
             #     transform=P.axdict[pan[5]].transAxes,
             # )
 
-    def Figure7_Supplemental2(self):
+    def Figure6_Supplemental2(self):
         V = SAM_VS_vplots.VS_Plots()
         #fig, P = V.make_figure()
         fig, P = V.Figure7_Supplemental2()
         return fig
     
-    def Figure7_Supplemental3(self):
+    def Figure6_Supplemental3(self):
         fig = SACP.plot_sacs(figinfo=FigInfo(show_figure_name=False))
         return fig
 
@@ -3510,8 +3513,8 @@ class Figures(object):
         if label_x_axis:
             cv_ax.set_xlabel("Time (ms)")
 
-    def Figure3_Supplemental5_PSTH(self):
-        print("Plotting Figure 3 Supplement 5 PSTH")
+    def Figure4_Supplemental4_PSTH(self):
+        print("Plotting Figure 4 Supplement 4 PSTH")
         dBSPL = "30dB"
         lmar = 0.125
         rmar = 0.1
@@ -3646,8 +3649,8 @@ class Figures(object):
                     horizontalalignment="right",
                 )
 
-        save_file = set_figure_path(fignum=3, filedescriptor="PSTH_V2", suppnum=5)
-        #  f"Figure3/Figure3_supp/Figure3_Supplemental5_PSTH.pdf"
+        save_file = set_figure_path(fignum=4, filedescriptor="PSTH_V2", suppnum=4)
+        #  f"Figure3/4/Figure3_Supplemental4_PSTH.pdf"
         title = "SBEM Project Figure 3 Modeling Supplemental5 : PSTH and FSL, all grade A cells"
         fig = FigInfo()
         fig.P = P
