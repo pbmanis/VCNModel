@@ -33,6 +33,7 @@ aisdata="""cell,DendAreas,OrigThr,OrigStd,MeshInfl,NewStandardized
 30,3989.83,0.545,0.580,0.563,nan
 """
 
+
 aisthrdata="""
 AIS_Length,2,5,6,9,10,11,13,17,18,30
 10,0.850,0.802,0.778,0.722,0.841,0.616,0.609,0.628,0.691,0.873
@@ -45,6 +46,30 @@ AIS_Length,2,5,6,9,10,11,13,17,18,30
 24,0.498,0.472,0.461,0.425,0.491,0.37,0.369,0.381,0.413,0.505
 """
 
+"""
+This data taken from the original Prism plot for Figure 5 (formerly 4) supplemental plot
+of morphology parameters.
+cell    AIS   Thr original  Thr meshed
+"VCN_c02"	14.41*	0.655	0.53		0.617
+"VCN_c05"	3.06*	1.41	0.56		0.583
+"VCN_c06"	14.16	0.57	0.515	0.589	
+VCN_c09	24.16	0.405	0.465	0.439	
+"VCN_c10"	18.66	0.585	0.565	0.594	
+"VCN_c11"	22.19	0.37	0.405	0.398	
+"VCN_c13"	17.58	0.435	0.415	0.445	
+"VCN_c17"	15.07	0.55	0.495	0.483	
+"VCN_c18"	12.58	0.35	0.44	0.581	
+"VCN_c30"	21.37	0.545	0.58	0.563
+"""	  
+aistruedata = {6: [14.16, 0.589],
+              9: [24.16, 0.439],
+              10: [18.66, 0.594],
+              11: [22.19, 0.398],
+              13: [17.58, 0.445],
+              17: [15.07, 0.483],
+              18: [12.58, 0.581],
+              30: [21.37, 0.563],
+            }
 
 
 class AIS():
@@ -68,6 +93,7 @@ class AIS():
     
     def DendvsThr(self, ax=None):
         df = self.prepare_data(aisdata)
+
         show = False
         if ax is None:
             f, ax = mpl.subplots(1,1)
@@ -124,9 +150,10 @@ class AIS():
         if show:
             mpl.show()
 
-    def AISLengthThr(self, ax=None,):
+    def AISLengthThr(self, ax=None, show=False):
         df = self.prepare_data(aisthrdata)
-        show = False
+        df_true = self.prepare_data(aisdata) # for the true length
+
         if ax is None:
             f, ax = mpl.subplots(1,1)
             show = True
@@ -155,9 +182,14 @@ class AIS():
             print(coln, bc_index, color, sym, mk_face, mk_edge)
             bc_num = f"BC{int(coln):02d}"
             ax.plot(df["AIS_Length"].values, df[coln].values, 
-                sym, markerfacecolor=mk_face, markeredgecolor = mk_edge, markeredgewidth=1,  
+            # remove symbols for revision - only plot symbols for the actual AIS length on the same data
+                # sym, markerfacecolor=mk_face, markeredgecolor = mk_edge, markeredgewidth=1,  
                 linestyle='-', color=color, linewidth=1,
                 label=bc_num)
+            
+        for c in aistruedata.keys():
+            c_index = GRPDEF.gradeACells.index(c)
+            ax.plot(aistruedata[c][0], aistruedata[c][1], 'o', color=GRPDEF.sns_colors[c_index], markersize=4)
         ax.set_xlim(0, 25)
         ax.set_xlabel(f"AIS Length ($\mu$m)")
         ax.set_ylabel(f"Threshold (nA)")
@@ -187,5 +219,5 @@ if __name__ == "__main__":
     A = AIS()
     df = A.prepare_data(aisdata)
     print(df.head())
-    A.DendvsThr()
-    #A.AISLengthThr()
+    # A.DendvsThr()
+    A.AISLengthThr(show=True)
