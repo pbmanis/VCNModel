@@ -5,7 +5,7 @@ from typing import List, Union
 
 # all the best "grade A" cells
 gradeACells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
-MixedMode = [9, 11,  17, 18]
+MixedMode = [9, 11, 17, 18]
 Coincidence = [2, 5, 6, 10, 13, 30]
 
 # convience function
