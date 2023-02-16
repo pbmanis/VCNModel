@@ -920,57 +920,79 @@ class EfficacyPlots(object):
         self,
         df_in,
         sel_cells: Union[list, None] = None,
+        gname: str='', # group name
         max_xfit: float = 300.0,
         ax: object = None,
         npts: Union[int, None] = None,
         initial_conditions: Union[dict, None] = None,
     ):
         # gmodel = Model(boltz)
-        print("dfin: \n", df_in.head())
+        CP.cprint("g", f"\nFit Dataset named: {gname:s}\n  dfin: \n")
+        print(df_in.head())
         if sel_cells is not None:
             df = df_in[df_in.Cell.isin(sel_cells)]
         else:
             df = df_in  # everything
         # only include the original synapses, not "added" ones, so that the
-        # added ones can be viewed as predictive. As current set up,
+        # added ones can be viewed as predictive. As currently set up,
         # the "added" inputs are in a separate table, so they would not normally
         # have to be deselected here.
-        # df = df[df.added.isin([0])]
+        # if gname == 'Coincidence':
+        #     # bring in the expected data from BC10 and BC30
+        #     #df = df[df.added.isin([0])]
+
+
+
         gmodel = lmfit.models.StepModel(form="logistic")  # gmodel = Model(hill)
         # print('selcells: ', sel_cells)
         # print(df.head())
         # print(df.Eff)
         # print(df.ASA)
-        gparams = gmodel.guess(df.Eff, x=df.ASA, center=100.0)
+        if initial_conditions is not None:
+            gparams = gmodel.make_params(center=initial_conditions['center'],
+                        amplitude=initial_conditions['amplitude'],
+                        sigma = initial_conditions['sigma'])
+
+            gmodel.set_param_hint("center", value=initial_conditions['center'], min=140.0, max=250.0)
+            gmodel.set_param_hint("amplitude", value = initial_conditions['amplitude'], min=0.2, max=0.9)
+            gmodel.set_param_hint("sigma", value = initial_conditions['sigma'], min=3, max=50)
+
+        else:
+            gparams = gmodel.guess(df.Eff.values, x=df.ASA.values, center=200.0)
+            gmodel.set_param_hint("center", min=140.0, max=250.0)
+            gmodel.set_param_hint("amplitude", min=0.2, max=0.9)
+            gmodel.set_param_hint("sigma", min=3, max=25)
 
         resdict = {"leastsq": None}
+        gmodel.print_param_hints()
 
-        y = df.ASA
-        x = df.Eff
-
-        weights = np.ones(len(df.Eff))  # np.array(df.Eff)
+        max_eff = np.max(df.Eff.values)
+        weights = [0.0 if e < 0.05  else (e/max_eff)**2 for e in df.Eff.values]
         for meth in resdict.keys():
             result_LM = gmodel.fit(
-                x,
+                df.Eff.values,
                 method=meth,
                 params=gparams,
-                x=y,
+                x=df.ASA.values,
                 weights=weights,
             )
-            print(f"\n{meth:s} fit: ")
-            print(f"Cells: {str(sel_cells):s}")
-            print(result_LM.params.pretty_print())
-            print("-" * 80)
+            print(f"\n     {meth:s} fit: ")
+            print(f"     Cells: {str(sel_cells):s}")
+
             if npts is None:
                 npts = 300
             xfit = np.linspace(0.0, max_xfit, npts)
             lev_fit = gmodel.eval(params=result_LM.params, x=xfit)
-            # lmfit.report_fit(result_brute.params, min_correl=0.5)
-
+            print("     Fit Result: ")
+            lmfit.report_fit(result_LM.params, min_correl=0.5)
+            print("-" * 80)
             for p in result_LM.params:
                 if result_LM.params[p].stderr is None:
                     result_LM.params[p].stderr = 0.0  # abs(res2.params[p].value * 0)
             resdict[meth] = result_LM
+        CP.cprint('r', "Fit complete\n")
+        # if gname == 'Coincidence':
+        #     ax.plot(df.ASA, df.Eff, 'x', markersize=9, color='k')
         return result_LM, resdict, gmodel, xfit, lev_fit
 
     def plot_fit(
@@ -978,10 +1000,11 @@ class EfficacyPlots(object):
         df: object,
         df_added: object = None,  # added points plotted separately from fit
         ax: object = None,
-        y0: float = 0.0,
+        y0: float = 0.0, # where to draw text on plot
         method: str = "leastsq",
         max_x: float = 300.0,
         cells: list = [],
+        gname: str='',
         color: str = "k-",
         initial_conditions: Union[dict, None] = None,
         plot_fits: bool = True,
@@ -996,7 +1019,7 @@ class EfficacyPlots(object):
         df_added : Pandas dataframe, optional
             Additional simulations to plot, but NOT fit. by default None
         y0 : float, optional
-            _description_, by default 0.0
+            where to draw text on plot (y position), by default 0.0
         method : str, optional
             fit method, by default "leastsq"
         max_x : float, optional
@@ -1008,9 +1031,13 @@ class EfficacyPlots(object):
         initial_conditions : Union[dict, None], optional
             fit initial conditions, by default None
         """
+        if df_added is not None:
+            df = pd.concat([df, df_added])
+            print(df.head(20))
         result_LM, resdict, gmodel, xfit, yfit = self.fit_dataset(
             df,
             sel_cells=cells,
+            gname=gname,
             ax=ax,
             initial_conditions=initial_conditions,
             max_xfit=max_x,
@@ -1149,8 +1176,12 @@ class EfficacyPlots(object):
         dataset = self.dmap[datasetname]
         x, df = prepare_data(dataset)
         method = "leastsq"
-        cells1 = GRPDEF.MixedMode
+        
+        dataset_predicted = self.dmap["Added"]
+        x, df_added = prepare_data(dataset_predicted)
+        df_added = df_added[df_added.Cell.isin([10, 13])]  # just these cells in the group
 
+        cells1 = GRPDEF.MixedMode
         df1 = df[df.Cell.isin(cells1)]
         self.plot_fit(
             df1,
@@ -1158,21 +1189,29 @@ class EfficacyPlots(object):
             y0=0.05,
             method=method,
             cells=cells1,
+            gname="Mixed Mode",
             max_x=300.0,
             color="#ff0000",
+            initial_conditions={"amplitude": 1.0, "center": 140.0, "sigma": 8},
         )
 
+        # WITH A RESORTED SET OF CELLS, THE COINCIDENCE GROUP
+        # CANNOT BE FIT WELL. 
+        # THIS FIT IS "DASHED" AS IT DEPENDS ON PREDICTIONS FROM 
+        # SYNAPSE SIZES THAT ARE NOT IN THE POPULATION.
         cells2 = GRPDEF.Coincidence
         df2 = df[df.Cell.isin(cells2)]
         self.plot_fit(
             df2,
+            df_added = df_added,
             ax=ax,
             y0=0.1,
             method=method,
             cells=cells2,
+            gname = "Coincidence",
             max_x=300.0,  # 180.0,
             color="#94c8ff",
-            initial_conditions={"A": 1.0, "Vh": 200.0, "k": 10},
+            initial_conditions={"amplitude": 0.8, "center": 190.0, "sigma": 10},
         )
 
 

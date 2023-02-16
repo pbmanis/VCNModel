@@ -51,7 +51,7 @@ from vcnmodel.analyzers import analyze_data
 from vcnmodel.analyzers import isi_cv as ISI
 from vcnmodel.analyzers import pattern_summary as PATSUM
 from vcnmodel.analyzers import sac as SAC
-from vcnmodel.plotters import AIS_thresholds
+from vcnmodel.plotters import morphology_thr_correlations
 from vcnmodel.plotters import SAC_plots as SACP
 from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot as EF
@@ -516,8 +516,8 @@ class Figures(object):
         self.P2.axarr[0, 0].legend(
             lines, labels, bbox_to_anchor=(0.32, 0.35), fontsize=7
         )
-        res_label = r"$\mathregular{R_{in} (M\Omega)}$"
-        phase_label = r"$\mathregular{\phi (radians)}$"
+        res_label = r"$\mMTCegular{R_{in} (M\Omega)}$"
+        phase_label = r"$\mMTCegular{\phi (radians)}$"
 
         # plot overlays of all cell z/phase
         for iax, mode in enumerate(["Z_passive", "Z_normal", "Z_active"]):
@@ -642,8 +642,8 @@ class Figures(object):
 
         df_rin = pd.DataFrame.from_dict(rins, orient="index")  # , orient='index')
         df_tau = pd.DataFrame.from_dict(taus, orient="index")
-        res_label = r"$\mathregular{R_{in} (M\Omega)}$"
-        tau_label = r"$\mathregular{\tau_{m} (ms)}$"
+        res_label = r"$\mMTCegular{R_{in} (M\Omega)}$"
+        tau_label = r"$\mMTCegular{\tau_{m} (ms)}$"
         sns.boxplot(
             data=df_rin,
             x="dendrites",
@@ -1385,11 +1385,18 @@ class Figures(object):
 
 
 
-    def Figure5_Main(self, supplemental1=False):
+    def Figure5_Main(self, supplemental1=False, final_plot=True):
         """
         Generate Figure 5 for the paper. Combined bits from various other plots
         and revcorrs/singles
+        
+        Parameters
+        ----------
+        supplemental1 : set True to plot the associated supplement
+
+        final_plot: set True to remove the "dbSPL" from the upper left corner of the plot
         """
+
         print(f"Figure 5 main: supplemental1={str(supplemental1):s}")
         if supplemental1:
             example_cells = [
@@ -1403,7 +1410,7 @@ class Figures(object):
         else:
             example_cells = [5, 30, 9, 17]  # in order of spikes for largest input
 
-        Figure4_stim_level = "30dB"  # "30dB" or "Spont" are valid settings.
+        Figure5_stim_level = "30dB"  # "30dB" or "Spont" are valid settings.
         participation_dB = 30  # the stimulus level at which the participation is
         # compared versus participation during spont
 
@@ -1451,6 +1458,11 @@ class Figures(object):
                 },
                 "J": {
                     "pos": [xlp[2], xw, yrow0, yh],
+                    "labelpos": lpos,
+
+                },
+                "K": {
+                    "pos": [xlp[3], xw, yrow0, yh],
                     "labelpos": lpos,
 
                 },
@@ -1516,7 +1528,8 @@ class Figures(object):
             showgrid=False,
             parent_figure=parent_figure,
         )
-        P.figure_handle.text(x=0.01, y=figsize[1]-0.1, s=f"{Figure4_stim_level:s}",
+        if not final_plot:
+            P.figure_handle.text(x=0.01, y=figsize[1]-0.1, s=f"{Figure5_stim_level:s}",
             fontdict={"fontsize": 11, "fontweight": "bold", "verticalalignment": "top"},
             transform=P.figure_handle.dpi_scale_trans)
 
@@ -1603,7 +1616,7 @@ class Figures(object):
         axl = [P.axdict[axi] for axi in trace_axes]
         self.plot_stacked_traces(
             cells=example_cells,
-            dBSPL=Figure4_stim_level,
+            dBSPL=Figure5_stim_level,
             figure=P.figure_handle,
             axes=axl,
             maxstack=10,
@@ -1616,7 +1629,7 @@ class Figures(object):
 
         if not supplemental1:
             # Efficacy plot vs. input size (all)
-            for s in ["D", "E", "F", "G", "H", "I", "J"]:
+            for s in ["D", "E", "F", "G", "H", "I", "J", "K"]:
                 P.axdict[s].set_zorder(100)
             EFP = EF.EfficacyPlots(parent_figure=P)
             EFP.plot_efficacy(
@@ -1628,7 +1641,7 @@ class Figures(object):
 
             # input pattern plot
             # PATSUM.Figure4F_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode="multi")
-            PATSUM.Figure5F_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode='mmcd')  
+            PATSUM.Figure5E_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode='mmcd')  
             # participation
             ds = self._load_rcdata("Spont")
             drc = self._load_rcdata(f"{participation_dB:2d}dB")
@@ -1669,9 +1682,10 @@ class Figures(object):
                 fontsize=8,
             )
             PH.nice_plot(P.axdict["G"], position=self.axis_offset, direction="outward", ticklength=3)
-            ATHR = AIS_thresholds.AIS()
-            ATHR.DendvsThr(ax=P.axdict["I"])
-            ATHR.AISLengthThr(ax=P.axdict["J"])
+            MTC = morphology_thr_correlations
+            MTC.AIS().DendvsThr(ax=P.axdict["I"])
+            MTC.SD().SomavsDend(ax=P.axdict["J"])
+            MTC.AIS().AISLengthThr(ax=P.axdict["K"])
 
             synlabel_num = 5  # this sets which cell the scale bar will be plotted with
         else:
@@ -1683,7 +1697,7 @@ class Figures(object):
             parent_figure=P,
             supplemental1=supplemental1,
             # dBSPL="30dB",
-            dBSPL=Figure4_stim_level,
+            dBSPL=Figure5_stim_level,
             synlabel_num=synlabel_num,
             show_title=False,
         )
@@ -1747,7 +1761,7 @@ class Figures(object):
         else:
             fig.P = P
         if not supplemental1:
-            fig.filename = set_figure_path(fignum=5, filedescriptor="Ephys_2_main_v17")
+            fig.filename = set_figure_path(fignum=5, filedescriptor="Ephys_2_main_v18")
             fig.title[
                 "title"
             ] = "SBEM Project Figure 5 (main) Modeling: singles inputs, efficacy and revcorr, revised version 8"
@@ -3651,8 +3665,7 @@ class Figures(object):
                 )
 
         save_file = set_figure_path(fignum=4, filedescriptor="PSTH_V2", suppnum=4)
-        #  f"Figure3/4/Figure3_Supplemental4_PSTH.pdf"
-        title = "SBEM Project Figure 3 Modeling Supplemental5 : PSTH and FSL, all grade A cells"
+        title = "SBEM Project Figure 4 Modeling Supplemental4 : PSTH and FSL, all grade A cells"
         fig = FigInfo()
         fig.P = P
         fig.filename = save_file
