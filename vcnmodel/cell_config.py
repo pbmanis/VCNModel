@@ -24,9 +24,11 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 import toml
+import pint
 from matplotlib import pyplot as mpl
 from pylibrary.plotting import plothelpers as PH
 
+UR = pint.UnitRegistry()
 
 matplotlib.use("Qt5Agg")
 rcParams = matplotlib.rcParams
@@ -774,11 +776,22 @@ def add_inputs():
         indx = cc.get_SR_from_ASA(asa)
         print(f"ASA {asa:.2f} is in group: {indx:d}")
 
+def estimate_somatic_gkl_total():
+        cc = CellConfig(spont_mapping="HS")
+        print(cc.SDSummary.columns)
+        
+        df = cc.SDSummary[cc.SDSummary["Cell Number"].isin([2, 5, 6, 9, 10, 11, 13, 17, 18, 30])]
+        gkl = 4.8183 * UR.mS/(UR.cm*UR.cm)
+        soma_area = np.array(df["Somatic Surface Area"].values)*UR.um*UR.um
+        print(soma_area)
+        total_g = soma_area*gkl
+        print(total_g.to(UR.nS))
+
 if __name__ == "__main__":
     # Check the formatting and display the results
     # especially important after edits to make the Dendrite_Quality table
     # match the strict formatting requirements for Dryad/Frictionless
-   
+
     cc = CellConfig(spont_mapping="HS")
     cc.summarize_release_sites()
     cc.print_cell_inputs(cc.VCN_Inputs)
