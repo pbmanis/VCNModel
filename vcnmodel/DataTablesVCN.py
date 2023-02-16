@@ -100,7 +100,7 @@ from vcnmodel.plotters import SAC_plots
 import vcnmodel.group_defs as GRPDEF
 import vcnmodel.analyzers.pattern_summary
 import vcnmodel.analyzers.vector_strength
-from vcnmodel.plotters import AIS_thresholds
+from vcnmodel.plotters import morphology_thr_correlations
 from pylibrary.tools import cprint as CP
 import vcnmodel.analyzers.spikestatistics
 import ephys
@@ -120,7 +120,7 @@ all_modules = [
     efficacy_plot,
     SAC_plots,
     cell_config,
-    AIS_thresholds,
+    morphology_thr_correlations,
     vcnmodel.analyzers.spikestatistics,
     vcnmodel.analyzers.analysis,
     vcnmodel.analyzers.analyze_data,
