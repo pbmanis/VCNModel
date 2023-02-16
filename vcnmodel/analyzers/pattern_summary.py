@@ -193,7 +193,6 @@ def get_pattern_data(dataset:str="Spont"):
     basepath = datapaths["cellDataDirectory"]
     fig_data = FD.figure_revcorr
     db = dataset
-    #    group = {"First-in": [9, 11, 13, 17], "Coincidence": [2, 5, 6, 10, 18, 30]}
     group = {"MixedMode": GRPDEF.MixedMode, "Coincidence": GRPDEF.Coincidence}
 
     compares = pd.DataFrame(columns=["Cell", "PatternName", "Percent", "#Spikes", "Group"])
@@ -373,7 +372,7 @@ def Figure5_Supplemental2_Patterns(reanalyze=False, dataset:str="Spont"):
 
 
 
-def Figure5F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
+def Figure5E_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
     """Plot the fraction of inputs for specific subsets of
     input patterns for cells 5, 30, 9 and 17
 
@@ -522,7 +521,7 @@ def Figure5F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
     # l = Line2D([0], [0], label=f"Cell\n  CD     MM", color='w')
     # custom_legend.append(l)
     # legorder = [0, 1, 2, 4, 6,  9, 3, 5,  7,  8, None]
-    legorder = [0, 1, 2, 4, 6, 9, 3, 5, 8, 7, None]
+    legorder = [0, 1, 2, 4, 6, 9, 3, 5, 7, 8, None]
     # cell ord  2  5  6  9  10  11 13 17  18  30
     # neword    0  1  2  3   4   5  6  7   8   9
     colors = GRPDEF.sns_colors
@@ -609,4 +608,4 @@ def Figure5F_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
 
 if __name__ == "__main__":
     #Figure5_Supplemental3_Patterns(reanalyze=False, dataset="Spont")  # supplemental plot for Figure 4
-    Figure5F_pattern_plot(dataset="Spont", mode='mmcd')
+    Figure5E_pattern_plot(dataset="Spont", mode='mmcd')
