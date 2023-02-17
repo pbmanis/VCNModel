@@ -1130,11 +1130,11 @@ class PlotSims:
             floatAdd={"x": 0, "y": 0},
         )
         # Align the parameters on the = sign by making 2 texts right and left justified
-        textstr1 = r"g$_{max}$" + f" = {boltz_result.params['gmax'].value:.1f} nS"
-        textstr2 = r"$V_{0.5}$" + f" = {boltz_result.params['vhalf'].value*1e3:.1f} mV"
-        textstr3 = f"k  = {1e3*boltz_result.params['k'].value:.1f}"
-        textstr4 = f"Cm = {cm:.1f#~P}"
-        textstr5 = r"${\tau_{0}}$" + f" = {tau:6.1f#~P}"
+        textstr1 = r"$\mathrm{g_{max}}$" + f" = {boltz_result.params['gmax'].value:.1f} nS"
+        textstr2 = r"$\mathrm{V_{0.5}}$" + f" = {boltz_result.params['vhalf'].value*1e3:.1f} mV"
+        textstr3 = r"$\mathrm{k}$" + f" = {1e3*boltz_result.params['k'].value:.1f}"
+        textstr4 = r"$\mathrm{C_m}$" + f" = {cm:.1f#~P}"
+        textstr5 = r"$\mathrm{\tau_{0}}$" + f" = {tau:6.1f#~P}"
         texts = [textstr1, textstr2, textstr3, textstr4, textstr5]
         props = dict(boxstyle="square", facecolor="None", alpha=0.5)
 
@@ -1175,8 +1175,8 @@ class PlotSims:
         runProtocol: Union[str, None] = None,
     ):
         movie = False
-        model_data = self.ReadModel.get_data_file(filename, PD=PD)
-        if not model_data.success:
+        model_data = self.ReadModel.get_data(filename, PD=PD)
+        if model_data is None or not model_data.success:
             print("No simulation found that matched conditions")
             print(filename)
             return
@@ -1203,11 +1203,15 @@ class PlotSims:
         self.inputtimes = None
         self.first = True
         self.parent.trace_selector.setValue(0)
+        model_data.SP.analyzeSpikes()
+        self.sample_interval = model_data.SP.Clamps.sample_interval
+        print("dt: ", self.sample_interval)
         if self.allspikes is not None:
             self.nspikes = len(self.allspikes)
             for i, trn in enumerate(range(0, self.parent.n_trace_sel)):
                 self.plot_spikes_withinputs(
-                    int(i), n=trn, color=pg.intColor(i, hues=20), first=self.first
+                    int(i), n=trn, color=pg.intColor(i, hues=20), first=self.first,
+                    dt=self.sample_interval,
                 )
 
             self.parent.trace_selector_plot.setXRange(0, self.nspikes)
@@ -1246,6 +1250,7 @@ class PlotSims:
                                 hues=self.parent.n_trace_sel,
                             ),
                             first=self.first,
+                            dt=self.sample_interval,
                         )
 
                     QtGui.QApplication.processEvents()
@@ -1269,6 +1274,7 @@ class PlotSims:
                         np.mod(trn, self.parent.n_trace_sel),
                         hues=self.parent.n_trace_sel,
                     ),
+                    dt=self.sample_interval,
                 )
             QtGui.QApplication.processEvents()
 
@@ -1300,10 +1306,11 @@ class PlotSims:
                         np.mod(trn, self.parent.n_trace_sel),
                         hues=self.parent.n_trace_sel,
                     ),
+                    dt = self.sample_interval,
                 )
 
     def plot_spikes_withinputs(
-        self, ix: int = 0, n: int = 0, color: object = None, first=False
+        self, ix: int = 0, n: int = 0, color: object = None, first=False, dt:float=1.0,
     ):
         """
             plot a spike and indicate its inputs.
@@ -1319,7 +1326,7 @@ class PlotSims:
             if self.parent.V_disp_sel == "dV/dt":
                 if first:
                     self.lines[ix] = self.parent.trace_plots.plot(
-                        spk.dt * np.arange(0, len(spk.waveform))[:-1] + spk.start_win,
+                        self.sample_interval * np.arange(0, len(spk.waveform))[:-1] + spk.start_win,
                         np.diff(spk.waveform / spk.dt),
                         pen=color,
                     )
@@ -1330,7 +1337,7 @@ class PlotSims:
                     #     pen=color,
                     # )
                     self.lines[ix].setData(
-                        spk.dt * np.arange(0, len(spk.waveform))[:-1] + spk.start_win,
+                        self.sample_interval * np.arange(0, len(spk.waveform))[:-1] + spk.start_win,
                         np.diff(spk.waveform / spk.dt),
                         pen=color,
                     )
@@ -1340,7 +1347,7 @@ class PlotSims:
             else:
                 if first:
                     print("plotting first")
-                    tx = spk.dt * np.arange(0, len(spk.waveform)) + spk.start_win
+                    tx = self.sample_interval* np.arange(0, len(spk.waveform)) + spk.start_win
                     # print(np.min(tx), np.max(tx), tx.shape)
                     #                    print(np.min(spk.waveform), np.max(spk.waveform), spk.waveform.shape)
                     self.parent.trace_plots.setEnabled(True)
@@ -1365,7 +1372,7 @@ class PlotSims:
                     u = self.parent.trace_plots.plotItem.plot(
                         np.arange(10), np.ones(10) * ix, pen="b"
                     )
-                    tx = spk.dt * np.arange(0, len(spk.waveform)) + spk.start_win
+                    tx = self.sample_interval * np.arange(0, len(spk.waveform)) + spk.start_win
                     self.lines[ix].curve.setData(
                         x=tx,
                         y=spk.waveform,
@@ -1466,11 +1473,6 @@ class PlotSims:
                 nc = int(len(RCD.C[isite]) / 2)
                 RCD.TC = RCD.TC / len(RCD.st)
                 summarySiteTC[isite] = RCD.TC
-                # color = mpl.cm.viridis(norm(RCD.sites, isite))
-                # cmx = mpl.cm.get_cmap(colormap)
-                # color = mpl.cm.brg(norm(RCD.sites, isite))
-                # print("index: ", int(cmx.N*syn_ASA[isite]/max_ASA))
-                # print("cmx.N: ", cmx.N)
                 color = cmx.colors[int(cmx.N * syn_ASA[isite] / cbar_vmax) - 1]
                 colors[isite] = color
                 maxrevcorr = np.max((maxrevcorr, np.max(RCD.CB[isite])))
@@ -1885,7 +1887,7 @@ class PlotSims:
         RCP, RCD, PAT = REVCORR.spike_pattern_analysis(
             MD, printflag=True
         )  # perfrom an analysis of input spike patters
-        self.allspikes = PAT.allspikes
+        self.allspikes = PAT.all_spikes
         if P is not None:
             self.plot_revcorr_details(P, PD, MD2, RCP, RCD)
         return P, PD, RCP, RCD
@@ -1910,8 +1912,7 @@ class PlotSims:
                 pos[i, j, 1] = j + 1
 
         sax = P.axdict
-        # f, sax = mpl.subplots(3,1)
-        # f.set_size_inches( w=3.5, h=9)
+
         sax["C"].plot(np.arange(RCP.ninputs) + 1, RCD.sites, "bo")
         # print('pairwise: ', pairwise)
         colormap = "plasma"
@@ -1943,7 +1944,7 @@ class PlotSims:
         norm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
         # ticks = [int(p) for p in np.linspace(vmin, vmax, num=4, endpoint=True)]
         ticks = [int(p) for p in np.linspace(0, vmax, num=5, endpoint=True)]
-        cm_sns = mpl.cm.get_cmap(colormap)
+        cm_sns = mpl.colormaps[colormap]
         colorbar = matplotlib.colorbar.ColorbarBase(
             axcbar, cmap=cm_sns, ticks=ticks, norm=norm
         )
