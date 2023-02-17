@@ -642,8 +642,8 @@ class Figures(object):
 
         df_rin = pd.DataFrame.from_dict(rins, orient="index")  # , orient='index')
         df_tau = pd.DataFrame.from_dict(taus, orient="index")
-        res_label = r"$\mMTCegular{R_{in} (M\Omega)}$"
-        tau_label = r"$\mMTCegular{\tau_{m} (ms)}$"
+        res_label = r"$\mathrm{R_{in} (M\Omega)}$"
+        tau_label = r"$\mathrm{\tau_{m} (ms)}$"
         sns.boxplot(
             data=df_rin,
             x="dendrites",
@@ -981,8 +981,7 @@ class Figures(object):
         EFP.plot_efficacy(
             datasetname="Full", ax=EFP.parent_figure.axdict["B"], loc=loc, clean=True
         )
-        # EFP.P.figure_handle.set_size_inches(figsize[0], figsize[1])
-        #        return
+
         # stacked IV in first column:
         self.P_Eff_SingleInputs = PH.regular_grid(
             len(fn),
@@ -1005,7 +1004,7 @@ class Figures(object):
             parent_figure=EFP.P,
         )
         nfiles = len(fn)
-        cmx = mpl.cm.get_cmap(colormap)
+        cmx = mpl.colormaps[colormap]
         colors = [cmx(float(i) / nfiles) for i in range(nfiles)]
 
         calx = 800.0
@@ -1641,7 +1640,7 @@ class Figures(object):
 
             # input pattern plot
             # PATSUM.Figure4F_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode="multi")
-            PATSUM.Figure5E_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode='mmcd')  
+            PATSUM.Figure5E_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode='mmcd', cell_legend = False)  
             # participation
             ds = self._load_rcdata("Spont")
             drc = self._load_rcdata(f"{participation_dB:2d}dB")
@@ -1959,7 +1958,7 @@ class Figures(object):
                 pos[i, j, 0] = i + 1
                 pos[i, j, 1] = j + 1
 
-        cmx = mpl.cm.get_cmap(colormap)
+        cmx = mpl.colormaps[colormap]
         clist = [cmx(float(isite) / RCP.ninputs) for isite in range(RCP.ninputs)]
         sax2.scatter(
             RCD.sites,
@@ -3265,7 +3264,7 @@ class Figures(object):
         if label_x_axis:
             xticks_str = ["0.0", "0.1", "0.2"]
         else:
-            xticks_str = None
+            xticks_str = []
         PH.set_axes_ticks(tr_ax,
                 yticks = [-60, -30, 0],
                 yticks_str = ["-60", "-30", "0"],
@@ -3313,7 +3312,7 @@ class Figures(object):
             if label_x_axis:
                 xticks_str = ["0", "0.1", "0.2"]
             else:
-                xticks_str = None
+                xticks_str = []
             PH.set_axes_ticks(bupsth_ax,
                 yticks = [0,  500,  1000, 1500],
                 yticks_str = ["0", "500",  "1000", "1500"],
@@ -3372,7 +3371,7 @@ class Figures(object):
             if label_x_axis:
                 xticks_str = ["0", "5", "10", "15", "20", "25"]
             else:
-                xticks_str = None
+                xticks_str = []
             PH.set_axes_ticks(bufsl_ax,
                 yticks = [0, 20, 40, 60],
                 yticks_str = ["0", "20", "40", "60"],
@@ -3503,7 +3502,7 @@ class Figures(object):
         if label_x_axis:
             xticks_str = ["0", "20", "40", "60", "80"]
         else:
-            xticks_str = None        
+            xticks_str = []       
         PH.set_axes_ticks(cv_ax,
                 yticks = [0, 0.4, 0.8, 1.2],
                 yticks_str = ["0.0", "0.4", "0.8","1.2"],
@@ -3945,7 +3944,6 @@ class Figures(object):
             if len(fng) == 0:
                 raise ValueError("no files found")
             fns.append(fng[0])
-        print(fns)
         ymin = -140.0
         ymax = 20.0
         iax = 0
@@ -4021,8 +4019,8 @@ class Figures(object):
         # plot the efficacy curves and points in the 4th panel
 
         EFP = EF.EfficacyPlots(parent_figure=self.P.figure_handle)
-        EFP.plot_efficacy(datasetname="NoUninnervated2", ax=self.P.axdict["L"], clean=True)
-        EFP.plot_efficacy(datasetname="NoUninnervated2_ctl", ax=self.P.axdict["L"], clean=True)
+        EFP.plot_efficacy(datasetname="NoUninnervated2", ax=self.P.axdict["L"], clean=True, legend=False)
+        EFP.plot_efficacy(datasetname="NoUninnervated2_ctl", ax=self.P.axdict["L"], clean=True, legend=False)
         EFP.plot_fits("Full", ax=self.P.axdict["L"])
         PH.set_axes_ticks(ax=self.P.axdict["L"],
             xticks = [0, 100, 200, 300],

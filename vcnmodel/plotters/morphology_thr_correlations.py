@@ -126,7 +126,7 @@ class SD():
         ax.set_xlim(1250, 1550)
         ax.set_xlabel(r"Soma Area (${\mu m^2}$)")
         r2 = r"${r^2}$"
-        ax.text(1550, 3100, f"p = {res.pvalue:.3f}, {r2:s} = {res.rvalue**2:.3f} ", fontsize=8.5, ha="right")
+        ax.text(1550, 3100, f"p = {res.pvalue:.3f}, {r2:s} = {res.rvalue**2:.3f} ", fontsize=8, ha="right")
         PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)
 
 
@@ -162,13 +162,13 @@ class AIS():
         dfn = df[df["MeshInfl"].notnull()]
         res = sp.stats.linregress(dfn["DendAreas"], dfn["MeshInfl"])
         xp = np.linspace(3000, 4500, 100)
-        print(res.slope)
-        print(res.intercept)
-        print(f"R-squared: {res.rvalue**2:.6f}")
-        print(f"P value: {res.pvalue:.5f}")
+        # print(res.slope)
+        # print(res.intercept)
+        # print(f"R-squared: {res.rvalue**2:.6f}")
+        # print(f"P value: {res.pvalue:.5f}")
         ax.plot(xp, res.intercept + res.slope*xp, 'k-', linewidth=0.5)
         ax.text(x=1.0, y=0.05, s=f"p = {res.pvalue:.5f}, r$^2$ = {res.rvalue**2:5.3f}",
-            horizontalalignment="right", fontsize=8.5,
+            horizontalalignment="right", fontsize=8,
             transform=ax.transAxes)
         ax.set_xlim(3000, 5000)
         ax.set_ylim(0.35, 0.65)
