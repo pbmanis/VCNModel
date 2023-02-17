@@ -438,10 +438,10 @@ def plot_stacked_spiketrain_rasters(
 
     if use_colors:
         cmx = sns.color_palette(colormap, as_cmap=True)
-        cell_n = int(si.cellID[-2:])
+        # cell_n = int(si.cellID[-2:])
         
         syn_ASA = np.array([syninfo[1][isite][0] for isite in range(n_inputs)])
-        max_ASA = np.max(syn_ASA)
+        # max_ASA = np.max(syn_ASA)
     print("syn asa: ", syn_ASA)
     for i in range(n_trials):  # and by trial
         if i > max_trials - 1:
