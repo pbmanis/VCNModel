@@ -21,8 +21,8 @@ def fitline(ax:object, x:np.array, y:np.array):
     lr_A = linregress(x, y)
     print(lr_A)
     ax.plot(x, lr_A.intercept + lr_A.slope*x, 'r', label='fitted line')
-    ax.text(1.0, 1.0, f"{r2:s}={lr_A.rvalue**2:5.3f} p={lr_A.pvalue:5.3f}", 
-            fontdict = {"fontsize": 8, "ha":"right", "va":'top'}, transform=ax.transAxes)
+    ax.text(1.0, 0.01, f"{r2:s}={lr_A.rvalue**2:5.3f} p={lr_A.pvalue:5.3f}", 
+            fontdict = {"fontsize": 8, "ha":"right", "va":'bottom'}, transform=ax.transAxes)
 
 
 soma_sa_input = Path('somaSA_and_LargestInput.mat')
@@ -55,21 +55,21 @@ r2 = r"$r^2$"
 
 P.axdict["A"].scatter(soma_SA, largest_inputs, s=9, c='k', marker='o', edgecolors = 'w', linewidths=0.5)
 fitline(P.axdict["A"], x=soma_SA, y=largest_inputs)
-P.axdict["A"].set_xlim(0, 2500)
-P.axdict["A"].set_ylim(0, 350)
+P.axdict["A"].set_xlim(1000, 1600)
+P.axdict["A"].set_ylim(50, 300)
 P.axdict["A"].set_xlabel(f"Cell Body SA {mum2:s}")
 P.axdict["A"].set_ylabel(f"Largest Input ASA {mum2:s}")
 
 P.axdict["B"].scatter(CD_x_pct, largest_inputs, s=9, c='k', marker='o', edgecolors = 'w', linewidths=0.5)
 fitline(P.axdict["B"], x=CD_x_pct, y=largest_inputs)
-P.axdict["B"].set_xlim(0, 100)
-P.axdict["B"].set_ylim(0, 350)
+P.axdict["B"].set_xlim(20, 80)
+P.axdict["B"].set_ylim(50, 300)
 P.axdict["B"].set_xlabel(f"Percent of Soma Covered by Large Inputs")
 P.axdict["B"].set_ylabel(f"Largest Input ASA {mum2:s}")
 
 P.axdict["C"].scatter(soma_SA, large_input_count, s=9, c='k', marker='o', edgecolors = 'w', linewidths=0.5)
 fitline(P.axdict["C"], x=soma_SA, y=large_input_count)
-P.axdict["C"].set_xlim(0, 2500)
+P.axdict["C"].set_xlim(1000, 1600)
 P.axdict["C"].set_ylim(0, 15)
 PH.set_axes_ticks(P.axdict["C"], yticks=[0, 5, 10, 15], yticks_str=["0", "5", "10", "15"], 
     y_minor=[1,2,3,4,6,7,8,9,11,12,13,14])
@@ -78,14 +78,14 @@ P.axdict["C"].set_ylabel(f"Number of Large Inputs")
 
 P.axdict["D"].scatter(CD_x_pct, soma_SA, s=9, c='k', marker='o', edgecolors = 'w', linewidths=0.5)
 fitline(P.axdict["D"], x=CD_x_pct, y=soma_SA)
-P.axdict["D"].set_xlim(0, 100)
-P.axdict["D"].set_ylim(0, 2500)
+P.axdict["D"].set_xlim(20, 80)
+P.axdict["D"].set_ylim(1000, 1600)
 P.axdict["D"].set_xlabel(f"Percent of Soma Covered by Large Inputs")
 P.axdict["D"].set_ylabel(f"Cell Body SA {mum2:s}")
 
 for ax in P.axdict:
     PH.nice_plot(P.axdict[ax], direction="outward", position=-0.03, ticklength=3.0)
 
-mpl.savefig(f"/Volumes/Pegasus_002/VCN-SBEM-Data/Figures/Figure2/Figure2_supp/Figure2_Supplemental1_{mode:s}.pdf")
-mpl.savefig(f"/Volumes/Pegasus_002/VCN-SBEM-Data/Figures/Figure2/Figure2_supp/Figure2_Supplemental1_{mode:s}.png")
+mpl.savefig(f"/Volumes/Pegasus_002/VCN-SBEM-Data/SBEM-paper Figures/Figure2/Figure2_supp/Figure2_Supplemental1_{mode:s}.pdf")
+mpl.savefig(f"/Volumes/Pegasus_002/VCN-SBEM-Data/SBEM-paper Figures/Figure2/Figure2_supp/Figure2_Supplemental1_{mode:s}.png")
 mpl.show()
