@@ -3,7 +3,7 @@
 # P. Manis
 
 # development utilities
-black==19.10b0
+black==23.1.0
 flake8
 bokeh==2.3.3
 Pint==0.14
@@ -18,7 +18,7 @@ rich>=12.0
 
 # cnmodel (and vcnmodel) requirements
 alphashape
-Cython==0.29.17
+Cython==0.29.33
 dill==0.3.1.1
 envisage==4.7.2
 
@@ -37,19 +37,19 @@ neuron==8.1
 -e git+http://github.com/NeuralEnsemble/elephant.git@0df45812b93229b3186c061cb84ec29fd380e09c#egg=elephant
 
 nose==1.3.7
-numba==0.55.2
-numpy>=1.22
-pandas>=1.4
+numba==0.56.4
+numpy==1.23  # limited by numba, which balks at 1.24
+pandas==1.5.3
 plotnine>=0.7.1
 psutil==5.6.7
 
 pycca==0.2.0
 -e git+https://github.com/circstat/pycircstat.git@dae8ecad8d594c402ea72fcc03dc3dd9172a66cf#egg=pycircstat
 
-PyOpenGL==3.1.5
-PyOpenGL-accelerate==3.1.5
+PyOpenGL==3.1.6
+PyOpenGL-accelerate==3.1.6
 pynwb
-pyparsing==2.4.0
+pyparsing==3.0.9
 pyqt6==6.3.0
 pyqt6-sip==13.3.1
 pyqtgraph
@@ -57,7 +57,7 @@ pyqtgraph
 openpyxl
 
 resampy==0.2.1
-scipy>=1.6
+scipy==1.10.0
 scikit-learn==1.1.1
 seaborn>=0.11.0
 Shapely==1.8.2
