@@ -12,10 +12,10 @@ Support::
     DC R01 DC004551 (Manis, 2013-2019, Early development)
     DC R01 DC019053 (Manis, 2020-2025, Later development)
 
-Paul B. Manis, 2014-2022
+Paul B. Manis, 2014-2023
 """
 
-version = '0.9.9'  # 30 August 2022
+version = '0.9.9b'  # 17 February 2023
 extensions = [
     Extension("sttc_cython",  ["vcnmodel/analyzers/sttc_cython.pyx"],
                include_dirs=[numpy.get_include()])
@@ -30,7 +30,7 @@ setup(name='vcnmodel',
       packages=find_packages(include=['vcnmodel*']),
       ext_modules=cythonize(extensions),
 
-      python_requires='>=3.9',
+      python_requires='>=3.10',
       zip_safe=False,
       entry_points={
           'console_scripts': [
