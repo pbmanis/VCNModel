@@ -372,7 +372,7 @@ def Figure5_Supplemental2_Patterns(reanalyze=False, dataset:str="Spont"):
 
 
 
-def Figure5E_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
+def Figure5E_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd', cell_legend:bool=True):
     """Plot the fraction of inputs for specific subsets of
     input patterns for cells 5, 30, 9 and 17
 
@@ -388,6 +388,10 @@ def Figure5E_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
         Plot either multiple sets of patterns ("multi"), or plot
         just the ones that include a specific input as the 
         largest ("mmcd" mode)
+    
+    cell_legend: Enable or disable putting the cell markers up in 
+        the legend. If False, the ASA size legend is moved up to the
+        top of the legend space
 
 
     Raises
@@ -511,64 +515,55 @@ def Figure5E_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd'):
                      2: GRPDEF.get_group_symbol('MixedMode'),
                     # 2: GRPDEF.get_group_symbol('First-in')
                     },
-            x_jitter=True,
+            # x_jitter=True,
             data=df,
             ax=ax,
             clip_on = False)
 
     # custom legend
-    custom_legend = []
-    # l = Line2D([0], [0], label=f"Cell\n  CD     MM", color='w')
-    # custom_legend.append(l)
-    # legorder = [0, 1, 2, 4, 6,  9, 3, 5,  7,  8, None]
-    legorder = [0, 1, 2, 4, 6, 9, 3, 5, 7, 8, None]
-    # cell ord  2  5  6  9  10  11 13 17  18  30
-    # neword    0  1  2  3   4   5  6  7   8   9
-    colors = GRPDEF.sns_colors
-    for i in range(11):
-        legn = legorder[i]
-        if legn is None:
-            l = Line2D([], [], linewidth=0, label="")
-            custom_legend.append(l)
-        else:
-            cell = c_cells[legn]
-            if cell in GRPDEF.MixedMode:
-                marker = 'D'
-                markersize = 4
+    legend2_y = 1.0
+    legend1_y = 1.2
+    if cell_legend:
+        legend2_y = 0.7
+        custom_legend = []
+        legorder = [0, 1, 2, 4, 6, 9, 3, 5, 7, 8, None]
+        colors = GRPDEF.sns_colors
+        for i in range(11):
+            legn = legorder[i]
+            if legn is None:
+                l = Line2D([], [], linewidth=0, label="")
+                custom_legend.append(l)
             else:
-                marker = 'o'
-                markersize=5
-            # print("Cell: ", cell, "Marker: ", df[df["Cell"]==cell]["Marker"].values)
-            l = Line2D([], [], marker=marker, # df[df["Cell"]==cell]["Marker"].values[0], 
-                color=colors[legn], markerfacecolor=colors[legn], linewidth = 0, markersize=markersize, label=f"BC{cell:02d}")
-        custom_legend.append(l)
+                cell = c_cells[legn]
+                if cell in GRPDEF.MixedMode:
+                    marker = 'D'
+                    markersize = 4
+                else:
+                    marker = 'o'
+                    markersize=5
+                # print("Cell: ", cell, "Marker: ", df[df["Cell"]==cell]["Marker"].values)
+                l = Line2D([], [], marker=marker, # df[df["Cell"]==cell]["Marker"].values[0], 
+                    color=colors[legn], markerfacecolor=colors[legn], linewidth = 0, markersize=markersize, label=f"BC{cell:02d}")
+            custom_legend.append(l)
 
-    # l = Line2D([0], [0], label = "\nASA (um2)", color='w')
-    # custom_legend.append(l)
+        legend1 = ax.legend(handles=custom_legend, handlelength=1, 
+                loc="upper center", bbox_to_anchor=(0.8, legend1_y),
+                fontsize=6, labelspacing=0.35, ncol=2, title="     Cell   \n CD      MM "
+                )
+        mpl.setp(legend1.get_title(), fontsize='7')
+
+        ax.add_artist(legend1)
+    
     legend2 = []
     diams = [50, 100, 200, 250]
     for d in diams:
         l = Line2D([], [], marker='o', color="grey", linewidth=0, markersize=np.sqrt(np.array(d))*asa_scale, label=f"{d:>3d}")
         legend2.append(l)
-    # l = Line2D([0], [0], label = "\nGroup", color='w')
-    # custom_legend.append(l)
-    # l = Line2D([0], [0], marker='o', color="grey", markersize=6, label=f"Coincidence")
-    # custom_legend.append(l)
-    # l = Line2D([0], [0], marker='h', color="grey", markersize=6, label=f"Mixed-Mode")
-    # custom_legend.append(l)
-
-    legend1 = ax.legend(handles=custom_legend, handlelength=1, 
-            loc="upper center", bbox_to_anchor=(0.8, 1.2),
-            fontsize=6, labelspacing=0.35, ncol=2, title="     Cell   \n CD      MM "
-            )
-    mpl.setp(legend1.get_title(), fontsize='7')
     legend2 = ax.legend(handles=legend2, labels=diams,
-            loc="upper center", bbox_to_anchor=(0.8, 0.7),
+            loc="upper center", bbox_to_anchor=(0.8, legend2_y),
             labelspacing=0.9,
             title="ASA", fontsize=6)
 
-    ax.add_artist(legend1)
-    
     ax.add_artist(legend2)
     mpl.setp(ax.get_legend().get_title(), fontsize='7')
 
