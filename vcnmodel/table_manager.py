@@ -500,7 +500,6 @@ class TableManager:
             print(fn.is_file())
             Path(fn).unlink()
         indexfilename = self.force_suffix(data.datestr)
-        print(Path(indexfilename).is_file())
         if Path(indexfilename).is_file():
             print(f" and index file: {str(indexfilename):s}")
         # now update the table print(indexrow)

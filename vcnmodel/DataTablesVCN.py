@@ -708,7 +708,6 @@ class DataTablesVCN:
         self.trace_selector_plot.setMaximumHeight(100)
         self.trace_plots.setContentsMargins(10, 10, 10, 10)
 
-        # print(dir(self.trace_selector_plot))
         self.Dock_Traces.addWidget(
             self.trace_selector_plot, row=5, col=0, rowspan=1, colspan=1
         )
