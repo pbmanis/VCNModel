@@ -781,52 +781,89 @@ class EfficacyPlots(object):
         )
 
         if legend:
-            # create custom legend
-            legend_elements = []
-            # do the cells first
-            print(len(self.pal))
-            print(len(self.all_cells))
-            for i, cellid in enumerate(self.all_cells):
-                legend_elements.append(
-                    Line2D(
-                        [0],
-                        [0],
-                        color=self.pal[i],
-                        marker="o",
-                        lw=0,
-                        label=f"BC{cellid:02d}",
-                    )
-                )
-            legend_elements.append(
-                Line2D(
-                    [0],
-                    [0],
-                    color="grey",
-                    marker="*",
-                    lw=0,
-                    markersize=5,
-                    markeredgecolor=None,
-                    label="Pred.",
-                )
-            )
-            legend_elements.append(Line2D([0], [0], color="red", lw=1, label="Group1"))
-            legend_elements.append(
-                Line2D([0], [0], color="skyblue", lw=1, label="Group2")
-            )
+            c_cells = GRPDEF.gradeACells
+        # custom legend
+        # 2 columns, different symbols by mode
+            custom_legend = []
+            legorder = [0, 1, 2, 4, 6, 9, 3, 5, 7, 8]
+            colors = GRPDEF.sns_colors
+            for i in range(10):
+                legn = legorder[i]
+                if legn is None:
+                    l = Line2D([], [], linewidth=0, label="")
+                    custom_legend.append(l)
+                else:
+                    cell = c_cells[legn]
+                    if cell in GRPDEF.MixedMode:
+                        marker = 'D'
+                        markersize = 4
+                    else:
+                        marker = 'o'
+                        markersize=5
+                    # print("Cell: ", cell, "Marker: ", df[df["Cell"]==cell]["Marker"].values)
+                    l = Line2D([], [], marker=marker, # df[df["Cell"]==cell]["Marker"].values[0], 
+                        color=colors[legn], markerfacecolor=colors[legn], linewidth = 0, markersize=markersize, label=f"BC{cell:02d}")
+                custom_legend.append(l)
 
-            ax.legend(
-                handles=legend_elements,
-                loc="upper left",
-                bbox_to_anchor=(-0.05, 1.15),
-                ncol=2,
-                fontsize=6,
-                markerscale=1,
-                frameon=False,
-                fancybox=False,
-                shadow=False,
-                facecolor="w",
-                labelspacing=0.22,
+            custom_legend.append(Line2D([0], [0], color="red", lw=1, linestyle='-', label="MM Fit"))
+            custom_legend.append(
+                Line2D([0], [0], color="skyblue", lw=1, linestyle='--', label="CD Fit")
             )
+            legend1 = ax.legend(handles=custom_legend, handlelength=1.5, 
+                    loc="upper left", bbox_to_anchor=(0.0, 1.2),
+                    fontsize=6, labelspacing=0.35, ncol=2, title="     Cell   \n CD      MM "
+                    )
+
+            ax.add_artist(legend1)
+            mpl.setp(legend1.get_title(), fontsize='7')
+
+
+            # # create custom legend
+            # legend_elements = []
+            # # do the cells first
+            # print(len(self.pal))
+            # print(len(self.all_cells))
+            # for i, cellid in enumerate(self.all_cells):
+            #     legend_elements.append(
+            #         Line2D(
+            #             [0],
+            #             [0],
+            #             color=self.pal[i],
+            #             marker="o",
+            #             lw=0,
+            #             label=f"BC{cellid:02d}",
+            #         )
+            #     )
+            # legend_elements.append(
+            #     Line2D(
+            #         [0],
+            #         [0],
+            #         color="grey",
+            #         marker="*",
+            #         lw=0,
+            #         markersize=5,
+            #         markeredgecolor=None,
+            #         label="Pred.",
+            #     )
+            # )
+            # legend_elements.append(Line2D([0], [0], color="red", lw=1, label="Group1"))
+            # legend_elements.append(
+            #     Line2D([0], [0], color="skyblue", lw=1, label="Group2")
+            # )
+
+            # ax.legend(
+            #     handles=legend_elements,
+            #     loc="upper left",
+            #     bbox_to_anchor=(-0.05, 1.15),
+            #     ncol=2,
+            #     fontsize=6,
+            #     markerscale=1,
+            #     frameon=False,
+            #     fancybox=False,
+            #     shadow=False,
+            #     facecolor="w",
+            #     labelspacing=0.22,
+            # )
 
     def plot_each_efficacy(
         self,
@@ -841,6 +878,8 @@ class EfficacyPlots(object):
         no_points: bool = False,
     ):
         """Plot Efficacy for all inputs from a given dataset
+
+        Related to Figure 8
 
         Parameters
         ----------
@@ -974,7 +1013,7 @@ class EfficacyPlots(object):
                 method=meth,
                 params=gparams,
                 x=df.ASA.values,
-                weights=weights,
+                # weights=weights,
             )
             print(f"\n     {meth:s} fit: ")
             print(f"     Cells: {str(sel_cells):s}")
@@ -1010,6 +1049,8 @@ class EfficacyPlots(object):
         plot_fits: bool = True,
     ):
         """Plot fit to the data points in the dataframe
+
+        Related to Figure 5
 
         Parameters
         ----------
@@ -1047,7 +1088,10 @@ class EfficacyPlots(object):
             lab = f"{method:s}  {tc:s}"
         else:
             lab = method
-        ax.plot(xfit, yfit, color, label=lab, linewidth=1)  # all cells
+        linestyle = '-'
+        if gname == 'Coincidence':
+            linestyle = '--'
+        ax.plot(xfit, yfit, color, label=lab, linestyle=linestyle, linewidth=1)  # all cells
 
         # perform fit
         print(f"Fitting with model: {gmodel.name:s}")
@@ -1209,7 +1253,7 @@ class EfficacyPlots(object):
             method=method,
             cells=cells2,
             gname = "Coincidence",
-            max_x=300.0,  # 180.0,
+            max_x=225.0,  # 180.0,
             color="#94c8ff",
             initial_conditions={"amplitude": 0.8, "center": 190.0, "sigma": 10},
         )
