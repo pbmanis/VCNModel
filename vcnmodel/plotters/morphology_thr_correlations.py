@@ -22,17 +22,17 @@ import scipy.interpolate as SCINT
 import vcnmodel.group_defs as GRPDEF
 
 
-aisdata="""cell,DendAreas,OrigThr,OrigStd,MeshInfl,NewStandardized
-2,4674.18,0.655,0.530,nan,0.617
-5,3755.39,1.410,0.560,nan,0.583
-6,4130.73,0.570,0.515,0.589,nan
-9,3380.13,0.405,0.465,0.439,nan
-10,4060.61,0.585,0.565,0.594,nan
-11,3137.8,0.370,0.405,0.398,nan
-13,3263.11,0.435,0.415,0.445,nan
-17,3709.79,0.550,0.495,0.483,nan
-18,3893.267,0.350,0.440,0.581,nan
-30,3989.83,0.545,0.580,0.563,nan
+aisdata="""cell,DendAreas,OrigThr,OrigStd,MeshInfl,NewStandardized,AIS_Length
+2,4674.18,0.655,0.530,nan,0.617,nan
+5,3755.39,1.410,0.560,nan,0.583,nan
+6,4130.73,0.570,0.515,0.589,nan, 14.16
+9,3380.13,0.405,0.465,0.439,nan, 24.16
+10,4060.61,0.585,0.565,0.594,nan, 18.66
+11,3137.8,0.370,0.405,0.398,nan, 22.19  
+13,3263.11,0.435,0.415,0.445,nan, 17.58 
+17,3709.79,0.550,0.495,0.483,nan, 15.07 
+18,3893.267,0.350,0.440,0.581,nan, 12.58 
+30,3989.83,0.545,0.580,0.563,nan, 21.37 
 """
 
 
@@ -207,6 +207,15 @@ class AIS():
         syms = ['o', 'o', '^', 's', 'v', 'd', 'o', 'o', '^', 'v']
         facecolors = GRPDEF.sns_colors
         # edgecolors = [None]*len(colors)
+        df_true = df_true[df_true["cell"].isin([6, 9, 10, 11, 13, 17, 18, 30])]
+        res = SPS.linregress(df_true["AIS_Length"], df_true["MeshInfl"])
+        xl = np.linspace(9, 25)  # match computation.
+        yl = res.slope * xl + res.intercept
+        ax.plot(xl, yl, 'k--', linewidth=1.5, alpha=0.5, )
+
+        r2 = r"${r^2}$"
+        ax.text(1.0, 0., f"p = {res.pvalue:.3f}, {r2:s} = {res.rvalue**2:.3f} ", 
+            fontsize=8, ha="right", transform=ax.transAxes, zorder=1)
 
         for i, coln in enumerate(colnames):
             if i == 0:
@@ -231,7 +240,8 @@ class AIS():
                 label=bc_num)
             if celln not in [2, 5]:
                 la_y = SCINT.lagrange(df["AIS_Length"].values, df[coln].values)
-                ax.plot(aislengths[celln], la_y(aislengths[celln]), 'o', color=GRPDEF.sns_colors[bc_index], markersize=4)
+                ax.plot(aislengths[celln], la_y(aislengths[celln]), 'o', color=GRPDEF.sns_colors[bc_index], markersize=4, zorder=100)
+
 
         ax.set_xlim(0, 25)
         ax.set_xlabel(f"AIS Length ($\mu$m)")
@@ -256,6 +266,7 @@ class AIS():
         # P.axdict[pan[5]].legend(handles=custom_legend, handlelength=1, loc="upper right", fontsize=7, labelspacing=0.33, markerscale=0.5)
         ax.legend(loc="upper left", fontsize=6, ncol=1, frameon=False, labelspacing=0.33, markerscale=0.5)
         PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)
+ 
         if show:
             mpl.show()
 
