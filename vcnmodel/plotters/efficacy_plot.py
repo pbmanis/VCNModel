@@ -785,7 +785,7 @@ class EfficacyPlots(object):
         # custom legend
         # 2 columns, different symbols by mode
             custom_legend = []
-            legorder = [0, 1, 2, 4, 6, 9, 3, 5, 7, 8]
+            legorder = [0, 1, 2, 4, 8, 9, 3, 5, 7,6]
             colors = GRPDEF.sns_colors
             for i in range(10):
                 legn = legorder[i]
@@ -795,8 +795,8 @@ class EfficacyPlots(object):
                 else:
                     cell = c_cells[legn]
                     if cell in GRPDEF.MixedMode:
-                        marker = 'D'
-                        markersize = 4
+                        marker = 'o' # 'D'
+                        markersize = 5 # 4
                     else:
                         marker = 'o'
                         markersize=5
@@ -805,65 +805,65 @@ class EfficacyPlots(object):
                         color=colors[legn], markerfacecolor=colors[legn], linewidth = 0, markersize=markersize, label=f"BC{cell:02d}")
                 custom_legend.append(l)
 
-            custom_legend.append(Line2D([0], [0], color="red", lw=1, linestyle='-', label="MM Fit"))
-            custom_legend.append(
-                Line2D([0], [0], color="skyblue", lw=1, linestyle='--', label="CD Fit")
-            )
-            legend1 = ax.legend(handles=custom_legend, handlelength=1.5, 
-                    loc="upper left", bbox_to_anchor=(0.0, 1.2),
-                    fontsize=6, labelspacing=0.35, ncol=2, title="     Cell   \n CD      MM "
-                    )
+            # custom_legend.append(Line2D([0], [0], color="red", lw=1, linestyle='-', label="Group1 Fit"))
+            # custom_legend.append(
+            #     Line2D([0], [0], color="skyblue", lw=1, linestyle='--', label="Group2 Fit")
+            # )
+            # legend1 = ax.legend(handles=custom_legend, handlelength=1.5, 
+            #         loc="upper left", bbox_to_anchor=(0.0, 1.2),
+            #         fontsize=6, labelspacing=0.35, ncol=2, title="     Cell", #    \n CD      MM "
+            #         )
 
-            ax.add_artist(legend1)
-            mpl.setp(legend1.get_title(), fontsize='7')
+            # ax.add_artist(legend1)
+            # mpl.setp(legend1.get_title(), fontsize='7')
 
 
             # # create custom legend
-            # legend_elements = []
-            # # do the cells first
-            # print(len(self.pal))
-            # print(len(self.all_cells))
-            # for i, cellid in enumerate(self.all_cells):
-            #     legend_elements.append(
-            #         Line2D(
-            #             [0],
-            #             [0],
-            #             color=self.pal[i],
-            #             marker="o",
-            #             lw=0,
-            #             label=f"BC{cellid:02d}",
-            #         )
-            #     )
-            # legend_elements.append(
-            #     Line2D(
-            #         [0],
-            #         [0],
-            #         color="grey",
-            #         marker="*",
-            #         lw=0,
-            #         markersize=5,
-            #         markeredgecolor=None,
-            #         label="Pred.",
-            #     )
-            # )
-            # legend_elements.append(Line2D([0], [0], color="red", lw=1, label="Group1"))
-            # legend_elements.append(
-            #     Line2D([0], [0], color="skyblue", lw=1, label="Group2")
-            # )
+            legend_elements = []
+            # do the cells first
+            print(len(self.pal))
+            print(len(self.all_cells))
+            for i, cellid in enumerate(self.all_cells):
+                legend_elements.append(
+                    Line2D(
+                        [0],
+                        [0],
+                        color=self.pal[i],
+                        marker="o",
+                        lw=0,
+                        label=f"BC{cellid:02d}",
+                    )
+                )
+            legend_elements.append(
+                Line2D(
+                    [0],
+                    [0],
+                    color="grey",
+                    marker="*",
+                    lw=0,
+                    markersize=5,
+                    markeredgecolor=None,
+                    label="Pred.",
+                )
+            )
+            legend_elements.append(Line2D([0], [0], color="red", lw=1, label="Group1"))
+            legend_elements.append(
+                Line2D([0], [0], color="skyblue", lw=1, label="Group2")
+            )
 
-            # ax.legend(
-            #     handles=legend_elements,
-            #     loc="upper left",
-            #     bbox_to_anchor=(-0.05, 1.15),
-            #     ncol=2,
-            #     fontsize=6,
-            #     markerscale=1,
-            #     frameon=False,
-            #     fancybox=False,
-            #     shadow=False,
-            #     facecolor="w",
-            #     labelspacing=0.22,
-            # )
+            ax.legend(
+                handles=legend_elements,
+                loc="upper left",
+                bbox_to_anchor=(-0.05, 1.15),
+                ncol=2,
+                fontsize=6,
+                markerscale=1,
+                frameon=False,
+                fancybox=False,
+                shadow=False,
+                facecolor="w",
+                labelspacing=0.22,
+            )
 
     def plot_each_efficacy(
         self,
@@ -1253,7 +1253,7 @@ class EfficacyPlots(object):
             method=method,
             cells=cells2,
             gname = "Coincidence",
-            max_x=225.0,  # 180.0,
+            max_x=300, #225.0,  # 180.0,
             color="#94c8ff",
             initial_conditions={"amplitude": 0.8, "center": 190.0, "sigma": 10},
         )

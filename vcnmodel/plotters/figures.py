@@ -1640,7 +1640,7 @@ class Figures(object):
 
             # input pattern plot
             # PATSUM.Figure4F_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode="multi")
-            PATSUM.Figure5E_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode='mmcd', cell_legend = False)  
+            PATSUM.Figure5E_pattern_plot(axin=P.axdict["E"], dataset="Spont", mode='mmcd', cell_legend = True)  
             # participation
             ds = self._load_rcdata("Spont")
             drc = self._load_rcdata(f"{participation_dB:2d}dB")
@@ -1760,13 +1760,13 @@ class Figures(object):
         else:
             fig.P = P
         if not supplemental1:
-            fig.filename = set_figure_path(fignum=5, filedescriptor="Ephys_2_main_v18")
+            fig.filename = set_figure_path(fignum=5, filedescriptor="Ephys_2_main_v19")
             fig.title[
                 "title"
-            ] = "SBEM Project Figure 5 (main) Modeling: singles inputs, efficacy and revcorr, revised version 8"
+            ] = "SBEM Project Figure 5 (main) Modeling: singles inputs, efficacy and revcorr, revised version 9"
         else:
             fig.filename = set_figure_path(fignum=5, filedescriptor="Revcorr_V5", suppnum=1)
-            #"Figure4/Figure4_supp/Figure4_Supplemental1_Revcorr_V4.pdf"
+            #"Figure5/Figure5_supp/Figure5_Supplemental1_Revcorr_V4.pdf"
             fig.title[
                 "title"
             ] = "SBEM Project Figure 5 Modeling: Supplemental 1: other cells single inputs and revcorr"
