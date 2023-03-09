@@ -22,17 +22,17 @@ import scipy.interpolate as SCINT
 import vcnmodel.group_defs as GRPDEF
 
 
-aisdata="""cell,DendAreas,OrigThr,OrigStd,MeshInfl,NewStandardized,AIS_Length
-2,4674.18,0.655,0.530,nan,0.617,nan
-5,3755.39,1.410,0.560,nan,0.583,nan
-6,4130.73,0.570,0.515,0.589,nan, 14.16
-9,3380.13,0.405,0.465,0.439,nan, 24.16
-10,4060.61,0.585,0.565,0.594,nan, 18.66
-11,3137.8,0.370,0.405,0.398,nan, 22.19  
-13,3263.11,0.435,0.415,0.445,nan, 17.58 
-17,3709.79,0.550,0.495,0.483,nan, 15.07 
-18,3893.267,0.350,0.440,0.581,nan, 12.58 
-30,3989.83,0.545,0.580,0.563,nan, 21.37 
+aisdata="""cell,DendAreas,SomaAreas,OrigThr,OrigStdThr,MeshInflThr,NewStandardizedThr,AIS_Length
+2,4674.18,   1446.05, 0.655,0.530,nan,0.617,nan
+5,3755.39,  1343.55, 0.410,0.560,nan,0.583,nan
+6,4130.73,  1464.27, 0.570,0.515,0.589,nan, 14.16
+9,3380.13,  1340.36, 0.405,0.465,0.439,nan, 24.16
+10,4060.61, 1388.7,  0.585,0.565,0.594,nan, 18.66
+11,3137.8,  1288.45, 0.370,0.405,0.398,nan, 22.19  
+13,3263.11, 1305.31, 0.435,0.415,0.445,nan, 17.58 
+17,3709.79, 1357.62, 0.550,0.495,0.483,nan, 15.07 
+18,3893.267,1292.47, 0.350,0.440,0.581,nan, 12.58 
+30,3989.83, 1508.36, 0.545,0.580,0.563,nan, 21.37 
 """
 
 
@@ -76,13 +76,13 @@ def prepare_data(datas):
     df = pd.read_table(sio, sep=",")
     return df
 
-def plot_scatter(ax, df, cells, symbol, data=["DendAreas", "MeshInfl"]):
+def plot_scatter(ax, df, cells, symbol, data=["DendAreas", "MeshInflThr"]):
     colorl = []
     dfs = df[df["cell"].isin(cells)]
     for i, cell in enumerate(cells):
         bc_index = GRPDEF.gradeACells.index(int(cell))
         colorl.append(GRPDEF.sns_colors[bc_index])
-    # note the table uses MeshInfl as the Threshold value (referncing the cell area correction)
+    # note the table uses MeshInflThr as the Threshold value (referncing the cell area correction)
     # and NewStandardized for cells 2 and 5 for the axon.
     ax.scatter(dfs[data[0]], dfs[data[1]], s=20, marker=symbol, c=colorl)
 
@@ -106,7 +106,7 @@ class SD():
         for i, cell in enumerate(self.cells):
             bc_index = GRPDEF.gradeACells.index(int(cell))
             colorl.append(GRPDEF.sns_colors[bc_index])
-        # note the table uses MeshInfl as the Threshold value (referncing the cell area correction)
+        # note the table uses MeshInflThr as the Threshold value (referncing the cell area correction)
         # and NewStandardized for cells 2 and 5 for the axon.
         symbol = 'o'
         if ax is None:
@@ -130,11 +130,26 @@ class SD():
         PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)
 
 
+  
 class AIS():
     def __init__(self):
         pass
     
-    def DendvsThr(self, ax=None):
+    def MorphvsThr(self, ax=None, compartment="dendrite"):
+        if compartment not in ["dendrite", "soma"]:
+            raise ValueError("AIS.MorphvsThr requires compartment in 'dendrite' or 'soma'")
+        if compartment == "dendrite":
+            compartment_column = "DendAreas"
+            compartment_lims = (3000, 5000)
+            xtpos = np.arange(3000, 5001, 500)
+            xp = np.linspace(3000, 4500, 100)
+
+        elif compartment == "soma":
+            compartment_column = "SomaAreas"
+            compartment_lims = (1250, 1550)
+            xtpos = np.arange(1250, 1551, 50)
+            xp = np.linspace(1250, 1550, 50)
+
         df = prepare_data(aisdata)
 
         show = False
@@ -144,37 +159,41 @@ class AIS():
         colorl = []
         # map colors
         cells0 = GRPDEF.get_cells_in_group(1)
-        plot_scatter(ax, df, cells0, symbol=GRPDEF.group_symbols[0])
+        plot_scatter(ax, df, cells0, symbol=GRPDEF.group_symbols[0], data=[compartment_column, "MeshInflThr"])
         cells1 = GRPDEF.get_cells_in_group(2)
-        plot_scatter(ax, df, cells1, symbol=GRPDEF.group_symbols[1])
-        # note the table uses MeshInfl as the Threshold value (referncing the cell area correction)
+        plot_scatter(ax, df, cells1, symbol=GRPDEF.group_symbols[1], data=[compartment_column, "MeshInflThr"])
+        # note the table uses Thr as the Threshold value (referncing the cell area correction)
         # and NewStandardized for cells 2 and 5 for the axon.
-#        ax.scatter(df["DendAreas"], df["MeshInfl"], s=12, marker=marks, c=colorl)
+#        ax.scatter(df["DendAreas"], df["MeshInflThr"], s=12, marker=marks, c=colorl)
         # 2 and 5 are plotted separately here
-        dfs = df[df["MeshInfl"].isnull()]
+        dfs = df[df["MeshInflThr"].isnull()]
         colorl = []
         for cell in [2, 5]:
             mark = GRPDEF.get_group_symbol(cell)
             bc_index = GRPDEF.gradeACells.index(int(cell))
             colorl.append(GRPDEF.sns_colors[bc_index])
-            ax.scatter(dfs["DendAreas"], dfs["NewStandardized"], 
+            ax.scatter(dfs[compartment_column], dfs["NewStandardizedThr"], 
                 s=20, marker=mark, edgecolors=colorl, facecolors=["w", "w"], linewidths=1)
-        dfn = df[df["MeshInfl"].notnull()]
-        res = sp.stats.linregress(dfn["DendAreas"], dfn["MeshInfl"])
-        xp = np.linspace(3000, 4500, 100)
+        dfn = df[df["MeshInflThr"].notnull()]
+        res = sp.stats.linregress(dfn[compartment_column], dfn["MeshInflThr"])
         # print(res.slope)
         # print(res.intercept)
         # print(f"R-squared: {res.rvalue**2:.6f}")
         # print(f"P value: {res.pvalue:.5f}")
         ax.plot(xp, res.intercept + res.slope*xp, 'k-', linewidth=0.5)
-        ax.text(x=1.0, y=0.05, s=f"p = {res.pvalue:.5f}, r$^2$ = {res.rvalue**2:5.3f}",
+        if compartment == 'dendrite':
+            ax.text(x=1.0, y=0.05, s=f"p = {res.pvalue:.5f}, r$^2$ = {res.rvalue**2:5.3f}",
             horizontalalignment="right", fontsize=8,
             transform=ax.transAxes)
-        ax.set_xlim(3000, 5000)
+        else:
+            ax.text(x=1.0, y=0.05, s=f"p = {res.pvalue:.3f}, r$^2$ = {res.rvalue**2:5.3f}",
+            horizontalalignment="right", fontsize=8,
+            transform=ax.transAxes)
+
+        ax.set_xlim(compartment_lims)
         ax.set_ylim(0.35, 0.65)
-        ax.set_xlabel("Dendrite Area ($\mu m^2$)")
+        ax.set_xlabel(f"{compartment.title():s} Area ($\mu m^2$)")
         ax.set_ylabel("Threshold (nA)")
-        xtpos = np.arange(3000, 5001, 500)
         ytpos = np.arange(0.35, 0.66, 0.05)
         PH.set_axes_ticks(ax=ax,
             xticks = xtpos,
@@ -182,7 +201,7 @@ class AIS():
            # xticks_pad:Union[List, None]=None,
             #x_minor = np.arange(0, 25, 2),
             major_length = 3.0,
-            minor_length =1.5,
+            minor_length = 1.5,
             yticks = ytpos, 
             yticks_str=[f"{x:4.2f}" for x in ytpos], 
             yticks_pad=[1]*7,
@@ -208,7 +227,7 @@ class AIS():
         facecolors = GRPDEF.sns_colors
         # edgecolors = [None]*len(colors)
         df_true = df_true[df_true["cell"].isin([6, 9, 10, 11, 13, 17, 18, 30])]
-        res = SPS.linregress(df_true["AIS_Length"], df_true["MeshInfl"])
+        res = SPS.linregress(df_true["AIS_Length"], df_true["MeshInflThr"])
         xl = np.linspace(9, 25)  # match computation.
         yl = res.slope * xl + res.intercept
         ax.plot(xl, yl, 'k--', linewidth=1.5, alpha=0.5, )
@@ -217,6 +236,7 @@ class AIS():
         ax.text(1.0, 0., f"p = {res.pvalue:.3f}, {r2:s} = {res.rvalue**2:.3f} ", 
             fontsize=8, ha="right", transform=ax.transAxes, zorder=1)
 
+        df_pred = df_true[df_true["cell"].isin([2, 5])]
         for i, coln in enumerate(colnames):
             if i == 0:
                 continue
@@ -233,14 +253,18 @@ class AIS():
             
             print(coln, bc_index, color, sym, mk_face, mk_edge)
             bc_num = f"BC{int(coln):02d}"
-            ax.plot(df["AIS_Length"].values, df[coln].values, 
-            # remove symbols for revision - only plot symbols for the actual AIS length on the same data
-                # sym, markerfacecolor=mk_face, markeredgecolor = mk_edge, markeredgewidth=1,  
-                linestyle='-', color=color, linewidth=1,
-                label=bc_num)
             if celln not in [2, 5]:
+                ax.plot(df["AIS_Length"].values, df[coln].values,   # plot the lines from adjusting the "standard axon"
+                # remove symbols for revision - only plot symbols for the actual AIS length on the same data
+                    # sym, markerfacecolor=mk_face, markeredgecolor = mk_edge, markeredgewidth=1,  
+                    linestyle='-', color=color, linewidth=1,
+                    label=bc_num)
                 la_y = SCINT.lagrange(df["AIS_Length"].values, df[coln].values)
-                ax.plot(aislengths[celln], la_y(aislengths[celln]), 'o', color=GRPDEF.sns_colors[bc_index], markersize=4, zorder=100)
+                ax.plot(aislengths[celln], la_y(aislengths[celln]), 'x', color=GRPDEF.sns_colors[bc_index], markersize=4, zorder=100)
+                ax.plot(aislengths[celln], df_true[df_true.cell == celln]["MeshInflThr"], 'o', color=GRPDEF.sns_colors[bc_index], markersize=4, zorder=100)
+            # if celln in [2, 5]:
+            #     la_y = SCINT.lagrange(df["AIS_Length"].values, df[coln].values)
+            #     ax.plot(aislengths[celln], aisdata[celln], 'o', color=GRPDEF.sns_colors[bc_index], markersize=4, zorder=100)
 
 
         ax.set_xlim(0, 25)
@@ -278,5 +302,6 @@ if __name__ == "__main__":
     # # A.DendvsThr()
     # A.AISLengthThr(show=True)
     S = SD()
-    S.SomavsDend()
+    # S.SomavsDend()
+    S.SomavsThr()
     mpl.show()
