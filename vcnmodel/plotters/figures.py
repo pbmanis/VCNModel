@@ -1682,8 +1682,8 @@ class Figures(object):
             )
             PH.nice_plot(P.axdict["G"], position=self.axis_offset, direction="outward", ticklength=3)
             MTC = morphology_thr_correlations
-            MTC.AIS().DendvsThr(ax=P.axdict["I"])
-            MTC.SD().SomavsDend(ax=P.axdict["J"])
+            MTC.AIS().MorphvsThr(ax=P.axdict["I"], compartment="dendrite")
+            MTC.AIS().MorphvsThr(ax=P.axdict["J"], compartment="soma")
             MTC.AIS().AISLengthThr(ax=P.axdict["K"])
 
             synlabel_num = 5  # this sets which cell the scale bar will be plotted with
