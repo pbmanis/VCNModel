@@ -240,7 +240,7 @@ class MakeStandardAxon:
                 create sections call to match)
             d. connect the prosethetic axon hillock end 0 to the soma section end 1
 
-    The file is written back out to the appropriate Morhpology directory with the name
+    The file is written back out to the appropriate Morphology directory with the name
     VCN_cNN_Full_standardized_axon.hoc
     Modifications can be made to the "standardized_axon". One that is implemented is to change
     the length of the AIS.
