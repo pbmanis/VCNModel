@@ -1090,7 +1090,7 @@ class EfficacyPlots(object):
             lab = method
         linestyle = '-'
         if gname == 'Coincidence':
-            linestyle = '--'
+            linestyle = '-'
         ax.plot(xfit, yfit, color, label=lab, linestyle=linestyle, linewidth=1)  # all cells
 
         # perform fit
@@ -1225,7 +1225,7 @@ class EfficacyPlots(object):
         x, df_added = prepare_data(dataset_predicted)
         df_added = df_added[df_added.Cell.isin([10, 13])]  # just these cells in the group
 
-        cells1 = GRPDEF.MixedMode
+        cells1 = GRPDEF.Fit_Group1
         df1 = df[df.Cell.isin(cells1)]
         self.plot_fit(
             df1,
@@ -1239,11 +1239,9 @@ class EfficacyPlots(object):
             initial_conditions={"amplitude": 1.0, "center": 140.0, "sigma": 8},
         )
 
-        # WITH A RESORTED SET OF CELLS, THE COINCIDENCE GROUP
-        # CANNOT BE FIT WELL. 
         # THIS FIT IS "DASHED" AS IT DEPENDS ON PREDICTIONS FROM 
         # SYNAPSE SIZES THAT ARE NOT IN THE POPULATION.
-        cells2 = GRPDEF.Coincidence
+        cells2 = GRPDEF.Fit_Group2
         df2 = df[df.Cell.isin(cells2)]
         self.plot_fit(
             df2,
