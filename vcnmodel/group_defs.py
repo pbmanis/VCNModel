@@ -5,14 +5,33 @@ from typing import List, Union
 
 # all the best "grade A" cells
 gradeACells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
-MixedMode = [9, 11, 17, 13]
-Coincidence = [2, 5, 6, 10, 18, 30]
+MixedMode = [9, 11, 17, 18]  # according to Figure 2, supplemental figure 2
+Coincidence = [2, 5, 6, 10, 13, 30]  # according to figure 2, supplemental figure 3
+
+# The fit groups are categorized differently than the mm/coincidence groups.
+# These are based on efficacy, specifically for the weaker inputs that define group 2
+Fit_Group1 = [9, 11, 17]
+Fit_Group2 = [2, 5, 6, 10, 13, 18, 30]
 
 # convience function
 def grAList() -> List:
     return gradeACells
 
-# Groups as defined in Figure 4E
+def get_cells_in_fit_group(group:int):
+    if group == 1:
+        return Fit_Group1
+    elif group == 2:
+        return Fit_Group2
+    else:
+        raise ValueError("Group must be either 1 or 2")
+
+def get_fit_group(cellnumber):
+    if cellnumber in Fit_Group1:
+        return 1
+    elif cellnumber in Fit_Group2:
+        return 2
+
+# Groups as defined in Figure 5E : mm or coincidence
 def get_BC_Group(cellnumber):
     if cellnumber in MixedMode:
         return 2
