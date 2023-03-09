@@ -575,14 +575,14 @@ def Figure5E_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd', cell_lege
     if axin is not None:
         ax.legend().remove()
     # remap the database names to a more user-friendly name
-    namemap = {"1st_largest_alone": "1st",
-              "1st_largest+others": "1st+",
-              "2nd_largest_alone": "2nd",
-              "2nd_largest+others": "2nd+",
-              "3rd_largest_alone": "3rd",
-              "3rd_largest+others": "3rd+",
-              "4th_largest+others": "4th+",
-              "5th_largest+others": "5th+",
+    namemap = {"1st_largest_alone": "$1^{st}$",
+              "1st_largest+others": "$1^{st}+$",
+              "2nd_largest_alone": "$2^{nd}$",
+              "2nd_largest+others": "$2^{nd}+$",
+              "3rd_largest_alone": "$3^{rd}$",
+              "3rd_largest+others": "$3^{rd}+$",
+              "4th_largest+others": "$4^{th}+$",
+              "5th_largest+others": "$5^{th}+$",
     }
     tl = []
     for i, name in enumerate(namemap):
