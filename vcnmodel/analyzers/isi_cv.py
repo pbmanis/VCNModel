@@ -100,12 +100,17 @@ def isi_cv(
 
 def firing_rate(spikes):
     """
-    Rate of the spike train.
+    Rate of the spike train, single trial
     """
     if len(spikes) < 2:
         return np.nan
     return (len(spikes) - 1) / (spikes[-1] - spikes[0])
 
+def mean_firing_rate(spikes):
+    if len(spikes) < 2:
+        return np.nan
+    ISI = np.diff(spikes)  # interspike intervals
+    return 1.0 / np.mean(ISI)
 
 def CV(spikes):
     """
