@@ -128,23 +128,30 @@ def readFile(filename, cmd):
     return (spikeTimes, inputSpikeTimes, stimInfo, d)
 
 
-def ANfspike(spikes, stime, nReps):
-    nANF = len(spikes[0])
+def ANfspike(spikes, stime:float, nReps:int, stimdur:float):
+    nANF = len(spikes)
     sl1 = np.full(nReps * nANF, np.nan)
     sl2 = np.full(nReps * nANF, np.nan)
+    nspont_rate = np.full((nANF, nReps), np.nan)
+    ndriven_rate = np.full((nANF, nReps), np.nan)
+    print("nANF: ", nANF, "nreps: ", nReps)
     for r in range(nReps):
         for i in range(nANF):
-            # print spikes[r][i]
-            # print stime
-            rs = np.where(spikes[r][i] > stime)[0]
-            # print spikes[r][i][rs[0]]
-            # return
-            if len(spikes[r][i]) > 0:
-                sl1[r * nANF + i] = spikes[r][i][rs[0]]
-            if len(spikes[r][i]) > 1:
-                sl2[r * nANF + i] = spikes[r][i][rs[1]]
+            rs = np.where(spikes[i][r] > stime)[0]
+            if len(spikes[i][r]) > 0:
+                sl1[r * nANF + i] = spikes[i][r][rs[0]]
+            if len(spikes[i][r]) > 1:
+                sl2[r * nANF + i] = spikes[i][r][rs[1]]
+            sp_spk = np.where(spikes[i][r] < stime)[0]
+            # print(spikes[i][r])
+            driven_spk = np.where((spikes[i][r] > stime+0.025) & (spikes[i][r] <= (stime+stimdur)))[0]
+            # print("Driven: ", driven_spk)
+            nspont_rate[i, r] = np.mean(np.diff(spikes[i][r][sp_spk]))
+            ndriven_rate[i, r] = np.mean(np.diff(spikes[i][r][driven_spk]))
+            # print(sp_spk)
+            # print("Driven rate: ", i, r, ndriven_rate[i, r])
     #    print fsl
-    print("Auditory nerve: ")
+    print("Auditory nerve fibers: ")
     print(
         "   mean First spike latency:  %8.3f ms stdev: %8.3f  (N=%3d)"
         % (np.nanmean(sl1), np.nanstd(sl1), np.count_nonzero(~np.isnan(sl1)))
@@ -153,7 +160,11 @@ def ANfspike(spikes, stime, nReps):
         "   mean Second spike latency: %8.3f ms stdev: %8.3f  (N=%3d)"
         % (np.nanmean(sl2), np.nanstd(sl2), np.count_nonzero(~np.isnan(sl2)))
     )
-
+    print("\n  ANF    SR(Hz)    DR(Hz)")
+    SR_int = np.mean(nspont_rate, axis=1)
+    DR_int = np.mean(ndriven_rate, axis=1)
+    for i in range(nANF):
+        print(f"{i:^7d}{1./SR_int[i]:9.2f}{1./DR_int[i]:9.2f}")
 
 def getFirstSpikes(spikes, stime, nReps, fsl_win: Union[None, tuple] = None):
     # times need to be in consistent units
@@ -170,25 +181,35 @@ def getFirstSpikes(spikes, stime, nReps, fsl_win: Union[None, tuple] = None):
         rs = np.argwhere(
             np.array(spikes[r]).T >= stime + fsl_win[0]
         )  # get spike times post stimulus onset
-        if len(rs) == 0:
-            continue
-        rs = [r[0] for r in rs]  # flatten the array
-        if (
-            spikes[r][rs[0]] - stime > fsl_win[1]
-        ):  # count spikes only if first is in the window
-            sl1[r] = np.nan
-            sl2[r] = np.nan
-        elif len(rs) > 0:  # in window so save
-            sl1[r] = spikes[r][rs[0]] - stime
-            if len(rs) > 1:  # check for second spike
-                sl2[r] = spikes[r][rs[1]] - stime  # second spikes
+        if len(rs) >= 0:
+            rs = [r[0] for r in rs]  # flatten the array
+            if (
+                spikes[r][rs[0]] - stime > fsl_win[1]
+            ):  # count spikes only if first is in the window
+                sl1[r] = np.nan
+                sl2[r] = np.nan
+            elif len(rs) > 0:  # in window so save
+                sl1[r] = spikes[r][rs[0]] - stime
+                if len(rs) > 1:  # check for second spike
+                    sl2[r] = spikes[r][rs[1]] - stime  # second spikes
+        
     sl1 = sl1[~np.isnan(sl1)]  # in case of no spikes at all
     sl2 = sl2[~np.isnan(sl2)]  # in case of no second spikes
     return (sl1, sl2)
 
 
-def CNfspike(spikes, stime, nReps, fsl_win: Union[None, tuple] = None):
+def CNfspike(spikes, stime, nReps, stimdur:float=0.1, fsl_win: Union[None, tuple] = None):
     sl1, sl2 = getFirstSpikes(spikes, stime, nReps, fsl_win)
+    sp_rates = np.full(nReps, np.nan)
+    dr_rates = np.full(nReps, np.nan)
+    for r in range(nReps):
+        if len(spikes[r]) == 0:
+            continue
+        st = np.array(spikes[r]).T
+        spi = np.where(st < stime)[0]
+        dri = np.where((st > stime+0.025) & (st <= (stime+stimdur)))[0]
+        sp_rates[r] = np.nanmean(np.diff(st[spi]))
+        dr_rates[r] = np.nanmean(np.diff(st[dri]))    
 
     print("Cochlear Nucleus Bushy Cell: ")
 
@@ -215,6 +236,12 @@ def CNfspike(spikes, stime, nReps, fsl_win: Union[None, tuple] = None):
         )
     else:
         print("   No SSL data (no SSL spikes)")
+    
+
+    print("\n  Bu    SR(Hz)    DR(Hz)")
+    SR_int = np.mean(sp_rates)
+    DR_int = np.mean(dr_rates)
+    print(f"{' ':7s}{1./SR_int:9.2f}{1./DR_int:9.2f}")
     return (sl1, sl2)
 
 
@@ -301,9 +328,9 @@ def plotPSTH(infile, cmd):
     starttime = 1000.0 * stimInfo["pip_start"][0]
     stimdur = stimInfo["pip_duration"]
     # print 'AN: '
-    ANfspike(inputSpikeTimes, starttime, nReps)
+    ANfspike(inputSpikeTimes, starttime, nReps, stimdur)
     # print 'CN: '
-    CNfspike(spikeTimes, starttime, nReps)
+    CNfspike(spikeTimes, starttime, nReps, stimdur)
     plotPSTHs(spikeTimes, inputSpikeTimes, stimInfo, cmd)
 
 
