@@ -1484,9 +1484,9 @@ class Figures(object):
             yh1 = 3.75
         else:
             yh2 = 1.2
-            yb2 = 3.5 + 2.7 - 0.5 + 2.5
-            yb3 = 3.5 + 0.6 - 0.5 + 2.5
-            yb1 = 3.25 - 0.5 +2.5
+            yB2 = 3.5 + 2.7 - 0.5 + 2.5
+            yC2 = 3.5 + 0.6 - 0.5 + 2.5
+            yA1 = 3.25 - 0.5 +2.5 - 0.105  # to align with B
             yh1 = 4.25
         for j in range(len(example_cells)):
             i = j + 1
@@ -1500,17 +1500,17 @@ class Figures(object):
             axn = f"A{i:d}"
             trace_axes.append(axn)
             sizer[axn] = {
-                "pos": [xl1, xw, yb1, yh1],
+                "pos": [xl1, xw, yA1, yh1],
                 "labelpos": (-0.15, 1.03),
                 "noaxes": True,
             }
             sizer[pan_rev] = {  # reverse correlatoin
-                "pos": [xl2, xw2, yb2, yh2],
+                "pos": [xl2, xw2, yB2, yh2],
                 "labelpos": (-0.25, 1.1),
                 # "noaxes": True,
             }
             sizer[pan_vm] = {
-                "pos": [xl2, xw2, yb3, yh2],
+                "pos": [xl2, xw2, yC2, yh2],
                 "labelpos": (-0.25, 1.1),
                 "noaxes": True,
             }
@@ -1527,6 +1527,7 @@ class Figures(object):
             showgrid=False,
             parent_figure=parent_figure,
         )
+        # PH.show_figure_grid(P)
         if not final_plot:
             P.figure_handle.text(x=0.01, y=figsize[1]-0.1, s=f"{Figure5_stim_level:s}",
             fontdict={"fontsize": 11, "fontweight": "bold", "verticalalignment": "top"},

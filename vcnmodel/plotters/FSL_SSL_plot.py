@@ -50,7 +50,7 @@ def boltz(x, A, vhalf, k):
 sio = io.StringIO(data)
 df = pd.read_table(sio, sep=",")
 maxv = 20.0
-figstyle = ST.styler(journal='CerebralCortex', figuresize='single', font='Arial')
+figstyle = ST.styler(journal='Generic', figuresize='single', font='Arial')
 
 P = PH.regular_grid(
     rows=1,

@@ -182,11 +182,11 @@ class AIS():
         # print(f"P value: {res.pvalue:.5f}")
         ax.plot(xp, res.intercept + res.slope*xp, 'k-', linewidth=0.5)
         if compartment == 'dendrite':
-            ax.text(x=1.0, y=0.05, s=f"p = {res.pvalue:.5f}, r$^2$ = {res.rvalue**2:5.3f}",
+            ax.text(x=1.0, y=0.01, s=f"p = {res.pvalue:.5f}, r$^2$ = {res.rvalue**2:5.3f}",
             horizontalalignment="right", fontsize=8,
             transform=ax.transAxes)
         else:
-            ax.text(x=1.0, y=0.05, s=f"p = {res.pvalue:.3f}, r$^2$ = {res.rvalue**2:5.3f}",
+            ax.text(x=1.0, y=0.01, s=f"p = {res.pvalue:.3f}, r$^2$ = {res.rvalue**2:5.3f}",
             horizontalalignment="right", fontsize=8,
             transform=ax.transAxes)
 
@@ -233,7 +233,7 @@ class AIS():
         ax.plot(xl, yl, 'k--', linewidth=1.5, alpha=0.5, )
 
         r2 = r"${r^2}$"
-        ax.text(1.0, 0., f"p = {res.pvalue:.3f}, {r2:s} = {res.rvalue**2:.3f} ", 
+        ax.text(1.0, 0.01, f"p = {res.pvalue:.3f}, {r2:s} = {res.rvalue**2:.3f} ", 
             fontsize=8, ha="right", transform=ax.transAxes, zorder=1)
 
         df_pred = df_true[df_true["cell"].isin([2, 5])]

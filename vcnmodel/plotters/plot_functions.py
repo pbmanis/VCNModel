@@ -166,6 +166,19 @@ def plot_psth(
 
     return
 
+@TRC()
+
+def print_AN_rates(
+    spike_times: Union[list, np.ndarray],
+    run_info: object,
+):
+    SPKANA.ANfspike(
+        spike_times,
+        stime = run_info.pip_start,
+        nReps=run_info.nReps,
+        stimdur = run_info.pip_duration
+    )
+
 
 @TRC()
 def plot_fsl_ssl(

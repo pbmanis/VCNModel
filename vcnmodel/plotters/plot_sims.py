@@ -2949,6 +2949,13 @@ class PlotSims:
                 bin_width=psth_binw,
                 ax=P.axdict[an_psth_panel],
             )
+            # just print the AN rates
+            print("an st by input: ", len(an_st_by_input))
+            PF.print_AN_rates(
+                an_st_by_input,
+                run_info = ri,
+            )
+
             PF.plot_fsl_ssl(
                 all_bu_st_trials,
                 run_info=ri,

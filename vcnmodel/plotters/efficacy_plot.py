@@ -47,7 +47,6 @@ import sklearn.metrics as metrics
 from matplotlib.lines import Line2D
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
-# from pylibrary.plotting import styler as STY
 from scipy import stats
 from sklearn import preprocessing
 from sklearn.cluster import AgglomerativeClustering, KMeans
