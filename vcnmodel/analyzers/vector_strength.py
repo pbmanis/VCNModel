@@ -26,7 +26,9 @@ import scipy.stats
 @dataclass
 class VSResult:
     vs: float = np.nan  # vector strength
-    n_spikes: int = 0  # number of spikes
+    n_spikes: int = 0  # number of spikes total
+    nreps: int=0 # number of repetitions in the run
+    rMTF: float = np.nan # rate MTF
     Rayleigh: float = np.nan  # coefficient
     pRayleigh: float = 1.0  # p value for NOT flat
     circ_phase: float = np.nan  # mean phase (circularized phase. radians)
@@ -49,7 +51,7 @@ class VectorStrength:
     def __init__(self):
         pass
 
-    def vector_strength(self, spikes, freq=None):
+    def vector_strength(self, spikes, freq=None, window_duration=1.0, nreps:int=0):
         """
         Calculate vector strength and related parameters from a spike train, for the specified frequency
 
@@ -59,12 +61,14 @@ class VectorStrength:
             If the data comes from repeated trials, the spike train needs to be flattened into a 1d array before
             calling.
         freq : Stimulus frequency in Hz
+        window_duration: Time in seconds for measurement window (used to compute rate)
 
         Returns
         -------
             A dataclass of type VSResult
         """
         assert freq is not None
+        assert nreps > 0
         VSR = VSResult()
         amax = 0.0
         if spikes is None:
@@ -73,6 +77,7 @@ class VectorStrength:
         VSR.frequency = freq
         period = 1.0 / freq
         VSR.n_spikes = len(spikes)
+        VSR.rMTF = len(spikes)/window_duration/nreps
         twopi_per = 2.0 * np.pi / period
         phasev = twopi_per * np.fmod(spikes, period)  # convert to time within a cycle period in radians
         VSR.circ_phase = phasev
@@ -108,11 +113,12 @@ class VectorStrength:
 
     def print_VS(self, d):
 
-        self.VS_colnames = f"Cell,Configuration,carrierfreq,frequency,dmod,dB,VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,AN_VS,AN_phase,AN_phasesd,maxArea,ninputs"
+        self.VS_colnames = f"Cell,Configuration,carrierfreq,frequency,dmod,dB,VectorStrength,SpikeCount,rMTF,phase,phasesd,Rayleigh,RayleighP,AN_VS,AN_phase,AN_phasesd,maxArea,ninputs"
 
         line += f"{d.carrier_frequency:.1f},{d.carrier_frequency:.1f},{d.dmod:.1f},{d.dB:.1f},"
         line += f"{d.vs:.4f},"
         line += f"{d.n_spikes:d},"
+        line += f"{d.rMTF:.2f}",
         line += f"{d.circ_phaseMean:.4f},"
         line += f"{d.circ_phaseSD:.4f},"
         line += f"{d.Rayleigh:.4f},"
@@ -127,6 +133,7 @@ class VectorStrength:
     def vs_test__print(self, d):
         print(f"{'Vector Strength':>24s}: {d['r']:12.4f}")
         print(f"{'Spike Count':>24s}: {d['n']:12d}")
+        print(f"{'rMTF':>24s}: {d['rMTF']:.4f}")
         print(
             f"{'mean phase (radians)':>24s}: {scipy.stats.circmean(d['ph'])/(2*np.pi):12.4f}"
         )

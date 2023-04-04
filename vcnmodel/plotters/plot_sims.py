@@ -2568,6 +2568,7 @@ class PlotSims:
         AR = model_data.AR
         data = model_data.data
         ntr = len(AR.MC.traces)  # number of trials
+        nreps = ntr
         n_inputs = len(data['Results'][0]['inputSpikeTimes'])
         show_vtrial = 0  # which trial to show for votage
         v0 = -160.0
@@ -2679,6 +2680,7 @@ class PlotSims:
 
         x = np.array(all_bu_st)
         v = np.where((phasewin[0] <= x) & (x < phasewin[1]))[0]
+        window_duration = phasewin[1]-phasewin[0]
         bu_spikesinwin = x[v]
         x = np.array(all_an_st)
         v = np.where((phasewin[0] <= x) & (x < phasewin[1]))[0]
@@ -2708,7 +2710,8 @@ class PlotSims:
                     v = np.where((phasewin[0] <= all_bu_st_trials[j]) & (all_bu_st_trials[j] < phasewin[1]))[0]
                     bu_vs_data.extend(all_bu_st_trials[j][v])
                 vs_calc = self.VS.vector_strength(
-                            bu_vs_data, fmod
+                            bu_vs_data, fmod, window_duration=window_duration,
+                            nreps=nreps,
                         )  # vs expects spikes in msec
                 vs_n[i] = vs_calc.vs
                 vs_nspikes[i] = int(vs_calc.n_spikes)
@@ -2725,7 +2728,8 @@ class PlotSims:
             cprint("c", f"mean VS: {np.mean(vs_n):8.4f}  SD={np.std(vs_n):8.4f}, total spikes: {int(np.sum(vs_nspikes)):d}")
 
             vs = self.VS.vector_strength(
-                bu_spikesinwin, fmod
+                bu_spikesinwin, fmod, window_duration=window_duration,
+                nreps=nreps
             )  # vs expects spikes in msec
             cprint("c", f"Grand mean VS: {vs.vs:8.4f}  N={vs.n_spikes:6d}")
             vs.vs_mean = np.mean(vs_n)
@@ -2776,10 +2780,11 @@ class PlotSims:
                 vs.sac_bu_CI = 0.0
                 vs.sac_bu_hw = np.nan
             print(
-                "CN Vector Strength at %.1f: %7.3f, dispersion=%.2f (us) Rayleigh: %7.3f  p = %.3e  n_spikes = %d"
+                "CN Vector Strength at %.1f: %7.3f, rMTF=%.2f sp/s  dispersion=%.2f (us) Rayleigh: %7.3f  p = %.3e  n_spikes = %d"
                 % (
                     fmod,
                     vs.vs,
+                    vs.rMTF,
                     vs.circ_timeSD * 1e6,
                     vs.Rayleigh,
                     vs.pRayleigh,
@@ -2789,6 +2794,7 @@ class PlotSims:
             vs_an = self.VS.vector_strength(
                 an_spikesinwin,
                 fmod,
+                window_duration=window_duration, nreps=nreps,
             )
             vs_an.n_inputs = n_inputs
             if sac_flag:
@@ -2842,10 +2848,11 @@ class PlotSims:
 
             print(" Sound type: ", soundtype)
             print(
-                "AN Vector Strength at %.1f: %7.3f, d=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d"
+                "AN Vector Strength at %.1f: %7.3f, rMTF=%.2f sp/s dispersion=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d"
                 % (
                     fmod,
                     vs_an.vs,
+                    vs_an.rMTF,
                     vs_an.circ_timeSD * 1e6,
                     vs_an.Rayleigh,
                     vs_an.pRayleigh,
@@ -2861,6 +2868,7 @@ class PlotSims:
                     f"AN SAC: CI = {vs.sac_an_CI:7.3f}, min = {np.min(an_sac):7.3f}, hw = {1e3*vs.sac_an_hw:7.3f} ms"
                 )
             vs.an_vs = vs_an.vs  # copy
+            vs.an_rMTF = vs_an.rMTF
             vs.an_circ_phaseMean = vs_an.circ_phaseMean
             vs.an_circ_phaseSD = vs_an.circ_phaseSD
             vs.an_circ_timeSD = vs_an.circ_timeSD

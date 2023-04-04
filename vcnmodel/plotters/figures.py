@@ -2583,20 +2583,20 @@ class Figures(object):
             P = P,
             pan = ["H", "I", "J", "K", "L", "M", "N"],
         )
-
+        rMTF = True
         """ Now do the right side with the VS plots and "V" or line plots
 
         """
         VSP15 = SAM_VS_vplots.VS_Plots(dBSPL=15)
-        VSP15.plot_VS_Data(axin=P.axdict["P1"], legendflag=False)
+        VSP15.plot_VS_Data(axin=P.axdict["P1"], legendflag=True)
         VSP30 = SAM_VS_vplots.VS_Plots(dBSPL=30)
         VSP30.plot_VS_Data(axin=P.axdict["P2"], legendflag=False)
 
         VSP = SAM_VS_vplots.VS_Plots(dBSPL=15)
-        VSP.plot_VS_summary(2, axin=P.axdict["O1"], legendflag=True)
-        VSP.plot_VS_summary(30, axin=P.axdict["O2"], legendflag=False)
-        VSP.plot_VS_summary(9, axin=P.axdict["O3"], legendflag=False)
-        VSP.plot_VS_summary(17, axin=P.axdict["O4"], legendflag=False)
+        VSP.plot_VS_summary(2, axin=P.axdict["O1"], legendflag=False, rMTF_inset=rMTF)
+        VSP.plot_VS_summary(30, axin=P.axdict["O2"], legendflag=False, rMTF_inset=rMTF)
+        VSP.plot_VS_summary(9, axin=P.axdict["O3"], legendflag=False, rMTF_inset=rMTF)
+        VSP.plot_VS_summary(17, axin=P.axdict["O4"], legendflag=False, rMTF_inset=rMTF)
 
 
         fig = FigInfo()
@@ -2604,7 +2604,10 @@ class Figures(object):
             fig.P = parent_figure
         else:
             fig.P = P
-        fig.filename = set_figure_path(fignum=6, filedescriptor="Ephys_4_main_v4")
+        filedescriptor = "Ephys_4_main_v5"
+        if rMTF:
+            filedescriptor += f"_rMTF"
+        fig.filename = set_figure_path(fignum=6, filedescriptor=filedescriptor)
         fig.title["title"] = "SBEM Project Figure 6 Modeling: SAM, SAC"
         title2 = {"title": f"", "x": 0.99, "y": 0.01}
         fig.title2 = title2
@@ -2771,11 +2774,13 @@ class Figures(object):
             y = []
             for z in all_bu_st:
                 y.extend(z)
+            window_duration = phasewin[1] - phasewin[0]
             x = np.array(y)
             v = np.where((phasewin[0] <= x) & (x < phasewin[1]))[0]
             bu_spikesinwin = x[v]
-            vs_bu = self.parent.PLT.VS.vector_strength(bu_spikesinwin, fmod)
-            vs_an = self.parent.PLT.VS.vector_strength(all_an_st, fmod)
+            nreps = len(AR.MC.traces)
+            vs_bu = self.parent.PLT.VS.vector_strength(bu_spikesinwin, fmod, window_duration=window_duration, nreps=nreps)
+            vs_an = self.parent.PLT.VS.vector_strength(all_an_st, fmod, window_duration=window_duration, nreps=nreps)
             # set bin width based on sampling rate.
             per = 1.0 / fmod  # period, in seconds
             est_binw1 = per / 30.0  # try this
@@ -2837,7 +2842,7 @@ class Figures(object):
     def Figure6_Supplemental2(self):
         V = SAM_VS_vplots.VS_Plots()
         #fig, P = V.make_figure()
-        fig, P = V.Figure7_Supplemental2()
+        fig, P = V.Figure6_Supplemental2()
         return fig
     
     def Figure6_Supplemental3(self):
@@ -3688,6 +3693,8 @@ class Figures(object):
         """
         Generate tables of Vector Strength measures for all cells
         across the frequencies listed
+        Include the rate MTF as well
+
         """
         
         # self.parent.PLT.textclear()  # just at start
@@ -3748,7 +3755,7 @@ class Figures(object):
             fh.write(
                 "    Vector strength for models with SAM tones, different input configurations.\n"
             )
-            fh.write("    17 Aug 2021 version.\n")
+            fh.write("    17 Aug 2021 version (added rMTF data 4 April 2023).\n")
             fh.write(
                 "    Results are a printout from DataTablesVCN after selecting the data runs.\n"
             )
@@ -3778,7 +3785,7 @@ class Figures(object):
                 f"The VS_data_xxdB.py file holds all of the vector-strength information, in a text format,\n "
             )
             fh.write(f"  and is read by the plotting programs.\n")
-            fh.write(f'--pbm 2014-2022\n"""\n')  # end of the comment
+            fh.write(f'--pbm 2014-2023\n"""\n')  # end of the comment
             fh.write('\ndata = """')  # start of the data
 
     def _write_VS_tail(self, fout:Path, end_timestamp:str, run_time_seconds: float):

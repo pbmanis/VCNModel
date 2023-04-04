@@ -37,9 +37,9 @@ import VS_data_15dB as VS_data_15dB
 import VS_data_15dB_BC09 as VS_data_15dB_BC09
 import VS_data_30dB as VS_data_30dB
 from matplotlib import pyplot as mpl
-from matplotlib import ticker
 from matplotlib.lines import Line2D
 from pylibrary.plotting import plothelpers as PH
+from pylibrary.plotting import styler as STY
 
 # seaborn default palette, first 10 colors
 colors = [
@@ -108,7 +108,7 @@ class FigInfo:
 class VS_Plots:
     def __init__(
         self, output="P9", sels=[2, 5, 6, 9, 10, 11, 13, 17, 18, 30], dBSPL=15, 
-        dends:str=""
+        dends:str="",
     ):
         """Vector strength plotting class
 
@@ -120,8 +120,11 @@ class VS_Plots:
             cell selection to plot, by default [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
         dBSPL : int, optional
             The base intensity for the VS stimuli, by default 15
+        rMTF_insert: bool, optional
+            If true, also plot the rate MTF (average rate) as an inset
         """
         self.dBSPL = dBSPL
+
         if dends == "9I9U":
             importlib.reload(VS_data_15dB_BC09)
             self.datas = VS_data_15dB_BC09.data
@@ -416,19 +419,7 @@ class VS_Plots:
             anline = 320
         else:
             anline = 75
-        # print(self.df["AN_VS"][:24:3])
         y = self.df["AN_VS"][::nconfig]
-        # print(x)
-        # print(y)
-        # ax.scatter(
-        #     x,
-        #     y,
-        #     s=anline,
-        #     color="firebrick",
-        #     marker="_",
-        #     linewidth=2,
-        #     legend="AN"
-        # )
         xl = ax.get_xticklabels()
         newxl = [f"{int(float(x.get_text())):d}" for x in xl]
         ax.set_xticklabels(newxl)
@@ -441,7 +432,8 @@ class VS_Plots:
             ax.legend(handles=[], labels= [])
             ax.get_legend().remove()
         else:
-            ax.legend(markerscale=0.5)
+            self.update_legend(ax, None, two_largest=True) 
+            #ax.legend(markerscale=0.5)
         if axin is None:
             mpl.show()
         else:
@@ -451,10 +443,14 @@ class VS_Plots:
     def plot_VS_summary(self, cell, axin=None, legendflag=True, legend_type="inputs",
                         barwidth=240, show_cell=True,
                         mode:str="line", xscale:str="log", yscale:str="linear",
-                        figure8_xscale=False, show2out=True):
+                        figure8_xscale=False, show2out=True,
+                        rMTF_inset:bool=False,
+                        legend_loc = (0,0)):
         """Summarize the VS for one cell for all conditions/frequencies.
         This is similar to the plotnine routine above, but just
-        uses matplotlib to acheive the same plot
+        uses matplotlib to achieve the same plot
+
+        Note: if self.rMTF is set, then we also plot the rate modulation transfer function as a small inset
 
         Parameters
         ----------
@@ -484,8 +480,10 @@ class VS_Plots:
             a dataset in the current plot.
 
         """
+        self.rMTF = rMTF_inset
         label_font = {"fontsize": 8, "fontweight": "normal"}
         title_font = {"fontsize": 9, "fontweight": "normal"}
+        inset_label_font = {"fontsize": 7, "fontweight": "normal"}
 
         if axin is None:
             fig, ax = mpl.subplots(1, 1, figsize=(5, 5))
@@ -555,8 +553,11 @@ class VS_Plots:
                 # might be in other plots)
                 c2out = cfg_color["removetwolargest"]
                 ax.errorbar([], [], yerr=[], marker='o', mfc=c2out, ms=4, mec=c2out, mew=0, color=c2out,
-                     label="removetwolargest", clip_on=False)
+                     label="Remove two largest", clip_on=False)
             # retext the legend to make more sense
+            print("Legendflag: ", legendflag)
+            if legendflag:
+                self.update_legend(ax, legend_type, legend_loc=legend_loc, two_largest=True)
 
 
         else:
@@ -569,19 +570,19 @@ class VS_Plots:
             xminor_list = []
         else:
             if xscale == 'linear':
-                freq_list = np.arange(8) # [0, 50, 250, 500,  750, 1000]
-                xtick_list_str=['50', '100', '200', '300', '400', '500', '750', '1000']
-                xtick_minor_list = [] # [100, 200, 400, 500]
+                freq_list = np.arange(8) # [0, 50, 250, 500,  1000]
+                xtick_list_str=['50', '100', '200', '300', '400', '500',  '1000']
+                xtick_minor_list = [600, 700, 800, 900] # [100, 200, 400, 500]
                 ax.set_xlim(0, 7)
             elif xscale == 'log':
                 if figure8_xscale:
                     freq_list = np.log10([50, 100,  300,  500,  1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
                     xtick_list_str=['50', '100', '300',  '500',  '1000']
-                    xtick_minor_list = np.log10([200, 400, 750]) # [100, 200, 400, 500]
+                    xtick_minor_list = np.log10([200, 400, 600, 700, 800, 900]) # [100, 200, 400, 500]
                 else:
                     freq_list = np.log10([50, 100, 200, 300,  500,  1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
                     xtick_list_str=['50', '100', '200', '300',  '500',  '1000']
-                    xtick_minor_list = np.log10([400, 750]) # [100, 200, 400, 500]
+                    xtick_minor_list = np.log10([400, 600, 700, 800, 900]) # [100, 200, 400, 500]
 
                 ax.set_xlim(np.log10(50), np.log10(1000))
             if yscale == 'linear':
@@ -613,47 +614,67 @@ class VS_Plots:
             fontsize=8,
         )
         
-        # sns.swarmplot(
-        #     x="frequency",
-        #     y = "VS_mean", # y="VectorStrength",
-        #     hue="Configuration",
-        #     data=dfl,
-        #     dodge=True,  # offset configurations from each other
-        #     size=3.5,
-        #     ax=ax,
-        # )
-        # # find out how many configurations and frequencies are present
-        # n_configurations = len(dfl["Configuration"].unique())
-        # n_frequencies = len(dfl["frequency"].unique())
+        if self.rMTF:  # include an inset with the rate MTF - always a line
+            # make an inset axis
+            inset_ax = STY.create_inset_axes([0.2, 0.15, 0.5, 0.35], ax, f"BC{cell:02d}{'_rMTF':s}")
+            for icfg, cfg in enumerate(sorted(set(dfl['Configuration']))):
+                run = dfl[dfl['Configuration'] == cfg]
+                if xscale == 'linear':
+                    x = np.arange(8) # run['frequency'].values
+                else:
+                    x = np.log10([50, 100, 200, 300, 400, 500, 750, 1000]) # np.arange(8) # run['frequency'].values
+                print('run keys: ', run.keys())
+                if yscale == 'linear':
+                    y = run['SpikeCount'].values/100.*0.8
+                    # y_an = run['AN_Ns'].values/100.*0.8
+                else:
+                    y = np.log10(run['SpikeCount'].values/100.*0.8)
+                    # y_an = np.log10(run['AN_Ns'].values/100.*0.8)
 
-        # # get the first set of children plotted - the rest are legend etc
-        # locs = ax.get_children()[: n_configurations * n_frequencies]
-        # axis_items = []
-        # for child in ax.get_children():
-        #     if isinstance(child, matplotlib.collections.PathCollection):
-        #         axis_items.append(child)
-        # x = np.arange(n_frequencies)
-        # for i in range(0, len(locs), n_configurations):
-        #     xl = []  # hold locations of points that were plotted in this frequency
-        #     yl = []
-        #     yerr = []
-        #     for j in range(n_configurations):
-        #         # axis_item = ax.get_children()[i + j]
-        #         # if not isinstance(axis_item, matplotlib.collections.PathCollection):
-        #         #     continue
-        #         offs = axis_items[i + j].get_offsets()
-        #         xl.append(offs[0][0])  # build up the line
-        #         yl.append(offs[0][1])
-        #     ax.plot(xl, yl, color="slategrey", linewidth=1.25, linestyle="-")
-        #     ax.scatter(  # plot the AN vector strength bars for reference
-        #         x,
-        #         dfl["AN_VS"][: n_configurations * n_frequencies : n_configurations],
-        #         s=barwidth,
-        #         color="firebrick",
-        #         marker="_",
-        #         linewidth=2,
-        #         alpha=0.3,
-        #     )
+                ye = run['VS_SD'].values
+                x_an = x  # np.arange(8)
+                mfc = cfg_color[cfg]
+                inset_ax.get_xaxis().set_clip_on(False)
+                inset_ax.plot(x, y, marker='o', mfc=mfc, ms = 4, mec=mfc, mew=0, color=mfc, label=cfg, clip_on=False)
+                # inset_ax.errorbar(x, y, yerr=ye, marker='o', mfc=mfc, ms=4, mec=mfc, 
+                #     mew=0, color=mfc, label=cfg, clip_on=False)
+                if icfg == 0:
+                    label = "ANF"
+                else:
+                    label = None
+                # inset_ax.plot(x_an, y_an, '-', color="firebrick", lw=0.5, zorder=-100, label=label)  # in back of data
+            if "removetwolargest" not in set(dfl['Configuration']) and show2out:
+                # add the 2-out just for the legend in case it is not part of this plot (but it
+                # might be in other plots)
+                c2out = cfg_color["removetwolargest"]
+                # inset_ax.errorbar([], [], yerr=[], marker='o', mfc=c2out, ms=4, mec=c2out, mew=0, color=c2out,
+                    #  label="removetwolargest", clip_on=False)
+            ytick_list = [0, 50,  100, 150]
+            ytick_list_str= ['0', '50', '100', '150'] 
+            y_tick_minor=[25, 75, 125]
+            freq_list = np.log10([50, 100, 200, 500,  1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
+            xtick_list_str=['50', '100', '200', '500',  '1000']
+            xtick_minor_list = np.log10([300, 400, 600, 700, 800, 900]) # [100, 200, 400, 500]
+            PH.nice_plot(inset_ax, position = -0.015, direction="outward", ticklength=1.5)
+            inset_ax.set_ylabel("rMTF (sp/s)", fontdict=inset_label_font)
+            inset_ax.set_xlabel("Mod Freq (Hz)", fontdict=inset_label_font)
+            PH.set_axes_ticks(
+                ax=inset_ax,
+                xticks=freq_list,
+                xticks_str=xtick_list_str,
+                xticks_pad=None,
+                x_minor = xtick_minor_list,
+                major_length=2.0,
+                minor_length=1.,
+                yticks = ytick_list,
+                yticks_str= ytick_list_str, 
+                yticks_pad=None,
+                y_minor=y_tick_minor,
+                y_rotation=0., 
+                fontsize=7,
+            )
+            
+            # retext the legend to make more sense
 
         xl = ax.get_xticklabels()  # do this before niceplot...
         xl = ax.get_xticklabels()
@@ -663,22 +684,9 @@ class VS_Plots:
         ax.set_ylabel("Vector Strength", fontdict=label_font)
         PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)
 
+        print("Legendflag: ", legendflag)
         if legendflag:
-            if legend_type == 'Dendrites':
-                custom_legend = [Line2D([0], [0], marker="_", markersize=2, color="firebrick", lw=2, label='AN'),
-                    Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[0], markersize=5, label="Intact"),
-                    Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[1], markersize=5, label="Pruned"),
-                    ]
-                ax.legend(handles=custom_legend, handlelength=1, loc="lower left", fontsize=7, labelspacing=0.33, markerscale=0.5)
-            else:
-                legdict = {"all": "All Inputs", "largestonly": "Largest input only", 
-                "removelargest": "Largest input removed", "removetwolargest": "Two largest inputs removed"}
-                ltexts = ax.legend().get_texts()
-                for ik, this_l in enumerate(ltexts):
-                    labeltext = this_l.get_text()
-                    if labeltext in list(legdict.keys()):
-                        this_l.set_text(legdict[labeltext])
-
+            self.update_legend(ax, legend_type, legend_loc, two_largest=True)
 
         if isinstance(cell, str):
             cellname = f"BC{int(cell[0]):02d}"
@@ -697,17 +705,51 @@ class VS_Plots:
             mpl.show()
         return ax
 
-    def Figure7_Supplemental2(self, mode:str="line"):
+    def update_legend(self, ax, legend_type:str="", legend_loc=None, two_largest=False):
+        if legend_type == 'Dendrites':
+            print("legend type is dendrites")
+            custom_legend = [Line2D([0], [0], marker="_", markersize=3, color="firebrick", lw=2, label='AN'),
+                Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[0], markersize=5, label="Intact"),
+                Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[1], markersize=5, label="Pruned"),
+                ]
+            ax.legend(handles=custom_legend, handlelength=1, loc="lower left", fontsize=7, labelspacing=0.33, markerscale=0.5)
+        else:
+            legdict = { "all": "All Inputs", 
+                        "largestonly": "Largest input only", 
+                        "removelargest": "Largest input removed",
+                        "removetwolargest": "Two largest inputs removed",
+                        }
+            print("getting ltexts", legend_loc)
+            custom_legend = [Line2D([0], [0], marker="_", markersize=3, color="firebrick", lw=2, label='AN'),
+                Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[0], markersize=5, label="All Inputs"),
+                Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[1], markersize=5, label="Largest input only"),
+                Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[2], markersize=5, label="Largest input removed"),
+                ]
+            if two_largest:
+                custom_legend.append(Line2D([0], [0], marker='o', color='w', markerfacecolor=colors_swarm[3], markersize=5, label="Two largest inputs removed"),
+)
+            ax.legend(handles=custom_legend, handlelength=1, loc="lower left", fontsize=7, labelspacing=0.33, markerscale=1,
+                      bbox_to_anchor=legend_loc)
+            # if legend_loc is not None:
+            #     ax.legend(bbox_to_anchor=legend_loc)
+            # ltexts = ax.legend().get_texts()
+            # print(ltexts)
+            # for ik, this_l in enumerate(ltexts):
+            #     labeltext = this_l.get_text()
+            #     if labeltext in list(legdict.keys()):
+            #         this_l.set_text(legdict[labeltext])
+            #         print("setting legend text to : ", legdict[labeltext])
+
+    def Figure6_Supplemental2(self, mode:str="line", rMTF=True):
         show2out = False
         V1 = VS_Plots(dBSPL=15)
-
         cells = [5, 6, 10, 11, 13, 18]
         P = PH.regular_grid(
             2,
             3,
-            figsize=(8, 6),
+            figsize=(10, 6),
             panel_labels=["A", "B", "C", "D", "E", "F"],
-            margins={"leftmargin": 0.08, "rightmargin": 0.08, "bottommargin": 0.1, "topmargin":0.05},
+            margins={"leftmargin": 0.08, "rightmargin": 0.2, "bottommargin": 0.1, "topmargin":0.05},
             verticalspacing=0.15,
             horizontalspacing=0.07,
             labelposition=(-0.12, 1.05),
@@ -715,18 +757,22 @@ class VS_Plots:
         axl = P.axarr.ravel()
 
         for i, cell in enumerate(cells):
-            if i == 0:
+            if i == len(cells)-1:
                 legend = True
             else:
                 legend = False
             self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
-                barwidth=180, mode=mode, show2out=show2out)
-
+                barwidth=180, mode=mode, show2out=show2out, rMTF_inset=rMTF,
+                legend_loc=(1.2, 0.8))
+            if i == len(cells)-1 and legend: # now move the legend
+                # print("supp2: update legend")
+                self.update_legend(axl[i], legend_loc=(1.2, 0.5))
+ 
         fig = FigInfo()
         fig.P = P
 
         fig.filename = set_figure_path(
-            fignum=7, filedescriptor="VS_Summary_V3", suppnum=2
+            fignum=7, filedescriptor="VS_Summary_V4", suppnum=2
         )
         title = "SBEM Project Supplemental Figure 7 Modeling : Vector Strength Summary"
         fig.title["title"] = title
