@@ -77,7 +77,18 @@ class VectorStrength:
         VSR.frequency = freq
         period = 1.0 / freq
         VSR.n_spikes = len(spikes)
-        VSR.rMTF = len(spikes)/window_duration/nreps
+        # find the number of full cycles that fit in the window duration,
+        # recalculate the window and get the spikes from that
+        if len(spikes) > 0:
+            earliest_spike = np.min(spikes)
+            zsp = spikes - earliest_spike
+            n_periods = int(np.floor(window_duration/period))
+            max_time = n_periods*period
+            mtf_spikes = np.where((zsp >= 0) & (zsp < max_time))[0]
+            # print(f"^^^^^^^ period: {period:.5f} window: {window_duration:.2f}  max_time: {max_time:.2f}  nspikes: {VSR.n_spikes:d} mtf_spikes: {len(mtf_spikes):d}")
+            VSR.rMTF = len(mtf_spikes)/max_time/nreps
+        else:
+            VSR.rMTF = 0.0
         twopi_per = 2.0 * np.pi / period
         phasev = twopi_per * np.fmod(spikes, period)  # convert to time within a cycle period in radians
         VSR.circ_phase = phasev
@@ -113,7 +124,8 @@ class VectorStrength:
 
     def print_VS(self, d):
 
-        self.VS_colnames = f"Cell,Configuration,carrierfreq,frequency,dmod,dB,VectorStrength,SpikeCount,rMTF,phase,phasesd,Rayleigh,RayleighP,AN_VS,AN_phase,AN_phasesd,maxArea,ninputs"
+        VS_colnames = f"Cell,Configuration,carrierfreq,frequency,dmod,dB,VectorStrength,SpikeCount,rMTF,phase,phasesd,Rayleigh,RayleighP,"
+        VS_colnames += f"AN_VS,an_rMTF,AN_phase,AN_phasesd,maxArea,ninputs"
 
         line += f"{d.carrier_frequency:.1f},{d.carrier_frequency:.1f},{d.dmod:.1f},{d.dB:.1f},"
         line += f"{d.vs:.4f},"
@@ -124,13 +136,15 @@ class VectorStrength:
         line += f"{d.Rayleigh:.4f},"
         line += f"{d.pRayleigh:.4e},"
         line += f"{d.an_vs:.4f},"
+        line += f"{d.an_rMTF:.4f},"
         line += f"{d.an_circ_phaseMean:.4f},"
         line += f"{d.an_circ_phaseSD:.4f},"
         line += f"{d.amax:.4f},"
         line += f"{d.n_inputs:d}"
         print(line)
+        return VS_colnames, line
 
-    def vs_test__print(self, d):
+    def vs_test_print(self, d):
         print(f"{'Vector Strength':>24s}: {d['r']:12.4f}")
         print(f"{'Spike Count':>24s}: {d['n']:12d}")
         print(f"{'rMTF':>24s}: {d['rMTF']:.4f}")
@@ -193,7 +207,7 @@ def test_vs():
     VSC = VectorStrength()
     for i, sd in enumerate(x):
         spikes, phsp = VSC.compute_vs(freq, nsp, sd, rg)
-        vsd = VSC.vector_strength(spikes, freq=freq)
+        vsd = VSC.vector_strength(spikes, freq=freq, nreps=1)
         y[i] = vsd.circ_timeSD
         vs[i] = vsd.vs
         ph[i] = vsd.circ_phaseSD
@@ -210,7 +224,7 @@ def test_vs():
     plot_ticks(ax[1], spikes, "b-")
     mpl.show()
     print("mean isi: ", np.mean(np.diff(spikes)), "stim period: ", 1.0 / freq)
-    vsd = VSC.vector_strength(spikes, freq=freq)
+    vsd = VSC.vector_strength(spikes, freq=freq, nreps=1)
     print("VS: ", vsd.vs, "SD sec: ", vsd.circ_timeSD)
     print("circ_phase min max: ", np.min(vsd.circ_phase), np.max(vsd.circ_phase))
     bins = np.linspace(0, 2 * np.pi, 36)
