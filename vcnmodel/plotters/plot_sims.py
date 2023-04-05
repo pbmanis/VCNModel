@@ -2231,7 +2231,8 @@ class PlotSims:
         return P
 
     @trace_calls.winprint_continuous
-    def print_VS(self, d, freq, dmod, dB, experiment, filename:str=""):
+    def print_VS(self, cell_number, d, freq, dmod, dB, experiment, filename:str="",
+                 save_to_clipboard:bool=False):
         print("Getting data")
         SC, syninfo = self.get_synaptic_info(self.parent.cellID)
         amax = 0
@@ -2243,13 +2244,14 @@ class PlotSims:
                 amax = area
             sites[isite] = int(np.around(area * SC.synperum2))
         
-        self.VS_colnames = f"Cell,Filename,Configuration,carrierfreq,frequency,dmod,dB,"
-        line = f"{str(self.parent.cellID):s},{filename:s},{experiment:s},"
+        VS_colnames = f"Cell,Filename,Configuration,carrierfreq,frequency,dmod,dB,"
+        line = f"{str(cell_number):s},{filename:s},{experiment:s},"
         line += f"{d.carrier_frequency:.1f},{freq:06.1f},{dmod:.1f},{dB:.1f},"
 
-        self.VS_colnames += f"VectorStrength,SpikeCount,phase,phasesd,Rayleigh,RayleighP,VS_mean,VS_SD,VS_Ns,VS_groups,"
+        VS_colnames += f"VectorStrength,SpikeCount,rMTF,phase,phasesd,Rayleigh,RayleighP,VS_mean,VS_SD,VS_Ns,VS_groups,"
         line += f"{d.vs:.4f},"
         line += f"{d.n_spikes:d},"
+        line += f"{d.rMTF:.2f},"
         line += f"{d.circ_phaseMean:.4f},"
         line += f"{d.circ_phaseSD:.4f},"
         line += f"{d.Rayleigh:.4f},"
@@ -2259,8 +2261,9 @@ class PlotSims:
         line += f"{int(d.vs_Ns):d},"
         line += f"{int(d.vs_groups):d},"
 
-        self.VS_colnames += f"AN_VS,AN_phase,AN_phasesd,SAC_AN,SAC_Bu,SAC_AN_HW,SAC_Bu_HW,maxArea,ninputs"
+        VS_colnames += f"AN_VS,AN_rMTF,AN_phase,AN_phasesd,SAC_AN,SAC_Bu,SAC_AN_HW,SAC_Bu_HW,maxArea,ninputs"
         line += f"{d.an_vs:.4f},"
+        line += f"{d.an_rMTF/d.n_inputs:.2f}," # normalize across all inputs
         line += f"{d.an_circ_phaseMean:.4f},"
         line += f"{d.an_circ_phaseSD:.4f},"
         line += f"{d.sac_an_CI:.4f},"
@@ -2269,15 +2272,15 @@ class PlotSims:
         line += f"{d.sac_bu_hw:.6f},"
         line += f"{amax:.4f},"
         line += f"{d.n_inputs:d}"
-        self.VS_line = line
         if self.firstline:
-            self.textappend(self.VS_colnames)
+            self.textappend(VS_colnames)
         self.textappend(line)
         # put on clipboard
-        pyperclip.copy(line)
-        pyperclip.paste()
+        if save_to_clipboard:
+            pyperclip.copy(line)
+            pyperclip.paste()
 
-        return d
+        return VS_colnames, line
 
     @trace_calls.winprint_continuous
     @TRC()
@@ -2548,18 +2551,22 @@ class PlotSims:
         sac_flag: bool = True,  # set true to compute SAC as well as standard VS
         sac_engine: str = "cython",
         filename: str="",
-        make_VS_raw:bool=False
+        make_VS_raw:bool=False,
+        cell_ID:Union[str, int, None] = None,
     ):
-        if isinstance(self.parent.cellID, str):
-            if ("U" in self.parent.cellID) or ("I" in self.parent.cellID):
-                gbc = f"VCN_c{int(self.parent.cellID[0:1]):02d}"
-                cellN = int(self.parent.cellID[0])
+        if cell_ID is None:
+            cell_ID = self.parent.cellID
+            raise()
+        if isinstance(cell_ID, str):
+            if ("U" in cell_ID) or ("I" in cell_ID):
+                gbc = f"VCN_c{int(cell_ID[0:1]):02d}"
+                cellN = int(cell_ID[0])
             else:
-                gbc = f"VCN_c{int(self.parent.cellID[0:2]):02d}"
-                cellN = int(self.parent.cellID[0:2])
+                gbc = f"VCN_c{int(cell_ID[0:2]):02d}"
+                cellN = int(cell_ID[0:2])
         else:
-            gbc = f"VCN_c{int(self.parent.cellID):02d}"
-            cellN = self.parent.cellID
+            gbc = f"VCN_c{int(cell_ID):02d}"
+            cellN = cell_ID
         
         plotflag = False
         SC, syninfo = self.get_synaptic_info(cellN)
@@ -2873,12 +2880,12 @@ class PlotSims:
             vs.an_circ_phaseSD = vs_an.circ_phaseSD
             vs.an_circ_timeSD = vs_an.circ_timeSD
 
-            self.print_VS(vs, fmod, dmod, dB, ri.Spirou, filename=str(filename))
+            colnames, line = self.print_VS(cell_ID, vs, fmod, dmod, dB, ri.Spirou, filename=str(filename))
 
 #########################
 
-        if not plotflag:
-            return
+        if not plotflag or P is None:
+            return colnames, line
         
         # Otherwise, lets do some plotting:
             # plot the raster of spikes
