@@ -3686,8 +3686,8 @@ class Figures(object):
     def plot_VS_SAM_30(self):
         self.generate_VS_data_file(dB=30)
     
-    def analyze_VS_data(
-        self, VS_data, cell_number, fout, firstline=False, sac_flag=False, test=False,
+    def analyze_VS_data1(
+        self, VS_data, cell_number, fout, firstline=False, sac_flag=False, testmode=False,
         dBSPL:int=0, make_VS_raw:bool=True,
     ):
         """
@@ -3706,48 +3706,63 @@ class Figures(object):
             cell_n = int(cell_number[0])
         else:
             cell_n = cell_number
-        self.parent.cellID = cell_number
+        # self.parent.cellID = cell_number
     
         for i, filename in enumerate(VS_data.samdata[cell_number]):
-            print(f"Cell: {str(cell_number):s}  Filename: {filename:s}")
-            cellpath = Path(
-                self.config["cellDataDirectory"],
-                f"VCN_c{cell_n:02d}",
-                "Simulations",
-                "AN",
-            )
-            sfi = Path(cellpath, filename + ".pkl")
-            print(f"Opening pkl file: {str(sfi):s}")
+            newline = self.analyze_VS_data_single(filename, cell_number, fout, 
+                                        PD=PD, linesout=linesout, firstline=firstline,
+                                        sac_flag=sac_flag, testmode=testmode,
+                                        dBSPL = dBSPL, make_VS_raw=make_VS_raw)
+            linesout += newline
+        return linesout
+    
+    def analyze_VS_data_single(self, filename, cell_number, fout, PD, linesout:str, firstline=False,
+             sac_flag=False, testmode=False,
+                dBSPL:int=0, make_VS_raw:bool=True,
+             ):
 
-            if not test:
-                with open(sfi, "rb") as fh:
-                    d = FPM.pickle_load(fh)
-                self.parent.PLT.plot_AN_response(
-                    P, d.files[0], PD, "runANPSTH", sac_flag=sac_flag,
-                    filename=filename, make_VS_raw=make_VS_raw,
-                )
-                # note that VSline has results of VS computation to put in the table
-                if firstline:
-                    linesout += self.parent.PLT.VS_colnames
-                    linesout += "\n"
-                    firstline = False
-                linesout += self.parent.PLT.VS_line
+        print(f"Cell: {str(cell_number):s}  Filename: {filename:s}")
+        cellpath = Path(
+            self.config["cellDataDirectory"],
+            f"VCN_c{cell_number:02d}",
+            "Simulations",
+            "AN",
+        )
+        sfi = Path(cellpath, filename + ".pkl")
+        print(f"Opening pkl file: {str(sfi):s}")
+        if not testmode:
+            with open(sfi, "rb") as fh:
+                d = FPM.pickle_load(fh)
+            VS_colnames, VS_line = self.parent.PLT.plot_AN_response(
+                None, d.files[0], PD, "runANPSTH", sac_flag=sac_flag,
+                filename=filename, make_VS_raw=make_VS_raw,
+                cell_ID=cell_number,
+            )
+            # note that VSline has results of VS computation to put in the table
+            if firstline:
+                linesout = VS_colnames # self.parent.PLT.VS_colnames
                 linesout += "\n"
-                # with open(fout, "a") as fth:
-                #     if firstline:
-                #         fth.write(self.parent.PLT.VS_colnames)
-                #         fth.write("\n")
-                #         firstline = False
-                #     fth.write(self.parent.PLT.VS_line)
-                #     fth.write("\n")
+                firstline = False
+            linesout += VS_line # self.parent.PLT.VS_line
+            # linesout += "\n"
+            # with open(fout, "a") as fth:
+            #     if firstline:
+            #         fth.write(VS_colnames)
+            #         fth.write("\n")
+            #         firstline = False
+            #     fth.write(VS_line)
+            #     fth.write("\n")
+        else:
+            print(f"Testing only... , file found: {str(sfi.is_file()):s}")
+            if firstline:
+                linesout += f"Cell: {str(cell_number):s}  Filename: {filename:s}\n"
+                linesout += "Data would be here\n"
+                firstline = False
             else:
-                print(f"Testing only... , file found: {str(sfi.is_file()):s}")
-                if firstline:
-                    linesout += f"Cell: {str(cell_number):s}  Filename: {filename:s}\n"
-                    linesout += "Data would be here\n"
+                linesout +=  f"Cell: {str(cell_number):s}  Filename: {filename:s}\n"
         
-        print("Analyze VS data completed for cell: ", cell_number)
-        return(linesout)
+        print(f"Analyze VS data completed for cell: {cell_number:d}  file: {filename:s}")
+        return linesout
     
     def _write_VS_Header(self, fout:Path, timestamp_str:str):
         with open(fout, "w") as fh:
@@ -3764,9 +3779,9 @@ class Figures(object):
                 "WARNING: This table is automatically written by figures.py generate_VS_data_file\n"
             )
             fh.write("       and should not be directly edited.\n")
-            fh.write(f"To Regenerate:\n   After running the simulationns, select the runs to be added.\n"
+            fh.write(f"To Regenerate:\n   After running the simulationns, enter the filenames into VS_datasets_xxdB.py\n"
             )
-            fh.write(f"   Use the 'Print File Info' button for each cells\n")
+            fh.write(f"   You can select the datasets, and then click the 'Print File Info' button for each cell.\n")
             fh.write(
                 f"    Copy the text in the 'Reports' dock in DataTablesVCN\n"
             )
@@ -3774,13 +3789,13 @@ class Figures(object):
                 f"  into a 'VS_datasets_xxdB.py' file, where xx is the sound pressure level.\n"
             )
             fh.write(
-                f"Then select 'VS-SAMTone-no figure' in DataTables, and 'Create Figure.\n"
+                f"Then select 'Analyze VS-SAM Table @ xxdB DPL' in DataTables Figures dropdown, and click 'Create Figure.\n"
             )
             fh.write(
                 f"  No figure will be generated, but vector strength will be calculated\n"
                 
             )
-            fh.write(f"   and the VS_data_xxdB.py file will be created.\n")
+            fh.write(f"   and the VS_data_xxdB (timestanp).py file will be created.\n")
             fh.write(
                 f"The VS_data_xxdB.py file holds all of the vector-strength information, in a text format,\n "
             )
@@ -3795,7 +3810,7 @@ class Figures(object):
             fh.write(f"Run duration (seconds): {run_time_seconds:9.1f}\n")
             fh.write('\n"""')
 
-    def generate_VS_data_file(self, testmode=True, dB=15, bc09=False, append=False):
+    def generate_VS_data_file(self, testmode=False, dB=15, bc09=False, append=False):
         """
         Write the VS_data file from the selected datasets.
         This routine reanalyzes all of the data in the table
@@ -3805,8 +3820,7 @@ class Figures(object):
         or VS_datasets_15dB_BC09_NoUninnervated.py (if bc09 is True) 
         """
         parallel = True
-        if platform.system() == "Darwin":
-            parallel = False # not easy from here to run parallel
+        testmode = False
 
         start_timestamp = datetime.datetime.now()
         timestamp_str = start_timestamp.strftime("%Y-%m-%d-%H.%M.%S")
@@ -3815,23 +3829,21 @@ class Figures(object):
             if f"VS_datasets_{dB:d}dB" not in list(dir()):
                 import VS_datasets_30dB as VS_datasets
                 outfile = f"VS_data_{dB:d}dB_{timestamp_str:s}.py"
-                TASKS = [s for s in GRPDEF.grAList()]
+                TASKS = [(c, d) for c in GRPDEF.grAList() for d in VS_datasets.samdata[c]]
 
         if dB == 15 and not bc09:
             if f"VS_datasets_{dB:d}dB" not in list(dir()):
                 import VS_datasets_15dB as VS_datasets
                 outfile = f"VS_data_{dB:d}dB_{timestamp_str:s}.py"
-                TASKS = [s for s in GRPDEF.grAList()]
+                TASKS = [(c, d) for c in GRPDEF.grAList() for d in VS_datasets.samdata[c]]
+                # TASKS = [s for s in GRPDEF.grAList()]
 
         elif dB == 15 and bc09:
             if f"VS_datasets_{dB:d}dB_BC09_NoUninnervated" not in list(dir()):
                 import VS_datasets_15dB_BC09_NoUninnervated as VS_datasets
                 outfile = f"VS_data_{dB:d}dB_BC09_{timestamp_str:s}.py"
                 TASKS = [s for s in VS_datasets.samdata.keys()]
-
-            
         # importlib.reload(VS_datasets)  # make sure have the current one
-        print("VS_datasets: ", VS_datasets)
         print(f"Data set keys found: {str(list(VS_datasets.samdata.keys())):s}")
         with open("wheres_my_data.toml", "r") as fh:
             self.config = toml.load(fh)
@@ -3846,41 +3858,48 @@ class Figures(object):
             self._write_VS_Header(fout, timestamp_str)
 
         fl = True
+        linesout = ""
         tresults = [None] * len(TASKS)
  
         results = {}
         # run using pyqtgraph's parallel support
         nWorkers = MPROC.cpu_count()-2
-
+        PD = self.newPData()
         if parallel:
-            print("Tasks: ", TASKS)
-            print("parallel: ", parallel)
-            print("N workers: ", nWorkers)
+            print("Tasks: \n", TASKS, "-"*80, "\n")
             cprint("m", f"VS_DataAnalysis : Parallel with {nWorkers:d} processes")
             self.parent.PLT.in_Parallel = True  # notify caller
             with MP.Parallelize(
                     enumerate(TASKS), results=tresults, workers=nWorkers
                 ) as tasker:
-                    for j, celln in tasker:
+                    for j, t in tasker:
                         if j > 0:
                             fl = False
+                        celln = t[0]
+                        filename = t[1]
                         cprint("m", f"Cell: {celln:d}  j={j:d}")
                         VS_file_raw = f"VS_raw_SAM_{dB:02d}_{celln:02d}.txt"
-                        tresults = self.analyze_VS_data(VS_datasets, celln, fout, 
-                            firstline=fl, sac_flag=True, test=False, dBSPL=dB, make_VS_raw=True)
-                        tasker.results[j] = tresults
+                        tresults[j] = self.analyze_VS_data_single(filename, celln, fout, PD=PD,
+                                                               linesout=linesout,
+                            firstline=fl, sac_flag=True, testmode=testmode, dBSPL=dB, make_VS_raw=True,
+                            )
+                        tasker.results[j] = tresults[j]
             self.parent.PLT.in_Parallel = False
-            print("Results: \n", [r+'\n' for r in tresults])
+
             for j in range(len(TASKS)):
                 with open(fout, "a") as fh:
+                    if tresults[j] is None:
+                        continue
                     lines = tresults[j].split('\n')
                     for l in lines:
+                        l = l.replace("\n", "")
                         fh.write(l)
                         fh.write("\n")
         else:
             for j, celln in enumerate(TASKS):
                 tresults = self.analyze_VS_data(VS_datasets, celln, fout, 
-                    firstline=fl, sac_flag=True, test=False, make_VS_raw=True)
+                    firstline=fl, sac_flag=True, test=testmode, make_VS_raw=True,
+                    )
                 if j > 0:
                     fl = False
                 with open(fout, "a") as fh:
