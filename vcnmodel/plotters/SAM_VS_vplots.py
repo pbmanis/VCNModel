@@ -219,6 +219,7 @@ class VS_Plots:
     def prepare_data(self, datas):
         sio = io.StringIO(datas)
         df = pd.read_table(sio, sep=",")
+
         return df
 
     def fscale(self, x):
@@ -623,19 +624,23 @@ class VS_Plots:
                     x = np.arange(8) # run['frequency'].values
                 else:
                     x = np.log10([50, 100, 200, 300, 400, 500, 750, 1000]) # np.arange(8) # run['frequency'].values
-                print('run keys: ', run.keys())
+                # print('run keys: ', run.keys())
                 if yscale == 'linear':
-                    y = run['SpikeCount'].values/100.*0.8
-                    # y_an = run['AN_Ns'].values/100.*0.8
+                    y = run['rMTF'].values
+                    y_an = run['AN_rMTF'].values
                 else:
-                    y = np.log10(run['SpikeCount'].values/100.*0.8)
-                    # y_an = np.log10(run['AN_Ns'].values/100.*0.8)
+                    y = np.log10(run['rMTF'].values)
+                    y_an = np.log10(run['AN_rMTF'].values)
 
-                ye = run['VS_SD'].values
+                # ye = run['VS_SD'].values
                 x_an = x  # np.arange(8)
                 mfc = cfg_color[cfg]
                 inset_ax.get_xaxis().set_clip_on(False)
                 inset_ax.plot(x, y, marker='o', mfc=mfc, ms = 4, mec=mfc, mew=0, color=mfc, label=cfg, clip_on=False)
+                if icfg == 0:
+                    inset_ax.plot(x_an, y_an, color='firebrick', clip_on=False)
+                    print("xan, yan: ", x_an, y_an)
+
                 # inset_ax.errorbar(x, y, yerr=ye, marker='o', mfc=mfc, ms=4, mec=mfc, 
                 #     mew=0, color=mfc, label=cfg, clip_on=False)
                 if icfg == 0:
@@ -649,8 +654,8 @@ class VS_Plots:
                 c2out = cfg_color["removetwolargest"]
                 # inset_ax.errorbar([], [], yerr=[], marker='o', mfc=c2out, ms=4, mec=c2out, mew=0, color=c2out,
                     #  label="removetwolargest", clip_on=False)
-            ytick_list = [0, 50,  100, 150]
-            ytick_list_str= ['0', '50', '100', '150'] 
+            ytick_list = [0, 50,  100, 150, 200, 250]
+            ytick_list_str= ['0', '50', '100', '150', '200', '250'] 
             y_tick_minor=[25, 75, 125]
             freq_list = np.log10([50, 100, 200, 500,  1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
             xtick_list_str=['50', '100', '200', '500',  '1000']
@@ -742,7 +747,8 @@ class VS_Plots:
 
     def Figure6_Supplemental2(self, mode:str="line", rMTF=True):
         show2out = False
-        V1 = VS_Plots(dBSPL=15)
+        dBSPL = 30
+        V1 = VS_Plots(dBSPL=dBSPL)
         cells = [5, 6, 10, 11, 13, 18]
         P = PH.regular_grid(
             2,
@@ -772,9 +778,9 @@ class VS_Plots:
         fig.P = P
 
         fig.filename = set_figure_path(
-            fignum=7, filedescriptor="VS_Summary_V4", suppnum=2
+            fignum=6, filedescriptor=f"VS_Summary_V4_{dBSPL:d}_dBSPL", suppnum=2
         )
-        title = "SBEM Project Supplemental Figure 7 Modeling : Vector Strength Summary"
+        title = f"SBEM Project Supplemental Figure 6 Modeling : Vector Strength Summary (dB:{dBSPL:d})"
         fig.title["title"] = title
         mpl.savefig(
             fig.filename,
@@ -785,6 +791,7 @@ class VS_Plots:
             },
         )
         fig.filename = fig.filename.with_suffix(".png")
+        print("writing to : ", fig.filename)
         mpl.savefig(
             fig.filename,
             metadata={
@@ -836,7 +843,7 @@ class VS_Plots:
         fig.filename = set_figure_path(
             fignum=8, filedescriptor="BC09_Uninnervated_V1"
         )
-        title = "SBEM Project Supplemental Figure 8 Modeling : Vector Strength Summary"
+        title = "SBEM Project Supplemental Figure 8 Modeling : Dendrite removal"
         fig.title["title"] = title
         mpl.show()
         mpl.savefig(
@@ -857,12 +864,12 @@ class VS_Plots:
             },
         )
 
-    def Summarize(self, axin = None, legendflag = ''):
+    def Summarize(self, axin = None, legendflag = '', dBSPL=0):
         label_font = {"fontsize": 8, "fontweight": "normal"}
         title_font = {"fontsize": 9, "fontweight": "normal"}
 
         if axin is None:
-            fig, axs = mpl.subplots(3, 1, figsize=(5, 10))
+            fig, axs = mpl.subplots(3, 2, figsize=(8, 10))
         else:
             axs = axin
         superthreshset = [9, 11, 17, 18]
@@ -878,10 +885,11 @@ class VS_Plots:
             else:
                 marker = 'o'
             mfc = colors[icell]
+            print(axs)
             for icfg, cfg in enumerate(sorted(set(dfl['Configuration']))):
                 if icfg > 2:
                     continue
-                ax = axs[icfg]
+                ax = axs[icfg, 0]
                 # if cfg != "all":
                 #     continue
                 run = dfl[dfl['Configuration'] == cfg]
@@ -896,13 +904,19 @@ class VS_Plots:
                 else:
                     label = None
                 ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=0.5, zorder=-100, label=label)  # in back of data
+                ax = axs[icfg, 1]
+                y = run['rMTF'].values
+                y_an = run['AN_rMTF'].values
+                ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=0.5, zorder=-100, label=label)  # in back of data
+                ax.plot(x, y, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc, label=f"BC{cell:02d}")
+
                 ax.set_title(cfg)
         freqs = sorted(set(dfl['frequency'].values))
         freq_list = np.log10([50, 100, 200, 300, 400, 500, 750, 1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
         xticks_str=['50', '100', '200', '300', '400', '500', '750', '1000']
         minor_list = [] # [100, 200, 400, 500]
-        for ax in axs:
-
+        for i in range(axs.shape[0]):
+            ax = axs[i, 0]
             PH.set_axes_ticks(
                 ax=ax,
                 xticks=freq_list,
@@ -928,7 +942,25 @@ class VS_Plots:
             ax.set_ylabel("Vector Strength", fontdict=label_font)
             PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)
 
+        for i in range(axs.shape[0]):
+            ax = axs[i, 1]
+            PH.set_axes_ticks(
+                ax=ax,
+                xticks=freq_list,
+                xticks_str=xticks_str,
+                xticks_pad=None,
+                x_minor = minor_list,
+                major_length=3.0,
+                minor_length=1.5,
+                yticks =  [0, 50, 100, 150, 200, 250],
+                yticks_str=  ['0', '50', '100', '150', '200', '250'], 
+                yticks_pad=None,
+                y_minor=[],
+                y_rotation=0., 
+                fontsize=8,
+            )
             ax.legend()
+        fig.suptitle(f"dBSPL: {dBSPL:d}")
         fig.tight_layout()
         if axin is None:
             mpl.show()
@@ -946,9 +978,9 @@ if __name__ == "__main__":
 
     # V1 = VS_Plots(sels=[9], dBSPL=15, dends="9I9U")
     # V1.Figure8_M()
-
-    V1 = VS_Plots(dBSPL=15)
-    V1.Summarize()
+    db = 30
+    V1 = VS_Plots(dBSPL=db)
+    V1.Summarize(dBSPL=db)
 
     # fm, new_ax = mpl.subplots(2,2)
     # new_ax = np.ravel(new_ax)

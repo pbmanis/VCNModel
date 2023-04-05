@@ -73,7 +73,7 @@ class VectorStrengthTester(UserTester):
         vs = np.zeros_like(x)
         for i, sd in enumerate(x):
             spikes, phsp = compute_vs_data(freq, nsp, sd, rg)
-            vsd = VS.vector_strength(spikes, freq)
+            vsd = VS.vector_strength(spikes, freq, nreps=1)
             y[i] = vsd.circ_timeSD
             vs[i] = vsd.vs
             ph[i] = vsd.circ_phaseSD
