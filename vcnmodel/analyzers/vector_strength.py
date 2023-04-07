@@ -27,8 +27,9 @@ import scipy.stats
 class VSResult:
     vs: float = np.nan  # vector strength
     n_spikes: int = 0  # number of spikes total
-    nreps: int=0 # number of repetitions in the run
-    rMTF: float = np.nan # rate MTF
+    nreps: int = 0  # number of repetitions in the run
+    rMTF: float = np.nan  # rate MTF
+    entrainment: float = np.nan  # entrainment (see comment below)
     Rayleigh: float = np.nan  # coefficient
     pRayleigh: float = 1.0  # p value for NOT flat
     circ_phase: float = np.nan  # mean phase (circularized phase. radians)
@@ -45,13 +46,35 @@ class VSResult:
     # an_circ_phaseMean: float=np.nan
     # an_circ_phaseSD: float=np.nan
     # an_circ_timeSD: float = np.nan
+    
+    # """Entrainment:
+    # From Rudnick and Hemmert, 2017:
+    
+    # "The entrainment index p is calculated using the definition given by Joris et al. (1994).
+    # First an inter-spike interval histogram is constructed. Then the number of intervals k 
+    # belonging to the first maximum (between 0.5 and 1.5 of the stimulus period) 
+    # is divided by the total number of intervals n as given by:
+    # p = k/n  ( Equation 6 )
+    # The values of EI are between 0 and 1. 
+    # A value of 1 indicates that the neuron fired a minimum of one spike during each 
+    # stimulus period. Entrainment falls to 0 when the neuron can no longer fire action
+    # potentials for adjacent stimulus periods."
+
+    # This is the same as the definition given in Ashida et al. PLoS 2019.
+    # Original definition was from Joris et al. 1994; in that paper "1/CF" was used
+    # as the interval and window. 
+    # Also as described in Rothman and Young, 1996.
+    # Note in both Joris et al., 1994 and Rothman and young, 1995, the window used
+    # to measure the spikes at the "fundamental" (not "subharmonic") intervals is not
+    # explicitely or unambiguously stated.  
+    # """
 
 
 class VectorStrength:
     def __init__(self):
         pass
 
-    def vector_strength(self, spikes, freq=None, window_duration=1.0, nreps:int=0):
+    def vector_strength(self, spikes, freq=None, window_duration=1.0, nreps: int = 0, extras:bool=True):
         """
         Calculate vector strength and related parameters from a spike train, for the specified frequency
 
@@ -62,7 +85,9 @@ class VectorStrength:
             calling.
         freq : Stimulus frequency in Hz
         window_duration: Time in seconds for measurement window (used to compute rate)
-
+        nreps: number of repetitions in this data set
+        extras: bool (default True):
+            whether to include rMTF and entrainment in the calculation.
         Returns
         -------
             A dataclass of type VSResult
@@ -79,18 +104,35 @@ class VectorStrength:
         VSR.n_spikes = len(spikes)
         # find the number of full cycles that fit in the window duration,
         # recalculate the window and get the spikes from that
-        if len(spikes) > 0:
+        if VSR.n_spikes > 0 and extras:
             earliest_spike = np.min(spikes)
             zsp = spikes - earliest_spike
-            n_periods = int(np.floor(window_duration/period))
-            max_time = n_periods*period
-            mtf_spikes = np.where((zsp >= 0) & (zsp < max_time))[0]
-            # print(f"^^^^^^^ period: {period:.5f} window: {window_duration:.2f}  max_time: {max_time:.2f}  nspikes: {VSR.n_spikes:d} mtf_spikes: {len(mtf_spikes):d}")
-            VSR.rMTF = len(mtf_spikes)/max_time/nreps
+            n_periods = int(np.floor(window_duration / period))
+            max_time = n_periods * period
+            mtf_spikes = zsp[(zsp >= 0.0) & (zsp < max_time)]
+            # print(f"^^^^^^^ period: {period:.5f} window: {window_duration:.2f}  max_time: {max_time:.2f}  nspikes: {VSR.n_spikes:d} mtf_spikes: {mtf_spikes.shape[0]:d}")
+            VSR.rMTF = mtf_spikes.shape[0] / max_time / nreps
+
+            # now calculate entrainment
+            spike_isis = np.diff(mtf_spikes)  # ISI from spikes in full cycles
+            spike_isis = spike_isis[spike_isis > 0.]  # only include intervals within each trial (across trials will be negative)
+            fhalf = 0.5/freq
+            fonehalf = 1.5/freq
+            # print(fhalf, fonehalf, freq)
+            n_entrain_total = len(spike_isis)
+            entrained = spike_isis[(spike_isis >= fhalf) & (spike_isis < fonehalf)]
+            if n_entrain_total == 0:
+                VSR.entrainment = 0.0
+            else:
+                VSR.entrainment = len(entrained)/float(n_entrain_total)
         else:
             VSR.rMTF = 0.0
+            VSR.entrainment = 0.0
+        
         twopi_per = 2.0 * np.pi / period
-        phasev = twopi_per * np.fmod(spikes, period)  # convert to time within a cycle period in radians
+        phasev = twopi_per * np.fmod(
+            spikes, period
+        )  # convert to time within a cycle period in radians
         VSR.circ_phase = phasev
         sumcos = np.sum(np.cos(phasev))
         sumsin = np.sum(np.sin(phasev))
@@ -124,19 +166,21 @@ class VectorStrength:
 
     def print_VS(self, d):
 
-        VS_colnames = f"Cell,Configuration,carrierfreq,frequency,dmod,dB,VectorStrength,SpikeCount,rMTF,phase,phasesd,Rayleigh,RayleighP,"
-        VS_colnames += f"AN_VS,an_rMTF,AN_phase,AN_phasesd,maxArea,ninputs"
+        VS_colnames = f"Cell,Configuration,carrierfreq,frequency,dmod,dB,VectorStrength,SpikeCount,rMTF,entrainment,phase,phasesd,Rayleigh,RayleighP,"
+        VS_colnames += f"AN_VS,AN_rMTF,AN_entrainment,AN_phase,AN_phasesd,maxArea,ninputs"
 
         line += f"{d.carrier_frequency:.1f},{d.carrier_frequency:.1f},{d.dmod:.1f},{d.dB:.1f},"
         line += f"{d.vs:.4f},"
         line += f"{d.n_spikes:d},"
-        line += f"{d.rMTF:.2f}",
+        line += f"{d.rMTF:.2f},"
+        line += f"{d.entrainment:.4f},"
         line += f"{d.circ_phaseMean:.4f},"
         line += f"{d.circ_phaseSD:.4f},"
         line += f"{d.Rayleigh:.4f},"
         line += f"{d.pRayleigh:.4e},"
         line += f"{d.an_vs:.4f},"
         line += f"{d.an_rMTF:.4f},"
+        line += f"{d.an_entrainment:.4f},"
         line += f"{d.an_circ_phaseMean:.4f},"
         line += f"{d.an_circ_phaseSD:.4f},"
         line += f"{d.amax:.4f},"
@@ -148,6 +192,7 @@ class VectorStrength:
         print(f"{'Vector Strength':>24s}: {d['r']:12.4f}")
         print(f"{'Spike Count':>24s}: {d['n']:12d}")
         print(f"{'rMTF':>24s}: {d['rMTF']:.4f}")
+        print(f"{'entrainment':>24s}: {d['entrainment']:.4f}")
         print(
             f"{'mean phase (radians)':>24s}: {scipy.stats.circmean(d['ph'])/(2*np.pi):12.4f}"
         )
