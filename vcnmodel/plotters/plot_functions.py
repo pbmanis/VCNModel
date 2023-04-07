@@ -52,6 +52,31 @@ def add_stimbar(stimbar, zero_time, max_time, ax):
     ax.plot(wtb[twin]-zero_time, wv[twin]-2, 'b-', clip_on=False)  # plot outside the axes
     ax.xaxis.set_tick_params(which='major', pad=50)
 
+def flatten_spike_array(spike_times:Union[np.ndarray, List],
+                        zero_time:float=0.0, max_time:float=1.0,
+                        isi_flag=False):
+    """Make a spike array "flat" (e.g, just a list of spike times across all repetitions)
+    Optionally, do this to make an ISI distribution
+
+    Args:
+        spike_times (Union[np.ndarray, List]): a 2D array of spike times, or a list of arrays
+        zero_time (float, optional): Time to use as the 0 marker. Defaults to 0.0.
+        max_time (float, optional): Maximum time to include (before subtracting zero time). Defaults to 1.0.
+        isi_flag (bool, optional): return ISIs instead of spike times. Defaults to False.
+
+    Returns:
+        _type_: _description_
+    """
+    spf = []
+    for x in spike_times:
+        x = np.array(x)
+        x = x[x < max_time] - zero_time
+        if isi_flag:
+            x = np.diff(x)
+        spf.extend(x)
+    spike_times_flat = np.array(spf, dtype=object).ravel()
+    return spike_times_flat
+
 @TRC()
 def plot_psth(
     spike_times: Union[list, np.ndarray],
@@ -109,14 +134,115 @@ def plot_psth(
     Nothing
     """
     num_trials = run_info.nReps
-    spf = []
-    for x in spike_times:
-        if isinstance(x, list):
-            spf.extend(x)
-        else:
-            spf.extend([x])
-    spike_times_flat = np.array(spf, dtype=object).ravel() - zero_time
-    spike_times_flat = spike_times_flat[np.where(spike_times_flat < max_time)]
+    spike_times_flat = flatten_spike_array(spike_times,
+                        zero_time=zero_time, max_time=max_time, isi_flag=False)
+
+    bins = np.arange(0.0, max_time - zero_time, bin_width)
+    if bin_fill:
+        face_color = edge_color
+    else:
+        face_color = None  # "None"
+    if xunits == "radians":
+        xu = radians
+        bins = bins * radians
+    else:
+        xu = None
+    if (
+        (len(spike_times_flat) > 0)
+        # and not np.isnan(np.sum(spike_times_flat)))
+        and (ax is not None)
+    ):
+        ax.hist(
+            x=spike_times_flat,
+            bins=bins,
+            density=False,
+            weights=(1./(bin_width*num_trials)) * np.ones_like(spike_times_flat),
+            histtype="stepfilled",
+            facecolor=face_color,
+            edgecolor=edge_color,
+            linewidth=0,
+            alpha=alpha,
+        )
+    else:
+        if ax is not None:
+            ax.text(
+                0.5,
+                0.5,
+                "No Spikes",
+                fontsize=14,
+                color="r",
+                transform=ax.transAxes,
+                horizontalalignment="center",
+            )
+    if xunits == "radians":
+        ticks = np.linspace(0, 2 * np.pi, 5)
+        tick_labels = ["0", r"$\pi /2$", r"$\pi$", r"$3\pi /2$", r"$2\pi$"]
+        ax.set_xticks(ticks, tick_labels)
+    
+    # ax.set_ylim(0, ax.get_ylim()[1])
+    if stimbar is not None:
+        add_stimbar(stimbar, zero_time, max_time, ax)
+
+    return
+
+def plot_isi(
+    spike_times: Union[list, np.ndarray],
+    run_info: object,
+    zero_time: float = 0.0,
+    max_time: float = 1.0,
+    bin_width: float = 1e-3,
+    ax: Union[object, None] = None,
+    scale: float = 1.0,
+    bin_fill: bool = True,
+    edge_color: str = "k",
+    alpha: float = 1.0,
+    xunits: str = "time",
+    stimbar: Union[dict, None] = None, # {'sound_params': None, 'waveform': None},
+):
+    """Correctly plot ISI distriution
+    All values are in seconds (times, binwidths)
+
+    Parameters
+    ----------
+    spike_times : Union[list, np.ndarray]
+        A list of the spike times (in seconds)
+    run_info : object
+        The model_params run_info dataclass associated with this data
+    zero_time : float, optional
+        The onset time for the stimulus for reference, by default 0.0
+    max_time : float, optional
+        Maximum time for the FSL/SSL plot, by default 1.0
+    bin_width : float, optional
+        Width of bins for FSL/SSL plot, by default 1e-3
+    ax : Union[object, None], optional
+        matplotlib axis instance for this plotm by default None
+        note: if None, no plot is generated
+    scale : float, optional
+        Weights for the histogram optional. Used to scale (for example,
+        by the number of cells or fibers)
+    bin_fill : bool, optional
+        Fill the bins, or leave open (transparent), by default True
+    edge_color : str, optional
+        color of the edges of the plot bars, by default "k"
+    alpha : float, optional
+        Transparency of the plot, by default 1.0
+    xunits: str, optional
+        The text for the x axis units
+    stimbar: dict{sound_params: None, waveform: None}
+        A dictionary for placing a plot of the stimulus under the plot.
+        Keys: 'sound_params', 'waveform'
+        if 'sound_params' is not None, then it should be a sound_params dataclass
+        from make_sound_waveforms, and will be used to generate the waveform.
+        if 'waveform' is not None, then it is assumed that the passed
+        argument is a list [time, waveform].
+
+    Returns
+    -------
+    Nothing
+    """
+    num_trials = run_info.nReps
+    spike_times_flat = flatten_spike_array(spike_times, 
+                            zero_time=zero_time, max_time=max_time, isi_flag=True)
 
     bins = np.arange(0.0, max_time - zero_time, bin_width)
     if bin_fill:
@@ -155,19 +281,10 @@ def plot_psth(
                 transform=ax.transAxes,
                 horizontalalignment="center",
             )
-    if xunits == "radians":
-        ticks = np.linspace(0, 2 * np.pi, 5)
-        tick_labels = ["0", r"$\pi /2$", r"$\pi$", r"$3\pi /2$", r"$2\pi$"]
-        ax.set_xticks(ticks, tick_labels)
-    
-    # ax.set_ylim(0, ax.get_ylim()[1])
-    if stimbar is not None:
-        add_stimbar(stimbar, zero_time, max_time, ax)
 
     return
 
 @TRC()
-
 def print_AN_rates(
     spike_times: Union[list, np.ndarray],
     run_info: object,
