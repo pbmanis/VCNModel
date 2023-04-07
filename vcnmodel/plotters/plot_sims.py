@@ -2182,16 +2182,18 @@ class PlotSims:
     def setup_PSTH(self):
         sizer = OrderedDict(  # define figure layout
             [
-                ("A", {"pos": [0.08, 0.4, 0.73, 0.16]}),
-                ("B", {"pos": [0.08, 0.4, 0.50, 0.16]}),
-                ("C", {"pos": [0.08, 0.4, 0.22, 0.24]}),
-                ("D", {"pos": [0.08, 0.4, 0.06, 0.10]}),
+                ("A", {"pos": [0.08, 0.4, 0.78, 0.16]}),
+                ("B", {"pos": [0.08, 0.4, 0.58, 0.16]}),
+                ("C", {"pos": [0.08, 0.4, 0.34, 0.20]}),
+                ("D", {"pos": [0.08, 0.4, 0.18, 0.12]}),
+                ("E", {"pos": [0.08, 0.4, 0.05, 0.09]}),
                 # rhs
-                ("E", {"pos": [0.55, 0.18, 0.73, 0.16]}),  # vs and sac side by side
-                ("F", {"pos": [0.78, 0.18, 0.73, 0.16]}),
-                ("G", {"pos": [0.55, 0.4, 0.50, 0.16]}),
-                ("H", {"pos": [0.55, 0.4, 0.22, 0.24]}),
-                ("I", {"pos": [0.55, 0.4, 0.06, 0.10]}),
+                ("F", {"pos": [0.55, 0.18, 0.78, 0.16]}),  # vs and sac side by side
+                ("G", {"pos": [0.78, 0.18, 0.78, 0.16]}),
+                ("H", {"pos": [0.55, 0.4, 0.58, 0.16]}),
+                ("I", {"pos": [0.55, 0.4, 0.34, 0.20]}),
+                ("J", {"pos": [0.55, 0.4, 0.18, 0.12]}),
+                ("K", {"pos": [0.55, 0.4, 0.05, 0.09]}),
             ]
         )  # dict elements are [left, width, bottom, height] for the axes in the plot.
 
@@ -2199,10 +2201,12 @@ class PlotSims:
             sizer,
             order="columnsfirst",
             label=True,
-            figsize=(8.0, 6.0),
+            figsize=(8.0, 8.0),
             # labelposition=(-0.05, 1.02),
         )
-
+        # PH.show_figure_grid(P)  # use to configure the plot.
+        # mpl.show()
+        # return
         P.axdict["A"].set_ylabel("mV", fontsize=8)
 
         P.axdict["B"].set_title("Bushy Spike Raster", fontsize=9)
@@ -2210,24 +2214,32 @@ class PlotSims:
 
         P.axdict["C"].set_title("PSTH", fontsize=9, verticalalignment="top", y=0.95)
         P.axdict["C"].set_ylabel("Spikes/second", fontsize=9)
-        P.axdict["D"].set_title("Stimulus", fontsize=9)
-        P.axdict["D"].set_ylabel("Amplitude (Pa)", fontsize=8)
-        P.axdict["D"].set_xlabel("T (s)", fontsize=9)
+        P.axdict["D"].set_title("ISI", fontsize=9, verticalalignment="top", y=0.95)
+        P.axdict["D"].set_ylabel("# spikes")
 
-        P.axdict["E"].set_title("Phase", fontsize=9)
-        P.axdict["F"].set_title("SAC", fontsize=9)
+        P.axdict["E"].set_title("Stimulus", fontsize=9)
+        P.axdict["E"].set_ylabel("Amplitude (Pa)", fontsize=8)
+        P.axdict["E"].set_xlabel("T (s)", fontsize=9)
 
-        P.axdict["G"].set_title("ANF Spike Raster", fontsize=9)
-        P.axdict["H"].set_title("ANF PSTH", fontsize=9, verticalalignment="top", y=0.95)
-        P.axdict["I"].set_title("FSL/SSL", fontsize=9)
+        P.axdict["F"].set_title("Phase", fontsize=9)
+        P.axdict["G"].set_title("SAC", fontsize=9)
+
+        P.axdict["H"].set_title("ANF Spike Raster", fontsize=9)
+        P.axdict["I"].set_title("ANF PSTH", fontsize=9, verticalalignment="top", y=0.95)
+        P.axdict["J"].set_title("ANF ISI", fontsize=9, verticalalignment="top", y=0.95)
+        P.axdict["K"].set_title("BU FSL/SSL", fontsize=9)
         for axl in [
             "B",
             "C",
-            "D",
-            "G",
+            "E",
             "H",
+            "I",
         ]:
             P.axdict[axl].sharex(P.axdict["A"])
+        for axl in [
+            "J"
+        ]:
+            P.axdict[axl].sharex(P.axdict["D"])
         return P
 
     @trace_calls.winprint_continuous
@@ -2604,12 +2616,14 @@ class PlotSims:
             bu_voltage_panel = "A"
             bu_raster_panel = "B"
             bu_psth_panel = "C"
-            stimulus_panel = "D"
-            vs_panel = "E"
-            sac_panel = "F"
-            an_raster_panel = "G"
-            an_psth_panel = "H"
-            bu_fsl_panel = "I"
+            bu_isi_panel = "D"
+            stimulus_panel = "E"
+            vs_panel = "F"
+            sac_panel = "G"
+            an_raster_panel = "H"
+            an_psth_panel = "I"
+            an_isi_panel = "J"
+            bu_fsl_panel = "K"
         # We must get the units correct here.
         # AR time_base is in milliseconds, so convert to seconds
         all_an_st = []
@@ -2619,7 +2633,6 @@ class PlotSims:
         an_st_by_input = [
             [] for x in range(n_inputs)
         ]  # accumlate by input across trials
-        all_an_st = []  # collapsed completel = all spikes in one array
         an_st_grand = [
             [] for x in range(ntr)
         ]  # accumulate all input spike times for each trial
@@ -2951,8 +2964,9 @@ class PlotSims:
             MSW = msw.Make_Sound_Waveform()
 
             psth_binw = 0.2e-3
+            isi_binw = 0.1e-3
             PF.plot_psth(
-                all_bu_st,
+                all_bu_st_trials,
                 run_info=ri,
                 zero_time=data_window[0],
                 max_time=data_window[1],
@@ -2960,14 +2974,34 @@ class PlotSims:
                 ax=P.axdict[bu_psth_panel],
                 stimbar = {'sound_params': None, 'waveform': [stb, waveform[0]]}
             )
+            PF.plot_isi(
+                all_bu_st_trials,
+                run_info=ri,
+                zero_time=data_window[0],
+                max_time=data_window[1],
+                bin_width=isi_binw,
+                ax=P.axdict[bu_isi_panel],
+            )
+            P.axdict[bu_isi_panel].set_xlim(0, 5./ri.fmod)
             PF.plot_psth(
-                all_an_st,
+                #all_an_st_grand,
+                an_st_by_input[0],
                 run_info=ri,
                 zero_time=data_window[0],
                 max_time=data_window[1],
                 bin_width=psth_binw,
                 ax=P.axdict[an_psth_panel],
             )
+            PF.plot_isi(
+                #all_an_st_grand,
+                an_st_by_input[0],
+                run_info=ri,
+                zero_time=data_window[0],
+                max_time=data_window[1],
+                bin_width=psth_binw,
+                ax=P.axdict[an_isi_panel],
+            )
+            P.axdict[an_isi_panel].set_xlim(0, 5./ri.fmod)
             # just print the AN rates
             print("an st by input: ", len(an_st_by_input))
             PF.print_AN_rates(
