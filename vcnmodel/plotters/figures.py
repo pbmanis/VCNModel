@@ -3452,6 +3452,24 @@ class Figures(object):
 
         return axon_name
 
+    def plot_ISI(
+            self,
+            cell_number: int,
+            isi_win: tuple = (0.05, 0.2),
+            binwidth: float=1e-4,
+            isi_ax: object=None,
+        ):
+        if self.all_bu_st is None or isi_ax is None:
+            return
+        cvisit, cvisi, cvt, cvm, cvs = ISI.isi_cv(
+            self.all_bu_st,
+            binwidth=binwidth,
+            reftime=0.0,
+            t0=isi_win[0],
+            t1=isi_win[1],
+        )
+        
+
     def plot_one_CV(
         self,
         cell_number: int,
