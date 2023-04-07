@@ -120,9 +120,8 @@ class VS_Plots:
             cell selection to plot, by default [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
         dBSPL : int, optional
             The base intensity for the VS stimuli, by default 15
-        rMTF_insert: bool, optional
-            If true, also plot the rate MTF (average rate) as an inset
         """
+
         self.dBSPL = dBSPL
 
         if dends == "9I9U":
@@ -446,6 +445,7 @@ class VS_Plots:
                         mode:str="line", xscale:str="log", yscale:str="linear",
                         figure8_xscale=False, show2out=True,
                         rMTF_inset:bool=False,
+                        entrain_inset: bool=False,
                         legend_loc = (0,0)):
         """Summarize the VS for one cell for all conditions/frequencies.
         This is similar to the plotnine routine above, but just
@@ -479,9 +479,17 @@ class VS_Plots:
         show2out: bool (default: True)
             include the "remove2largest" symbol on the legend if it is not
             a dataset in the current plot.
+        rMTF_inset: bool (default: False)
+             If true, also plot the rate MTF (average rate) as an inset
+        entrain_inset: bool (default: )
+            If true, also plot the entrainment as an inset
 
         """
-        self.rMTF = rMTF_inset
+        # if rMTF_inset and entrain_inset:
+        #     raise ValueError("can only plot one of rMTF or Entrainment")
+        self.rMTF = True # rMTF_inset
+        self.entrain = True #  entrain_inset
+
         label_font = {"fontsize": 8, "fontweight": "normal"}
         title_font = {"fontsize": 9, "fontweight": "normal"}
         inset_label_font = {"fontsize": 7, "fontweight": "normal"}
@@ -614,6 +622,15 @@ class VS_Plots:
             y_rotation=0., 
             fontsize=8,
         )
+        # retext the legend to make more sense
+        xl = ax.get_xticklabels()  # do this before niceplot...
+        xl = ax.get_xticklabels()
+        newxl = [f"{int(float(x.get_text())):d}" for x in xl if x.get_text() != ""]
+        ax.set_xticklabels(newxl)
+        ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
+        ax.set_ylabel("Vector Strength", fontdict=label_font)
+        PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)
+
         
         if self.rMTF:  # include an inset with the rate MTF - always a line
             # make an inset axis
@@ -678,16 +695,71 @@ class VS_Plots:
                 y_rotation=0., 
                 fontsize=7,
             )
-            
-            # retext the legend to make more sense
+        
+        if self.entrain:  # include an inset with the rate MTF - always a line
+            # make an inset axis
+            inset_ax = STY.create_inset_axes([0.2, 0.15, 0.5, 0.35], ax, f"BC{cell:02d}{'_entrainment':s}")
+            for icfg, cfg in enumerate(sorted(set(dfl['Configuration']))):
+                run = dfl[dfl['Configuration'] == cfg]
+                if xscale == 'linear':
+                    x = np.arange(8) # run['frequency'].values
+                else:
+                    x = np.log10([50, 100, 200, 300, 400, 500, 750, 1000]) # np.arange(8) # run['frequency'].values
+                # print('run keys: ', run.keys())
+                if yscale == 'linear':
+                    y = run['entrainment'].values
+                    y_an = run['AN_entrainment'].values
+                else:
+                    y = np.log10(run['entrainment'].values)
+                    y_an = np.log10(run['AN_entrainment'].values)
 
-        xl = ax.get_xticklabels()  # do this before niceplot...
-        xl = ax.get_xticklabels()
-        newxl = [f"{int(float(x.get_text())):d}" for x in xl if x.get_text() != ""]
-        ax.set_xticklabels(newxl)
-        ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
-        ax.set_ylabel("Vector Strength", fontdict=label_font)
-        PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)
+                # ye = run['VS_SD'].values
+                x_an = x  # np.arange(8)
+                mfc = cfg_color[cfg]
+                inset_ax.get_xaxis().set_clip_on(False)
+                inset_ax.plot(x, y, marker='o', mfc=mfc, ms = 4, mec=mfc, mew=0, color=mfc, label=cfg, clip_on=False)
+                if icfg == 0:
+                    inset_ax.plot(x_an, y_an, color='firebrick', clip_on=False)
+                    print("xan, yan: ", x_an, y_an)
+
+                # inset_ax.errorbar(x, y, yerr=ye, marker='o', mfc=mfc, ms=4, mec=mfc, 
+                #     mew=0, color=mfc, label=cfg, clip_on=False)
+                if icfg == 0:
+                    label = "ANF"
+                else:
+                    label = None
+                # inset_ax.plot(x_an, y_an, '-', color="firebrick", lw=0.5, zorder=-100, label=label)  # in back of data
+            if "removetwolargest" not in set(dfl['Configuration']) and show2out:
+                # add the 2-out just for the legend in case it is not part of this plot (but it
+                # might be in other plots)
+                c2out = cfg_color["removetwolargest"]
+                # inset_ax.errorbar([], [], yerr=[], marker='o', mfc=c2out, ms=4, mec=c2out, mew=0, color=c2out,
+                    #  label="removetwolargest", clip_on=False)
+            ytick_list = [0, 0.2, 0.4, 0.6, 0.8, 1.0]
+            ytick_list_str= ['0.0', '0.2', '0.4', '0.6', '0.8', '1.0'] 
+            y_tick_minor=[25, 75, 125]
+            freq_list = np.log10([50, 100, 200, 500,  1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
+            xtick_list_str=['50', '100', '200', '500',  '1000']
+            xtick_minor_list = np.log10([300, 400, 600, 700, 800, 900]) # [100, 200, 400, 500]
+            PH.nice_plot(inset_ax, position = -0.015, direction="outward", ticklength=1.5)
+            inset_ax.set_ylabel("Entrainment", fontdict=inset_label_font)
+            inset_ax.set_xlabel("Mod Freq (Hz)", fontdict=inset_label_font)
+            PH.set_axes_ticks(
+                ax=inset_ax,
+                xticks=freq_list,
+                xticks_str=xtick_list_str,
+                xticks_pad=None,
+                x_minor = xtick_minor_list,
+                major_length=2.0,
+                minor_length=1.,
+                yticks = ytick_list,
+                yticks_str= ytick_list_str, 
+                yticks_pad=None,
+                y_minor=y_tick_minor,
+                y_rotation=0., 
+                fontsize=7,
+            )
+        
 
         print("Legendflag: ", legendflag)
         if legendflag:
@@ -710,7 +782,17 @@ class VS_Plots:
             mpl.show()
         return ax
 
-    def update_legend(self, ax, legend_type:str="", legend_loc=None, two_largest=False):
+    def update_legend(self, ax, legend_type:str="", legend_loc:tuple=(0.05, 0.95), two_largest=False):
+        """Change the legend to a custom version with better labels
+
+        Args:
+            ax (matplotlib axis instance): the target ax instance from the plot
+            legend_type (str, optional): 'type' of legend - Dendrites the GBC09 experiment
+              - otherwise builds legend for different input tests. Defaults to "".
+            legend_loc (tuple, optional): location for the legend relative to the axis. Defaults to (0.05, 0.95).
+            two_largest (bool, optional): whether to include "remove two largest"
+                from the legend. Defaults to False.
+        """
         if legend_type == 'Dendrites':
             print("legend type is dendrites")
             custom_legend = [Line2D([0], [0], marker="_", markersize=3, color="firebrick", lw=2, label='AN'),
@@ -735,17 +817,18 @@ class VS_Plots:
 )
             ax.legend(handles=custom_legend, handlelength=1, loc="lower left", fontsize=7, labelspacing=0.33, markerscale=1,
                       bbox_to_anchor=legend_loc)
-            # if legend_loc is not None:
-            #     ax.legend(bbox_to_anchor=legend_loc)
-            # ltexts = ax.legend().get_texts()
-            # print(ltexts)
-            # for ik, this_l in enumerate(ltexts):
-            #     labeltext = this_l.get_text()
-            #     if labeltext in list(legdict.keys()):
-            #         this_l.set_text(legdict[labeltext])
-            #         print("setting legend text to : ", legdict[labeltext])
 
-    def Figure6_Supplemental2(self, mode:str="line", rMTF=True):
+    def Figure6_Supplemental2(self, mode:str="line", rMTF=True, entrain=False):
+        """make Supplememntal Figure 2 for Figure 6
+
+        Args:
+            mode (str, optional): drawing mode. Defaults to "line".
+            rMTF (bool, optional): Whether to draw insets as rMTF. Defaults to True.
+            entrain (bool, optional): whether to draw insets as entrainment. Defaults to False.
+
+        Returns:
+            tuple: Figure handle and PlotHelpers figure object
+        """
         show2out = False
         dBSPL = 30
         V1 = VS_Plots(dBSPL=dBSPL)
@@ -767,8 +850,13 @@ class VS_Plots:
                 legend = True
             else:
                 legend = False
-            self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
+            if rMTF:
+                self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
                 barwidth=180, mode=mode, show2out=show2out, rMTF_inset=rMTF,
+                legend_loc=(1.2, 0.8))
+            if entrain:
+                self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
+                barwidth=180, mode=mode, show2out=show2out, entrain_inset=entrain,
                 legend_loc=(1.2, 0.8))
             if i == len(cells)-1 and legend: # now move the legend
                 # print("supp2: update legend")
@@ -864,17 +952,48 @@ class VS_Plots:
             },
         )
 
-    def Summarize(self, axin = None, legendflag = '', dBSPL=0):
+    def Summarize(self, dBSPL=0):
+        """Plot a summary of VS, rMTF and entrainment for 3 different
+        input configurations (All, larget only, and without the largest input)
+
+        Args:
+            dBSPL (int, optional): _description_. Defaults to 0. dBSPL data set to work from
+
+        Returns:
+            _type_: _description_
+        """
         label_font = {"fontsize": 8, "fontweight": "normal"}
         title_font = {"fontsize": 9, "fontweight": "normal"}
-
-        if axin is None:
-            fig, axs = mpl.subplots(3, 2, figsize=(8, 10))
-        else:
-            axs = axin
+        P = PH.regular_grid(
+            3,
+            3,
+            figsize=(11, 9),
+            order="rowsfirst",
+            panel_labels=["A", "B", "C", "D", "E", "F", "G", "H", "I"],
+            margins={"leftmargin": 0.08, "rightmargin": 0.15, "bottommargin": 0.1, "topmargin":0.1},
+            verticalspacing=0.08,
+            horizontalspacing=0.08,
+            labelposition=(-0.12, 1.05),
+        )
+        axl = P.axarr.ravel()
+        axs = P.axarr
+        P.figure_handle.text(x = 0.02, y=0.8, s="All", rotation=90, va="center")
+        P.figure_handle.text(x = 0.02, y=0.5, s="Largest only", rotation=90, va="center")
+        P.figure_handle.text(x = 0.02, y=0.2, s="Largest removed", rotation=90, va="center")
+        P.figure_handle.text(x = 0.2, y=0.94, s="VS", rotation=0, ha="center")
+        P.figure_handle.text(x = 0.48, y=0.94, s="rMTF", rotation=0, ha="center")
+        P.figure_handle.text(x = 0.75, y=0.94, s="Entrainment", rotation=0, ha="center")
+        P.figure_handle.suptitle(x=0.05, y=0.98, t=f"dBSPL: {dBSPL:d}", fontweight="bold")
+     
         superthreshset = [9, 11, 17, 18]
+        cell_legend = [False]*10
+        anf_legend = False
         for icell, cell in enumerate([2, 5, 6, 9, 10, 11, 13, 17, 18, 30]):
             dfl = self.df[self.df["Cell"] == cell]  # just get the cell's data
+            freqs = sorted(set(dfl['frequency'].values))
+            freq_list = np.log10([50, 100, 200, 300, 400, 500, 750, 1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
+            xticks_str=['50', '100', '200', '300', '400', '500', '750', '1000']
+            minor_list = [] # [100, 200, 400, 500]
 
             cfg_color = {'all': colors[0], "largestonly": colors[1], "removelargest": colors[2], "removetwolargest": colors_swarm[3],
                         'Intact': colors[0], "Pruned": colors[1]}
@@ -885,7 +1004,6 @@ class VS_Plots:
             else:
                 marker = 'o'
             mfc = colors[icell]
-            print(axs)
             for icfg, cfg in enumerate(sorted(set(dfl['Configuration']))):
                 if icfg > 2:
                     continue
@@ -898,73 +1016,88 @@ class VS_Plots:
                 ye = run['VS_SD'].values
                 x_an = x # np.arange(8)
                 y_an = run['AN_VS'].values
-                ax.errorbar(x, y, yerr=ye, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc, label=f"BC{cell:02d}")
+                ax.errorbar(x, y, yerr=ye, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc) # , label=f"BC{cell:02d}")
                 if icell == 0:
                     label = "ANF"
                 else:
                     label = None
-                ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=0.5, zorder=-100, label=label)  # in back of data
-                ax = axs[icfg, 1]
-                y = run['rMTF'].values
-                y_an = run['AN_rMTF'].values
-                ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=0.5, zorder=-100, label=label)  # in back of data
-                ax.plot(x, y, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc, label=f"BC{cell:02d}")
+                ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=0.5, zorder=-100) # , label=label)  # in back of data
+                # ax.set_title(cfg)
+                PH.set_axes_ticks(
+                    ax=ax,
+                    xticks=freq_list,
+                    xticks_str=xticks_str,
+                    xticks_pad=None,
+                    x_minor = minor_list,
+                    major_length=3.0,
+                    minor_length=1.5,
+                    yticks =  [0, 0.2, 0.4, 0.6, 0.8, 1.0],
+                    yticks_str=  ['0.0', '0.2', '0.4', '0.6', '0.8', '1.0'], 
+                    yticks_pad=None,
+                    y_minor=[0.1, 0.3, 0.5, 0.7, 0.9],
+                    y_rotation=0., 
+                    fontsize=8,
+                )
 
-                ax.set_title(cfg)
-        freqs = sorted(set(dfl['frequency'].values))
-        freq_list = np.log10([50, 100, 200, 300, 400, 500, 750, 1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
-        xticks_str=['50', '100', '200', '300', '400', '500', '750', '1000']
-        minor_list = [] # [100, 200, 400, 500]
-        for i in range(axs.shape[0]):
-            ax = axs[i, 0]
-            PH.set_axes_ticks(
-                ax=ax,
-                xticks=freq_list,
-                xticks_str=xticks_str,
-                xticks_pad=None,
-                x_minor = minor_list,
-                major_length=3.0,
-                minor_length=1.5,
-                yticks =  [0, 0.2, 0.4, 0.6, 0.8, 1.0],
-                yticks_str=  ['0.0', '0.2', '0.4', '0.6', '0.8', '1.0'], 
-                yticks_pad=None,
-                y_minor=[0.1, 0.3, 0.5, 0.7, 0.9],
-                y_rotation=0., 
-                fontsize=8,
-            )
+                ax.set_ylim(0, 1)
+                xl = ax.get_xticklabels()  # do this before niceplot...
+                xl = ax.get_xticklabels()
+                newxl = [f"{int(float(x.get_text())):d}" for x in xl if x.get_text() != ""]
+                ax.set_xticklabels(newxl)
+                ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
+                ax.set_ylabel("Vector Strength", fontdict=label_font)
+                PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)         
+                
+                for j, inset in enumerate(['rMTF', 'entrainment']):
+                    ax = axs[icfg, j+1]
+                    # if icfg == 0:
+                    #     ax.set_title(inset)
+                    y = run[inset].values
+                    y_an = run[f"AN_{inset:s}"].values
 
-            ax.set_ylim(0, 1)
-            xl = ax.get_xticklabels()  # do this before niceplot...
-            xl = ax.get_xticklabels()
-            newxl = [f"{int(float(x.get_text())):d}" for x in xl if x.get_text() != ""]
-            ax.set_xticklabels(newxl)
-            ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
-            ax.set_ylabel("Vector Strength", fontdict=label_font)
-            PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)
+                    if inset == 'rMTF':
+                        yticks =  [0, 50, 100, 150, 200, 250]
+                        yticks_str=  ['0', '50', '100', '150', '200', '250']
+                        ax.set_ylim(0, 250)
+                    elif inset == "entrainment":
+                        yticks =  [0, 0.2, 0.4, 0.6, 0.8, 1.0]
+                        yticks_str=  ['0.0', '0.2', '0.4', '0.6', '0.8', '1.0']
+                        ax.set_ylim(0, 1)
+                    PH.set_axes_ticks(
+                        ax=ax,
+                        xticks=freq_list,
+                        xticks_str=xticks_str,
+                        xticks_pad=None,
+                        x_minor = minor_list,
+                        major_length=3.0,
+                        minor_length=1.5,
+                        yticks = yticks,
+                        yticks_str=  yticks_str,
+                        yticks_pad=None,
+                        y_minor=[],
+                        y_rotation=0., 
+                        fontsize=8,
+                    )
 
-        for i in range(axs.shape[0]):
-            ax = axs[i, 1]
-            PH.set_axes_ticks(
-                ax=ax,
-                xticks=freq_list,
-                xticks_str=xticks_str,
-                xticks_pad=None,
-                x_minor = minor_list,
-                major_length=3.0,
-                minor_length=1.5,
-                yticks =  [0, 50, 100, 150, 200, 250],
-                yticks_str=  ['0', '50', '100', '150', '200', '250'], 
-                yticks_pad=None,
-                y_minor=[],
-                y_rotation=0., 
-                fontsize=8,
-            )
-            ax.legend()
-        fig.suptitle(f"dBSPL: {dBSPL:d}")
-        fig.tight_layout()
-        if axin is None:
-            mpl.show()
-        return ax        
+                    uselabel2 = None
+                    uselabel = None
+                    if icfg == 0 and j+1 == 2 and not cell_legend[icell]:
+                        uselabel2 = f"BC{cell:02d}"
+                        cell_legend[icell] = True
+                    if icfg == 0 and j+1 == 2 and not anf_legend:
+                        uselabel = 'ANF'
+                        anf_legend=True
+
+                    ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=1, zorder=-100, label=uselabel)  # in back of data
+                    ax.plot(x, y, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc, label=uselabel2)
+                    ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
+                    if inset == 'rMTF':
+                        ax.set_ylabel("rMTF (sp/s)", fontdict=label_font)
+                    if inset == 'entrainment':
+                        ax.set_ylabel("Entrainment", fontdict=label_font)
+        axs[0,2].legend(loc='best', bbox_to_anchor=(1.05, 1))
+
+        mpl.show()
 
 if __name__ == "__main__":
 
@@ -978,7 +1111,8 @@ if __name__ == "__main__":
 
     # V1 = VS_Plots(sels=[9], dBSPL=15, dends="9I9U")
     # V1.Figure8_M()
-    db = 30
+    db = 15
+
     V1 = VS_Plots(dBSPL=db)
     V1.Summarize(dBSPL=db)
 

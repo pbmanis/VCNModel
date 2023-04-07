@@ -2248,10 +2248,11 @@ class PlotSims:
         line = f"{str(cell_number):s},{filename:s},{experiment:s},"
         line += f"{d.carrier_frequency:.1f},{freq:06.1f},{dmod:.1f},{dB:.1f},"
 
-        VS_colnames += f"VectorStrength,SpikeCount,rMTF,phase,phasesd,Rayleigh,RayleighP,VS_mean,VS_SD,VS_Ns,VS_groups,"
+        VS_colnames += f"VectorStrength,SpikeCount,rMTF,entrainment,phase,phasesd,Rayleigh,RayleighP,VS_mean,VS_SD,VS_Ns,VS_groups,"
         line += f"{d.vs:.4f},"
         line += f"{d.n_spikes:d},"
         line += f"{d.rMTF:.2f},"
+        line += f"{d.entrainment:.4f},"
         line += f"{d.circ_phaseMean:.4f},"
         line += f"{d.circ_phaseSD:.4f},"
         line += f"{d.Rayleigh:.4f},"
@@ -2261,9 +2262,10 @@ class PlotSims:
         line += f"{int(d.vs_Ns):d},"
         line += f"{int(d.vs_groups):d},"
 
-        VS_colnames += f"AN_VS,AN_rMTF,AN_phase,AN_phasesd,SAC_AN,SAC_Bu,SAC_AN_HW,SAC_Bu_HW,maxArea,ninputs"
+        VS_colnames += f"AN_VS,AN_rMTF,AN_entrainment,AN_phase,AN_phasesd,SAC_AN,SAC_Bu,SAC_AN_HW,SAC_Bu_HW,maxArea,ninputs"
         line += f"{d.an_vs:.4f},"
         line += f"{d.an_rMTF/d.n_inputs:.2f}," # normalize across all inputs
+        line += f"{d.an_entrainment:.4f},"
         line += f"{d.an_circ_phaseMean:.4f},"
         line += f"{d.an_circ_phaseSD:.4f},"
         line += f"{d.sac_an_CI:.4f},"
@@ -2556,7 +2558,6 @@ class PlotSims:
     ):
         if cell_ID is None:
             cell_ID = self.parent.cellID
-            raise()
         if isinstance(cell_ID, str):
             if ("U" in cell_ID) or ("I" in cell_ID):
                 gbc = f"VCN_c{int(cell_ID[0:1]):02d}"
@@ -2718,7 +2719,7 @@ class PlotSims:
                     bu_vs_data.extend(all_bu_st_trials[j][v])
                 vs_calc = self.VS.vector_strength(
                             bu_vs_data, fmod, window_duration=window_duration,
-                            nreps=nreps,
+                            nreps=nreps, extras=False,
                         )  # vs expects spikes in msec
                 vs_n[i] = vs_calc.vs
                 vs_nspikes[i] = int(vs_calc.n_spikes)
@@ -2736,7 +2737,7 @@ class PlotSims:
 
             vs = self.VS.vector_strength(
                 bu_spikesinwin, fmod, window_duration=window_duration,
-                nreps=nreps
+                nreps=nreps, extras=True, # be sure to include entrainment
             )  # vs expects spikes in msec
             cprint("c", f"Grand mean VS: {vs.vs:8.4f}  N={vs.n_spikes:6d}")
             vs.vs_mean = np.mean(vs_n)
@@ -2787,11 +2788,12 @@ class PlotSims:
                 vs.sac_bu_CI = 0.0
                 vs.sac_bu_hw = np.nan
             print(
-                "CN Vector Strength at %.1f: %7.3f, rMTF=%.2f sp/s  dispersion=%.2f (us) Rayleigh: %7.3f  p = %.3e  n_spikes = %d"
+                "CN Vector Strength at %.1f: %7.3f, rMTF=%.2f, sp/s entrainment:%.4f,  dispersion=%.2f (us) Rayleigh: %7.3f  p = %.3e  n_spikes = %d"
                 % (
                     fmod,
                     vs.vs,
                     vs.rMTF,
+                    vs.entrainment,
                     vs.circ_timeSD * 1e6,
                     vs.Rayleigh,
                     vs.pRayleigh,
@@ -2855,11 +2857,12 @@ class PlotSims:
 
             print(" Sound type: ", soundtype)
             print(
-                "AN Vector Strength at %.1f: %7.3f, rMTF=%.2f sp/s dispersion=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d"
+                "AN Vector Strength at %.1f: %7.3f, rMTF=%.2f sp/s entrainment:%.4f  dispersion=%.2f (us) Rayleigh: %7.3f  p = %.3e  n = %d"
                 % (
                     fmod,
                     vs_an.vs,
                     vs_an.rMTF,
+                    vs_an.entrainment,
                     vs_an.circ_timeSD * 1e6,
                     vs_an.Rayleigh,
                     vs_an.pRayleigh,
@@ -2876,6 +2879,7 @@ class PlotSims:
                 )
             vs.an_vs = vs_an.vs  # copy
             vs.an_rMTF = vs_an.rMTF
+            vs.an_entrainment = vs_an.entrainment
             vs.an_circ_phaseMean = vs_an.circ_phaseMean
             vs.an_circ_phaseSD = vs_an.circ_phaseSD
             vs.an_circ_timeSD = vs_an.circ_timeSD
