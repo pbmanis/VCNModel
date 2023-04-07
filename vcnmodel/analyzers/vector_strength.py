@@ -2,6 +2,9 @@
 
 Calculates vector strength and related parameters from a spike train, for the specified frequency
 
+Also included are the rate modulation transfer function (rMTF) and the
+entrainment index (using a standard 0.5/f to 1.5/f window on the ISI distribution)
+
 This module is part of *vcnmodel*.
 
 Support::
