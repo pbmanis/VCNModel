@@ -99,7 +99,16 @@ from vcnmodel.plotters import plot_functions
 from vcnmodel.plotters import SAC_plots
 import vcnmodel.group_defs as GRPDEF
 import vcnmodel.analyzers.pattern_summary
+import vcnmodel.analyzers.sac
+import vcnmodel.analyzers.analysis
+import vcnmodel.analyzers.reverse_correlation
+import vcnmodel.analyzers.isi_cv
+import vcnmodel.analyzers.sttc
+import vcnmodel.analyzers.analyze_data
 import vcnmodel.analyzers.vector_strength
+import vcnmodel.analyzers.flatten_spike_array
+import vcnmodel.analyzers.modulation_transfer_function
+import vcnmodel.analyzers.entrainment
 from vcnmodel.plotters import morphology_thr_correlations
 from pylibrary.tools import cprint as CP
 import vcnmodel.analyzers.spikestatistics
@@ -130,6 +139,9 @@ all_modules = [
     vcnmodel.analyzers.sac,
     vcnmodel.analyzers.pattern_summary,
     vcnmodel.analyzers.vector_strength,
+    vcnmodel.analyzers.modulation_transfer_function,
+    vcnmodel.analyzers.entrainment,
+    vcnmodel.analyzers.flatten_spike_array,
     GRPDEF,
     vcnmodel.util.fixpicklemodule,
     vcnmodel.util.readmodel,
