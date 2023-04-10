@@ -2583,20 +2583,21 @@ class Figures(object):
             P = P,
             pan = ["H", "I", "J", "K", "L", "M", "N"],
         )
-        rMTF = True
+        
         """ Now do the right side with the VS plots and "V" or line plots
 
         """
+        inset_type = "rMTF"
         VSP15 = SAM_VS_vplots.VS_Plots(dBSPL=15)
         VSP15.plot_VS_Data(axin=P.axdict["P1"], legendflag=True)
         VSP30 = SAM_VS_vplots.VS_Plots(dBSPL=30)
         VSP30.plot_VS_Data(axin=P.axdict["P2"], legendflag=False)
 
         VSP = SAM_VS_vplots.VS_Plots(dBSPL=15)
-        VSP.plot_VS_summary(2, axin=P.axdict["O1"], legendflag=False, rMTF_inset=rMTF)
-        VSP.plot_VS_summary(30, axin=P.axdict["O2"], legendflag=False, rMTF_inset=rMTF)
-        VSP.plot_VS_summary(9, axin=P.axdict["O3"], legendflag=False, rMTF_inset=rMTF)
-        VSP.plot_VS_summary(17, axin=P.axdict["O4"], legendflag=False, rMTF_inset=rMTF)
+        VSP.plot_VS_summary(2, axin=P.axdict["O1"], legendflag=False, inset_type=inset_type)
+        VSP.plot_VS_summary(30, axin=P.axdict["O2"], legendflag=False, inset_type=inset_type)
+        VSP.plot_VS_summary(9, axin=P.axdict["O3"], legendflag=False, inset_type=inset_type)
+        VSP.plot_VS_summary(17, axin=P.axdict["O4"], legendflag=False, inset_type=inset_type)
 
 
         fig = FigInfo()
@@ -2605,10 +2606,10 @@ class Figures(object):
         else:
             fig.P = P
         filedescriptor = "Ephys_4_main_v5"
-        if rMTF:
-            filedescriptor += f"_rMTF"
+
+        filedescriptor += f"_{inset_type:s}"
         fig.filename = set_figure_path(fignum=6, filedescriptor=filedescriptor)
-        fig.title["title"] = "SBEM Project Figure 6 Modeling: SAM, SAC"
+        fig.title["title"] = "SBEM Project Figure 6 Modeling: SAM, SAC, rMTF, Entrainment"
         title2 = {"title": f"", "x": 0.99, "y": 0.01}
         fig.title2 = title2
         return fig
@@ -2777,11 +2778,10 @@ class Figures(object):
             window_duration = phasewin[1] - phasewin[0]
             x = np.array(y)
             v = np.where((phasewin[0] <= x) & (x < phasewin[1]))[0]
-            bu_spikesinwin = x[v]
             nreps = len(AR.MC.traces)
-            vs_bu = self.parent.PLT.VS.vector_strength(bu_spikesinwin, fmod, window_duration=window_duration, nreps=nreps)
-            vs_an = self.parent.PLT.VS.vector_strength(all_an_st, fmod, window_duration=window_duration, nreps=nreps)
-            # set bin width based on sampling rate.
+            bu_spikesinwin = x[v]
+            vs_bu = self.parent.PLT.VS.vector_strength(bu_spikesinwin, fmod, time_window=phasewin, nreps=nreps)
+            vs_an = self.parent.PLT.VS.vector_strength(all_an_st, fmod, time_window=phasewin, nreps=nreps)
             per = 1.0 / fmod  # period, in seconds
             est_binw1 = per / 30.0  # try this
             dt = 1e-3 * si.dtIC
@@ -2792,31 +2792,33 @@ class Figures(object):
                 est_binw = nints * dt
             else:
                 est_binw = est_binw1
-            # print('est_binw: ', est_binw, est_binw1, dt, nints, per)
-
-            # plot AN red
+            # plot AN in red
+            print("sync AN")
             PF.plot_psth(
                 vs_an.circ_phase,
                 run_info=ri,
+                zero_time=0.0,
                 max_time=2 * np.pi,
                 bin_width=est_binw,
                 ax=P.axdict[pan[5]],
-                bin_fill=False,
+                bin_fill=True,
                 xunits="radians",
                 edge_color="k",
-                alpha=0.5,
+                alpha=0.6,
             )
             # plot BU black
+            print("sync BU")
             PF.plot_psth(
                 vs_bu.circ_phase,
                 run_info=ri,
+                zero_time=0.0,
                 max_time=2 * np.pi,
                 bin_width=est_binw,
-                bin_fill=False,
+                bin_fill=True,
                 ax=P.axdict[pan[5]],
                 xunits="radians",
                 edge_color='r',
-                alpha=0.5,
+                alpha=0.6,
             )
             # P.axdict["E"].hist(
             #     vs["ph"],

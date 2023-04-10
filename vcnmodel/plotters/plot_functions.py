@@ -7,6 +7,7 @@ import numpy as np
 import seaborn as sns
 from vcnmodel.util import trace_calls
 from vcnmodel.analyzers import analysis as SPKANA
+import vcnmodel.analyzers.flatten_spike_array as VAFlatten
 from vcnmodel.util.basic_units import radians
 from vcnmodel.util import make_sound_waveforms
 
@@ -52,30 +53,7 @@ def add_stimbar(stimbar, zero_time, max_time, ax):
     ax.plot(wtb[twin]-zero_time, wv[twin]-2, 'b-', clip_on=False)  # plot outside the axes
     ax.xaxis.set_tick_params(which='major', pad=50)
 
-def flatten_spike_array(spike_times:Union[np.ndarray, List],
-                        zero_time:float=0.0, max_time:float=1.0,
-                        isi_flag=False):
-    """Make a spike array "flat" (e.g, just a list of spike times across all repetitions)
-    Optionally, do this to make an ISI distribution
 
-    Args:
-        spike_times (Union[np.ndarray, List]): a 2D array of spike times, or a list of arrays
-        zero_time (float, optional): Time to use as the 0 marker. Defaults to 0.0.
-        max_time (float, optional): Maximum time to include (before subtracting zero time). Defaults to 1.0.
-        isi_flag (bool, optional): return ISIs instead of spike times. Defaults to False.
-
-    Returns:
-        _type_: _description_
-    """
-    spf = []
-    for x in spike_times:
-        x = np.array(x)
-        x = x[x < max_time] - zero_time
-        if isi_flag:
-            x = np.diff(x)
-        spf.extend(x)
-    spike_times_flat = np.array(spf, dtype=object).ravel()
-    return spike_times_flat
 
 @TRC()
 def plot_psth(
@@ -134,9 +112,10 @@ def plot_psth(
     Nothing
     """
     num_trials = run_info.nReps
-    spike_times_flat = flatten_spike_array(spike_times,
-                        zero_time=zero_time, max_time=max_time, isi_flag=False)
-
+    spike_times_flat = VAFlatten.flatten_spike_array(spike_times,
+                        time_window=(zero_time, max_time), isi_flag=False)
+    print("Spike times flat len: ", len(spike_times_flat), np.min(spike_times_flat), np.max(spike_times_flat))
+    spike_times_flat -= zero_time
     bins = np.arange(0.0, max_time - zero_time, bin_width)
     if bin_fill:
         face_color = edge_color
@@ -147,21 +126,24 @@ def plot_psth(
         bins = bins * radians
     else:
         xu = None
+    
     if (
         (len(spike_times_flat) > 0)
         # and not np.isnan(np.sum(spike_times_flat)))
         and (ax is not None)
     ):
+        print("facecoclor, edgecolor: ", face_color, edge_color)
         ax.hist(
             x=spike_times_flat,
             bins=bins,
             density=False,
-            weights=(1./(bin_width*num_trials)) * np.ones_like(spike_times_flat),
+            # weights=(1./(bin_width*num_trials)) * np.ones_like(spike_times_flat),
             histtype="stepfilled",
             facecolor=face_color,
             edgecolor=edge_color,
-            linewidth=0,
-            alpha=alpha,
+            linewidth=None,
+            rwidth=1.0,
+            alpha=alpha, # alpha,
         )
     else:
         if ax is not None:
@@ -241,8 +223,8 @@ def plot_isi(
     Nothing
     """
     num_trials = run_info.nReps
-    spike_times_flat = flatten_spike_array(spike_times, 
-                            zero_time=zero_time, max_time=max_time, isi_flag=True)
+    spike_times_flat_isi = VAFlatten.flatten_spike_array(spike_times, 
+                            time_window=(zero_time, max_time), isi_flag=True)
 
     bins = np.arange(0.0, max_time - zero_time, bin_width)
     if bin_fill:
@@ -255,15 +237,15 @@ def plot_isi(
     else:
         xu = None
     if (
-        (not np.isnan(np.sum(spike_times_flat)))
-        and (len(spike_times_flat) > 0)
+        (not np.isnan(np.sum(spike_times_flat_isi)))
+        and (len(spike_times_flat_isi) > 0)
         and (ax is not None)
     ):
         ax.hist(
-            x=spike_times_flat,
+            x=spike_times_flat_isi,
             bins=bins,
             density=False,
-            weights=(1./(bin_width*num_trials)) * np.ones_like(spike_times_flat),
+            weights=(1./(bin_width*num_trials)) * np.ones_like(spike_times_flat_isi),
             histtype="stepfilled",
             facecolor=face_color,
             edgecolor=edge_color,

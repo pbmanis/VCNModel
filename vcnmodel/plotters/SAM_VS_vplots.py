@@ -432,7 +432,7 @@ class VS_Plots:
             ax.legend(handles=[], labels= [])
             ax.get_legend().remove()
         else:
-            self.update_legend(ax, None, two_largest=True) 
+            self.update_legend(ax, legend_type=None,  legend_loc=(0.05, 0.05), two_largest=True) 
             #ax.legend(markerscale=0.5)
         if axin is None:
             mpl.show()
@@ -444,8 +444,7 @@ class VS_Plots:
                         barwidth=240, show_cell=True,
                         mode:str="line", xscale:str="log", yscale:str="linear",
                         figure8_xscale=False, show2out=True,
-                        rMTF_inset:bool=False,
-                        entrain_inset: bool=False,
+                        inset_type:str=None,
                         legend_loc = (0,0)):
         """Summarize the VS for one cell for all conditions/frequencies.
         This is similar to the plotnine routine above, but just
@@ -479,16 +478,11 @@ class VS_Plots:
         show2out: bool (default: True)
             include the "remove2largest" symbol on the legend if it is not
             a dataset in the current plot.
-        rMTF_inset: bool (default: False)
-             If true, also plot the rate MTF (average rate) as an inset
-        entrain_inset: bool (default: )
-            If true, also plot the entrainment as an inset
+        inset_type: str (default: None)
+             Plot an inset. The acceptable values are rMTF and entrainment. 
 
         """
-        # if rMTF_inset and entrain_inset:
-        #     raise ValueError("can only plot one of rMTF or Entrainment")
-        self.rMTF = True # rMTF_inset
-        self.entrain = True #  entrain_inset
+        assert inset_type in ["rMTF", "entrainment", None]
 
         label_font = {"fontsize": 8, "fontweight": "normal"}
         title_font = {"fontsize": 9, "fontweight": "normal"}
@@ -529,7 +523,7 @@ class VS_Plots:
                     y_an[jcfg] = run['AN_VS']
                 # print(cell, fr, x, y, ye, yc, mfc)
                 ax.errorbar(x, y, yerr=ye, marker='o', mfc='none', ms=1, mec='none', mew=0, color='grey')
-                ax.scatter(x, y, marker='o', c=mfc, s=12)
+                ax.setl(x, y, marker='o', c=mfc, s=12)
                 ax.plot(x_an, y_an, '-', color="firebrick", lw=1.5, zorder=-100)  # in back of data
                 ax.set_clip_on(False)
         elif mode == "line":
@@ -556,7 +550,7 @@ class VS_Plots:
                     label = "ANF"
                 else:
                     label = None
-                ax.plot(x_an, y_an, '-', color="firebrick", lw=0.5, zorder=-100, label=label)  # in back of data
+                ax.plot(x_an, y_an, '-', color="firebrick", lw=0.5, zorder=-100, label=label, clip_on=False)  # in back of data
             if "removetwolargest" not in set(dfl['Configuration']) and show2out:
                 # add the 2-out just for the legend in case it is not part of this plot (but it
                 # might be in other plots)
@@ -564,7 +558,6 @@ class VS_Plots:
                 ax.errorbar([], [], yerr=[], marker='o', mfc=c2out, ms=4, mec=c2out, mew=0, color=c2out,
                      label="Remove two largest", clip_on=False)
             # retext the legend to make more sense
-            print("Legendflag: ", legendflag)
             if legendflag:
                 self.update_legend(ax, legend_type, legend_loc=legend_loc, two_largest=True)
 
@@ -632,7 +625,7 @@ class VS_Plots:
         PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)
 
         
-        if self.rMTF:  # include an inset with the rate MTF - always a line
+        if inset_type == "rMTF":  # include an inset with the rate MTF - always a line
             # make an inset axis
             inset_ax = STY.create_inset_axes([0.2, 0.15, 0.5, 0.35], ax, f"BC{cell:02d}{'_rMTF':s}")
             for icfg, cfg in enumerate(sorted(set(dfl['Configuration']))):
@@ -696,7 +689,7 @@ class VS_Plots:
                 fontsize=7,
             )
         
-        if self.entrain:  # include an inset with the rate MTF - always a line
+        elif inset_type == "entrainment":  # include an inset with the rate MTF - always a line
             # make an inset axis
             inset_ax = STY.create_inset_axes([0.2, 0.15, 0.5, 0.35], ax, f"BC{cell:02d}{'_entrainment':s}")
             for icfg, cfg in enumerate(sorted(set(dfl['Configuration']))):
@@ -761,7 +754,6 @@ class VS_Plots:
             )
         
 
-        print("Legendflag: ", legendflag)
         if legendflag:
             self.update_legend(ax, legend_type, legend_loc, two_largest=True)
 
@@ -1111,7 +1103,7 @@ if __name__ == "__main__":
 
     # V1 = VS_Plots(sels=[9], dBSPL=15, dends="9I9U")
     # V1.Figure8_M()
-    db = 15
+    db = 30
 
     V1 = VS_Plots(dBSPL=db)
     V1.Summarize(dBSPL=db)

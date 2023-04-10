@@ -2699,10 +2699,12 @@ class PlotSims:
                 pip_start + pip_duration,
             ]
 
+        # prepare spike arrays
         x = np.array(all_bu_st)
         v = np.where((phasewin[0] <= x) & (x < phasewin[1]))[0]
-        window_duration = phasewin[1]-phasewin[0]
+        #window_duration = phasewin[1]-phasewin[0]
         bu_spikesinwin = x[v]
+
         x = np.array(all_an_st)
         v = np.where((phasewin[0] <= x) & (x < phasewin[1]))[0]
         an_spikesinwin = x[v]
@@ -2731,11 +2733,12 @@ class PlotSims:
                     v = np.where((phasewin[0] <= all_bu_st_trials[j]) & (all_bu_st_trials[j] < phasewin[1]))[0]
                     bu_vs_data.extend(all_bu_st_trials[j][v])
                 vs_calc = self.VS.vector_strength(
-                            bu_vs_data, fmod, window_duration=window_duration,
-                            nreps=nreps, extras=False,
+                            bu_vs_data, fmod, time_window=phasewin,
+                            nreps=nreps
                         )  # vs expects spikes in msec
                 vs_n[i] = vs_calc.vs
                 vs_nspikes[i] = int(vs_calc.n_spikes)
+
                 if make_VS_raw:
                     VS_file_raw = Path(f"VS_raw_SAM_{cellN:02d}_{int(dB):02d}")
                     if not VS_file_raw.is_file():  # if file does not exist, write header
@@ -2749,8 +2752,8 @@ class PlotSims:
             cprint("c", f"mean VS: {np.mean(vs_n):8.4f}  SD={np.std(vs_n):8.4f}, total spikes: {int(np.sum(vs_nspikes)):d}")
 
             vs = self.VS.vector_strength(
-                bu_spikesinwin, fmod, window_duration=window_duration,
-                nreps=nreps, extras=True, # be sure to include entrainment
+                bu_spikesinwin, fmod, time_window=phasewin,
+                nreps=nreps,
             )  # vs expects spikes in msec
             cprint("c", f"Grand mean VS: {vs.vs:8.4f}  N={vs.n_spikes:6d}")
             vs.vs_mean = np.mean(vs_n)
@@ -2816,7 +2819,7 @@ class PlotSims:
             vs_an = self.VS.vector_strength(
                 an_spikesinwin,
                 fmod,
-                window_duration=window_duration, nreps=nreps,
+                time_window=phasewin, nreps=nreps,
             )
             vs_an.n_inputs = n_inputs
             if sac_flag:
