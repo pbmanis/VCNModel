@@ -50,34 +50,12 @@ class VSResult:
     # an_circ_phaseSD: float=np.nan
     # an_circ_timeSD: float = np.nan
     
-    # """Entrainment:
-    # From Rudnick and Hemmert, 2017:
-    
-    # "The entrainment index p is calculated using the definition given by Joris et al. (1994).
-    # First an inter-spike interval histogram is constructed. Then the number of intervals k 
-    # belonging to the first maximum (between 0.5 and 1.5 of the stimulus period) 
-    # is divided by the total number of intervals n as given by:
-    # p = k/n  ( Equation 6 )
-    # The values of EI are between 0 and 1. 
-    # A value of 1 indicates that the neuron fired a minimum of one spike during each 
-    # stimulus period. Entrainment falls to 0 when the neuron can no longer fire action
-    # potentials for adjacent stimulus periods."
-
-    # This is the same as the definition given in Ashida et al. PLoS 2019.
-    # Original definition was from Joris et al. 1994; in that paper "1/CF" was used
-    # as the interval and window. 
-    # Also as described in Rothman and Young, 1996.
-    # Note in both Joris et al., 1994 and Rothman and young, 1995, the window used
-    # to measure the spikes at the "fundamental" (not "subharmonic") intervals is not
-    # explicitely or unambiguously stated.  
-    # """
-
 
 class VectorStrength:
     def __init__(self):
         pass
 
-    def vector_strength(self, spikes, freq=None, window_duration=1.0, nreps: int = 0, extras:bool=True):
+    def vector_strength(self, spikes, freq=None, time_window:tuple=(0., 1.0), nreps: int = 0, extras:bool=True):
         """
         Calculate vector strength and related parameters from a spike train, for the specified frequency
 
@@ -87,7 +65,7 @@ class VectorStrength:
             If the data comes from repeated trials, the spike train needs to be flattened into a 1d array before
             calling.
         freq : Stimulus frequency in Hz
-        window_duration: Time in seconds for measurement window (used to compute rate)
+        time_window: Time in seconds for measurement window, start/end (used to select spikes)
         nreps: number of repetitions in this data set
         extras: bool (default True):
             whether to include rMTF and entrainment in the calculation.
@@ -97,6 +75,8 @@ class VectorStrength:
         """
         assert freq is not None
         assert nreps > 0
+        assert len(time_window) == 2
+        
         VSR = VSResult()
         amax = 0.0
         if spikes is None:
@@ -110,7 +90,7 @@ class VectorStrength:
         if VSR.n_spikes > 0 and extras:
             earliest_spike = np.min(spikes)
             zsp = spikes - earliest_spike
-            n_periods = int(np.floor(window_duration / period))
+            n_periods = int(np.floor(np.diff(time_window) / period))
             max_time = n_periods * period
             mtf_spikes = zsp[(zsp >= 0.0) & (zsp < max_time)]
             # print(f"^^^^^^^ period: {period:.5f} window: {window_duration:.2f}  max_time: {max_time:.2f}  nspikes: {VSR.n_spikes:d} mtf_spikes: {mtf_spikes.shape[0]:d}")
@@ -118,7 +98,7 @@ class VectorStrength:
 
             # now calculate entrainment
             spike_isis = np.diff(mtf_spikes)  # ISI from spikes in full cycles
-            spike_isis = spike_isis[spike_isis > 0.]  # only include intervals within each trial (across trials will be negative)
+            spike_isis = spike_isis[spike_isis > 0.5/freq]  # only include intervals within each trial (across trials will be negative), and remove closely aligned spikes
             fhalf = 0.5/freq
             fonehalf = 1.5/freq
             # print(fhalf, fonehalf, freq)
@@ -278,3 +258,6 @@ def test_vs():
     bins = np.linspace(0, 2 * np.pi, 36)
     mpl.hist(vsd.circ_phase, bins)
     mpl.show()
+
+if __name__ == "__main__":
+    test_vs()
