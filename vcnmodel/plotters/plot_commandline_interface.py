@@ -3,20 +3,11 @@
 #######################################################
 import argparse
 import argparse
-import dataclasses
-import datetime
-import functools
-import itertools
-import operator
-import pickle
-import string
-import sys
-import time
-from collections import OrderedDict
+
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Tuple, Union
-import toml
+from vcnmodel.util.get_data_paths import get_data_paths
 import numpy as np
 import matplotlib.pyplot as mpl
 from plot_sims import PlotSims
@@ -166,8 +157,7 @@ def cmdline_display(args, PD):
     """
 
     PS = PlotSims(parent=None)
-    with open("wheres_my_data.toml", "r") as fh:
-        config = toml.load(fh)
+    config = get_data_paths()
     args.protocol = args.protocol.upper()
     changetimestamp = get_changetimestamp()
     # PD.gradeA = [cn for cn in args.cell]

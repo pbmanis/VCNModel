@@ -68,10 +68,8 @@ Copyright 2017- Paul B. Manis
 Distributed under MIT/X11 license. See license.txt for more infomation. 
 
 """
-import argparse
 import re
 import string
-import sys
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
@@ -89,7 +87,6 @@ import pyqtgraph as pg  # type: ignore
 
 # import quantities as pq
 import seaborn as sns
-import toml
 import vcnmodel.cell_config as cell_config
 import vcnmodel.group_defs as GRPDEF
 import vcnmodel.util.readmodel as readmodel
@@ -108,6 +105,7 @@ from vcnmodel.analyzers import sac as SAC
 from vcnmodel.analyzers import vector_strength as VS
 from vcnmodel.util import fixpicklemodule as FPM
 from vcnmodel.util import trace_calls
+from vcnmodel.util.get_data_paths import get_data_paths
 
 from . import plot_functions as PF
 
@@ -160,14 +158,6 @@ orient_cells = {
     17: [140.0, -158.0, 39.0],
     30: [140.0, -134.0, -181.0],
 }
-
-
-# now in group_defs.py
-# def grAList() -> list:
-#     """ Return a list of the 'grade A' cells from the SBEM project
-#     """
-
-#     return [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
 
 
 SpirouChoices = [
@@ -284,8 +274,7 @@ class PlotSims:
         self.firstline = True
         self.VS = VS.VectorStrength()
         self.axis_offset = -0.02
-        with open(Path(Path.cwd(), "wheres_my_data.toml"), "r") as fh:
-            self.config = toml.load(fh)
+        self.config = get_data_paths()
         mpl.style.use(Path(Path.cwd(), "styles", "figures.mplstyle"))
         self.allspikes = None
         self.in_Parallel = False # flag to prevent graphics access during parallel processing.

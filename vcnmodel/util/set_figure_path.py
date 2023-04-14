@@ -4,10 +4,10 @@ build output path for figures
 
 from pathlib import Path
 from typing import Union
-import toml
+from vcnmodel.util.get_data_paths import get_data_paths
 
 def set_figure_path(fignum:int, filedescriptor:str, suppnum:Union[int, None]=None, suffix:Union[str, None] = ".pdf"):
-    """Set the full path for a figure, with a specifix extension
+    """Set the full path for a figure, with a specific extension
     This is a tool to keep the figure files organized and consistently named.
 
     Parameters
@@ -29,9 +29,10 @@ def set_figure_path(fignum:int, filedescriptor:str, suppnum:Union[int, None]=Non
     Path object
         Full path to the output file
     """    
-    with open("wheres_my_data.toml", "r") as fh:
-        config = toml.load(fh)
-    figpath = Path(config["baseDataDirectory"], config["figureDirectory"], f"Figure{fignum:d}")
+
+    config =get_data_paths
+        
+    figpath = Path(config["disk"], config["baseDataDirectory"], config["figureDirectory"], f"Figure{fignum:d}")
     if suppnum is None:
         figpath = Path(figpath, f"Figure{fignum:d}_{filedescriptor:s}")
     else:

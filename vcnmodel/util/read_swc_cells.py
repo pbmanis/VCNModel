@@ -1,15 +1,17 @@
 """
 Read the swc soma reconstructions and genereate hoc files.
 
+This data is not in the shared database.
+
 """
 
 from pathlib import Path
 import vcnmodel.util.swc_to_hoc as swc_to_hoc
-import toml
-with open("wheres_my_data.toml", "r") as fh:
-    config = toml.load(fh)
+from vcnmodel.util.get_data_paths import get_data_paths
 
-swcPath = Path(config['baseMorphologyDirectory'], 'ASA', 'CellBodySWCs')
+config = get_data_paths()
+
+swcPath = Path(config["disk"], config['baseMorphologyDirectory'], 'ASA', 'CellBodySWCs')
 
 swcFiles = swcPath.glob('*.swc')
 

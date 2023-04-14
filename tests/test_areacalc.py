@@ -15,9 +15,8 @@ import numpy as np
 from pprint import pprint
 from pathlib import Path
 import matplotlib.pyplot as mpl
-import toml
-with open("wheres_my_data.toml", "r") as fh:
-    self.config = toml.load(fh)
+from vcnmodel.util.get_data_paths import get_data_paths
+config = get_data_paths()
 
 import vcnmodel.cell_config as cell_config
 from vcnmodel import h_reader
@@ -414,9 +413,9 @@ dendrites = [
 
 def by_pt3d_dia(fn, cname):
     HR = h_reader.HocReader(str(fn))  # always re-read the original data
-    cconfig = cell_config.CellConfig()
-    sinflateratio = cconfig.get_soma_ratio(cname)
-    dinflateratio = cconfig.get_dendrite_ratio(cname)
+    cell_config = cell_config.CellConfig()
+    sinflateratio = cell_config.get_soma_ratio(cname)
+    dinflateratio = cell_config.get_dendrite_ratio(cname)
     print(sinflateratio, dinflateratio)
 
     S = SetNSegs(HR.h)
@@ -511,9 +510,9 @@ def by_section_diam(fn, cname):
     HR2 = h_reader.HocReader(str(fn))  # h.load_file(str(fn))
     # print(dir(h))
     # exit()
-    cconfig = cell_config.CellConfig()
-    sinflateratio = cconfig.get_soma_ratio(cname)
-    dinflateratio = cconfig.get_dendrite_ratio(cname)
+    cell_config = cell_config.CellConfig()
+    sinflateratio = cell_config.get_soma_ratio(cname)
+    dinflateratio = cell_config.get_dendrite_ratio(cname)
 
     S = SetNSegs(HR2.h)
     S.set_nseg(freq=1000.0, d_lambda=0.01)

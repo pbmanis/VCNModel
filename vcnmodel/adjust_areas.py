@@ -26,7 +26,7 @@ from pylibrary.tools import cprint as CP
 from vcnmodel import cell_config as cell_config
 from vcnmodel import h_reader
 
-import toml
+from vcnmodel.util.get_data_paths import get_data_paths
 
 
 cprint = CP.cprint
@@ -1043,6 +1043,5 @@ if __name__ == "__main__":
     # if args.compare:
     #     compare(cell_no, args)
     #     exit()
-    with open("wheres_my_data.toml", "r") as fh:
-        self.config = toml.load(fh)
+    config = get_data_paths()
     rescale(cell_no, config, args)

@@ -192,7 +192,8 @@ class CellConfig:
         # soma_area_data = 'Mesh Surface Area'
         with open("wheres_my_data.toml", "r") as fh:
             self.config = toml.load(fh)
-        self.dendqualfile = Path(self.config["baseMorphologyDirectory"], self.config["dendriteQualityFile"])
+        self.dendqualfile = Path(self.config["disk"], self.config["baseDataDirectory"],
+                                 self.config["baseMorphologyDirectory"], self.config["dendriteQualityFile"])
         print(f"Using dendrite Qual File: {str(self.dendqualfile):s}")
         self.inputs = [f"Input {i+1:d}" for i in range(20)]  # input column labels, up to 20
 

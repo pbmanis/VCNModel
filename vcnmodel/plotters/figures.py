@@ -22,10 +22,8 @@ Distributed under MIT/X11 license. See license.txt for more infomation.
 """
 
 import datetime
-import importlib
 import multiprocessing as MPROC
 import pickle
-import platform
 import string
 from collections import OrderedDict
 from dataclasses import dataclass, field
@@ -39,28 +37,29 @@ import matplotlib.pyplot as mpl
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import toml
-import vcnmodel.util.fixpicklemodule as FPM
-import vcnmodel.util.readmodel as readmodel
 from matplotlib import image as mpimg
 from matplotlib.lines import Line2D
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
 from pyqtgraph import multiprocess as MP
+
+import vcnmodel.util.fixpicklemodule as FPM
+import vcnmodel.util.readmodel as readmodel
+from vcnmodel import group_defs as GRPDEF
 from vcnmodel.analyzers import analyze_data
 from vcnmodel.analyzers import isi_cv as ISI
 from vcnmodel.analyzers import pattern_summary as PATSUM
 from vcnmodel.analyzers import sac as SAC
-from vcnmodel.plotters import morphology_thr_correlations
 from vcnmodel.plotters import SAC_plots as SACP
 from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot as EF
 from vcnmodel.plotters import \
     figure_data as FD  # table of simulation runs used for plotting figures
+from vcnmodel.plotters import morphology_thr_correlations
 from vcnmodel.plotters import plot_functions as PF
 from vcnmodel.plotters import plot_z as PZ
+from vcnmodel.util.get_data_paths import get_data_paths
 from vcnmodel.util.set_figure_path import set_figure_path
-from vcnmodel import group_defs as GRPDEF
 
 cprint = CP.cprint
 
@@ -153,9 +152,7 @@ class Figures(object):
 
     def __init__(self, parent):
         self.parent = parent  # point back to caller's space
-        with open("wheres_my_data.toml", "r") as fh:
-            self.config = toml.load(fh)
-        # sorry, have to reload it here.
+        self.config = get_data_paths()
         self.axis_offset = -0.02
         self.ReadModel = readmodel.ReadModel()
         self.ReadModel.set_parent(
@@ -172,7 +169,7 @@ class Figures(object):
         """
         return PData(
             gradeA=GRPDEF.gradeACells,
-            basepath=self.config["baseDataDirectory"],
+            basepath=str(Path(self.config["disk"], self.config["baseDataDirectory"])),
             renderpath=str(Path(self.config["codeDirectory"], "Renderings")),
             revcorrpath=self.config["revcorrDataDirectory"],
         )
@@ -3865,8 +3862,7 @@ class Figures(object):
                 TASKS = [s for s in VS_datasets.samdata.keys()]
         # importlib.reload(VS_datasets)  # make sure have the current one
         print(f"Data set keys found: {str(list(VS_datasets.samdata.keys())):s}")
-        with open("wheres_my_data.toml", "r") as fh:
-            self.config = toml.load(fh)
+        
         """
         Generate the table in VS_data.py by analyzing the data from 
         VS_datasets.py

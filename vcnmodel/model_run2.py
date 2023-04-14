@@ -243,6 +243,7 @@ import vcnmodel.model_params
 from vcnmodel import cell_config as cell_config
 from vcnmodel import cellInitialization as cellInit
 from vcnmodel.generate_run import GenerateRun
+from vcnmodel.util.get_data_paths import get_data_paths
 
 EPU = ephys.tools.Utility.Utility()
 matplotlib.use("Qt5Agg")
@@ -327,14 +328,9 @@ class ModelRun:
         )
 
         # find out where our files live
-        where_is_data = Path("wheres_my_data.toml")
-        if where_is_data.is_file():
-            self.datapaths = toml.load("wheres_my_data.toml")
-        else:
-            self.datapaths = {
-                "cellDataDirectory": Path("../VCN-SBEM-Data", "VCN_Cells")
-            }
-        self.baseDirectory = self.datapaths["cellDataDirectory"]
+        self.datapaths = get_data_paths()
+ 
+        self.baseDirectory = Path(self.datapaths["disk"], self.datapaths["cellDataDirectory"])
         self.morphDirectory = "Morphology"
         self.initDirectory = "Initialization"
         self.simDirectory = "Simulations"

@@ -17,7 +17,7 @@ Distributed under MIT/X11 license. See license.txt for more infomation.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-import toml
+from vcnmodel.util.get_data_paths import get_data_paths
 import pprint
 import numpy as np
 from cnmodel import cells
@@ -28,7 +28,7 @@ pp = pprint.PrettyPrinter(indent=4)
 
 allcells = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
 bestcells = [6, 9,  10, 11, 13, 17, 18, 30]
-additional_axons = [12, 14, 15, 16, 19, 20, 21, 22, 23, 24, 27, 29]
+additional_axons = []# [12, 14, 15, 16, 19, 20, 21, 22, 23, 24, 27, 29]
 
 good_axons = bestcells + additional_axons
 
@@ -65,15 +65,13 @@ class MeasureAxons(object):
                 )
 
         # find out where our files live
-        where_is_data = Path("wheres_my_data.toml")
-        if where_is_data.is_file():
-            self.datapaths = toml.load("wheres_my_data.toml")
-        else:
-            self.datapaths = {"cellDataDirectory": Path("../VCN-SBEM-Data", "VCN_Cells")}
+        self.datapaths = get_data_paths()
         self.baseDirectory = self.datapaths["cellDataDirectory"]
-        self.morphDirectory = "Morphology"
-        self.initDirectory = "Initialization"
-        self.simDirectory = "Simulations"
+ 
+        # these are per-cell directories:
+        self.morphologyDirectory = "Morphology"
+        self.initializationDirectory = "Initialization"
+        self.simulationDirectory = "Simulations"
 
         self.dendrites = [
             "maindend",
@@ -145,7 +143,7 @@ class MeasureAxons(object):
         for cell in good_axons:
             cname = f"VCN_c{cell:02d}"
             cell_hoc = f"{cname}_AxonOnly_MeshInflate.hoc"  # could be f"{cname}"_Full_standardized_axon.hoc""
-            fn = Path(self.baseDirectory, cname, self.morphDirectory, cell_hoc)
+            fn = Path(self.baseDirectory, cname, self.morphologyDirectory, cell_hoc)
             # print(fn.is_file())
             # h.load_file(str(fn))
             # for sec in h.sections:

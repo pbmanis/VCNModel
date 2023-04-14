@@ -26,15 +26,15 @@ from typing import Tuple, Type, Union
 
 import matplotlib.pyplot as mpl
 import numpy as np
-import toml
 from cnmodel import cells
 from neuron import h
 from neuronvis import hocRender, swc_to_hoc
 from scipy.spatial.transform import Rotation as R
 
-from vcnmodel import cell_config as cell_config
 import vcnmodel.group_defs as GRPDEF
+from vcnmodel import cell_config as cell_config
 from vcnmodel.adjust_areas import AdjustAreas
+from vcnmodel.util.get_data_paths import get_data_paths
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -259,18 +259,13 @@ class MakeStandardAxon:
             spont_mapping="HS",
         )
         self.revised = revised  # use the revised version with a standardized axon axon
-        # find out where our files live
-        where_is_data = Path("wheres_my_data.toml")
-        if where_is_data.is_file():
-            self.datapaths = toml.load("wheres_my_data.toml")
-        else:
-            self.datapaths = {
-                "cellDataDirectory": Path("../VCN-SBEM-Data", "VCN_Cells")
-            }
+        self.datapaths = get_data_paths()
         self.baseDirectory = self.datapaths["cellDataDirectory"]
-        self.morphDirectory = "Morphology"
-        self.initDirectory = "Initialization"
-        self.simDirectory = "Simulations"
+ 
+        # these are per-cell directories:
+        self.morphologyDirectory = "Morphology"
+        self.initializationDirectory = "Initialization"
+        self.simulationDirectory = "Simulations"
 
         self.dendrites = [
             "maindend",
@@ -327,12 +322,13 @@ class MakeStandardAxon:
         if AIS_length > 0.0:
             cell_hoc += f"_AIS={AIS_length:06.2f}"
         cell_hoc += ".hoc"
-        fn = Path(self.baseDirectory, cname, self.morphDirectory, cell_hoc)
+        fn = Path(self.baseDirectory, cname, self.morphologyDirectory, cell_hoc)
         return cname, fn
 
     def convert_swc_hoc(
         self,
         cell: str,
+        write:bool=False
     ) -> Tuple[str, Type[Path]]:
         """
         Wrapper to convert the axon-only swcs to hoc files
@@ -343,8 +339,8 @@ class MakeStandardAxon:
         if cell in additional_axons and cell not in gradeACells:
             cell_swc = f"{cname:s}_Axon_00000.swc"
             cell_hoc = f"{cname:s}_AxonOnly_MeshInflate.hoc"
-            hocf = Path(self.baseDirectory, cname, self.morphDirectory, cell_hoc)
-            swcf = Path(self.baseDirectory, cname, self.morphDirectory, cell_swc)
+            hocf = Path(self.baseDirectory, cname, self.morphologyDirectory, cell_hoc)
+            swcf = Path(self.baseDirectory, cname, self.morphologyDirectory, cell_swc)
             if not hocf.is_file() and swcf.is_file():
                 scales = {
                     "x": 1.0,
@@ -361,7 +357,8 @@ class MakeStandardAxon:
                     s.topology = True
                     s.show_topology()
                     print(hocf)
-                    s.write_hoc(hocf)
+                    if write:
+                        s.write_hoc(hocf)
                     hocRender.Render(
                         hoc_file=hocf,
                         display_style="cylinders",
@@ -887,7 +884,7 @@ class MakeStandardAxon:
         # print('new hocf: ', hocf[:600])
         self.hocf = hocf
 
-    def write_revised_hoc(self, cell: str, AIS_length=0.0) -> None:
+    def write_revised_hoc(self, cell: str, AIS_length=0.0, write:bool=False) -> None:
         cname, fn = self.make_name(
             cell, add_standardized_axon=True, AIS_length=AIS_length
         )
@@ -902,8 +899,9 @@ class MakeStandardAxon:
         )
         new_comment += "\n"
         self.hocf = new_comment + self.hocf
-        with open(fn, "w") as fh:
-            fh.write(self.hocf)
+        if write:
+            with open(fn, "w") as fh:
+                fh.write(self.hocf)
 
 
 def make_standard_axon(cell: str, write: bool = False) -> None:
@@ -976,10 +974,11 @@ def read_standard_axon(cell: str) -> None:
 if __name__ == "__main__":
 
     cell = 17
+    write=False  # for testing
     for cell in [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]:
-        make_standard_axon(cell, write=True)
+        make_standard_axon(cell, write=write)
         for aislen in [10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 22.0, 24.0, 26.0]:
-            make_modified_axons(cell, write=True, AIS_length=aislen)
+            make_modified_axons(cell, write=write, AIS_length=aislen)
     #
     # make_standard_axon(cell, write=True)
     # for cell in  GRPDEF.gradeACells:

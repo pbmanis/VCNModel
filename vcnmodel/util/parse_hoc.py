@@ -21,10 +21,8 @@ import datetime
 import neuron
 from neuron import h
 
-import toml
-with open("wheres_my_data.toml", "r") as fh:
-    config = toml.load(fh)
-
+from vcnmodel.util.get_data_paths import get_data_paths
+config = get_data_paths
 
 re_pts = re.compile('\s*(pt3dadd\()([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)\,\s([-+]?[0-9]*\.?[0-9]+)')
 re_section = re.compile('\s*(sections\[)([0-9]*)\]\s*{')

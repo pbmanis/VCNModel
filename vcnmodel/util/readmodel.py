@@ -418,6 +418,9 @@ class ReadModel:
         verbose: bool
             whether to print stuff to the terminal
         """
+        # parts  = list(Path(fn).parts)
+        # parts[2] = "T7"
+        # fn = Path(*parts)
         fnp = Path(fn)
         fns = str(fn)
         ivdatafile = Path(fn)

@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Tuple, Union
 
 import pyqtgraph as pg
-import toml
+from vcnmodel.util.get_data_paths import get_data_paths
 from cnmodel import cells
 from cnmodel.decorator import Decorator
 from neuronvis.hoc_viewer import HocViewer
@@ -321,11 +321,7 @@ def set_table_and_cells(
 
 def main():
     # find out where our files live
-    where_is_data = Path("wheres_my_data.toml")
-    if where_is_data.is_file():
-        datapaths = toml.load("wheres_my_data.toml")
-    else:
-        datapaths = {"cellDataDirectory": Path("../VCN-SBEM-Data", "VCN_Cells")}
+    datapaths = get_data_paths()
     baseDirectory = datapaths["cellDataDirectory"]
     morphDirectory = "Morphology"
     initDirectory = "Initialization"

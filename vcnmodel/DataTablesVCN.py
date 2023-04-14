@@ -110,6 +110,7 @@ import vcnmodel.analyzers.flatten_spike_array
 import vcnmodel.analyzers.modulation_transfer_function
 import vcnmodel.analyzers.entrainment
 from vcnmodel.plotters import morphology_thr_correlations
+from vcnmodel.util.get_data_paths import get_data_paths
 from pylibrary.tools import cprint as CP
 import vcnmodel.analyzers.spikestatistics
 import ephys
@@ -147,6 +148,7 @@ all_modules = [
     vcnmodel.util.readmodel,
     vcnmodel.util.trace_calls,
     vcnmodel.util.basic_units,
+    vcnmodel.util.get_data_paths,
     ephys.ephysanalysis.SpikeAnalysis,
     ephys.tools.Utility,
     ephys.ephysanalysis.MakeClamps,
@@ -282,8 +284,9 @@ class DataTablesVCN:
             "v": "Tuberculoventral",
             "p": "Pyramidal",
         }
-        self.basepath = None
-        self.setPaths()
+        self.datapaths = get_data_paths()
+        self.basepath = self.datapaths["cellDataDirectory"]
+        # self.setPaths()
 
         self.app = pg.mkQApp()
         self.app.setStyle("fusion")
@@ -748,18 +751,6 @@ class DataTablesVCN:
         # handled either as part of the TableWidget, the Traces widget, or
         # through the CommandDispatcher.
 
-    def setPaths(self, stimtype="AN", cell=11):
-        """
-        Set the data paths for a given stimulus type - lets us look into the
-        data directory hierarchy
-        """
-        where_is_data = Path("wheres_my_data.toml")
-        if where_is_data.is_file():
-            self.datapaths = toml.load("wheres_my_data.toml")
-        else:
-            self.datapaths = {"cellDataDirectory": Path("../VCN-SBEM-Data", "VCN_Cells",)}
-        self.basepath = self.datapaths["cellDataDirectory"]
-
     def on_double_Click(self, w):
         """
         Double click gets the selected row and then does an analysis
@@ -811,7 +802,7 @@ class DataTablesVCN:
             if path[0] == "Selections":
                 self.selvals[path[1]][1] = str(data)
                 self.cellID = self.selvals["Cells"][1]
-                self.setPaths("AN", cell=data)
+                # self.setPaths("AN", cell=data)
                 self.start_date = self.selvals["Start Date"][1]
                 self.end_date = self.selvals["End Date"][1]
                 self.table_manager.build_table(mode="scan")

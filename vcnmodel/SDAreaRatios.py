@@ -13,14 +13,13 @@ Support::
 Copyright 2017-2022 Paul B. Manis
 Distributed under MIT/X11 license. See license.txt for more infomation.
 """
-import sys
+
 from collections import OrderedDict
 from pathlib import Path
 
 import numpy as np
-import toml
 from cnmodel import cells
-
+from vcnmodel.util.get_data_paths import get_data_paths
 import adjust_areas
 
 AdjA = adjust_areas.AdjustAreas()
@@ -95,8 +94,9 @@ def area(fn):
 
 if __name__ == "__main__":
 
-    with open("wheres_my_data.toml", "r") as fh:
-        config = toml.load(fh)
+    config = get_data_paths()
+    # with open("wheres_my_data.toml", "r") as fh:
+    #     config = toml.load(fh)
     ar = OrderedDict()
     for i, fn in enumerate(allcells):
         basefilename = (

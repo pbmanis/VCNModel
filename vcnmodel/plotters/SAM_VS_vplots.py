@@ -27,19 +27,21 @@ from typing import List, Union
 import numpy as np
 import pandas as pd
 import seaborn as sns
+
 from vcnmodel.util.set_figure_path import set_figure_path
 
 sys.path.insert(0, os.path.abspath("nb"))
-# import matplotlib.collections
+
 import plotnine as PN
-import toml
-import VS_data_15dB as VS_data_15dB
-import VS_data_15dB_BC09 as VS_data_15dB_BC09
-import VS_data_30dB as VS_data_30dB
 from matplotlib import pyplot as mpl
 from matplotlib.lines import Line2D
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.plotting import styler as STY
+
+import VS_data_15dB as VS_data_15dB
+import VS_data_15dB_BC09 as VS_data_15dB_BC09
+import VS_data_30dB as VS_data_30dB
+from vcnmodel.util.get_data_paths import get_data_paths
 
 # seaborn default palette, first 10 colors
 colors = [
@@ -147,8 +149,7 @@ class VS_Plots:
             "17": "two",
         }
         self.cell_list = []
-        with open("wheres_my_data.toml", "r") as fh:
-            self.config = toml.load(fh)
+        self.config = get_data_paths()
 
         df = self.prepare_data(self.datas)
 
@@ -810,7 +811,7 @@ class VS_Plots:
             ax.legend(handles=custom_legend, handlelength=1, loc="lower left", fontsize=7, labelspacing=0.33, markerscale=1,
                       bbox_to_anchor=legend_loc)
 
-    def Figure6_Supplemental2(self, mode:str="line", rMTF=True, entrain=False):
+    def Figure6_Supplemental2(self, mode:str="line", inset='rMTF'):
         """make Supplememntal Figure 2 for Figure 6
 
         Args:
@@ -842,14 +843,14 @@ class VS_Plots:
                 legend = True
             else:
                 legend = False
-            if rMTF:
-                self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
-                barwidth=180, mode=mode, show2out=show2out, rMTF_inset=rMTF,
-                legend_loc=(1.2, 0.8))
-            if entrain:
-                self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
-                barwidth=180, mode=mode, show2out=show2out, entrain_inset=entrain,
-                legend_loc=(1.2, 0.8))
+
+            self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
+            barwidth=180, mode=mode, show2out=show2out, inset_type=inset,
+            legend_loc=(1.2, 0.8))
+            # if entrain:
+            #     self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
+            #     barwidth=180, mode=mode, show2out=show2out, entrain_inset=entrain,
+            #     legend_loc=(1.2, 0.8))
             if i == len(cells)-1 and legend: # now move the legend
                 # print("supp2: update legend")
                 self.update_legend(axl[i], legend_loc=(1.2, 0.5))
@@ -1008,12 +1009,12 @@ class VS_Plots:
                 ye = run['VS_SD'].values
                 x_an = x # np.arange(8)
                 y_an = run['AN_VS'].values
-                ax.errorbar(x, y, yerr=ye, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc) # , label=f"BC{cell:02d}")
+                ax.errorbar(x, y, yerr=ye, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc, clip_on=False) # , label=f"BC{cell:02d}")
                 if icell == 0:
                     label = "ANF"
                 else:
                     label = None
-                ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=0.5, zorder=-100) # , label=label)  # in back of data
+                ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=0.5, zorder=-100, clip_on=False) # , label=label)  # in back of data
                 # ax.set_title(cfg)
                 PH.set_axes_ticks(
                     ax=ax,
@@ -1080,8 +1081,8 @@ class VS_Plots:
                         uselabel = 'ANF'
                         anf_legend=True
 
-                    ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=1, zorder=-100, label=uselabel)  # in back of data
-                    ax.plot(x, y, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc, label=uselabel2)
+                    ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=1, zorder=-100, label=uselabel, clip_on=False)  # in back of data
+                    ax.plot(x, y, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc, label=uselabel2, clip_on=False)
                     ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
                     if inset == 'rMTF':
                         ax.set_ylabel("rMTF (sp/s)", fontdict=label_font)
@@ -1103,7 +1104,7 @@ if __name__ == "__main__":
 
     # V1 = VS_Plots(sels=[9], dBSPL=15, dends="9I9U")
     # V1.Figure8_M()
-    db = 30
+    db = 15
 
     V1 = VS_Plots(dBSPL=db)
     V1.Summarize(dBSPL=db)

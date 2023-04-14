@@ -29,7 +29,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn import discriminant_analysis
-import toml
+from vcnmodel.util.get_data_paths import get_data_paths
 import vcnmodel.cell_config as cell_config
 import vcnmodel.plotters.figure_data as FD
 import vcnmodel.plotters.plot_sims as PS
@@ -185,12 +185,8 @@ def revcorr(gbc, filename, PD, protocol="runANPSTH", revcorrtype="RevcorrSPKS"):
 
 def get_pattern_data(dataset:str="Spont"):
 
-    where_is_data = Path("wheres_my_data.toml")
-    if where_is_data.is_file():
-        datapaths = toml.load("wheres_my_data.toml")
-    else:
-        raise ValueError()
-    basepath = datapaths["cellDataDirectory"]
+    datapaths = get_data_paths()
+    
     fig_data = FD.figure_revcorr
     db = dataset
     group = {"MixedMode": GRPDEF.MixedMode, "Coincidence": GRPDEF.Coincidence}
@@ -221,7 +217,11 @@ def get_pattern_data(dataset:str="Spont"):
             gname = "Mixed Mode"
         else:
             gname = "Coincidence"
-        RCP, RCD, PAT = revcorr(gbc, pklf.files[0], PD=PData(gradeA=GRPDEF.gradeACells))
+        # maybe disk has changed, so adjust the filename to read the data from
+        pfs = str(pklf.files[0])
+        match = pfs.find(str(datapaths["basepath"]))
+        pfs = Path(datapaths["disk"], pfs[match:])
+        RCP, RCD, PAT = revcorr(gbc, pfs, PD=PData(gradeA=GRPDEF.gradeACells))
         for t in PAT.filttable.keys():
             pat = PAT.filttable[t]
             # pat.print()
@@ -236,7 +236,7 @@ def get_pattern_data(dataset:str="Spont"):
 
 
 
-def Figure5_Supplemental2_Patterns(reanalyze=False, dataset:str="Spont"):
+def Figure5_Supplemental3_Patterns(reanalyze=False, dataset:str="Spont"):
     assert dataset in ["Spont", "30dB"]
     compare_file = f"pattern_compares_{dataset:s}.pkl"
     if reanalyze:
@@ -602,5 +602,5 @@ def Figure5E_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd', cell_lege
 
 
 if __name__ == "__main__":
-    #Figure5_Supplemental3_Patterns(reanalyze=False, dataset="Spont")  # supplemental plot for Figure 4
+    Figure5_Supplemental3_Patterns(reanalyze=False, dataset="Spont")  # supplemental plot for Figure 5
     Figure5E_pattern_plot(dataset="Spont", mode='mmcd')

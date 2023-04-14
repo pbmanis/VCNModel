@@ -21,15 +21,14 @@ Distributed under MIT/X11 license. See license.txt for more infomation.
 import pickle
 from pathlib import Path
 
-import matplotlib
 import numpy as np
 import pyqtgraph as pg
 import seaborn as sns
-import toml
 from matplotlib import pyplot as mpl
 from matplotlib import rc
 from pylibrary.plotting import plothelpers as PH
 from vcnmodel.util.set_figure_path import set_figure_path
+from vcnmodel.util.get_data_paths import get_data_paths
 
 rc("text", usetex=True)
 rc("text.latex", preamble=r"\usepackage{xcolor}")
@@ -55,8 +54,7 @@ sns_colors = [
 class PlotZ:
     def __init__(self, pg=False):
         self.pg = pg
-        with open("wheres_my_data.toml", "r") as fh:
-            self.config = toml.load(fh)
+        self.config = get_data_paths()
         # f = ['VCN_c09_Full_Z.pkl', 'VCN_c09_NoUninnervated_Z.pkl', 'VCN_c09_NoDend_Z.pkl']
         self.fi = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
         # fi = [9, 11, 13, 30]
@@ -206,6 +204,8 @@ class PlotZ:
         #     horizontalalignment="right",
         #     verticalalignment="top",
         # )
+        savedir = Path(save_file).parent
+        savedir.mkdir(parents=True, exist_ok=True)
         mpl.savefig(
             save_file,
             metadata={

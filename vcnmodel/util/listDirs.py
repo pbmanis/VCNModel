@@ -20,18 +20,15 @@ Distributed under MIT/X11 license. See license.txt for more infomation.
 
 """
 
-import os
 import pickle
 import pprint
-import sys
 from pathlib import Path
 
-import toml
+from vcnmodel.util.get_data_paths import get_data_paths
 
 
 def list_dirs():
-    with open("wheres_my_data.toml", "r") as fh:
-        config = toml.load(fh)
+    config = get_data_paths()
 
     print("Starting at top directory: ", config["cellDataDirectory"])
     alldirs = sorted(list(Path(config["cellDataDirectory"]).glob("*")))
