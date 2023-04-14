@@ -30,6 +30,7 @@ import pandas as pd
 import seaborn as sns
 from sklearn import discriminant_analysis
 from vcnmodel.util.get_data_paths import get_data_paths
+from vcnmodel.util.get_data_paths import update_disk
 import vcnmodel.cell_config as cell_config
 import vcnmodel.plotters.figure_data as FD
 import vcnmodel.plotters.plot_sims as PS
@@ -41,25 +42,26 @@ from pylibrary.plotting import plothelpers as PH
 from pyrsistent import PSet
 from vcnmodel.analyzers import reverse_correlation as REVCORR
 import vcnmodel.group_defs as GRPDEF
+from vcnmodel.analyzers.analyzer_data_classes import PData
 
 cprint = CP.cprint
 
 PSC = PS.PlotSims(parent=None)
 
-@dataclass
-class PData:
-    """
-    data class for some parameters that control what we read
-    """
+# @dataclass
+# class PData:
+#     """
+#     data class for some parameters that control what we read
+#     """
 
-    gradeA: list = field(default_factory=GRPDEF.grAList)
-    default_modelName: str = "XM13_nacncoop"
-    soma_inflate: bool = True
-    dend_inflate: bool = True
-    basepath: str = ""  # config["baseDataDirectory"]
-    renderpath: str = ""  # " str(Path(self.config["codeDirectory"], "Renderings"))
-    revcorrpath: str = ""  # config["revcorrDataDirectory"]
-    thiscell: str = ""
+#     gradeA: list = field(default_factory=GRPDEF.grAList)
+#     default_modelName: str = "XM13_nacncoop"
+#     soma_inflate: bool = True
+#     dend_inflate: bool = True
+#     basepath: str = ""  # config["baseDataDirectory"]
+#     renderpath: str = ""  # " str(Path(self.config["codeDirectory"], "Renderings"))
+#     revcorrpath: str = ""  # config["revcorrDataDirectory"]
+#     thiscell: str = ""
 
 
 def get_synaptic_info(gbc: str, add_inputs="none") -> tuple:
@@ -218,9 +220,8 @@ def get_pattern_data(dataset:str="Spont"):
         else:
             gname = "Coincidence"
         # maybe disk has changed, so adjust the filename to read the data from
-        pfs = str(pklf.files[0])
-        match = pfs.find(str(datapaths["basepath"]))
-        pfs = Path(datapaths["disk"], pfs[match:])
+
+        pfs = update_disk(pklf.files[0])  # update disk if needed
         RCP, RCD, PAT = revcorr(gbc, pfs, PD=PData(gradeA=GRPDEF.gradeACells))
         for t in PAT.filttable.keys():
             pat = PAT.filttable[t]

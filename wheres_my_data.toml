@@ -23,7 +23,7 @@ shareddatadisk = "/Volumes/T7"  # where to store shared results related to manus
 
 baseDataDirectory = "VCN-SBEM-Data" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
 cellDataDirectory = "VCN-SBEM-Data/VCN_Cells" #"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
-revcorrDataDirectory = "VCN_Revcorr_Summaries" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Revcorr_Summaries"
+revcorrDataDirectory = "VCN-SBEM-Data/VCN_Revcorr_Summaries" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Revcorr_Summaries"
 baseMorphologyDirectory = "MorphologyData/VCN" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/MorphologyData/VCN"
 codeDirectory="./vcnmodel"
 pngDirectory="VCN-CellImages-1-2020/Bushy_Cells"  # png files, in baseDataDirectory

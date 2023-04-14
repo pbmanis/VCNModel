@@ -418,12 +418,10 @@ class ReadModel:
         verbose: bool
             whether to print stuff to the terminal
         """
-        # parts  = list(Path(fn).parts)
-        # parts[2] = "T7"
-        # fn = Path(*parts)
+        fn = str(fn).replace("/._", "/")
         fnp = Path(fn)
         fns = str(fn)
-        ivdatafile = Path(fn)
+
         if self.firstline:
             if not fnp.is_file():
                 cprint("r", f"   File: {str(fnp):s} NOT FOUND")
@@ -455,18 +453,18 @@ class ReadModel:
         stitle = self._get_scaling(fn, PD, par)
 
         if verbose:
-            print("Read file: ", ivdatafile)
-        if ivdatafile is None or not ivdatafile.is_file():
+            print("Read file: ", fnp)
+        if fnp is None or not fnp.is_file():
             if self.firstline and verbose:
-                self.textappend(f"no file matching conditions : {str(ivdatafile):s}")
+                self.textappend(f"no file matching conditions : {str(fnp):s}")
             return None
 
         if self.firstline and verbose:
-            self.textappend(f"\npgbcivr2: datafile to read: {str(ivdatafile):s}")
+            self.textappend(f"\npgbcivr2: datafile to read: {str(fnp):s}")
         if isinstance(data["Results"], dict):
             if "time" in list(data["Results"].keys()):
                 data["Results"] = self._data_flip(data)
-        return par, stitle, ivdatafile, filemode, data
+        return par, stitle, fnp, filemode, data
 
     @TRC(show=False)
     def get_data(
