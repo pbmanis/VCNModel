@@ -30,7 +30,7 @@ def set_figure_path(fignum:int, filedescriptor:str, suppnum:Union[int, None]=Non
         Full path to the output file
     """    
 
-    config =get_data_paths
+    config = get_data_paths()
         
     figpath = Path(config["disk"], config["baseDataDirectory"], config["figureDirectory"], f"Figure{fignum:d}")
     if suppnum is None:
