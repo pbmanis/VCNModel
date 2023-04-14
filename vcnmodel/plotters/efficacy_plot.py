@@ -694,8 +694,9 @@ class EfficacyPlots(object):
         }  # map from simulation manipulation to dataset above
         self.pal = sns.color_palette("tab10", n_colors=10)  # base palette
         self.all_cells = GRPDEF.gradeACells
-
-    def make_figure(self, loc):
+        self.make_figure()
+        
+    def make_figure(self, loc=None):
         """Create a figure if one was not given
 
         Parameters
@@ -729,9 +730,10 @@ class EfficacyPlots(object):
                 figsize=(5, 5),
                 label=True,
             )
+            self.P = P
         else:
-            P = self.parent_figure
-        return P
+            self.P = self.parent_figure
+        return self.P
 
     def plot_efficacy(
         self,

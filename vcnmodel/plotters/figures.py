@@ -270,7 +270,7 @@ class Figures(object):
                             fig.filename)
         else:
             out_file = fig.filename
-        out_file.parent.mkdir(exist_ok=True)
+        Path(out_file).parent.mkdir(parents=True, exist_ok=True)
         cprint(
             "g",
             f"Saving figure to: {str(out_file):s}",
@@ -978,7 +978,7 @@ class Figures(object):
         EFP.plot_efficacy(
             datasetname="Full", ax=EFP.parent_figure.axdict["B"], loc=loc, clean=True
         )
-
+        print(dir(EFP))
         # stacked IV in first column:
         self.P_Eff_SingleInputs = PH.regular_grid(
             len(fn),
@@ -1268,7 +1268,7 @@ class Figures(object):
             )
             sfiles = Path(
                 cellpath,
-                Path(FD.figure_efficacy_supplement[cellN][simulation_experiment]).name,
+                Path(FD.figure_efficacy_supplement_30dB[cellN][simulation_experiment]).name,
             )
             if not sfiles.is_dir():
                 return
@@ -1369,6 +1369,7 @@ class Figures(object):
         return fig
 
     def _load_rcdata(self, dBSPL):
+        print("self.config: ", self.config)
         rc_datafile = Path(
             self.config["baseDataDirectory"],
             self.config["revcorrDataDirectory"],
@@ -1475,10 +1476,12 @@ class Figures(object):
         trace_axes = []
         if supplemental1:
             yh2 = 1.1
-            yb2 = 2.25
+            yB2 = 2.25
             yb3 = 0.5
             yb1 = 3.75
+            yC2 = 5.0
             yh1 = 3.75
+            yA1 = 3.25 - 0.5 +2.5 - 0.105  # to align with B
         else:
             yh2 = 1.2
             yB2 = 3.5 + 2.7 - 0.5 + 2.5
@@ -1799,7 +1802,7 @@ class Figures(object):
         return revcorr_panel, vm_panel 
 
     def Figure5_Supplemental2(self):
-        PATSUM.Figure5_Supplemental2_Patterns()  # writes its own figure to the directory
+        PATSUM.Figure5_Supplemental3_Patterns()  # writes its own figure to the directory
 
     def plot_all_revcorr(self):
         for cell in GRPDEF.grAList():
@@ -1813,7 +1816,7 @@ class Figures(object):
         cell_number: int,
         dBSPL="Spont",
         parent_figure: Union[object, None] = None,
-        recompute=False,  # if you need to recompute the revcorrs for all the grade A cells, just set this True
+        recompute=True,  # if you need to recompute the revcorrs for all the grade A cells, just set this True
     ) -> tuple:
         """
         Get the revcorr data associated with the cell number
@@ -1856,7 +1859,7 @@ class Figures(object):
                 PD=self.newPData(),
                 protocol="runANPSTH",
                 revcorrtype="RevcorrSPKS",
-                thr=-20.0,
+                # thr=-20.0,
                 width=4.0,
             )
         return P, PD, RCP, RCD
@@ -1877,7 +1880,7 @@ class Figures(object):
             example = FD.figure_revcorr[cell_number]
 
         P, PD, RCP, RCD = self._get_revcorr(cell_number=cell_number, dBSPL="Spont")
-        dBSPL = RCP.ri.dB
+        dBSPL = 0 # for spont
         if PD is None:
             return  # unable to get the revcorr
         str_a = string.ascii_uppercase
@@ -1960,7 +1963,7 @@ class Figures(object):
         clist = [cmx(float(isite) / RCP.ninputs) for isite in range(RCP.ninputs)]
         sax2.scatter(
             RCD.sites,
-            RCD.participation / RCD.nspikes,
+            RCD.participation / RCD.ynspike,
             marker="o",
             color=clist,
             sizes=[42],
@@ -2142,7 +2145,7 @@ class Figures(object):
 
         for i, cell_number in enumerate(cells):
 
-            PR, PD, RCP, RCD = self._get_revcorr(cell_number=cell_number, dBSPL=dBSPL)
+            PR, PD, RCP, RCD = self._get_revcorr(cell_number=cell_number, dBSPL=dBSPL, recompute=False)
             if PD is None:
                 cprint("r", "PD is none in plot_revcorr_supplement")
                 continue
@@ -2255,7 +2258,7 @@ class Figures(object):
 
                 s2.plot(
                     RCD.sites,
-                    RCD.participation / RCD.nspikes,
+                    RCD.participation / RCD.ynspike,
                     "kx",
                     markersize=5,
                     clip_on=False,
