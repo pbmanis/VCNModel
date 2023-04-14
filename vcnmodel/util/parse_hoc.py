@@ -351,7 +351,7 @@ class ParseHoc(object):
 
 def main():
     basedir = config['cellDataDirectory']
-    fn = Path(basedir, 'VCN_c18', 'Morphology', 'VCN_c18_Full.hoc')
+    fn = Path(config["disk"], basedir, 'VCN_c18', 'Morphology', 'VCN_c18_Full.hoc')
 
     hparse = ParseHoc(fn)
     hparse.read_hoc()

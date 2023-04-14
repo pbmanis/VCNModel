@@ -24,7 +24,7 @@ def get_data_paths():
     """    
     with open("wheres_my_data.toml", "r") as fh:
         config = toml.load(fh)
-
+    config["basepath"] = config["baseDataDirectory"]
     config["baseDataDirectory"] = Path(config["disk"], config["baseDataDirectory"])
     config["cellDataDirectory"] = Path(config["disk"], config["cellDataDirectory"])
     config["revcorrDataDirectory"] = Path(config["disk"], config["revcorrDataDirectory"])
@@ -32,7 +32,13 @@ def get_data_paths():
     
     return config
 
+def update_disk(filename, datapaths):
+    pfs = str(filename)
+    match = pfs.find(str(datapaths["basepath"]))
+    pfs = Path(datapaths["disk"], pfs[match:])
+    return pfs
+
 if __name__ == "__main__":
     # print the paths
-    config = set_data_paths()
+    config = get_data_paths()
     print(config)
