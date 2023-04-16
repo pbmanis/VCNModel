@@ -188,13 +188,18 @@ class Figures(object):
             "Figure4-Supplemental4_Zin_removed": self.Figure4_Supplemental4_Zin_removed,
             "Figure4-Supplemental4_PSTH": self.Figure4_Supplemental4_PSTH,
             "Figure5-Ephys_2_Main": self.Figure5_Main,
+            
             "Figure5-Ephys_2_Supplemental1": self.Figure5_Supplemental1,
             "Figure5-Ephys_2_Supplemental2": self.Figure5_Supplemental2_removed,
             "Figure5-Ephys_2_Supplemental2": self.Figure5_Supplemental2,
+            
             "Figure6-Ephys_3_Main": self.Figure6_Main,
-            "Figure6-Ephys_3_Supplemental2": self.Figure6_Supplemental2,
-            "Figure6-Ephys_3_Supplemental3": self.Figure6_Supplemental3,
+            "Figure6-Ephys_3_Supplemental2 (VS, rMTF)": self.Figure6_Supplemental2,
+            "Figure6-Ephys_3_Supplemental3 (Entrainment)": self.Figure6_Supplemental3,
+            "Figure6-Ephys_3_Supplemental4 (SAC)": self.Figure6_Supplemental4,
+            
             "Figure8-Ephys_4": self.Figure8_Panels_IJK,
+            
             # Misc figures follow
             "Figure: IV Figure": self.plotIV,
             "Figure: All_IVs": self.allIVs,
@@ -978,7 +983,7 @@ class Figures(object):
         EFP.plot_efficacy(
             datasetname="Full", ax=EFP.parent_figure.axdict["B"], loc=loc, clean=True
         )
-        print(dir(EFP))
+
         # stacked IV in first column:
         self.P_Eff_SingleInputs = PH.regular_grid(
             len(fn),
@@ -1369,7 +1374,6 @@ class Figures(object):
         return fig
 
     def _load_rcdata(self, dBSPL):
-        print("self.config: ", self.config)
         rc_datafile = Path(
             self.config["baseDataDirectory"],
             self.config["revcorrDataDirectory"],
@@ -1880,7 +1884,7 @@ class Figures(object):
             example = FD.figure_revcorr[cell_number]
 
         P, PD, RCP, RCD = self._get_revcorr(cell_number=cell_number, dBSPL="Spont")
-        dBSPL = 0 # for spont
+        dBSPL = RCP.ri.dB
         if PD is None:
             return  # unable to get the revcorr
         str_a = string.ascii_uppercase
@@ -1963,7 +1967,7 @@ class Figures(object):
         clist = [cmx(float(isite) / RCP.ninputs) for isite in range(RCP.ninputs)]
         sax2.scatter(
             RCD.sites,
-            RCD.participation / RCD.ynspike,
+            RCD.participation / RCD.nspikes,
             marker="o",
             color=clist,
             sizes=[42],
@@ -2258,7 +2262,7 @@ class Figures(object):
 
                 s2.plot(
                     RCD.sites,
-                    RCD.participation / RCD.ynspike,
+                    RCD.participation / RCD.nspikes,
                     "kx",
                     markersize=5,
                     clip_on=False,
@@ -2848,6 +2852,12 @@ class Figures(object):
         return fig
     
     def Figure6_Supplemental3(self):
+        V = SAM_VS_vplots.VS_Plots()
+        #fig, P = V.make_figure()
+        fig, P = V.Figure6_Supplemental3()
+        return fig
+    
+    def Figure6_Supplemental4(self):
         fig = SACP.plot_sacs(figinfo=FigInfo(show_figure_name=False))
         return fig
 

@@ -452,19 +452,18 @@ def do_plot(df, sacs, max_CI: float = 60.0, fits:bool=False)->object:
     for ax in ax2:
         PH.nice_plot(ax, direction="outward", ticklength=4)
     return P
-
     mpl.savefig(
         Path(
             config["baseDataDirectory"],
             "Figures",
-            "Figure7",
-            "Figure7_supp",
-            "Figure7_Supplemental3_SAC_Clicks_SynapseConfigs_V2.pdf",
+            "Figure6",
+            "Figure6_supp",
+            "Figure6_Supplemental3_SAC_Clicks_SynapseConfigs_V2.pdf",
         ),
         metadata={
             "Creator": "Paul Manis",
             "Author": "Paul Manis",
-            "Title": "Figure 7 Supplemental Figure 3 V2",
+            "Title": "Figure 6 Supplemental Figure 3 V2",
         },
     )
     mpl.show()
@@ -600,12 +599,12 @@ def plot_sacs(save_fig:bool=True, figinfo: Union[object, None] = None, fits:bool
         figinfo.P = P
         figinfo.show_name = False
         figinfo.filename = set_figure_path(
-            fignum=7, filedescriptor="SAC_Clicks_SynapseConfigs", suppnum=3
+            fignum=6, filedescriptor="SAC_Clicks_SynapseConfigs", suppnum=3
         )
         # "Figure7_Supplemental3_SAC_Clicks_SynapseConfigs.pdf",
         figinfo.title[
             "title"
-        ] = "SBEM Project Figure 7 Modeling: Supplemental 3: SAC_Clicks_SynapseConfigs"
+        ] = "SBEM Project Figure 6 Modeling: Supplemental 3: SAC_Clicks_SynapseConfigs"
         title2 = {"title": f"", "x": 0.99, "y": 0.01}
         return figinfo
     else:
