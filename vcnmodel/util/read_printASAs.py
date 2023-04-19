@@ -26,15 +26,18 @@ Support::
 Copyright 2022 Paul B. Manis
 Distributed under MIT/X11 license. See license.txt for more infomation. 
 """
-import toml
+
 from pathlib import Path
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+
 import vcnmodel.cell_config as cell_config
+from vcnmodel.util.get_data_paths import get_data_paths
 
 
 def main():
-    config = toml.load("wheres_my_data.toml")
+    config = get_data_paths()
     cf = cell_config.CellConfig(
             verbose=True,
         )

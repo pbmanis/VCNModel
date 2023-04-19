@@ -8,16 +8,16 @@ from pathlib import Path
 import neuronvis.hoc_graphics as hoc_graphics
 import neuronvis.sim_result as sr
 import numpy as np
-import toml
+from vcnmodel.util.get_data_paths import get_data_paths
 from neuronvis.hoc_reader import HocReader
 from neuronvis.hoc_viewer import HocViewer
 import pyqtgraph as pg
 
-config = toml.load("wheres_my_data.toml")
+config = get_data_paths()
 
 infile = 'VCN_c02_Full_MeshInflate.hoc'
 
-hf = HocReader(Path(config["cellDataDirectory"], 'VCN_c02/Morphology', infile))
+hf = HocReader(Path(config["disk"], config["cellDataDirectory"], 'VCN_c02/Morphology', infile))
 if hf.file_loaded is False:
     exit()
 

@@ -19,13 +19,11 @@ Distributed under MIT/X11 license. See license.txt for more infomation.
 import datetime
 import operator
 import shutil
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Union
 
-import model_params
-import toml
+from vcnmodel.util.get_data_paths import get_data_paths
 
 
 @dataclass
@@ -47,14 +45,8 @@ class Morph:
 class ModelDirectory(object):
     def __init__(self):
 
-        where_is_data = Path("wheres_my_data.toml")
-        if where_is_data.is_file():
-            self.datapaths = toml.load("wheres_my_data.toml")
-        else:
-            self.datapaths = {
-                "baseDirectory": Path("../VCN-SBEM-Data", "VCN_Cells")
-            }  # "here"
-        self.baseDirectory = self.datapaths["baseDirectory"]
+        self.datapaths = get_data_paths()
+        self.baseDirectory = Path(self.datapaths["disk"], self.datapaths["baseDirectory"])
         self.morphDirectory = "Morphology"
         self.initDirectory = "Initialization"
         self.simDirectory = "Simulations"

@@ -27,19 +27,21 @@ from typing import List, Union
 import numpy as np
 import pandas as pd
 import seaborn as sns
+
 from vcnmodel.util.set_figure_path import set_figure_path
 
 sys.path.insert(0, os.path.abspath("nb"))
-# import matplotlib.collections
+
 import plotnine as PN
-import toml
-import VS_data_15dB as VS_data_15dB
-import VS_data_15dB_BC09 as VS_data_15dB_BC09
-import VS_data_30dB as VS_data_30dB
 from matplotlib import pyplot as mpl
 from matplotlib.lines import Line2D
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.plotting import styler as STY
+
+import VS_data_15dB as VS_data_15dB
+import VS_data_15dB_BC09 as VS_data_15dB_BC09
+import VS_data_30dB as VS_data_30dB
+from vcnmodel.util.get_data_paths import get_data_paths
 
 # seaborn default palette, first 10 colors
 colors = [
@@ -147,9 +149,11 @@ class VS_Plots:
             "17": "two",
         }
         self.cell_list = []
-        with open("wheres_my_data.toml", "r") as fh:
-            self.config = toml.load(fh)
+        self.config = get_data_paths()
 
+        self.setup_data(sels)
+        
+    def setup_data(self, sels:List):
         df = self.prepare_data(self.datas)
 
         df["strength"] = df["Cell"].apply(
@@ -209,6 +213,14 @@ class VS_Plots:
         self.PI.fr = self.fscale(self.PI.freqs)
         self.PI.vsscale = [0, 0.2, 0.4, 0.6, 0.8, 1.0]
         self.df = df[df["Cell"].isin(sels)]
+
+    def reload_data(self, dBSPL):
+        if dBSPL == 15:
+            importlib.reload(VS_data_15dB)
+            self.datas = VS_data_15dB.data
+        elif dBSPL == 30:
+            importlib.reload(VS_data_30dB)
+            self.datas = VS_data_30dB.data
 
     def make_figure(self, figure=None, axs=None):
         if self.output == "P9":
@@ -348,12 +360,10 @@ class VS_Plots:
         )
  
         fig, P = gg.draw(return_ggplot=True)
- 
-        # save_file = Path(f"Figure7/Figure7_supp/Figure7_Main_RHS_top.pdf")
-        save_file = Path(f"Figure7/Figure7_supp/Figure7_Supplemental2_V3.pdf")
+        save_file = Path(f"Figure6/Figure6_supp/Figure6_Supplemental2_V3.pdf")
         save_file_png = save_file.with_suffix(".png")
 
-        title = "SBEM Project Supplemental Figure 7 Modeling : Vector Strength Summary"
+        title = "SBEM Project Supplemental Figure 6 Modeling : Vector Strength Summary"
 
         mpl.savefig(
             Path(self.config["baseDataDirectory"], self.config["figureDirectory"], save_file),
@@ -688,6 +698,7 @@ class VS_Plots:
             PH.nice_plot(inset_ax, position = -0.015, direction="outward", ticklength=1.5)
             inset_ax.set_ylabel("rMTF (sp/s)", fontdict=inset_label_font)
             inset_ax.set_xlabel("Mod Freq (Hz)", fontdict=inset_label_font)
+            inset_ax.set_ylim(0, 250.)
             PH.set_axes_ticks(
                 ax=inset_ax,
                 xticks=freq_list,
@@ -824,9 +835,9 @@ class VS_Plots:
 )
             ax.legend(handles=custom_legend, handlelength=1, loc="lower left", fontsize=7, labelspacing=0.33, markerscale=1,
                       bbox_to_anchor=legend_loc)
-
-    def Figure6_Supplemental2(self, mode:str="line", rMTF=True, entrain=False):
-        """make Supplememntal Figure 2 for Figure 6
+    
+    def Figure6_Supplemental1(self, mode:str="line", inset='rMTF'):
+        """make Supplememntal Figure 1 for Figure 6
 
         Args:
             mode (str, optional): drawing mode. Defaults to "line".
@@ -837,7 +848,7 @@ class VS_Plots:
             tuple: Figure handle and PlotHelpers figure object
         """
         show2out = False
-        dBSPL = 30
+        dBSPL = 15
         V1 = VS_Plots(dBSPL=dBSPL)
         cells = [5, 6, 10, 11, 13, 18]
         P = PH.regular_grid(
@@ -857,14 +868,14 @@ class VS_Plots:
                 legend = True
             else:
                 legend = False
-            if rMTF:
-                self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
-                barwidth=180, mode=mode, show2out=show2out, inset_type = 'rMTF',
-                legend_loc=(1.2, 0.8))
-            if entrain:
-                self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
-                barwidth=180, mode=mode, show2out=show2out, entrain_inset=entrain,
-                legend_loc=(1.2, 0.8))
+
+            self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
+            barwidth=180, mode=mode, show2out=show2out, inset_type=inset,
+            legend_loc=(1.2, 0.8))
+            # if entrain:
+            #     self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
+            #     barwidth=180, mode=mode, show2out=show2out, entrain_inset=entrain,
+            #     legend_loc=(1.2, 0.8))
             if i == len(cells)-1 and legend: # now move the legend
                 # print("supp2: update legend")
                 self.update_legend(axl[i], legend_loc=(1.2, 0.5))
@@ -875,8 +886,82 @@ class VS_Plots:
         fig.filename = set_figure_path(
             fignum=6, filedescriptor=f"VS_Summary_V4_{dBSPL:d}_dBSPL", suppnum=2
         )
-        title = f"SBEM Project Supplemental Figure 6 Modeling : Vector Strength Summary (dB:{dBSPL:d})"
+        title = f"SBEM Project Figure 6 Supplemental Figure 1 Modeling : Vector Strength Summary (dB:{dBSPL:d})"
         fig.title["title"] = title
+        Path(fig.filename).parent.mkdir(parents=True, exist_ok=True)
+        mpl.savefig(
+            fig.filename,
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": title,
+            },
+        )
+        fig.filename = fig.filename.with_suffix(".png")
+        print("writing to : ", fig.filename)
+        mpl.savefig(
+            fig.filename,
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": title,
+            },
+        )
+        return fig, P
+
+    def Figure6_Supplemental2(self, mode:str="line", inset='rMTF'):
+        """make Supplememntal Figure 2 for Figure 6
+
+        Args:
+            mode (str, optional): drawing mode. Defaults to "line".
+            rMTF (bool, optional): Whether to draw insets as rMTF. Defaults to True.
+            entrain (bool, optional): whether to draw insets as entrainment. Defaults to False.
+
+        Returns:
+            tuple: Figure handle and PlotHelpers figure object
+        """
+        show2out = False
+        dBSPL = 15
+        V1 = VS_Plots(dBSPL=dBSPL)
+        cells = [5, 6, 10, 11, 13, 18]
+        P = PH.regular_grid(
+            2,
+            3,
+            figsize=(10, 6),
+            panel_labels=["A", "B", "C", "D", "E", "F"],
+            margins={"leftmargin": 0.08, "rightmargin": 0.15, "bottommargin": 0.1, "topmargin":0.05},
+            verticalspacing=0.15,
+            horizontalspacing=0.07,
+            labelposition=(-0.12, 1.05),
+        )
+        axl = P.axarr.ravel()
+
+        for i, cell in enumerate(cells):
+            if i == len(cells)-1:
+                legend = True
+            else:
+                legend = False
+
+            self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
+            barwidth=180, mode=mode, show2out=show2out, inset_type=inset,
+            legend_loc=(1.05, 0.8))
+            # if entrain:
+            #     self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
+            #     barwidth=180, mode=mode, show2out=show2out, entrain_inset=entrain,
+            #     legend_loc=(1.2, 0.8))
+            if i == len(cells)-1 and legend: # now move the legend
+                # print("supp2: update legend")
+                self.update_legend(axl[i], legend_loc=(1.05, 0.8))
+ 
+        fig = FigInfo()
+        fig.P = P
+
+        fig.filename = set_figure_path(
+            fignum=6, filedescriptor=f"VS_Summary_V4_{dBSPL:d}_dBSPL", suppnum=2
+        )
+        title = f"SBEM Project Figure 6 Supplemental Figure 2 Modeling : Vector Strength Summary (dB:{dBSPL:d})"
+        fig.title["title"] = title
+        Path(fig.filename).parent.mkdir(parents=True, exist_ok=True)
         mpl.savefig(
             fig.filename,
             metadata={
@@ -959,6 +1044,148 @@ class VS_Plots:
             },
         )
 
+    def Figure6_Supplemental3(self, dBSPLs=(15, 30)):
+        """Plot a summary of  entrainment for 3 different
+        input configurations (All, larget only, and without the largest input)
+
+        Args:
+            dBSPL (tuple, optional): _description_. Defaults to 0. dBSPL data set to work from
+            # of dBSPLs is the number of columns
+
+        Returns:
+            _type_: _description_
+        """
+        label_font = {"fontsize": 8, "fontweight": "normal"}
+        title_font = {"fontsize": 9, "fontweight": "normal"}
+        P = PH.regular_grid(
+            3,
+            len(dBSPLs),
+            figsize=(4*len(dBSPLs), 9),
+            order="rowsfirst",
+            panel_labels=["A", "B", "C", "D", "E", "F", "G", "H", "I"],
+            margins={"leftmargin": 0.15, "rightmargin": 0.15, "bottommargin": 0.1, "topmargin":0.1},
+            verticalspacing=0.08,
+            horizontalspacing=0.08,
+            labelposition=(-0.12, 1.05),
+        )
+        axl = P.axarr.ravel()
+        axs = P.axarr
+        P.figure_handle.text(x = 0.06, y=0.8, s="All", rotation=90, va="center")
+        P.figure_handle.text(x = 0.06, y=0.5, s="Largest only", rotation=90, va="center")
+        P.figure_handle.text(x = 0.06, y=0.2, s="Largest removed", rotation=90, va="center")
+        # P.figure_handle.text(x = 0.2, y=0.5, s="Entrainment", rotation=90, ha="center")
+        P.figure_handle.text(x=0.32, y=0.95, s=f"dBSPL: {dBSPLs[0]:d}", fontweight="bold", fontsize=12, ha="center")
+        P.figure_handle.text(x=0.70, y=0.95, s=f"dBSPL: {dBSPLs[1]:d}", fontweight="bold", fontsize=12, ha="center")
+     
+        superthreshset = [9, 11, 17, 18]
+        cell_legend = [False]*10
+        anf_legend = False
+        sels = [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
+        freq_list = np.log10([50, 100, 200, 300, 500, 1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
+        xticks_str=['50', '100', '200', '300', '500', '1000']
+        xtick_minor_list = np.log10([400, 600, 700, 800, 900]) 
+        for j, dBSPL in enumerate(dBSPLs):
+            self.reload_data(dBSPL)
+            self.setup_data(sels)
+            for icell, cell in enumerate([2, 5, 6, 9, 10, 11, 13, 17, 18, 30]):
+                dfl = self.df[self.df["Cell"] == cell]  # just get the cell's data
+                freqs = sorted(set(dfl['frequency'].values))
+ 
+                cfg_color = {'all': colors[0], "largestonly": colors[1], "removelargest": colors[2], "removetwolargest": colors_swarm[3],
+                            'Intact': colors[0], "Pruned": colors[1]}
+                legs = {'Intact': None, 'Pruned': None, "ANF": None, "all": None, "largestonly": None, "removelargest": None, "removetwolargest": None}
+                
+                if cell in superthreshset:
+                    marker = 's'
+                else:
+                    marker = 'o'
+                mfc = colors[icell]
+                for icfg, cfg in enumerate(sorted(set(dfl['Configuration']))):
+                    if icfg > 2:
+                        continue
+                    run = dfl[dfl['Configuration'] == cfg]
+                    x = np.log10([50, 100, 200, 300, 400, 500, 750, 1000]) # np.arange(8) # run['frequency'].values
+                    inset = 'entrainment'
+                    ax = axs[icfg, j]
+
+                    y = run[inset].values
+                    y_an = run[f"AN_{inset:s}"].values
+                    x_an = x
+                    PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)   
+
+                    if inset == 'rMTF':
+                        yticks =  [0, 50, 100, 150, 200, 250]
+                        yticks_str=  ['0', '50', '100', '150', '200', '250']
+                        ax.set_ylim(0, 250)
+                    elif inset == "entrainment":
+                        yticks =  [0, 0.2, 0.4, 0.6, 0.8, 1.0]
+                        yticks_str=  ['0.0', '0.2', '0.4', '0.6', '0.8', '1.0']
+                        ax.set_ylim(0, 1)
+
+                    PH.set_axes_ticks(
+                        ax=ax,
+                        xticks=freq_list,
+                        xticks_str=xticks_str,
+                        xticks_pad=None,
+                        x_minor = xtick_minor_list,
+                        major_length=3.0,
+                        minor_length=1.5,
+                        yticks = yticks,
+                        yticks_str=  yticks_str,
+                        yticks_pad=None,
+                        y_minor=[],
+                        y_rotation=0., 
+                        fontsize=8,
+                    )
+
+                    uselabel2 = None
+                    uselabel = None
+                    if icfg == 0 and j+1 == 2 and not cell_legend[icell]:
+                        uselabel2 = f"BC{cell:02d}"
+                        cell_legend[icell] = True
+                    if icfg == 0 and j+1 == 2 and not anf_legend:
+                        uselabel = 'ANF'
+                        anf_legend=True
+
+                    ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=1, zorder=-100, label=uselabel, clip_on=False)  # in back of data
+                    ax.plot(x, y, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc, label=uselabel2, clip_on=False)
+                    ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
+                    if inset == 'rMTF':
+                        ax.set_ylabel("rMTF (sp/s)", fontdict=label_font)
+                    if inset == 'entrainment':
+                        ax.set_ylabel("Entrainment", fontdict=label_font)
+        axs[0,1].legend(loc='best', bbox_to_anchor=(1.05, 1))
+
+        mpl.show()
+        fig = FigInfo()
+        fig.P = P
+
+        fig.filename = set_figure_path(
+            fignum=6, filedescriptor=f"Entrainment_Summary_V5_15, 30_dBSPL", suppnum=3
+        )
+        title = f"SBEM Project Figure 6 Supplemental Figure 3 Modeling : Entrainment Summary (dBSPL: 15, 30)"
+        fig.title["title"] = title
+        Path(fig.filename).parent.mkdir(parents=True, exist_ok=True)
+        mpl.savefig(
+            fig.filename,
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": title,
+            },
+        )
+        fig.filename = fig.filename.with_suffix(".png")
+        print("writing to : ", fig.filename)
+        mpl.savefig(
+            fig.filename,
+            metadata={
+                "Creator": "Paul Manis",
+                "Author": "Paul Manis",
+                "Title": title,
+            },
+        )
+        return fig, P
+
     def Summarize(self, dBSPL=0):
         """Plot a summary of VS, rMTF and entrainment for 3 different
         input configurations (All, larget only, and without the largest input)
@@ -1028,12 +1255,12 @@ class VS_Plots:
                 if respect_spike_counts:
                     ilow = np.where(run['SpikeCount'].values < 1000)[0]
                     y[ilow] = np.nan    
-                ax.errorbar(x, y, yerr=ye, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc) # , label=f"BC{cell:02d}")
+                ax.errorbar(x, y, yerr=ye, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc, clip_on=False) # , label=f"BC{cell:02d}")
                 if icell == 0:
                     label = "ANF"
                 else:
                     label = None
-                ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=0.5, zorder=-100) # , label=label)  # in back of data
+                ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=0.5, zorder=-100, clip_on=False) # , label=label)  # in back of data
                 # ax.set_title(cfg)
                 PH.set_axes_ticks(
                     ax=ax,
@@ -1059,7 +1286,8 @@ class VS_Plots:
                 ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
                 ax.set_ylabel("Vector Strength", fontdict=label_font)
                 PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)         
-                
+                x = np.log10([50, 100, 200, 300, 400, 500, 750, 1000]) # np.arange(8) # run['frequency'].values
+
                 for j, inset in enumerate(['rMTF', 'entrainment']):
                     ax = axs[icfg, j+1]
                     # if icfg == 0:
@@ -1101,7 +1329,7 @@ class VS_Plots:
                         uselabel = 'ANF'
                         anf_legend=True
 
-                    ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=1, zorder=-100, label=uselabel)  # in back of data
+                    ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=1, zorder=-100, label=uselabel, clip_on=False)  # in back of data
                     ax.plot(x, y, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc, label=uselabel2, clip_on=False)
                     ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
                     if inset == 'rMTF':
@@ -1127,8 +1355,8 @@ if __name__ == "__main__":
     db = 15
 
     V1 = VS_Plots(dBSPL=db)
-    V1.Summarize(dBSPL=db)
-
+    # V1.Summarize(dBSPL=db)
+    V1.Figure6_Supplemental3(dBSPLs=(15, 30))
     # fm, new_ax = mpl.subplots(2,2)
     # new_ax = np.ravel(new_ax)
 

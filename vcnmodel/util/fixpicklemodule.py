@@ -20,6 +20,9 @@ import io
 import pickle
 
 import dill
+import vcnmodel.analyzers.reverse_correlation
+import vcnmodel.plotters.plot_sims
+
 
 
 class RenameUnpickler(pickle.Unpickler):
@@ -33,6 +36,7 @@ class RenameUnpickler(pickle.Unpickler):
             "src.vcnmodel.plotters.plot_sims",
             "src.vcnmodel.plotters.figures",
             "src.vcnmodel.util",
+            "src.vcnmodel.analyzers.reverse_correlation",
         ]:
             renamed_module = module  # used to be "src." + module
         if module.startswith("src."):

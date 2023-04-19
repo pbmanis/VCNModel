@@ -31,27 +31,36 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+
   -p {AN,an,IO,IV,iv,gifnoise}, --protocol {AN,an,IO,IV,iv,gifnoise}
                         Select the protocol (default: IV) from: ['AN', 'an',
                         'IO', 'IV', 'iv', 'gifnoise']
+
   -a {traces,PSTH,revcorr,SAC,tuning,singles}, --analysis {traces,PSTH,revcorr,SAC,tuning,singles}
                         Select the analysis type (default: traces) from:
                         ['traces', 'PSTH', 'revcorr', 'SAC', 'tuning',
                         'singles']
+
   -M MODELTYPE, --modeltype MODELTYPE
                         Select the model type (default XM13_nacncoop) from:
                         ['mGBC', 'XM13', 'RM03', 'XM13_nacncoop']
+
   -s, --scaled          use scaled data or not
+
   -e {None,delays,largestonly,removelargest,mean,allmean,twolargest},
                 --experiment {None,delays,largestonly,removelargest,mean,allmean,twolargest}
                         Select the experiment type from: [None, 'delays',
                         'largestonly', 'removelargest', 'mean', 'allmean',
                         'twolargest']
+
   --dendritemode {normal,passive,active}
                         Choose dendrite table (normal, active, passive)
+
   -d DBSPL, --dB DBSPL  Select the models at specific intensity
+
   -r NREPS, --nreps NREPS
                         Select the models with # reps
+
   -c, --check           Just check selection criteria and return
 
 
@@ -68,14 +77,15 @@ Copyright 2017- Paul B. Manis
 Distributed under MIT/X11 license. See license.txt for more infomation. 
 
 """
-import argparse
+
 import re
 import string
-import sys
 import time
 from collections import OrderedDict
-from dataclasses import dataclass, field
+import dataclasses
+from dataclasses import dataclass
 from pathlib import Path
+import pickle
 from typing import Union
 
 import matplotlib.colorbar  # type: ignore
@@ -89,10 +99,12 @@ import pyqtgraph as pg  # type: ignore
 
 # import quantities as pq
 import seaborn as sns
-import toml
 import vcnmodel.cell_config as cell_config
 import vcnmodel.group_defs as GRPDEF
 import vcnmodel.util.readmodel as readmodel
+from vcnmodel.util.get_data_paths import get_data_paths, update_disk
+from vcnmodel.util import trace_calls
+from vcnmodel.util import fixpicklemodule as FPM
 from ephys.ephysanalysis import RmTauAnalysis, SpikeAnalysis
 from lmfit import Model  # type: ignore
 from matplotlib import pyplot as mpl  # type: ignore
@@ -101,105 +113,17 @@ from matplotlib import ticker
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.plotting import styler as PLS
 from pylibrary.tools import cprint as CP
+from . import plot_functions as PF
 from pyqtgraph.Qt import QtGui
 from rich.console import Console
 from vcnmodel.analyzers import reverse_correlation as REVCORR
 from vcnmodel.analyzers import sac as SAC
 from vcnmodel.analyzers import vector_strength as VS
-from vcnmodel.util import fixpicklemodule as FPM
-from vcnmodel.util import trace_calls
-
-from . import plot_functions as PF
+from vcnmodel.analyzers.analyzer_data_classes import PData, RevCorrData, RevCorrPars
 
 TRC = trace_calls.TraceCalls
-
 cprint = CP.cprint
-console = Console()
-
-UR = pint.UnitRegistry()
-# make a shortcut for each of the analysis classes from ephys
-
-SP = SpikeAnalysis.SpikeAnalysis()
-RM = RmTauAnalysis.RmTauAnalysis()
-
-# set some defaults
-rc("text", usetex=True)
-rc("text.latex", preamble=r"\usepackage{xcolor}")
-rc("mathtext", fontset="stixsans")
-
-sns.set_style(rc={"pdf.fonttype": 42})
-
-
-modeltypes = ["mGBC", "XM13", "RM03", "XM13_nacncoop", "XM13A_nacncoop"]
-runtypes = ["AN", "an", "IO", "IV", "iv", "gifnoise"]
-experimenttypes = [
-    None,
-    "delays",
-    "largestonly",
-    "removelargest",
-    "mean",
-    "allmean",
-    "twolargest",
-]
-modetypes = ["find", "singles", "IO", "multi"]
-analysistypes = ["traces", "PSTH", "revcorr", "SAC", "tuning", "singles"]
-dendriteChoices = [
-    "normal",
-    "passive",
-    "active",
-]
-
-orient_cells = {
-    2: [140.0, 0.0, -144.0],
-    6: [140.0, -59.0, -12.0],
-    5: [140.0, -46.0, 121.0],
-    9: [140.0, -74.0, 18.0],
-    11: [140.0, -2.0, -181.0],
-    10: [140.0, 5.0, -35.0],
-    13: [140.0, -22.0, 344.0],
-    17: [140.0, -158.0, 39.0],
-    30: [140.0, -134.0, -181.0],
-}
-
-
-# now in group_defs.py
-# def grAList() -> list:
-#     """ Return a list of the 'grade A' cells from the SBEM project
-#     """
-
-#     return [2, 5, 6, 9, 10, 11, 13, 17, 18, 30]
-
-
-SpirouChoices = [
-    "all",
-    "max=mean",
-    "all=mean",
-    "removelargest",
-    "largestonly",
-    "twolargest",
-    "threelargest",
-    "fourlargest",
-]
-
-# note that we use data classes to store related sets of
-# variables and results.
-
-def defemptylist():
-    return []
-@dataclass
-class PData:
-    """
-    data class for some parameters that control what we read
-    """
-    gradeA: list = field(default_factory=defemptylist)
-    default_modelName: str = "XM13_nacncoop"
-    soma_inflate: bool = True
-    dend_inflate: bool = True
-    basepath: str = ""  # config["baseDataDirectory"]
-    renderpath: str = ""  # " str(Path(self.config["codeDirectory"], "Renderings"))
-    revcorrpath: str = ""
-    thiscell: str = ""
-
+UR = pint.UnitRegistry
 
 @dataclass
 class SACPars:
@@ -277,6 +201,7 @@ class PlotSims:
         self.parent = (
             parent  # mostly to provide access to datatables elements (display)
         )
+        self.datapaths = get_data_paths()
         self.ReadModel = readmodel.ReadModel()
         self.ReadModel.set_parent(
             parent=self.parent, my_parent=self
@@ -284,11 +209,12 @@ class PlotSims:
         self.firstline = True
         self.VS = VS.VectorStrength()
         self.axis_offset = -0.02
-        with open(Path(Path.cwd(), "wheres_my_data.toml"), "r") as fh:
-            self.config = toml.load(fh)
+        self.config = get_data_paths()
         mpl.style.use(Path(Path.cwd(), "styles", "figures.mplstyle"))
         self.allspikes = None
         self.in_Parallel = False # flag to prevent graphics access during parallel processing.
+        self.RevCorrData = RevCorrData()
+        self.RevCorrPars = RevCorrPars()
 
     def newPData(self):
         """
@@ -348,6 +274,7 @@ class PlotSims:
             if selected is None:
                 return
             sfi = Path(selected.simulation_path, selected.files[0])
+            sfi = update_disk(sfi, self.datapaths)
             if stack:
                 self.plot_traces(
                     self.P.axarr[iax, 0],
@@ -514,7 +441,7 @@ class PlotSims:
             protocol = "IV"
         elif protocol in ["VC", "runVC"]:
             protocol = "VC"
-
+        fn = update_disk(fn, self.datapaths)
         model_data = self.ReadModel.get_data(fn, PD=PD, protocol=protocol)
         data = model_data.data
         si = model_data.SI
@@ -843,8 +770,9 @@ class PlotSims:
             protocol = [None for i in range(n_columns)]
             dendriteMode = [None for i in range(n_columns)]
             for i in range(n_columns):
+                sfi[i] = Path(str(sfi[i]).replace("/._", "/"))
                 with open(sfi[i], "rb") as fh:
-                    sfidata = FPM.pickle_load(fh)  # , encoding='latin-1')
+                    sfidata = FPM.pickle_load(fh)
                     # print(sfidata['Params'])
                     dendriteMode[i] = sfidata["Params"].dendriteMode
                     protocol[i] = sfidata["runInfo"].runProtocol
@@ -1445,9 +1373,8 @@ class PlotSims:
         SC, syninfo = self.get_synaptic_info(cell_n)
         syn_ASA = np.array([syninfo[1][isite][0] for isite in range(RCP.ninputs)])
         max_ASA = np.max(syn_ASA)
-
         for isite in reversed(range(RCP.ninputs)):
-            if len(RCD.sv_trials) == 0:
+            if not 'sv_trials' in dataclasses.fields(RCD) or len(RCD.sv_trials) == 0:
                 continue
             # stepsize = int(RCD.sv_all.shape[0] / 20)
             if isite == 0:  # all sites have the same voltage, but here
@@ -1794,6 +1721,7 @@ class PlotSims:
         # 1. Gather data
         #
         print(f"    compute_revcorr  Getting data for gbc: {gbc:s}")
+        fn = update_disk(fn, self.datapaths)
         MD = self.ReadModel.get_data(fn, PD=PD, protocol=protocol)
         if not MD.success:
             return None
@@ -2078,6 +2006,7 @@ class PlotSims:
                 iax=i,
                 figure=P.figure_handle,
             )
+            sfi[i] = update_disk(sfi[i], self.datapaths)
             model_data = self.ReadModel.get_data(
                 sfi[i],
                 PD=PD,
@@ -2343,7 +2272,7 @@ class PlotSims:
 
             print(f"Getting data for gbc: {gbc:s}")
             SC, syninfo = self.get_synaptic_info(gbc)
-
+            fn = update_disk(fn, self.datapaths)
             model_data = self.ReadModel.get_data(fn, PD=PD, protocol=protocol)
             if not model_data.success:
                 return None
@@ -2370,7 +2299,7 @@ class PlotSims:
             ) = self.get_stim_info(si, ri)
             sim_dir = Path(fn).parts[-2]
             tstring = f"{gbc:s}_{str(sim_dir):s}_{soundtype:s}"
-            mpl.get_current_fig_manager().canvas.set_window_title(tstring)
+            mpl.get_current_fig_manager().canvas.setWindowTitle(tstring)
             fstring = f"{gbc:s}_{soundtype:s}_{ri.dB} dBSPL"
             P.figure_handle.suptitle(fstring, fontsize=13, fontweight="bold")
 
@@ -2583,7 +2512,7 @@ class PlotSims:
         
         plotflag = False
         SC, syninfo = self.get_synaptic_info(cellN)
-
+        fn = update_disk(fn, self.datapaths)
         model_data = self.ReadModel.get_data(fn, PD, protocol)
         AR = model_data.AR
         data = model_data.data

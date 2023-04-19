@@ -28,21 +28,21 @@ import subprocess
 from pathlib import Path
 from typing import List
 
-import toml
 from pylibrary.tools import cprint as CP
+
+import vcnmodel.util.ptree as ptree
 from vcnmodel.plotters import \
     figure_data as FD  # table of simulation runs used for plotting figures
-import vcnmodel.util.ptree as ptree
+from vcnmodel.util.get_data_paths import get_data_paths
 
 cprint = CP.cprint
 
-with open("wheres_my_data.toml", "r") as fh:
-    config = toml.load(fh)
-sourcepath = Path(config["baseDataDirectory"])
+config = get_data_paths()
+sourcepath = Path(config["disk"], config["baseDataDirectory"])
 
 # simpath = Path("/Volumes/Pegasus_002/BU_simulation_data")
-simpath = Path("/Volumes/T7SSD/BU_simulation_data")
-figpath = Path("/Volumes/Pegasus_002/VCN-SBEM-Data/SBEM-paper Figures")
+simpath = Path(config["disk"], "BU_simulation_data")
+figpath = Path(config["disk"], "VCN-SBEM-Data/SBEM-paper Figures")
 
 intermediate = Path(simpath, "IntermediateAnalyses")
 intermediate_source = Path(figpath, "IntermediateResults")

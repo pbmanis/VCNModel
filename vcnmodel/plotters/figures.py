@@ -22,10 +22,8 @@ Distributed under MIT/X11 license. See license.txt for more infomation.
 """
 
 import datetime
-import importlib
 import multiprocessing as MPROC
 import pickle
-import platform
 import string
 from collections import OrderedDict
 from dataclasses import dataclass, field
@@ -39,28 +37,29 @@ import matplotlib.pyplot as mpl
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import toml
-import vcnmodel.util.fixpicklemodule as FPM
-import vcnmodel.util.readmodel as readmodel
 from matplotlib import image as mpimg
 from matplotlib.lines import Line2D
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
 from pyqtgraph import multiprocess as MP
+
+import vcnmodel.util.fixpicklemodule as FPM
+import vcnmodel.util.readmodel as readmodel
+from vcnmodel import group_defs as GRPDEF
 from vcnmodel.analyzers import analyze_data
 from vcnmodel.analyzers import isi_cv as ISI
 from vcnmodel.analyzers import pattern_summary as PATSUM
 from vcnmodel.analyzers import sac as SAC
-from vcnmodel.plotters import morphology_thr_correlations
 from vcnmodel.plotters import SAC_plots as SACP
 from vcnmodel.plotters import SAM_VS_vplots
 from vcnmodel.plotters import efficacy_plot as EF
 from vcnmodel.plotters import \
     figure_data as FD  # table of simulation runs used for plotting figures
+from vcnmodel.plotters import morphology_thr_correlations
 from vcnmodel.plotters import plot_functions as PF
 from vcnmodel.plotters import plot_z as PZ
+from vcnmodel.util.get_data_paths import get_data_paths
 from vcnmodel.util.set_figure_path import set_figure_path
-from vcnmodel import group_defs as GRPDEF
 
 cprint = CP.cprint
 
@@ -153,9 +152,7 @@ class Figures(object):
 
     def __init__(self, parent):
         self.parent = parent  # point back to caller's space
-        with open("wheres_my_data.toml", "r") as fh:
-            self.config = toml.load(fh)
-        # sorry, have to reload it here.
+        self.config = get_data_paths()
         self.axis_offset = -0.02
         self.ReadModel = readmodel.ReadModel()
         self.ReadModel.set_parent(
@@ -172,7 +169,7 @@ class Figures(object):
         """
         return PData(
             gradeA=GRPDEF.gradeACells,
-            basepath=self.config["baseDataDirectory"],
+            basepath=str(Path(self.config["disk"], self.config["baseDataDirectory"])),
             renderpath=str(Path(self.config["codeDirectory"], "Renderings")),
             revcorrpath=self.config["revcorrDataDirectory"],
         )
@@ -191,13 +188,18 @@ class Figures(object):
             "Figure4-Supplemental4_Zin_removed": self.Figure4_Supplemental4_Zin_removed,
             "Figure4-Supplemental4_PSTH": self.Figure4_Supplemental4_PSTH,
             "Figure5-Ephys_2_Main": self.Figure5_Main,
+            
             "Figure5-Ephys_2_Supplemental1": self.Figure5_Supplemental1,
             "Figure5-Ephys_2_Supplemental2": self.Figure5_Supplemental2_removed,
             "Figure5-Ephys_2_Supplemental2": self.Figure5_Supplemental2,
+            
             "Figure6-Ephys_3_Main": self.Figure6_Main,
-            "Figure6-Ephys_3_Supplemental2": self.Figure6_Supplemental2,
-            "Figure6-Ephys_3_Supplemental3": self.Figure6_Supplemental3,
+            "Figure6-Ephys_3_Supplemental2 (VS, rMTF)": self.Figure6_Supplemental2,
+            "Figure6-Ephys_3_Supplemental3 (Entrainment)": self.Figure6_Supplemental3,
+            "Figure6-Ephys_3_Supplemental4 (SAC)": self.Figure6_Supplemental4,
+            
             "Figure8-Ephys_4": self.Figure8_Panels_IJK,
+            
             # Misc figures follow
             "Figure: IV Figure": self.plotIV,
             "Figure: All_IVs": self.allIVs,
@@ -273,7 +275,7 @@ class Figures(object):
                             fig.filename)
         else:
             out_file = fig.filename
-        out_file.parent.mkdir(exist_ok=True)
+        Path(out_file).parent.mkdir(parents=True, exist_ok=True)
         cprint(
             "g",
             f"Saving figure to: {str(out_file):s}",
@@ -1271,7 +1273,7 @@ class Figures(object):
             )
             sfiles = Path(
                 cellpath,
-                Path(FD.figure_efficacy_supplement[cellN][simulation_experiment]).name,
+                Path(FD.figure_efficacy_supplement_30dB[cellN][simulation_experiment]).name,
             )
             if not sfiles.is_dir():
                 return
@@ -1478,10 +1480,12 @@ class Figures(object):
         trace_axes = []
         if supplemental1:
             yh2 = 1.1
-            yb2 = 2.25
+            yB2 = 2.25
             yb3 = 0.5
             yb1 = 3.75
+            yC2 = 5.0
             yh1 = 3.75
+            yA1 = 3.25 - 0.5 +2.5 - 0.105  # to align with B
         else:
             yh2 = 1.2
             yB2 = 3.5 + 2.7 - 0.5 + 2.5
@@ -1802,7 +1806,7 @@ class Figures(object):
         return revcorr_panel, vm_panel 
 
     def Figure5_Supplemental2(self):
-        PATSUM.Figure5_Supplemental2_Patterns()  # writes its own figure to the directory
+        PATSUM.Figure5_Supplemental3_Patterns()  # writes its own figure to the directory
 
     def plot_all_revcorr(self):
         for cell in GRPDEF.grAList():
@@ -1816,7 +1820,7 @@ class Figures(object):
         cell_number: int,
         dBSPL="Spont",
         parent_figure: Union[object, None] = None,
-        recompute=False,  # if you need to recompute the revcorrs for all the grade A cells, just set this True
+        recompute=True,  # if you need to recompute the revcorrs for all the grade A cells, just set this True
     ) -> tuple:
         """
         Get the revcorr data associated with the cell number
@@ -1859,7 +1863,7 @@ class Figures(object):
                 PD=self.newPData(),
                 protocol="runANPSTH",
                 revcorrtype="RevcorrSPKS",
-                thr=-20.0,
+                # thr=-20.0,
                 width=4.0,
             )
         return P, PD, RCP, RCD
@@ -2145,7 +2149,7 @@ class Figures(object):
 
         for i, cell_number in enumerate(cells):
 
-            PR, PD, RCP, RCD = self._get_revcorr(cell_number=cell_number, dBSPL=dBSPL)
+            PR, PD, RCP, RCD = self._get_revcorr(cell_number=cell_number, dBSPL=dBSPL, recompute=False)
             if PD is None:
                 cprint("r", "PD is none in plot_revcorr_supplement")
                 continue
@@ -2848,6 +2852,12 @@ class Figures(object):
         return fig
     
     def Figure6_Supplemental3(self):
+        V = SAM_VS_vplots.VS_Plots()
+        #fig, P = V.make_figure()
+        fig, P = V.Figure6_Supplemental3()
+        return fig
+    
+    def Figure6_Supplemental4(self):
         fig = SACP.plot_sacs(figinfo=FigInfo(show_figure_name=False))
         return fig
 
@@ -3865,8 +3875,7 @@ class Figures(object):
                 TASKS = [s for s in VS_datasets.samdata.keys()]
         # importlib.reload(VS_datasets)  # make sure have the current one
         print(f"Data set keys found: {str(list(VS_datasets.samdata.keys())):s}")
-        with open("wheres_my_data.toml", "r") as fh:
-            self.config = toml.load(fh)
+        
         """
         Generate the table in VS_data.py by analyzing the data from 
         VS_datasets.py

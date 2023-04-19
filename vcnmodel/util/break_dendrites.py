@@ -25,13 +25,13 @@ from pathlib import Path
 from typing import Union
 
 import numpy as np
-import toml
 from neuron import h
 from neuronvis import hoc_reader as HR
 from neuronvis import swc_to_hoc
 
-with open("wheres_my_data.toml", "r") as fh:
-    config = toml.load(fh)
+from vcnmodel.util.get_data_paths import get_data_paths
+
+config = get_data_paths()
 
 known_names = [
     "Axon_Hillock",

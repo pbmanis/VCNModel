@@ -51,8 +51,8 @@ PyOpenGL-accelerate==3.1.6
 pynwb
 pyparsing==3.0.9
 pyqt6==6.4.2
-pyqt6-sip==13.3.1
-pyqtgraph==0.13.4.1
+pyqt6-sip>=13.4.
+pyqtgraph==0.13.2
 
 openpyxl
 

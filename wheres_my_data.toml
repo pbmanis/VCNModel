@@ -4,20 +4,31 @@
 # This file is mostly used by cell_config.py, but it is also imported
 # elsewhere rather than harcoding some of the paths.
 #
-# Read this file as:
+# Read this file directly using:
 # import toml
 # with open("wheres_my_data.toml", "r") as fh:
 #   config = toml.load(fh)
-# Dec 2020: Move simulation result storage off to RAID disk for space reasons.
+#   config["disk"] must be prepended to some of the paths
+#
+# or better, construct the paths by calling:
+# from get_data_paths import get_data_paths
+# config = get_data_paths()
+# (this sets the disk)
 
-baseDataDirectory = "/Volumes/Pegasus_002/VCN-SBEM-Data" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
-cellDataDirectory = "/Volumes/Pegasus_002/VCN-SBEM-Data/VCN_Cells" #"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
-revcorrDataDirectory = "/Volumes/Pegasus_002/VCN-SBEM-Data//VCN_Revcorr_Summaries" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Revcorr_Summaries"
-baseMorphologyDirectory = "/Volumes/Pegasus_002/VCN-SBEM-Data/MorphologyData/VCN" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/MorphologyData/VCN"
-codeDirectory="/Users/pbmanis/Desktop/Python/vcnmodel"
+# Dec 2020: Move simulation result storage off to RAID or other external disk for space reasons.
+
+disk = "/Volumes/T7"  # define the disk or path to the directory where the data directory can be found
+shareddatadisk = "/Volumes/T7"  # where to store shared results related to manuscript
+# disk = "/Volumes/Pegasus_002"
+
+baseDataDirectory = "VCN-SBEM-Data" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
+cellDataDirectory = "VCN-SBEM-Data/VCN_Cells" #"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"
+revcorrDataDirectory = "VCN-SBEM-Data/VCN_Revcorr_Summaries" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Revcorr_Summaries"
+baseMorphologyDirectory = "MorphologyData/VCN" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/MorphologyData/VCN"
+codeDirectory="./vcnmodel"
 pngDirectory="VCN-CellImages-1-2020/Bushy_Cells"  # png files, in baseDataDirectory
 impedanceDirectory="Impedance_Calculations"  # Zin calculations in cellDataDirectory
-figureIntermediateDirectory="IntermediateResults"
+figureIntermediateDirectory="IntermediateAnalyses"
 figureDirectory="SBEM-paper Figures"
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_pbm_14Oct2019_v1.xlsx'
 # dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_6_March_2020.xlsx'
@@ -29,11 +40,9 @@ figureDirectory="SBEM-paper Figures"
 #dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_29_June_2020.xlsx'
 #dendriteQualityFile = 'Dendrite Quality and Surface Areas_comparisons_17_June_2021.xlsx'  # updated for cell 18
 
-dendriteQualityFile = 'Dendrite Quality and Surface Areas_for_Sims_Cleaned_8-30-2022.xlsx'  # updated for cell 18
+dendriteQualityFile = 'Dendrite_Quality_and_Surface_Areas_for_Sims_Cleaned_8-30-2022.xlsx'  # updated for cell 18
 
 # names of excel tabs in the dendrite quality file
-# asaData = "Input_ASA_FromASAProtocol(Holco"
-# asaHeaderSkip = 3
 asaData = "Input_ASA_FromautoASA.py"
 asaHeaderSkip = 0
 SomaAndDendriteData = "SomaDendrite_Summary"

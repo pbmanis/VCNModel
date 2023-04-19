@@ -6,23 +6,24 @@ import matplotlib.pyplot as mpl
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import toml
-import vcnmodel.plotters.figure_data as FD
-import vcnmodel.plotters.plot_sims as plot_sims
-import vcnmodel.util.readmodel as readmodel
 from lmfit.models import GaussianModel
 from matplotlib import collections as mc
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.tools import cprint as CP
-from vcnmodel.analyzers import sac as SAC
-from vcnmodel.util.set_figure_path import set_figure_path
+
 import vcnmodel.group_defs as GRPDEF
+import vcnmodel.plotters.figure_data as FD
+import vcnmodel.plotters.plot_sims as plot_sims
+import vcnmodel.util.get_data_paths as get_data_paths
+import vcnmodel.util.readmodel as readmodel
+from vcnmodel.analyzers import sac as SAC
+from vcnmodel.util.get_data_paths import get_data_paths
+from vcnmodel.util.set_figure_path import set_figure_path
 
 ReadModel = readmodel.ReadModel()
 cprint = CP.cprint
 
-with open("wheres_my_data.toml", "r") as fh:
-    config = toml.load(fh)
+config = get_data_paths()
 # print(config)
 # os.chdir(config['codeDirectory'])
 PS = plot_sims.PlotSims(parent=None)
@@ -257,7 +258,7 @@ def run_sac_analysis():
     return df
 
 
-def do_plot(df, sacs, max_CI: float = 60.0, fits:bool=False):
+def do_plot(df, sacs, max_CI: float = 60.0, fits:bool=False)->object:
     """Make a supplemental plot of the SAC results for all cells
 
     Parameters
@@ -425,7 +426,7 @@ def do_plot(df, sacs, max_CI: float = 60.0, fits:bool=False):
     ax2[1].set_ylim(0, 75)
     ax2[1].set_ylabel("CI")
     ax2[1].get_legend().remove()
-    # reorder the legends  -- needed because 
+    # reorder the legends
     handles, labels = ax2[0].get_legend_handles_labels()
     legdict = {"all": "All Inputs", "largestonly": "Largest input only", 
     "removelargest": "Largest input removed", "removetwolargest": "Two largest inputs removed"}
@@ -451,22 +452,22 @@ def do_plot(df, sacs, max_CI: float = 60.0, fits:bool=False):
     for ax in ax2:
         PH.nice_plot(ax, direction="outward", ticklength=4)
     return P
-
     mpl.savefig(
         Path(
             config["baseDataDirectory"],
             "Figures",
-            "Figure7",
-            "Figure7_supp",
-            "Figure7_Supplemental3_SAC_Clicks_SynapseConfigs_V2.pdf",
+            "Figure6",
+            "Figure6_supp",
+            "Figure6_Supplemental3_SAC_Clicks_SynapseConfigs_V2.pdf",
         ),
         metadata={
             "Creator": "Paul Manis",
             "Author": "Paul Manis",
-            "Title": "Figure 7 Supplemental Figure 3 V2",
+            "Title": "Figure 6 Supplemental Figure 3 V2",
         },
     )
     mpl.show()
+    return P
 
 
 # sns.barplot(data=df, x="Expt", y="CI", hue="Cell")
@@ -579,9 +580,9 @@ def remeasure(df, twin: float = 2):
 def plot_sacs(save_fig:bool=True, figinfo: Union[object, None] = None, fits:bool=False):
     pd_file = Path(
         config["baseDataDirectory"],
-        config["figureDirectory"],
+        # config["figureDirectory"],
         config["figureIntermediateDirectory"],
-        "SAC_results_Clicks.pkl",
+        "SAC_Results_Clicks.pkl",
     )
     # df = run_sac_analysis()
     # df.to_pickle(pd_file)
@@ -598,12 +599,12 @@ def plot_sacs(save_fig:bool=True, figinfo: Union[object, None] = None, fits:bool
         figinfo.P = P
         figinfo.show_name = False
         figinfo.filename = set_figure_path(
-            fignum=7, filedescriptor="SAC_Clicks_SynapseConfigs", suppnum=3
+            fignum=6, filedescriptor="SAC_Clicks_SynapseConfigs", suppnum=3
         )
         # "Figure7_Supplemental3_SAC_Clicks_SynapseConfigs.pdf",
         figinfo.title[
             "title"
-        ] = "SBEM Project Figure 7 Modeling: Supplemental 3: SAC_Clicks_SynapseConfigs"
+        ] = "SBEM Project Figure 6 Modeling: Supplemental 3: SAC_Clicks_SynapseConfigs"
         title2 = {"title": f"", "x": 0.99, "y": 0.01}
         return figinfo
     else:
@@ -611,6 +612,7 @@ def plot_sacs(save_fig:bool=True, figinfo: Union[object, None] = None, fits:bool
         return None
 
 def main():
+    plot_sacs(save_fig=False)
     pass  # keep sphinx from running this
 
 if __name__ == "__main__":
