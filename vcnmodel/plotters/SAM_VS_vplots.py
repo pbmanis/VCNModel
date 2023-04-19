@@ -441,7 +441,8 @@ class VS_Plots:
         return ax
 
     def plot_VS_summary(self, cell, axin=None, legendflag=True, legend_type="inputs",
-                        barwidth=240, show_cell=True,
+                        barwidth:int=240, show_cell:bool=True,
+                        respect_spike_counts:bool=True,
                         mode:str="line", xscale:str="log", yscale:str="linear",
                         figure8_xscale=False, show2out=True,
                         inset_type:str=None,
@@ -467,6 +468,11 @@ class VS_Plots:
             Pruning:  use the pruning experiment description
         barwidth: int (default 240)
             width of ANF VS bar if used
+        show_cell: bool (default True)
+            print cell ID on plot
+        respect_spike_counts: bool: (default True)
+            Do not plot VS data points when spike count is < 50 as measurement is 
+            not to be trusted.
         mode: str (default="line")
             whether to plot data with a line or with points 
         xscale: str (default="log")
@@ -479,7 +485,10 @@ class VS_Plots:
             include the "remove2largest" symbol on the legend if it is not
             a dataset in the current plot.
         inset_type: str (default: None)
-             Plot an inset. The acceptable values are rMTF and entrainment. 
+            Plot an inset. The acceptable values are 'rMTF' and 'entrainment'. 
+        legend_loc: typle (default (0,0))
+            Location of the legend, in axes coordinates (0, 1). Allows positioning
+            off the plot.
 
         """
         assert inset_type in ["rMTF", "entrainment", None]
@@ -544,8 +553,14 @@ class VS_Plots:
                 x_an = x  # np.arange(8)
                 mfc = cfg_color[cfg]
                 ax.get_xaxis().set_clip_on(False)
+                print(run['SpikeCount'].values)
+                print(run['VS_Ns'].values)
+                if respect_spike_counts:
+                    nlow = np.where(run['SpikeCount'] < 50)[0]
+                    y[nlow] = np.nan
                 ax.errorbar(x, y, yerr=ye, marker='o', mfc=mfc, ms=4, mec=mfc, 
                     mew=0, color=mfc, label=cfg, clip_on=False)
+
                 if icfg == 0:
                     label = "ANF"
                 else:
@@ -844,7 +859,7 @@ class VS_Plots:
                 legend = False
             if rMTF:
                 self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
-                barwidth=180, mode=mode, show2out=show2out, rMTF_inset=rMTF,
+                barwidth=180, mode=mode, show2out=show2out, inset_type = 'rMTF',
                 legend_loc=(1.2, 0.8))
             if entrain:
                 self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
@@ -954,6 +969,7 @@ class VS_Plots:
         Returns:
             _type_: _description_
         """
+        respect_spike_counts = True
         label_font = {"fontsize": 8, "fontweight": "normal"}
         title_font = {"fontsize": 9, "fontweight": "normal"}
         P = PH.regular_grid(
@@ -1008,6 +1024,10 @@ class VS_Plots:
                 ye = run['VS_SD'].values
                 x_an = x # np.arange(8)
                 y_an = run['AN_VS'].values
+                print(run.keys())
+                if respect_spike_counts:
+                    ilow = np.where(run['SpikeCount'].values < 1000)[0]
+                    y[ilow] = np.nan    
                 ax.errorbar(x, y, yerr=ye, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc) # , label=f"BC{cell:02d}")
                 if icell == 0:
                     label = "ANF"
@@ -1070,6 +1090,7 @@ class VS_Plots:
                         y_rotation=0., 
                         fontsize=8,
                     )
+                    PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)         
 
                     uselabel2 = None
                     uselabel = None
@@ -1081,7 +1102,7 @@ class VS_Plots:
                         anf_legend=True
 
                     ax.plot(x_an, y_an, '-', color="firebrick", lw=2, alpha=1, zorder=-100, label=uselabel)  # in back of data
-                    ax.plot(x, y, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc, label=uselabel2)
+                    ax.plot(x, y, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc, label=uselabel2, clip_on=False)
                     ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
                     if inset == 'rMTF':
                         ax.set_ylabel("rMTF (sp/s)", fontdict=label_font)
@@ -1103,7 +1124,7 @@ if __name__ == "__main__":
 
     # V1 = VS_Plots(sels=[9], dBSPL=15, dends="9I9U")
     # V1.Figure8_M()
-    db = 30
+    db = 15
 
     V1 = VS_Plots(dBSPL=db)
     V1.Summarize(dBSPL=db)

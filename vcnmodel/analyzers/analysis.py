@@ -181,7 +181,7 @@ def getFirstSpikes(spikes, stime, nReps, fsl_win: Union[None, tuple] = None):
         rs = np.argwhere(
             np.array(spikes[r]).T >= stime + fsl_win[0]
         )  # get spike times post stimulus onset
-        if len(rs) >= 0:
+        if len(rs) > 0:
             rs = [r[0] for r in rs]  # flatten the array
             if (
                 spikes[r][rs[0]] - stime > fsl_win[1]
@@ -208,8 +208,10 @@ def CNfspike(spikes, stime, nReps, stimdur:float=0.1, fsl_win: Union[None, tuple
         st = np.array(spikes[r]).T
         spi = np.where(st < stime)[0]
         dri = np.where((st > stime+0.025) & (st <= (stime+stimdur)))[0]
-        sp_rates[r] = np.nanmean(np.diff(st[spi]))
-        dr_rates[r] = np.nanmean(np.diff(st[dri]))    
+        if len(st[spi]) > 1:
+            sp_rates[r] = np.nanmean(np.diff(st[spi]))
+        if len(st[dri]) > 1:
+            dr_rates[r] = np.nanmean(np.diff(st[dri]))    
 
     print("Cochlear Nucleus Bushy Cell: ")
 
@@ -239,9 +241,17 @@ def CNfspike(spikes, stime, nReps, stimdur:float=0.1, fsl_win: Union[None, tuple
     
 
     print("\n  Bu    SR(Hz)    DR(Hz)")
-    SR_int = np.mean(sp_rates)
-    DR_int = np.mean(dr_rates)
-    print(f"{' ':7s}{1./SR_int:9.2f}{1./DR_int:9.2f}")
+    SR = 0
+    DR = 0
+    if len(sp_rates) > 1:
+        SR = 1./np.mean(sp_rates)
+    elif len(sp_rates) == 1:
+        SR = 1./stime
+    if len(dr_rates) > 1:
+        DR = 1./np.mean(dr_rates)
+    elif len(sp_rates) == 1:
+         DR = 1./(stimdur-0.025)
+    print(f"{' ':7s}{SR:9.2f}{DR:9.2f}")
     return (sl1, sl2)
 
 
