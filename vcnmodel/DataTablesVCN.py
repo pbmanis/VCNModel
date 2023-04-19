@@ -45,6 +45,7 @@ The left panel provides a set of organized controls:
         Interface to figure generation. Figures are generated from the model
         data directly as much as possible. Some figures are generated from
         analysis data that is either compiled manually, or using a script.
+        Also includes 3 analysis hooks (for the SAM tone data)
 
     Tools:
         Reload: for all modules under DataTables, reload the code. Mostly used
@@ -658,6 +659,10 @@ class DataTablesVCN:
                                 "Figure6-Ephys_3_Supplemental4 (SAC)",
                                 "-------Figure 8--------",
                                 "Figure8-Ephys_4",
+                                "--------Analysis-------",
+                                "Analyze VS-SAM table @ 15dBSPL",
+                                "Analyze VS-SAM table @ 30dBSPL",
+                                "Analyze VS-SAM BC09 table @ 15dBSPL",
                                 "---------Misc----------",
                                 "Figure: IV Figure",
                                 "Figure: All_IVs",
@@ -671,13 +676,11 @@ class DataTablesVCN:
                                 "Figure: Revcorr at 40dB",
                                 "Figure: Compare Revcorrs", 
                                 "Figure: PSTHs",
-                                "Analyze VS-SAM table @ 15dBSPL",
-                                "Analyze VS-SAM table @ 30dBSPL",
-                                "Analyze VS-SAM BC09 table @ 15dBSPL",
+                                
                                ],
                     "value": "-------Figure 3-------",
                 },
-                    {"name": "Create Figure", "type": "action"},
+                    {"name": "Create Figure/Analyze Data", "type": "action"},
                 ],
             },
             {

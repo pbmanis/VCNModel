@@ -22,7 +22,7 @@ def get_data_paths():
     Path object
         Full path to the output file
     """    
-    with open("wheres_my_data.toml", "r") as fh:
+    with open("../wheres_my_data.toml", "r") as fh:
         config = toml.load(fh)
     config["basepath"] = config["baseDataDirectory"]
     config["baseDataDirectory"] = Path(config["disk"], config["baseDataDirectory"])

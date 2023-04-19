@@ -31,27 +31,36 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+
   -p {AN,an,IO,IV,iv,gifnoise}, --protocol {AN,an,IO,IV,iv,gifnoise}
                         Select the protocol (default: IV) from: ['AN', 'an',
                         'IO', 'IV', 'iv', 'gifnoise']
+
   -a {traces,PSTH,revcorr,SAC,tuning,singles}, --analysis {traces,PSTH,revcorr,SAC,tuning,singles}
                         Select the analysis type (default: traces) from:
                         ['traces', 'PSTH', 'revcorr', 'SAC', 'tuning',
                         'singles']
+
   -M MODELTYPE, --modeltype MODELTYPE
                         Select the model type (default XM13_nacncoop) from:
                         ['mGBC', 'XM13', 'RM03', 'XM13_nacncoop']
+
   -s, --scaled          use scaled data or not
+
   -e {None,delays,largestonly,removelargest,mean,allmean,twolargest},
                 --experiment {None,delays,largestonly,removelargest,mean,allmean,twolargest}
                         Select the experiment type from: [None, 'delays',
                         'largestonly', 'removelargest', 'mean', 'allmean',
                         'twolargest']
+
   --dendritemode {normal,passive,active}
                         Choose dendrite table (normal, active, passive)
+
   -d DBSPL, --dB DBSPL  Select the models at specific intensity
+
   -r NREPS, --nreps NREPS
                         Select the models with # reps
+
   -c, --check           Just check selection criteria and return
 
 
@@ -68,6 +77,7 @@ Copyright 2017- Paul B. Manis
 Distributed under MIT/X11 license. See license.txt for more infomation. 
 
 """
+
 import re
 import string
 import time
