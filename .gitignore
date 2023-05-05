@@ -35,7 +35,7 @@ blenderneuron/
 # /vcnmodel/VS_data_mar2021.py
 # src/vcnmodel/VS_datasets_Nov2020.py
 # src/vcnmodel/model_data/Old_data_tables/
-# src/vcnmodel/analyzers/tests/test_cross_correlation.py
+# src/vcnmodel/analyzers/tests/test_reverse_correlation.py
 
 # some local files that might be hanging around
 requirements.txt_5-5-2020
