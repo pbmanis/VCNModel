@@ -52,6 +52,8 @@ from sklearn import preprocessing
 from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.feature_selection import SelectFromModel
 from vcnmodel.util.set_figure_path import set_figure_path
+from vcnmodel.plotters import \
+    figure_data as FD  # table of simulation runs used for plotting figures
 import vcnmodel.group_defs as GRPDEF
 # from sklearn.datasets import make_blobs
 
@@ -59,6 +61,20 @@ import vcnmodel.group_defs as GRPDEF
 matplotlib.rcParams["mathtext.fontset"] = "stixsans"
 matplotlib.rcParams["text.usetex"] = True
 cprint = CP.cprint
+
+# seaborn default palette, first 10 colors
+colors = [
+    (0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
+    (1.0, 0.4980392156862745, 0.054901960784313725),
+    (0.17254901960784313, 0.6274509803921569, 0.17254901960784313),
+    (0.8392156862745098, 0.15294117647058825, 0.1568627450980392),
+    (0.5803921568627451, 0.403921568627451, 0.7411764705882353),
+    (0.5490196078431373, 0.33725490196078434, 0.29411764705882354),
+    (0.8901960784313725, 0.4666666666666667, 0.7607843137254902),
+    (0.4980392156862745, 0.4980392156862745, 0.4980392156862745),
+    (0.7372549019607844, 0.7411764705882353, 0.13333333333333333),
+    (0.09019607843137255, 0.7450980392156863, 0.8117647058823529),
+]
 
 
 # data_original = """
@@ -426,7 +442,7 @@ def eff_ais(data: str, save_fig: bool = False, figinfo: Union[object, None] = No
 
     sio = io.StringIO(dataset)
     df = pd.read_table(sio, sep=",")
-    # cell_names = [f"BC{c:02d}" for c in df.Cell]
+    # cell_names = [f"{FD.BC_ame:s}{c:02d}" for c in df.Cell]
     # cell_id = set([int(c) for c in df.Cell])
     df2 = df.loc[(df["syn#"].values == 0)]
 
@@ -533,11 +549,11 @@ def eff_ais(data: str, save_fig: bool = False, figinfo: Union[object, None] = No
         0.05, 0.92, line_fita, fontsize=9, transform=P.axdict["A"].transAxes
     )
 
-    new_labels = [f"BC{x:02d}" for x in GRPDEF.gradeACells]
+    new_labels = [f"{FD.BC_name:s}{x:02d}" for x in GRPDEF.gradeACells]
     # new_labels[0:2] = " "
     custom_legend = []
     for k, lab in enumerate(new_labels):
-        if lab in ["BC02", "BC05"]:
+        if lab in [f"{FD.BC_name:s}02", f"{FD.BC_name:s}05"]:
             continue
         custom_legend.append(
             Line2D(
@@ -584,7 +600,7 @@ def eff_one_input(ax=None, legend=True):
 
     sio = io.StringIO(dataset)
     df = pd.read_table(sio, sep=",")
-    cell_names = [f"BC{c:02d}" for c in df.Cell]
+    cell_names = [f"{FD.BC_name:s}{c:02d}" for c in df.Cell]
     cell_id = set([int(c) for c in df.Cell])
     ncells = len(cell_id)
     pal = sns.color_palette("tab10", n_colors=ncells)
@@ -741,6 +757,8 @@ class EfficacyPlots(object):
         datasetname_added: Union[str, None] = None,
         datasetname_special: Union[str, None] = None,
         ax: object = None,
+        symbol_color:Union[str, None]= None,
+        marker:Union[str, None] = None, # to override marker
         loc: tuple = (0.0, 0.0, 0.0, 0.0),
         figuremode: str = "full",
         title: Union[str, None] = None,
@@ -751,9 +769,13 @@ class EfficacyPlots(object):
         no_points: bool = False,
     ):
 
+        print("\n", "="*80)
+        print("Plot efficacy ds: ", datasetname)
         self.plot_each_efficacy(
-            datasetname, datasetname_added=datasetname_added, ax=ax, clean=clean
+            datasetname, datasetname_added=datasetname_added, ax=ax, clean=clean,
+            symbol_color=symbol_color, marker=marker,
         )
+
         if show_fits is not None:
             self.plot_fits("Full", ax=ax)
 
@@ -786,8 +808,11 @@ class EfficacyPlots(object):
         # custom legend
         # 2 columns, different symbols by mode
             custom_legend = []
-            legorder = [0, 1, 2, 4, 8, 9, 3, 5, 7,6]
-            colors = GRPDEF.sns_colors
+            legorder = [0, 1, 2, 4, 8, 9, 3, 5, 7, 6]
+            if symbol_color is None:
+                colors = GRPDEF.sns_colors
+            else:
+                colors = symbol_color
             for i in range(10):
                 legn = legorder[i]
                 if legn is None:
@@ -803,7 +828,7 @@ class EfficacyPlots(object):
                         markersize=5
                     # print("Cell: ", cell, "Marker: ", df[df["Cell"]==cell]["Marker"].values)
                     l = Line2D([], [], marker=marker, # df[df["Cell"]==cell]["Marker"].values[0], 
-                        color=colors[legn], markerfacecolor=colors[legn], linewidth = 0, markersize=markersize, label=f"BC{cell:02d}")
+                        color=colors[legn], markerfacecolor=colors[legn], linewidth = 0, markersize=markersize, label=f"{FD.BC_name:s}{cell:02d}")
                 custom_legend.append(l)
 
             # custom_legend.append(Line2D([0], [0], color="red", lw=1, linestyle='-', label="Group1 Fit"))
@@ -832,7 +857,7 @@ class EfficacyPlots(object):
                         color=self.pal[i],
                         marker="o",
                         lw=0,
-                        label=f"BC{cellid:02d}",
+                        label=f"{FD.BC_name:s}{cellid:02d}",
                     )
                 )
             legend_elements.append(
@@ -872,13 +897,15 @@ class EfficacyPlots(object):
         datasetname_added: Union[str, None] = None,
         datasetname_special: Union[str, None] = None,
         ax: object = None,
+        symbol_color:Union[str, None] = None,
+        marker:Union[str, None] = None,
         loc: tuple = (0.0, 0.0, 0.0, 0.0),
         figuremode: str = "full",
         clean: bool = False,
         clip_on: bool = False,
         no_points: bool = False,
     ):
-        """Plot Efficacy for all inputs from a given dataset
+        """Plot Efficacy for all inputs from a given "dataset"
 
         Related to Figure 8
 
@@ -890,6 +917,10 @@ class EfficacyPlots(object):
             _description_, by default None
         ax : object, optional
             _description_, by default None
+        symbol_color: str or None (default None)
+            colors for symbols by cell
+        marker: str
+            marker for this dataset on the plot
         loc : tuple, optional
             _description_, by default (0.0, 0.0, 0.0, 0.0)
         figuremode : str, optional
@@ -913,13 +944,19 @@ class EfficacyPlots(object):
         if ax is None:
             self.P = self.make_figure(loc)
             ax = self.P.axarr[0]
-        self.plot_dataset(datasetname, ax=ax, clip_on=clip_on, clean=clean)
-        if datasetname == "NoUninnervated2":
-            self.plot_dataset(
-                "NoUninnervated2_ctl", ax=ax, clip_on=clip_on, clean=clean
-            )
+        if symbol_color == None:
+            symbol_color = 'r'
+        if marker is None:
+            marker = 'o'
+
+        self.plot_dataset(datasetname, ax=ax, clip_on=clip_on, clean=clean, marker=marker, symbol_color=symbol_color)
+        # if datasetname == "NoUninnervated2":  # also plot the control dataset
+        #     print("ctl: ", marker, symbol_color)
+        #     self.plot_dataset(
+        #         "NoUninnervated2_ctl", ax=ax, clip_on=clip_on, clean=clean, marker=marker, symbol_color=symbol_color
+        #     )
         if datasetname_added is not None:
-            self.plot_dataset(datasetname_added, ax=ax, clip_on=clip_on, clean=clean)
+            self.plot_dataset(datasetname_added, ax=ax, clip_on=clip_on, clean=clean, marker=marker, symbol_color=symbol_color)
         # ax.legend(ncol=1, labelspacing=0.33)
         return
 
@@ -1147,6 +1184,8 @@ class EfficacyPlots(object):
         ax: object = None,
         title: str = None,
         gmodel: object = None,
+        symbol_color:Union[str, None]= None,
+        marker:Union[str, None] = None,
         legend: bool = True,
         clip_on: bool = False,
         clean: bool = False,
@@ -1155,6 +1194,7 @@ class EfficacyPlots(object):
     ):
         dataset = None
         cell_names = None
+
         markers = {"Full": "o", "Added": "*", "NU": "^", "CTL": "o"}
         sizes = {"Full": 20, "Added": 50, "NU": 20, "CTL": 20}
         if datasetname == "Full":
@@ -1180,8 +1220,12 @@ class EfficacyPlots(object):
             x, df = prepare_data(dataset)
             df["style"] = "NU"
             df["size"] = "NU"
-            palette = [self.pal[3]]
-            markers = markers
+            if symbol_color is None:
+                palette = [self.pal[0]]
+            else:
+                palette = [symbol_color]
+            if marker is not None:
+                markers['NU'] = marker
             sizes = sizes  # {0:20}
 
         elif datasetname == "NoUninnervated2_ctl":
@@ -1190,13 +1234,17 @@ class EfficacyPlots(object):
             df = df[df.Cell.isin([9])]
             df["style"] = "CTL"
             df["size"] = "CTL"
-            palette = [self.pal[3]]
-            markers = markers
+            if symbol_color is None:
+                palette = [self.pal[1]]
+            else:
+                palette = [symbol_color]
+            if marker is not None:
+                markers['CTL'] = marker
             sizes = sizes  # {0:20}
         else:
             raise ValueError("Datasetname was not specified")
 
-        cell_names = [f"BC{c:02d}" for c in df.Cell]
+        cell_names = [f"{FD.BC_name:s}{c:02d}" for c in df.Cell]
         uni = r"$\mu m^2$"
 
         sns.scatterplot(
@@ -1339,7 +1387,7 @@ def fit_individually(
     EFP = EfficacyPlots(parent_figure=P)
     ax = P.axdict["A"]
     color = "b"
-    cell_names = [f"BC{c:02d}" for c in df.Cell]
+    cell_names = [f"{FD.BC_name:s}{c:02d}" for c in df.Cell]
 
     resdict = {"leastsq": None}
     clip_on = False
@@ -1361,9 +1409,8 @@ def fit_individually(
         result_LMs[i], resdicts[i], gmodels[i], xfits[i], yfits[i] = EFP.fit_dataset(
             df, sel_cells=[cell], initial_conditions=initial_conditions
         )
-        # lab = f"BC{cell:02d}"
         ax.plot(
-            xfits[i], yfits[i], color=colors[i], linewidth=1, label=f"BC{cell:02d}"
+            xfits[i], yfits[i], color=colors[i], linewidth=1, label=f"{FD.BC_name:s}{cell:02d}"
         )  # all cells
     # ax.legend()
     mpl.show()
@@ -1385,9 +1432,9 @@ def prepare_data(data, eff_crit: float = 0.0):
     data = re.sub(spc, ",", data)
     sio = io.StringIO(data)
     df = pd.read_table(sio, sep=",")
-    print(df.head())
+    # print(df.head())
     df.drop(df[df["Eff"] < eff_crit].index, inplace=True)
-    cell_names = [f"BC{c:02d}" for c in df.Cell]
+    cell_names = [f"{FD.BC_name:s}{c:02d}" for c in df.Cell]
     uni = r"$\mu m^2$"
     x = df[["ASA", "Eff"]]
 

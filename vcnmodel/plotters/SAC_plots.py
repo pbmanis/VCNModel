@@ -369,7 +369,7 @@ def do_plot(df, sacs, max_CI: float = 60.0, fits:bool=False)->object:
             this_ax.text(
                 0.5,
                 1.0,
-                s=f"BC{igbc:02d}",
+                s=f"{FD.BC_name:s}{igbc:02d}",
                 transform=this_ax.transAxes,
                 va="bottom",
                 ha="center",

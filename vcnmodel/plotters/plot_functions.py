@@ -114,7 +114,8 @@ def plot_psth(
     num_trials = run_info.nReps
     spike_times_flat = VAFlatten.flatten_spike_array(spike_times,
                         time_window=(zero_time, max_time), isi_flag=False)
-    print("Spike times flat len: ", len(spike_times_flat), np.min(spike_times_flat), np.max(spike_times_flat))
+    # print("Spike times flat len: ", len(spike_times_flat), np.min(spike_times_flat), np.max(spike_times_flat))
+    # print("max time: ", max_time, "zero time: ", zero_time, bin_width)
     spike_times_flat -= zero_time
     bins = np.arange(0.0, max_time - zero_time, bin_width)
     if bin_fill:
@@ -137,7 +138,7 @@ def plot_psth(
             x=spike_times_flat,
             bins=bins,
             density=False,
-            # weights=(1./(bin_width*num_trials)) * np.ones_like(spike_times_flat),
+            weights=(1./(bin_width*num_trials)) * np.ones_like(spike_times_flat),
             histtype="stepfilled",
             facecolor=face_color,
             edgecolor=edge_color,

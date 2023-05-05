@@ -120,7 +120,8 @@ from vcnmodel.analyzers import reverse_correlation as REVCORR
 from vcnmodel.analyzers import sac as SAC
 from vcnmodel.analyzers import vector_strength as VS
 from vcnmodel.analyzers.analyzer_data_classes import PData, RevCorrData, RevCorrPars
-
+from vcnmodel.plotters import \
+    figure_data as FD  # table of simulation runs used for plotting figures
 TRC = trace_calls.TraceCalls
 cprint = CP.cprint
 UR = pint.UnitRegistry
@@ -228,7 +229,7 @@ class PlotSims:
             gradeA=GRPDEF.gradeACells,
             basepath=self.config["baseDataDirectory"],
             renderpath=str(Path(self.config["codeDirectory"], "Renderings")),
-            revcorrpath=self.config["revcorrDataDirectory"],
+            revcorrpath=self.config["RevCorrDataDirectory"],
         )
 
     def textclear(self):
@@ -1374,8 +1375,13 @@ class PlotSims:
         syn_ASA = np.array([syninfo[1][isite][0] for isite in range(RCP.ninputs)])
         max_ASA = np.max(syn_ASA)
         for isite in reversed(range(RCP.ninputs)):
-            if not 'sv_trials' in dataclasses.fields(RCD) or len(RCD.sv_trials) == 0:
+            # print(dataclasses.fields(RCD))
+            cprint("y", f"len rcd sv trials: {len(RCD.sv_trials):d}")
+            if len(RCD.sv_trials) == 0:
                 continue
+            # if not 'sv_trials' in dataclasses.fields(RCD) or len(RCD.sv_trials) == 0:
+            #     cprint("r", "SV_TRIALS not found in the fields for RCD")
+            #     continue
             # stepsize = int(RCD.sv_all.shape[0] / 20)
             if isite == 0:  # all sites have the same voltage, but here
                 # we select some spikes waveforms
@@ -1406,6 +1412,7 @@ class PlotSims:
                 totalrevcorr = np.sum(RCD.CB[isite])
                 label = "Input {0:2d} N={1:3d}".format(isite, int(RCD.sites[isite]))
                 label = None
+                print("************************* RCP ALGORITHM::: ", RCP.algorithm)
                 if isite in range(RCP.ninputs):
                     if RCP.algorithm == "RevcorrEleph":
                         linehandles[isite] = ax.plot(
@@ -1589,7 +1596,7 @@ class PlotSims:
 
     @trace_calls.time_func
     def compare_revcorrs(self):
-        plabels = [f"BC{int(self.parent.cellID):02d}"]
+        plabels = [f"{FD.BC_name:s}{int(self.parent.cellID):02d}"]
         pgbc = plabels[0]
         revcorrtype = "RevcorrSimple"
         PSum = PH.regular_grid(
@@ -1640,7 +1647,7 @@ class PlotSims:
     def plot_revcorr_figure(self, selected, revcorrtype):
         PD = self.newPData()
 
-        plabels = [f"BC{int(self.parent.cellID):02d}"]
+        plabels = [f"{FD.BC_name:s}{int(self.parent.cellID):02d}"]
         pgbc = plabels[0]
         sizer = {
             "A": {

@@ -43,6 +43,8 @@ from pyrsistent import PSet
 from vcnmodel.analyzers import reverse_correlation as REVCORR
 import vcnmodel.group_defs as GRPDEF
 from vcnmodel.analyzers.analyzer_data_classes import PData
+from vcnmodel.plotters import \
+    figure_data as FD  # table of simulation runs used for plotting figures
 
 cprint = CP.cprint
 
@@ -237,7 +239,7 @@ def get_pattern_data(dataset:str="Spont"):
 
 
 
-def Figure5_Supplemental3_Patterns(reanalyze=False, dataset:str="Spont"):
+def Figure5_Supplemental2_Patterns(reanalyze=False, dataset:str="Spont"):
     assert dataset in ["Spont", "30dB"]
     compare_file = f"pattern_compares_{dataset:s}.pkl"
     if reanalyze:
@@ -354,7 +356,7 @@ def Figure5_Supplemental3_Patterns(reanalyze=False, dataset:str="Spont"):
             custom_legend = []
             for ic, cell in enumerate([2, 5, 6, 9, 10, 11, 13, 17, 18, 30]):
                 custom_legend.append(
-                Line2D([0], [0], marker='o', color='w', markerfacecolor=GRPDEF.sns_colors[ic], markersize=5, label=f"BC{cell:02d}"))
+                Line2D([0], [0], marker='o', color='w', markerfacecolor=GRPDEF.sns_colors[ic], markersize=5, label=f"{FD.BC_name:s}{cell:02d}"))
             
             ax[i].legend(handles=custom_legend, handlelength=1, loc="center left", fontsize=7, title="Cell", labelspacing=0.33)
         # if irow == 2 and icol == 3:
@@ -363,7 +365,7 @@ def Figure5_Supplemental3_Patterns(reanalyze=False, dataset:str="Spont"):
     mpl.suptitle(dsnames[dataset], fontsize=10, fontweight="bold")
     mpl.tight_layout()
 
-    fn = set_figure_path(fignum=4, filedescriptor="Patterns_V2", suppnum=3)
+    fn = set_figure_path(fignum=5, filedescriptor="Patterns_V3", suppnum=2)
     mpl.savefig(fn)
     fn2 = fn.with_suffix(".png")
     mpl.savefig(fn2)
@@ -497,14 +499,14 @@ def Figure5E_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd', cell_lege
             return(input+pos)
         
         df.loc[:, "pn"] = df.apply(lambda row: get_pos(row.Input, row.Group), axis=1)  # x axis position/offset
-        print(f"\n{'BC##':<6s} {'1st':^6s}  {'2nd':^6s}  {'3rd':^6s}  {'4th':^6s}  {'5th':^6s}  {'sum':^6s}")
+        print(f"\n{'GBC##':<6s} {'1st':^6s}  {'2nd':^6s}  {'3rd':^6s}  {'4th':^6s}  {'5th':^6s}  {'sum':^6s}")
         # marker_list = []
 
         for ic, c in enumerate(c_cells):
             for cpat in pats:
                 cumulative[c].append(float(df.loc[(df['Cell'] == c) & (df['PatternName'] == cpat)]['Percent'].values[0]))
             cout = " ".join([f" {x:6.3f}" for x in cumulative[c]])
-          #  print(f"BC{c:02d}: {str(cout):s}  {np.sum(cumulative[c]):6.3f}")
+          #  print(f"{FD.BC_name:s}{c:02d}: {str(cout):s}  {np.sum(cumulative[c]):6.3f}")
             cumulative[c] = np.array(cumulative[c])/np.sum(cumulative[c])
         sns.set_palette(GRPDEF.sns_colors)
         asa_sizes = tuple(np.array([50, 200])*asa_scale)
@@ -544,7 +546,7 @@ def Figure5E_pattern_plot(axin=None, dataset="Spont", mode:str='mmcd', cell_lege
                     markersize=5
                 # print("Cell: ", cell, "Marker: ", df[df["Cell"]==cell]["Marker"].values)
                 l = Line2D([], [], marker=marker, # df[df["Cell"]==cell]["Marker"].values[0], 
-                    color=colors[legn], markerfacecolor=colors[legn], linewidth = 0, markersize=markersize, label=f"BC{cell:02d}")
+                    color=colors[legn], markerfacecolor=colors[legn], linewidth = 0, markersize=markersize, label=f"{FD.BC_name:s}{cell:02d}")
             custom_legend.append(l)
 
         legend1 = ax.legend(handles=custom_legend, handlelength=1, 

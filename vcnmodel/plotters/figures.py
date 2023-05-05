@@ -198,7 +198,7 @@ class Figures(object):
             "Figure6-Ephys_3_Supplemental3 (Entrainment)": self.Figure6_Supplemental3,
             "Figure6-Ephys_3_Supplemental4 (SAC)": self.Figure6_Supplemental4,
             
-            "Figure8-Ephys_4": self.Figure8_Panels_IJK,
+            "Figure8-Ephys_4": self.Figure8_Panels_IJKLM,
             
             # Misc figures follow
             "Figure: IV Figure": self.plotIV,
@@ -799,7 +799,7 @@ class Figures(object):
             # if iv not in [9, 10]:
             #      continue
             cprint(
-                "c", f"    Doing Cell BC{iv:02d} -----------------------------------"
+                "c", f"    Doing Cell {FD.BC_name:s} {iv:02d} -----------------------------------"
             )
             celln = Path(png_path, f"VCN_c{iv:02d}.png")
             if celln.is_file() and show_pngs:  # add images from png files
@@ -862,8 +862,8 @@ class Figures(object):
                         ha="center")
                 if iax == 0 and not show_pngs:
                     self.P.axarr[rax, 0].text(
-                        -0.05, 0.5, f"BC{iv:02d}", 
-                        fontdict={"fontweight": "bold", "fontsize":12,
+                        -0.02, 0.5, f"{FD.BC_name:s}{iv:02d}", 
+                        fontdict={"fontweight": "normal", "fontsize":11,
                         "ha": "right", "va": "center"},
                         transform = self.P.axarr[rax, 0].transAxes,
                     )
@@ -1218,7 +1218,7 @@ class Figures(object):
 
                 if n == 0:
                     axes[ic].set_title(
-                        f"BC{cellN:02d}",
+                        f"{FD.BC_name:s}{cellN:02d}",
                         loc="center",
                         fontdict={
                             "verticalalignment": "baseline",
@@ -1479,19 +1479,19 @@ class Figures(object):
         xw2 = 1.0
         trace_axes = []
         if supplemental1:
-            yh2 = 1.1
-            yB2 = 2.25
-            yb3 = 0.5
-            yb1 = 3.75
-            yC2 = 5.0
-            yh1 = 3.75
-            yA1 = 3.25 - 0.5 +2.5 - 0.105  # to align with B
-        else:
+            yA1 = 4.125
+            yh1 = 3.5
+            yB2 = 2.5
+            yC2 = 0.5
+            yh2 = 1.2
+            grid = False
+        else: # main figure
             yh2 = 1.2
             yB2 = 3.5 + 2.7 - 0.5 + 2.5
             yC2 = 3.5 + 0.6 - 0.5 + 2.5
             yA1 = 3.25 - 0.5 +2.5 - 0.105  # to align with B
             yh1 = 4.25
+            grid = False
         for j in range(len(example_cells)):
             i = j + 1
             pan_rev, pan_vm = self.Figure5_assign_panel(supplemental1, i)
@@ -1528,7 +1528,7 @@ class Figures(object):
             figsize=figsize,
             label=True,
             fontsize={"tick": 8, "label": 10, "panel": 13},
-            showgrid=False,
+            showgrid=grid,
             parent_figure=parent_figure,
         )
         # PH.show_figure_grid(P)
@@ -1568,7 +1568,7 @@ class Figures(object):
                 color=color,
                 edgecolors='w',
                 linewidths=0.5,
-                label=f"BC{n:02d}",
+                label=f"{FD.BC_name:s}{n:02d}",
                 clip_on=False,
                 s=36,
                 alpha=0.6
@@ -1616,7 +1616,7 @@ class Figures(object):
         def plot_single_input(ax, legend: bool = True):
             EF.eff_one_input(ax=ax, legend=legend)
 
-        # Traces
+        # Plot the raw traces
         axl = [P.axdict[axi] for axi in trace_axes]
         self.plot_stacked_traces(
             cells=example_cells,
@@ -1631,7 +1631,10 @@ class Figures(object):
         for ax in axl:
             ax.set_zorder(0)
 
+
         if not supplemental1:
+            # plot all the different analyses.
+
             # Efficacy plot vs. input size (all)
             for s in ["D", "E", "F", "G", "H", "I", "J", "K"]:
                 P.axdict[s].set_zorder(100)
@@ -1696,7 +1699,7 @@ class Figures(object):
             synlabel_num = 10
 
         # revcorrs and traces
-        self.plot_revcorr_supplement(
+        self.plot_revcorr_panels(
             cells=example_cells,
             parent_figure=P,
             supplemental1=supplemental1,
@@ -1806,7 +1809,7 @@ class Figures(object):
         return revcorr_panel, vm_panel 
 
     def Figure5_Supplemental2(self):
-        PATSUM.Figure5_Supplemental3_Patterns()  # writes its own figure to the directory
+        PATSUM.Figure5_Supplemental2_Patterns()  # writes its own figure to the directory
 
     def plot_all_revcorr(self):
         for cell in GRPDEF.grAList():
@@ -1988,7 +1991,7 @@ class Figures(object):
         sax3.set_xlabel(
             f"# Inputs in [{RCD.pre_w[0]:.1f} to {RCD.pre_w[1]:.1f}] before spike"
         )
-        sax3.set_ylabel(f"Cumulative Bushy Spikes\nwitn N AN inputs")
+        sax3.set_ylabel(f"Cumulative Bushy Spikes\nwith N AN inputs")
         sax3.set_xlim(1, RCP.ninputs)
         PH.nice_plot(sax3, position=self.axis_offset, direction="outward")
         # PH.cleanAxes(P.axarr.ravel())
@@ -2055,7 +2058,7 @@ class Figures(object):
         fig = self.plot_revcorr_supplement("40dB", supplemental1=True)
         return fig
 
-    def plot_revcorr_supplement(
+    def plot_revcorr_panels(
         self,
         dBSPL: str,
         cells=None,
@@ -2141,14 +2144,14 @@ class Figures(object):
         #         "Must run revcorr_supplement plot first, then the file we need will be present"
         #     )
         #     run_calcs = False
-        all_RCD_RCP = {}  # all revcorr data
+        #     all_RCD_RCP = {}  # all revcorr data
 
         i_plot = 0
         if cells is None:
             cells = GRPDEF.grAList()
 
         for i, cell_number in enumerate(cells):
-
+            cprint("m", f"CELL: {cell_number:d}")
             PR, PD, RCP, RCD = self._get_revcorr(cell_number=cell_number, dBSPL=dBSPL, recompute=False)
             if PD is None:
                 cprint("r", "PD is none in plot_revcorr_supplement")
@@ -2226,7 +2229,7 @@ class Figures(object):
             ax_top_row.text(
                 0.5,
                 1.0,
-                f"BC{cell_number:02d}",
+                f"{FD.BC_name:s}{cell_number:02d}",
                 fontsize=9,
                 color="k",
                 transform=ax_top_row.transAxes,
@@ -2383,7 +2386,7 @@ class Figures(object):
                     markersize=3.5,
                     fillstyle=fillstyle,
                     clip_on=False,
-                    label=f"BC{cell_number:02d}",
+                    label=f"{FD.BC_name:s}{cell_number:02d}",
                 )
                 if i == 0:
                     hpoints.extend(
@@ -2490,10 +2493,10 @@ class Figures(object):
         )
         
         # title the 2 left columns
-        mpl.text(x=1.5, y=8.3, s=f"BC{example_cell_number:02d}  200Hz 100% SAM", fontdict={
+        mpl.text(x=1.5, y=8.3, s=f"{FD.BC_name:s}{example_cell_number:02d}  200Hz 100% SAM", fontdict={
                 "fontsize": 10, "fontweight": "bold", "ha": "center"},
                 transform=P.figure_handle.dpi_scale_trans)
-        mpl.text(x=4.5, y=8.3, s=f"BC{example_cell_number:02d}  60 Hz Click Train", fontdict={
+        mpl.text(x=4.5, y=8.3, s=f"{FD.BC_name:s}{example_cell_number:02d}  60 Hz Click Train", fontdict={
                 "fontsize": 10, "fontweight": "bold", "ha": "center"},
                 transform=P.figure_handle.dpi_scale_trans)
 
@@ -2503,7 +2506,7 @@ class Figures(object):
         title_font = {"fontsize": 9, "fontweight": "normal"}
         P.axdict["A"].set_ylabel("mV", fontdict=label_font)
 
-        P.axdict["B"].set_title("Bushy Spike Raster", fontdict=title_font)
+        P.axdict["B"].set_title(f"{FD.BC_name:s} Spike Raster", fontdict=title_font)
         P.axdict["B"].set_ylabel("Trial", fontdict=label_font)
 
         P.axdict["C"].set_title(
@@ -2529,11 +2532,11 @@ class Figures(object):
         # column 2 Click train
         P.axdict["H"].set_ylabel("mV", fontdict=label_font)
 
-        P.axdict["I"].set_title("Bushy Spike Raster", fontdict=title_font)
+        P.axdict["I"].set_title(f"{FD.BC_name:s} Spike Raster", fontdict=title_font)
         P.axdict["I"].set_ylabel("Trial", fontdict=label_font)
 
         P.axdict["J"].set_title(
-            "Bushy PSTH", fontdict=title_font, verticalalignment="bottom", y=0.95
+            f"{FD.BC_name:s} PSTH", fontdict=title_font, verticalalignment="bottom", y=0.95
         )
         P.axdict["J"].set_ylabel("Spikes/second", fontdict=label_font)
 
@@ -2598,10 +2601,10 @@ class Figures(object):
         VSP30.plot_VS_Data(axin=P.axdict["P2"], legendflag=False)
 
         VSP = SAM_VS_vplots.VS_Plots(dBSPL=15)
-        VSP.plot_VS_summary(2, axin=P.axdict["O1"], legendflag=False, inset_type=inset_type)
-        VSP.plot_VS_summary(30, axin=P.axdict["O2"], legendflag=False, inset_type=inset_type)
-        VSP.plot_VS_summary(9, axin=P.axdict["O3"], legendflag=False, inset_type=inset_type)
-        VSP.plot_VS_summary(17, axin=P.axdict["O4"], legendflag=False, inset_type=inset_type)
+        VSP.plot_VS_summary(2, axin=P.axdict["O1"], legendflag=False, inset_type=inset_type, keep_inset=False)
+        VSP.plot_VS_summary(30, axin=P.axdict["O2"], legendflag=False, inset_type=inset_type, keep_inset=False)
+        VSP.plot_VS_summary(9, axin=P.axdict["O3"], legendflag=False, inset_type=inset_type, keep_inset=False)
+        VSP.plot_VS_summary(17, axin=P.axdict["O4"], legendflag=False, inset_type=inset_type, keep_inset=False)
 
 
         fig = FigInfo()
@@ -2767,7 +2770,7 @@ class Figures(object):
                 # label=sac_label,
             )
             custom_legend = [Line2D([0], [0], marker=None, color="k", lw=1, label='AN'),
-                             Line2D([0], [0], marker=None, color="r", lw=1, label="BC"),
+                             Line2D([0], [0], marker=None, color="r", lw=1, label=f"{FD.BC_name:s}"),
                     ]
             P.axdict[pan[5]].legend(handles=custom_legend, handlelength=1, loc="upper right", fontsize=7, labelspacing=0.33, markerscale=0.5)
             P.axdict[pan[5]].set_xlabel("Time (ms)")
@@ -2832,7 +2835,7 @@ class Figures(object):
             # )
             P.axdict[pan[5]].set_xlim((0.0, 2 * np.pi))
             custom_legend = [Line2D([0], [0], marker=None, color="k", lw=3, alpha=0.5, label=f"AN VS = {vs_an.vs:5.3f}"),
-                             Line2D([0], [0], marker=None, color="r", lw=3, alpha=0.5, label=f"BC VS = {vs_bu.vs:5.3f}"),
+                             Line2D([0], [0], marker=None, color="r", lw=3, alpha=0.5, label=f"{FD.BC_name:s} VS = {vs_bu.vs:5.3f}"),
                     ]
             P.axdict[pan[5]].legend(handles=custom_legend, handlelength=1, loc="upper left", fontsize=7, labelspacing=0.33, markerscale=0.5)
             # P.axdict[pan[5]].text(x=0.05, y=1.0,
@@ -2957,7 +2960,7 @@ class Figures(object):
             cell_number = 17
         else:
             cell_number = cellN
-        print(f"Plotting PSTH for BC{str(cell_number):s}")
+        print(f"Plotting PSTH for {FD.BC_name:s}{str(cell_number):s}")
         box_size = 0.32
         box_size_x = 0.45
         sizer = {
@@ -3682,7 +3685,7 @@ class Figures(object):
             P.axarr[i, 0].text(
                 -0.40,
                 0.5,
-                f"BC{cell_number:02d}",
+                f"{FD.BC_name:s}{cell_number:02d}",
                 fontsize=9,
                 color="k",
                 transform=P.axarr[i, 0].transAxes,
@@ -3731,7 +3734,7 @@ class Figures(object):
         PD = self.newPData()
         P = None
         linesout = ""
-        print("cell number: ", cell_number)
+        print("Cell number: ", cell_number)
         if isinstance(cell_number, str):
             cell_n = int(cell_number[0])
         else:
@@ -3750,11 +3753,11 @@ class Figures(object):
              sac_flag=False, testmode=False,
                 dBSPL:int=0, make_VS_raw:bool=True,
              ):
-
         print(f"Cell: {str(cell_number):s}  Filename: {filename:s}")
+        i_cell_number = int(cell_number[0])
         cellpath = Path(
             self.config["cellDataDirectory"],
-            f"VCN_c{cell_number:02d}",
+            f"VCN_c{i_cell_number:02d}",
             "Simulations",
             "AN",
         )
@@ -3791,7 +3794,7 @@ class Figures(object):
             else:
                 linesout +=  f"Cell: {str(cell_number):s}  Filename: {filename:s}\n"
         
-        print(f"Analyze VS data completed for cell: {cell_number:d}  file: {filename:s}")
+        print(f"Analyze VS data completed for cell: {str(cell_number):s}  file: {filename:s}")
         return linesout
     
     def _write_VS_Header(self, fout:Path, timestamp_str:str):
@@ -3809,7 +3812,7 @@ class Figures(object):
                 "WARNING: This table is automatically written by figures.py generate_VS_data_file\n"
             )
             fh.write("       and should not be directly edited.\n")
-            fh.write(f"To Regenerate:\n   After running the simulationns, enter the filenames into VS_datasets_xxdB.py\n"
+            fh.write(f"To Regenerate:\n   After running the simulations, enter the filenames into VS_datasets_xxdB.py\n"
             )
             fh.write(f"   You can select the datasets, and then click the 'Print File Info' button for each cell.\n")
             fh.write(
@@ -3872,9 +3875,10 @@ class Figures(object):
             if f"VS_datasets_{dB:d}dB_BC09_NoUninnervated" not in list(dir()):
                 import VS_datasets_15dB_BC09_NoUninnervated as VS_datasets
                 outfile = f"VS_data_{dB:d}dB_BC09_{timestamp_str:s}.py"
-                TASKS = [s for s in VS_datasets.samdata.keys()]
+                TASKS = [(c, d) for c in ["9I", "9U"] for d in VS_datasets.samdata[c]]
         # importlib.reload(VS_datasets)  # make sure have the current one
-        print(f"Data set keys found: {str(list(VS_datasets.samdata.keys())):s}")
+        # print("TASKS: ", TASKS)
+        # print(f"Data set keys found: {str(list(VS_datasets.samdata.keys())):s}")
         
         """
         Generate the table in VS_data.py by analyzing the data from 
@@ -3883,19 +3887,19 @@ class Figures(object):
         cprint("g", f"Generate VS Data for {dB:d} dB")
 
         fout = Path(outfile)  # we will generate this automatically, but time stamp it
-        if not append:
+        write_flag = True
+        if not append and write_flag:
             self._write_VS_Header(fout, timestamp_str)
 
         fl = True
         linesout = ""
         tresults = [None] * len(TASKS)
- 
         results = {}
         # run using pyqtgraph's parallel support
         nWorkers = MPROC.cpu_count()-2
         PD = self.newPData()
         if parallel:
-            print("Tasks: \n", TASKS, "-"*80, "\n")
+            print("Tasks parallel: \n", TASKS, "-"*80, "\n")
             cprint("m", f"VS_DataAnalysis : Parallel with {nWorkers:d} processes")
             self.parent.PLT.in_Parallel = True  # notify caller
             with MP.Parallelize(
@@ -3906,8 +3910,9 @@ class Figures(object):
                             fl = False
                         celln = t[0]
                         filename = t[1]
-                        cprint("m", f"Cell: {celln:d}  j={j:d}")
-                        VS_file_raw = f"VS_raw_SAM_{dB:02d}_{celln:02d}.txt"
+                        print("celln: ", celln)
+                        cprint("m", f"Cell: {str(celln):s}  j={j:d}")
+                    #    VS_file_raw = f"VS_raw_SAM_{dB:02d}_{celln:02d}.txt"
                         tresults[j] = self.analyze_VS_data_single(filename, celln, fout, PD=PD,
                                                                linesout=linesout,
                             firstline=fl, sac_flag=True, testmode=testmode, dBSPL=dB, make_VS_raw=True,
@@ -3915,39 +3920,47 @@ class Figures(object):
                         tasker.results[j] = tresults[j]
             self.parent.PLT.in_Parallel = False
 
-            for j in range(len(TASKS)):
-                with open(fout, "a") as fh:
-                    if tresults[j] is None:
-                        continue
-                    lines = tresults[j].split('\n')
-                    for l in lines:
-                        l = l.replace("\n", "")
-                        fh.write(l)
-                        fh.write("\n")
+            if write_flag:
+                for j in range(len(TASKS)):
+                    with open(fout, "a") as fh:
+                        if tresults[j] is None:
+                            continue
+                        lines = tresults[j].split('\n')
+                        for l in lines:
+                            l = l.replace("\n", "")
+                            fh.write(l)
+                            fh.write("\n")
         else:
-            for j, celln in enumerate(TASKS):
-                tresults = self.analyze_VS_data(VS_datasets, celln, fout, 
-                    firstline=fl, sac_flag=True, test=testmode, make_VS_raw=True,
+            print("Tasks noparallel: \n", TASKS, "-"*80, "\n")
+            for j, t in enumerate(TASKS):
+                celln = t[0]
+                filename = t[1]
+                tresults = self.analyze_VS_data_single(filename, cell_number = celln, fout=fout, PD=PD,
+                                                       linesout=linesout,
+                    firstline=fl, sac_flag=True, testmode=testmode, dBSPL=dB, make_VS_raw=True,
                     )
                 if j > 0:
                     fl = False
-                with open(fout, "a") as fh:
-                    fh.write(tresults)
+                if write_flag:
+                    with open(fout, "a") as fh:
+                        fh.write(tresults)
                     # fh.write("\n")
-        with open(fout, "a") as fh:
-            fh.write(f'"""\n')  # close the data text.
+        if write_flag:
+            with open(fout, "a") as fh:
+                fh.write(f'"""\n')  # close the data text.
 
         # save running time for calculations
         end_timestamp_ts = datetime.datetime.now()
         end_timestamp_str = end_timestamp_ts.strftime("%Y-%m-%d-%H.%M.%S")
         run_time = end_timestamp_ts - start_timestamp
-        self._write_VS_tail(fout, end_timestamp=end_timestamp_str,
-            run_time_seconds = run_time.total_seconds())
+        if write_flag:
+            self._write_VS_tail(fout, end_timestamp=end_timestamp_str,
+                run_time_seconds = run_time.total_seconds())
+            cprint("g", f"The VS_data file {str(fout):s} has been generated.")
+        else:
+            cprint("r", "NO VS Data file was generated (writeflag is false in Figures.py in generate_VS_data_file )")
 
-        cprint("g", f"The VS_data file {str(fout):s} has been generated.")
-
-
-    def Figure8_Panels_IJK(self):
+    def Figure8_Panels_IJKLM(self):
         """Make the lower panels for Figure 8
 
         Returns:
@@ -4073,10 +4086,13 @@ class Figures(object):
             ax.set_position(pos)
 
         # plot the efficacy curves and points in the 4th panel
-
+        intact_sym = 'o'
+        intact_color = sns_colors[0]
+        pruned_sym = '^'
+        pruned_color = sns_colors[1]
         EFP = EF.EfficacyPlots(parent_figure=self.P.figure_handle)
-        EFP.plot_efficacy(datasetname="NoUninnervated2", ax=self.P.axdict["L"], clean=True, legend=False)
-        EFP.plot_efficacy(datasetname="NoUninnervated2_ctl", ax=self.P.axdict["L"], clean=True, legend=False)
+        EFP.plot_efficacy(datasetname="NoUninnervated2", ax=self.P.axdict["L"], clean=True, legend=False, marker=pruned_sym, symbol_color=pruned_color)
+        EFP.plot_efficacy(datasetname="NoUninnervated2_ctl", ax=self.P.axdict["L"], clean=True, legend=False, marker=intact_sym, symbol_color=intact_color)
         EFP.plot_fits("Full", ax=self.P.axdict["L"])
         PH.set_axes_ticks(ax=self.P.axdict["L"],
             xticks = [0, 100, 200, 300],
@@ -4092,8 +4108,8 @@ class Figures(object):
             fontsize=8,
         )
         custom_legend = [
-                Line2D([0], [0], marker='o', color='w', markerfacecolor='r', markersize=5, label="BC09 Intact"),
-                Line2D([0], [0], marker='^', color="w", markerfacecolor='r', markersize=6, label="BC09 Pruned"),
+                Line2D([0], [0], marker=intact_sym, color='w', markerfacecolor=intact_color, markersize=5, label=f"{FD.BC_name:s}09 Intact"),
+                Line2D([0], [0], marker=pruned_sym, color="w", markerfacecolor=pruned_color, markersize=6, label=f"{FD.BC_name:s}09 Pruned"),
                 Line2D([0], [0], color="#FF0000", lw=1, label='Group 1'),
                 Line2D([0], [0], color="#94c8ff", lw=1, label='Group 2'),
                 ]
@@ -4101,11 +4117,22 @@ class Figures(object):
             loc="upper left", bbox_to_anchor=(-0.07, 1.0),
             fontsize=7, labelspacing=0.33)
         
-        # Plot the Vector Strength for SAM at different frequencies in the 5th panel
         # panel M : compare 9I(intact) and 9U (NoUninnervated) VS across frequencies
+        # Plot the Vector Strength for SAM at different frequencies in the 5th panel
+        cells = ["9I", "9U"]
+        VSP = SAM_VS_vplots.VS_Plots(sels= cells, dBSPL=15, dends="9I9U")
+        for i, cell in enumerate(cells):
+            legend = False
+            if i == 0:
+                legend = True
+            print("Cell: ", cell)
+            VSP.plot_VS_summary(cell, axin=self.P.axdict["M"], legendflag=legend, legend_type="Dendrites", show_cell=True,
+                barwidth=180, figure8_xscale=True, inset_type="rMTF")
 
-        VSP = SAM_VS_vplots.VS_Plots(sels=[9], dBSPL=15, dends="9I9U")
-        VSP.plot_VS_summary(axin=self.P.axdict["M"], cell=9, barwidth=75, legendflag=True, xscale="log", figure8_xscale=True)
+#         VSP.plot_VS_summary(axin=self.P.axdict["M"], cell=9, 
+#                             legendflag=True, legend_type="Dendrites", show_cell=True,
+#                 barwidth=75, figure8_xscale=True, inset_type="rMTF", keep_inset=True)
+# #                barwidth=75, legendflag=True, xscale="log", figure8_xscale=True)
         self.P.adjust_panel_labels(fontsize=28, fontweight="light", fontname="myriad")
         custom_legend = [Line2D([0], [0], marker="_", markersize=2, color="firebrick", lw=2, label='AN'),
                 Line2D([0], [0], marker='o', color='w', markerfacecolor=sns_colors[0], markersize=5, label="Intact"),

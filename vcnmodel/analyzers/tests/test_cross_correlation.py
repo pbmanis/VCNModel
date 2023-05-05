@@ -26,7 +26,7 @@ from elephant import conversion as EC
 from elephant import spike_train_correlation as ESTC
 import elephant.spike_train_generation as ESTG
 
-from vcnmodel.analyzers import reverse_correlation as RC  # our local version
+from vcnmodel.analyzers import reverse_correlation as CC  # our local version
 from vcnmodel.util.user_tester import UserTester
 from vcnmodel.analyzers import sttc
 
@@ -58,7 +58,7 @@ class RegularProcess:
         self.times = neo.SpikeTrain(spkt, t_stop=duration, units="s")
 
 
-def test_cross_correlation():
+def test_reverse_correlation():
     """
     Invoke the cross-correlation tests
     """
@@ -138,7 +138,7 @@ def compute_cc_data(spikes="coherent", package="local"):
         sparse_format="csr",
     )
     if package == "local":
-        cc_result, ncc = RC.reverse_correlation(
+        cc_result, ncc = CC.reverse_correlation(
             st1.times, st2.times, binwidth=bin_width, corrwindow=[-width, width],
         )
         cc_times = np.linspace(-width, width, len(cc_result), endpoint=False)

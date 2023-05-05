@@ -1,4 +1,4 @@
-""" Compute the reverse correlation between two spike trains For all of the spikes
+""" Compute the cross-correlation between two spike trains For all of the spikes
 in st1, compute the time difference with each spike in st2, find where the
 difference is within a time window we are interested in, then get and return the
 indices for all of those spikes.
@@ -39,10 +39,8 @@ cprint = CP.cprint
 
 
 
-
-
 ##########################################################################
-# Reverse correlation analysis.
+# cross-correlation analysis.
 ##########################################################################
 
 
@@ -56,7 +54,7 @@ def reverse_correlation(
     ],  # time window to examine correlation relative to st1
 ) -> Tuple[np.ndarray, int]:
     """
-    Basic reverse correlation between two sets of event times
+    Basic cross-correlation between two sets of event times
     Bins are set up so that the center bin straddles 0 time
 
     """
@@ -118,7 +116,7 @@ def revcorr(
     ASAs: list = [],
     revcorr_params: Union[dict, None] = None,
 ):
-    """compute a reverse correlation, optinally with
+    """compute a cross-correlation, optinally with
     removal of selected postsynaptic spikes if certain inputs
     are active (e.g., > a minimum ASA)
 
@@ -129,9 +127,10 @@ def revcorr(
     nbins : int, optional
         number of bins in the revcorr by default 0
     revcorrtype : str, optional
-        one of the possible types: "RevCorr SPKS" (from Brian1.4),
-        "RevCorr Eleph" (from elephant),
-        "RevCorr Simple" (dumb implementation), by default ""
+        one of the possible types: 
+        "RevcorrSPKS" (from Brian1.4),
+        "RevcorrEleph" (from elephant),
+        "RevcorrSimple" (dumb implementation), by default
     ASAs : list of floats, optional
         The ASAs in an ordered list, largest to smallest, for deselection, by default []
     revcorr_params : Union[dict, None], optional
@@ -285,7 +284,7 @@ def revcorr(
                     tolerance=None,
                     sparse_format="csr",
                 )
-                cc_result, lags = ESTC.cross_correlation_histogram(
+                cc_result, lags = ESTC.reverse_correlation_histogram(
                     bst_i,
                     bst_j,
                     window=(-nbins, nbins),
@@ -293,7 +292,7 @@ def revcorr(
                     binary=False,
                     kernel=None,
                     method="speed",
-                    cross_correlation_coefficient=True,
+                    reverse_correlation_coefficient=True,
                 )
                 RCD.C[isite] += cc_result.squeeze()[:-1]
             elif revcorrtype == "RevcorrSimple":
@@ -916,8 +915,8 @@ def spike_pattern_analysis(model_data, printflag=False):
 
     Returns
     -------
-    RCP: reverse correlation parameter data structure
-    RCD: reverse correlation result data structure
+    RCP: cross-correlation parameter data structure
+    RCD: cross-correlation result data structure
     PAT.all_spikes: pattern data structure for all spikes
     """
     data = model_data.data

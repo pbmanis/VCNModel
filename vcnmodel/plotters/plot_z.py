@@ -29,6 +29,8 @@ from matplotlib import rc
 from pylibrary.plotting import plothelpers as PH
 from vcnmodel.util.set_figure_path import set_figure_path
 from vcnmodel.util.get_data_paths import get_data_paths
+from vcnmodel.plotters import \
+    figure_data as FD  # table of simulation runs used for plotting figures
 
 rc("text", usetex=True)
 rc("text.latex", preamble=r"\usepackage{xcolor}")
@@ -188,7 +190,7 @@ class PlotZ:
             g_axon = (1./d2['zin'])
             rho_axon = g_ds/g_axon
 
-            P.axarr[1, 2].plot(d1['f'], rho_axon, color=sns_colors[i], marker=self.syms[i], markersize=1.5, label=f"BC{fin:02d}")
+            P.axarr[1, 2].plot(d1['f'], rho_axon, color=sns_colors[i], marker=self.syms[i], markersize=1.5, label=f"{FD.BC_name:s}{fin:02d}")
         P.axarr[1, 2].set_xlabel("Frequency (Hz)")
         rholabel = r"$\rho_{axon}$"
         P.axarr[1, 2].set_ylabel(rholabel)
@@ -233,7 +235,7 @@ class PlotZ:
 
         for i, filename in enumerate(f):
             # print("col: ", col, i, "file: ", filename)
-            label = f"BC{int(filename[5:7]):d}"
+            label = f"{FD.BC_name:s}{int(filename[5:7]):d}"
             with open(
                 Path(
                     self.config["cellDataDirectory"], self.config["impedanceDirectory"], filename

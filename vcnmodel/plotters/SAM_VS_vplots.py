@@ -42,6 +42,8 @@ import VS_data_15dB as VS_data_15dB
 import VS_data_15dB_BC09 as VS_data_15dB_BC09
 import VS_data_30dB as VS_data_30dB
 from vcnmodel.util.get_data_paths import get_data_paths
+from vcnmodel.plotters import \
+    figure_data as FD  # table of simulation runs used for plotting figures
 
 # seaborn default palette, first 10 colors
 colors = [
@@ -129,6 +131,9 @@ class VS_Plots:
         if dends == "9I9U":
             importlib.reload(VS_data_15dB_BC09)
             self.datas = VS_data_15dB_BC09.data
+            sels = ["9I", "9U"]
+            # adjust configuration values for plot
+            # self.datas["Configuration"] = "Intact" if self.datas["Cell"] == "9I" else "Pruned"
         elif dBSPL == 15:
             importlib.reload(VS_data_15dB)
             self.datas = VS_data_15dB.data
@@ -150,7 +155,7 @@ class VS_Plots:
         }
         self.cell_list = []
         self.config = get_data_paths()
-
+        self.inset_ax = None
         self.setup_data(sels)
         
     def setup_data(self, sels:List):
@@ -213,6 +218,9 @@ class VS_Plots:
         self.PI.fr = self.fscale(self.PI.freqs)
         self.PI.vsscale = [0, 0.2, 0.4, 0.6, 0.8, 1.0]
         self.df = df[df["Cell"].isin(sels)]
+        self.df.loc[self.df['Cell'] == '9I', 'Configuration'] = "Intact"
+        self.df.loc[self.df['Cell'] == '9U', 'Configuration'] = "Pruned"
+
 
     def reload_data(self, dBSPL):
         if dBSPL == 15:
@@ -230,7 +238,6 @@ class VS_Plots:
     def prepare_data(self, datas):
         sio = io.StringIO(datas)
         df = pd.read_table(sio, sep=",")
-
         return df
 
     def fscale(self, x):
@@ -241,7 +248,7 @@ class VS_Plots:
 
     def getCell(self, cell):
         self.cell_list.append(cell)
-        return f"BC{int(cell):02d}"
+        return f"{FD.BC_name:s}{int(cell):02d}"
 
     def scalefun(self, x):
         return [f"{y:.2f}" for y in x]
@@ -456,6 +463,7 @@ class VS_Plots:
                         mode:str="line", xscale:str="log", yscale:str="linear",
                         figure8_xscale=False, show2out=True,
                         inset_type:str=None,
+                        keep_inset:bool=True,
                         legend_loc = (0,0)):
         """Summarize the VS for one cell for all conditions/frequencies.
         This is similar to the plotnine routine above, but just
@@ -496,9 +504,13 @@ class VS_Plots:
             a dataset in the current plot.
         inset_type: str (default: None)
             Plot an inset. The acceptable values are 'rMTF' and 'entrainment'. 
+        keep_inset: bool (default: True)
+            Force keeping the inset for subsequent plots.
+            Otherwise it will be replaced.
         legend_loc: typle (default (0,0))
             Location of the legend, in axes coordinates (0, 1). Allows positioning
             off the plot.
+
 
         """
         assert inset_type in ["rMTF", "entrainment", None]
@@ -508,10 +520,9 @@ class VS_Plots:
         inset_label_font = {"fontsize": 7, "fontweight": "normal"}
 
         if axin is None:
-            fig, ax = mpl.subplots(1, 1, figsize=(5, 5))
+            fig, this_ax = mpl.subplots(1, 1, figsize=(5, 5))
         else:
-            ax = axin
-
+            this_ax = axin
         dfl = self.df[self.df["Cell"] == cell]  # just get the cell's data
 
         # make categorical swarm plot for each configuration
@@ -519,8 +530,15 @@ class VS_Plots:
         nconfigs = len(set(dfl["Configuration"]))
         cfg_color = {'all': colors[0], "largestonly": colors[1], "removelargest": colors[2], "removetwolargest": colors_swarm[3],
                     'Intact': colors[0], "Pruned": colors[1]}
+        cfg_syms = {'all': 'o', 'largestonly': 'o', "removelargest": 'o', "removetwolargest": 'o',
+                    "Intact": 'o', 'Pruned': '^'}
         legs = {'Intact': None, 'Pruned': None, "ANF": None, "all": None, "largestonly": None, "removelargest": None, "removetwolargest": None}
-        
+        run = None
+        if figure8_xscale:
+            inset_font_size=6
+        else:
+            inset_font_size=7
+
         if mode == 'V':
             for ifr, fr in enumerate(sorted(set(dfl['frequency']))):
                 xc = ifr
@@ -529,6 +547,7 @@ class VS_Plots:
                 ye = np.zeros(nconfigs)
                 yc = [None]*nconfigs
                 mfc = [None]*nconfigs
+                sym = [None]*nconfigs
                 x_an = np.zeros(nconfigs)
                 y_an = np.zeros(nconfigs)
                 for jcfg, cfg in enumerate(sorted(set(dfl['Configuration']))):
@@ -538,13 +557,14 @@ class VS_Plots:
                     ye[jcfg] = run['VS_SD']
                     yc[jcfg] = cfg
                     mfc[jcfg] = cfg_color[cfg]
+                    sym[jcfg] = cfg_syms[cfg]
                     x_an[jcfg] = x[jcfg]
                     y_an[jcfg] = run['AN_VS']
                 # print(cell, fr, x, y, ye, yc, mfc)
-                ax.errorbar(x, y, yerr=ye, marker='o', mfc='none', ms=1, mec='none', mew=0, color='grey')
-                ax.setl(x, y, marker='o', c=mfc, s=12)
-                ax.plot(x_an, y_an, '-', color="firebrick", lw=1.5, zorder=-100)  # in back of data
-                ax.set_clip_on(False)
+                this_ax.errorbar(x, y, yerr=ye, marker=sym, mfc='none', ms=1, mec='none', mew=0, color='grey')
+                this_ax.setl(x, y, marker=sym, c=mfc, s=12)
+                this_ax.plot(x_an, y_an, '-', color="firebrick", lw=1.5, zorder=-100)  # in back of data
+                this_ax.set_clip_on(False)
         elif mode == "line":
             for icfg, cfg in enumerate(sorted(set(dfl['Configuration']))):
                 run = dfl[dfl['Configuration'] == cfg]
@@ -562,29 +582,36 @@ class VS_Plots:
                 ye = run['VS_SD'].values
                 x_an = x  # np.arange(8)
                 mfc = cfg_color[cfg]
-                ax.get_xaxis().set_clip_on(False)
-                print(run['SpikeCount'].values)
-                print(run['VS_Ns'].values)
+                sym = cfg_syms[cfg]
+                this_ax.get_xaxis().set_clip_on(False)
+
                 if respect_spike_counts:
                     nlow = np.where(run['SpikeCount'] < 50)[0]
                     y[nlow] = np.nan
-                ax.errorbar(x, y, yerr=ye, marker='o', mfc=mfc, ms=4, mec=mfc, 
+                this_ax.errorbar(x, y, yerr=ye, marker=sym, mfc=mfc, ms=4, mec=mfc, 
                     mew=0, color=mfc, label=cfg, clip_on=False)
 
                 if icfg == 0:
                     label = "ANF"
                 else:
                     label = None
-                ax.plot(x_an, y_an, '-', color="firebrick", lw=0.5, zorder=-100, label=label, clip_on=False)  # in back of data
+            if run is not None:
+                if yscale == 'linear':
+                    y_an = run['AN_VS'].values
+                else:
+                    y_an = np.log10(run['AN_VS'].values)
+                x_an = x  # np.arange(8)
+                this_ax.plot(x_an, y_an, '-', color="firebrick", lw=0.5, zorder=-100, label=label, clip_on=False)  # in back of data
             if "removetwolargest" not in set(dfl['Configuration']) and show2out:
                 # add the 2-out just for the legend in case it is not part of this plot (but it
                 # might be in other plots)
                 c2out = cfg_color["removetwolargest"]
-                ax.errorbar([], [], yerr=[], marker='o', mfc=c2out, ms=4, mec=c2out, mew=0, color=c2out,
+                sym = cfg_syms[cfg]
+                this_ax.errorbar([], [], yerr=[], marker=sym, mfc=c2out, ms=4, mec=c2out, mew=0, color=c2out,
                      label="Remove two largest", clip_on=False)
             # retext the legend to make more sense
             if legendflag:
-                self.update_legend(ax, legend_type, legend_loc=legend_loc, two_largest=True)
+                self.update_legend(this_ax, legend_type, legend_loc=legend_loc, two_largest=True)
 
 
         else:
@@ -600,33 +627,33 @@ class VS_Plots:
                 freq_list = np.arange(8) # [0, 50, 250, 500,  1000]
                 xtick_list_str=['50', '100', '200', '300', '400', '500',  '1000']
                 xtick_minor_list = [600, 700, 800, 900] # [100, 200, 400, 500]
-                ax.set_xlim(0, 7)
+                this_ax.set_xlim(0, 7)
             elif xscale == 'log':
                 if figure8_xscale:
-                    freq_list = np.log10([50, 100,  300,  500,  1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
-                    xtick_list_str=['50', '100', '300',  '500',  '1000']
-                    xtick_minor_list = np.log10([200, 400, 600, 700, 800, 900]) # [100, 200, 400, 500]
+                    freq_list = np.log10([50, 100,  200,  500,  1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
+                    xtick_list_str=['50', '100', '200',  '500',  '1000']
+                    xtick_minor_list = np.log10([200, 300, 400, 600, 700, 800, 900]) # [100, 200, 400, 500]
                 else:
                     freq_list = np.log10([50, 100, 200, 300,  500,  1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
                     xtick_list_str=['50', '100', '200', '300',  '500',  '1000']
                     xtick_minor_list = np.log10([400, 600, 700, 800, 900]) # [100, 200, 400, 500]
 
-                ax.set_xlim(np.log10(50), np.log10(1000))
+                this_ax.set_xlim(np.log10(50), np.log10(1000))
             if yscale == 'linear':
                 ytick_list = [0, 0.2, 0.4, 0.6, 0.8, 1.0]
                 ytick_list_str= ['0.1', '0.2', '0.4', '0.6', '0.8', '1.0'] 
                 y_tick_minor=[0.1, 0.3, 0.5, 0.7, 0.9]
-                ax.set_ylim(0, 1)
+                this_ax.set_ylim(0, 1)
             elif yscale == 'log':
                 ytick_list = np.log10(np.arange(0.1, 1.01, 0.1)) # [0, 0.2, 0.4, 0.6, 0.8, 1.0],
                 ytick_list_str= [f"{x:.1f}" for x in np.arange(0.1, 1.01, 0.1)] # ['0.0', '0.2', '0.4', '0.6', '0.8', '1.0'], 
                 y_tick_minor=[] # 0.2, 0.3, 0.5, 0.7, 0.9]
-                ax.set_ylim(-1, 0)
+                this_ax.set_ylim(-1, 0)
 
         configs = sorted(set(dfl['Configuration']))
 
         PH.set_axes_ticks(
-            ax=ax,
+            ax=this_ax,
             xticks=freq_list,
             xticks_str=xtick_list_str,
             xticks_pad=None,
@@ -641,25 +668,36 @@ class VS_Plots:
             fontsize=8,
         )
         # retext the legend to make more sense
-        xl = ax.get_xticklabels()  # do this before niceplot...
-        xl = ax.get_xticklabels()
+        xl = this_ax.get_xticklabels()  # do this before niceplot...
+        xl = this_ax.get_xticklabels()
         newxl = [f"{int(float(x.get_text())):d}" for x in xl if x.get_text() != ""]
-        ax.set_xticklabels(newxl)
-        ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
-        ax.set_ylabel("Vector Strength", fontdict=label_font)
-        PH.nice_plot(ax, position=-0.03, direction="outward", ticklength=3)
+        this_ax.set_xticklabels(newxl)
+        this_ax.set_xlabel("Modulation Frequency (Hz)", fontdict=label_font)
+        this_ax.set_ylabel("Vector Strength", fontdict=label_font)
+        PH.nice_plot(this_ax, position=-0.03, direction="outward", ticklength=3)
 
-        
+        # make an inset axis
+        # IF we have a recognized inset type
+        # AND we either are NOT keeping the inset in this call,
+        # or if the inset has not been created before.        
+        scell = cell
+        if isinstance(cell, str):
+            scell = int(cell[0])
+
+        if inset_type in ["rMTF", "Entrainment"]:
+            if not keep_inset or self.inset_ax is None:
+                self.inset_ax = STY.create_inset_axes([0.2, 0.15, 0.5, 0.35], this_ax, f"{FD.BC_name:s}{scell:02d}{'_rMTF':s}")
+
+
         if inset_type == "rMTF":  # include an inset with the rate MTF - always a line
-            # make an inset axis
-            inset_ax = STY.create_inset_axes([0.2, 0.15, 0.5, 0.35], ax, f"BC{cell:02d}{'_rMTF':s}")
-            for icfg, cfg in enumerate(sorted(set(dfl['Configuration']))):
+            run = None
+            configs = sorted(list(set(dfl['Configuration'])))
+            for icfg, cfg in enumerate(configs):
                 run = dfl[dfl['Configuration'] == cfg]
                 if xscale == 'linear':
                     x = np.arange(8) # run['frequency'].values
                 else:
                     x = np.log10([50, 100, 200, 300, 400, 500, 750, 1000]) # np.arange(8) # run['frequency'].values
-                # print('run keys: ', run.keys())
                 if yscale == 'linear':
                     y = run['rMTF'].values
                     y_an = run['AN_rMTF'].values
@@ -667,40 +705,45 @@ class VS_Plots:
                     y = np.log10(run['rMTF'].values)
                     y_an = np.log10(run['AN_rMTF'].values)
 
-                # ye = run['VS_SD'].values
-                x_an = x  # np.arange(8)
+                x_an = x 
                 mfc = cfg_color[cfg]
-                inset_ax.get_xaxis().set_clip_on(False)
-                inset_ax.plot(x, y, marker='o', mfc=mfc, ms = 4, mec=mfc, mew=0, color=mfc, label=cfg, clip_on=False)
-                if icfg == 0:
-                    inset_ax.plot(x_an, y_an, color='firebrick', clip_on=False)
-                    print("xan, yan: ", x_an, y_an)
+                sym = cfg_syms[cfg]
 
-                # inset_ax.errorbar(x, y, yerr=ye, marker='o', mfc=mfc, ms=4, mec=mfc, 
-                #     mew=0, color=mfc, label=cfg, clip_on=False)
-                if icfg == 0:
-                    label = "ANF"
+                self.inset_ax.plot(x, y, marker=sym, mfc=mfc, ms = 4, mec=mfc, mew=0, color=mfc, label=cfg, clip_on=False, zorder=1)
+            if run is not None:
+                if yscale == 'linear':
+                    y_an = run['AN_rMTF'].values
                 else:
-                    label = None
-                # inset_ax.plot(x_an, y_an, '-', color="firebrick", lw=0.5, zorder=-100, label=label)  # in back of data
+                    y_an = np.log10(run['AN_rMTF'].values)
+                x_an = x 
+                self.inset_ax.plot(x_an, y_an, color='firebrick', clip_on=False, zorder=-1)
+
             if "removetwolargest" not in set(dfl['Configuration']) and show2out:
                 # add the 2-out just for the legend in case it is not part of this plot (but it
                 # might be in other plots)
                 c2out = cfg_color["removetwolargest"]
                 # inset_ax.errorbar([], [], yerr=[], marker='o', mfc=c2out, ms=4, mec=c2out, mew=0, color=c2out,
                     #  label="removetwolargest", clip_on=False)
-            ytick_list = [0, 50,  100, 150, 200, 250]
-            ytick_list_str= ['0', '50', '100', '150', '200', '250'] 
-            y_tick_minor=[25, 75, 125]
-            freq_list = np.log10([50, 100, 200, 500,  1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
-            xtick_list_str=['50', '100', '200', '500',  '1000']
-            xtick_minor_list = np.log10([300, 400, 600, 700, 800, 900]) # [100, 200, 400, 500]
-            PH.nice_plot(inset_ax, position = -0.015, direction="outward", ticklength=1.5)
-            inset_ax.set_ylabel("rMTF (sp/s)", fontdict=inset_label_font)
-            inset_ax.set_xlabel("Mod Freq (Hz)", fontdict=inset_label_font)
-            inset_ax.set_ylim(0, 250.)
+            if not figure8_xscale:
+                ytick_list = [0, 50,  100, 150, 200, 250, 300]
+                ytick_list_str= ['0', '50', '100', '150', '200', '250', '300'] 
+                y_tick_minor=[]
+                freq_list = np.log10([50, 100, 200, 500,  1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
+                xtick_list_str=['50', '100', '200', '500',  '1000']
+                xtick_minor_list = np.log10([300, 400, 600, 700, 800, 900]) # [100, 200, 400, 500]
+            else:
+                ytick_list = [0,  100,  200,  300]
+                ytick_list_str= ['0', '100',  '200', '300'] 
+                y_tick_minor=[50, 150, 250]
+                freq_list = np.log10([50, 100, 200, 500,  1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
+                xtick_list_str=['50', '100', '200', '500',  '1000']
+                xtick_minor_list = np.log10([300, 400, 600, 700, 800, 900]) # [100, 200, 400, 500]
+            PH.nice_plot(self.inset_ax, position = -0.015, direction="outward", ticklength=1.5)
+            self.inset_ax.set_ylabel("rMTF (sp/s)", fontdict=inset_label_font)
+            self.inset_ax.set_xlabel("Mod Freq (Hz)", fontdict=inset_label_font)
+            self.inset_ax.set_ylim(0, 250.)
             PH.set_axes_ticks(
-                ax=inset_ax,
+                ax=self.inset_ax,
                 xticks=freq_list,
                 xticks_str=xtick_list_str,
                 xticks_pad=None,
@@ -712,12 +755,10 @@ class VS_Plots:
                 yticks_pad=None,
                 y_minor=y_tick_minor,
                 y_rotation=0., 
-                fontsize=7,
+                fontsize=inset_font_size,
             )
         
         elif inset_type == "entrainment":  # include an inset with the rate MTF - always a line
-            # make an inset axis
-            inset_ax = STY.create_inset_axes([0.2, 0.15, 0.5, 0.35], ax, f"BC{cell:02d}{'_entrainment':s}")
             for icfg, cfg in enumerate(sorted(set(dfl['Configuration']))):
                 run = dfl[dfl['Configuration'] == cfg]
                 if xscale == 'linear':
@@ -735,19 +776,15 @@ class VS_Plots:
                 # ye = run['VS_SD'].values
                 x_an = x  # np.arange(8)
                 mfc = cfg_color[cfg]
-                inset_ax.get_xaxis().set_clip_on(False)
-                inset_ax.plot(x, y, marker='o', mfc=mfc, ms = 4, mec=mfc, mew=0, color=mfc, label=cfg, clip_on=False)
-                if icfg == 0:
-                    inset_ax.plot(x_an, y_an, color='firebrick', clip_on=False)
-                    print("xan, yan: ", x_an, y_an)
+                sym = cfg_syms[cfg]
+                self.inset_ax.get_xaxis().set_clip_on(False)
+                self.inset_ax.plot(x, y, marker=sym, mfc=mfc, ms = 4, mec=mfc, mew=0, color=mfc, label=cfg, clip_on=False)
 
-                # inset_ax.errorbar(x, y, yerr=ye, marker='o', mfc=mfc, ms=4, mec=mfc, 
-                #     mew=0, color=mfc, label=cfg, clip_on=False)
                 if icfg == 0:
                     label = "ANF"
                 else:
                     label = None
-                # inset_ax.plot(x_an, y_an, '-', color="firebrick", lw=0.5, zorder=-100, label=label)  # in back of data
+            self.inset_ax.plot(x_an, y_an, '-', color="firebrick", lw=0.5, zorder=-100, label=label)  # in back of data
             if "removetwolargest" not in set(dfl['Configuration']) and show2out:
                 # add the 2-out just for the legend in case it is not part of this plot (but it
                 # might be in other plots)
@@ -760,11 +797,11 @@ class VS_Plots:
             freq_list = np.log10([50, 100, 200, 500,  1000]) # np.arange(8) # [0, 50, 250, 500,  750, 1000]
             xtick_list_str=['50', '100', '200', '500',  '1000']
             xtick_minor_list = np.log10([300, 400, 600, 700, 800, 900]) # [100, 200, 400, 500]
-            PH.nice_plot(inset_ax, position = -0.015, direction="outward", ticklength=1.5)
-            inset_ax.set_ylabel("Entrainment", fontdict=inset_label_font)
-            inset_ax.set_xlabel("Mod Freq (Hz)", fontdict=inset_label_font)
+            PH.nice_plot(self.inset_ax, position = -0.015, direction="outward", ticklength=1.5)
+            self.inset_ax.set_ylabel("Entrainment", fontdict=inset_label_font)
+            self.inset_ax.set_xlabel("Mod Freq (Hz)", fontdict=inset_label_font)
             PH.set_axes_ticks(
-                ax=inset_ax,
+                ax=self.inset_ax,
                 xticks=freq_list,
                 xticks_str=xtick_list_str,
                 xticks_pad=None,
@@ -776,29 +813,29 @@ class VS_Plots:
                 yticks_pad=None,
                 y_minor=y_tick_minor,
                 y_rotation=0., 
-                fontsize=7,
+                fontsize=inset_font_size,
             )
         
 
         if legendflag:
-            self.update_legend(ax, legend_type, legend_loc, two_largest=True)
+            self.update_legend(this_ax, legend_type, legend_loc, two_largest=True)
 
         if isinstance(cell, str):
-            cellname = f"BC{int(cell[0]):02d}"
+            cellname = f"{FD.BC_name:s}{int(cell[0]):02d}"
         else:
-            cellname = f"BC{cell:02d}"
+            cellname = f"{FD.BC_name:s}{cell:02d}"
         if show_cell:
-            ax.text(
+            this_ax.text(
                 x=0.5,
                 y=1.0,
                 s=cellname,
                 fontdict=title_font,
                 #    "horizontalalignment":"center","verticalalignment":"top"},
-                transform=ax.transAxes,
+                transform=this_ax.transAxes,
             )
         if axin is None:
             mpl.show()
-        return ax
+        return this_ax
 
     def update_legend(self, ax, legend_type:str="", legend_loc:tuple=(0.05, 0.95), two_largest=False):
         """Change the legend to a custom version with better labels
@@ -814,10 +851,10 @@ class VS_Plots:
         if legend_type == 'Dendrites':
             print("legend type is dendrites")
             custom_legend = [Line2D([0], [0], marker="_", markersize=3, color="firebrick", lw=2, label='AN'),
-                Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[0], markersize=5, label="Intact"),
-                Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[1], markersize=5, label="Pruned"),
+                Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[1], markersize=4, label="Intact"),
+                Line2D([0], [0], marker='^', color='w', markerfacecolor=colors[0], markersize=4, label="Pruned"),
                 ]
-            ax.legend(handles=custom_legend, handlelength=1, loc="lower left", fontsize=7, labelspacing=0.33, markerscale=0.5)
+            ax.legend(handles=custom_legend, handlelength=1, loc="lower left", fontsize=6, labelspacing=0.33, markerscale=0.5)
         else:
             legdict = { "all": "All Inputs", 
                         "largestonly": "Largest input only", 
@@ -870,7 +907,7 @@ class VS_Plots:
                 legend = False
 
             self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
-            barwidth=180, mode=mode, show2out=show2out, inset_type=inset,
+            barwidth=180, mode=mode, show2out=show2out, inset_type=inset, keep_inset=False,
             legend_loc=(1.2, 0.8))
             # if entrain:
             #     self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
@@ -943,7 +980,7 @@ class VS_Plots:
                 legend = False
 
             self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
-            barwidth=180, mode=mode, show2out=show2out, inset_type=inset,
+            barwidth=180, mode=mode, show2out=show2out, inset_type=inset, keep_inset=False,
             legend_loc=(1.05, 0.8))
             # if entrain:
             #     self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
@@ -991,7 +1028,7 @@ class VS_Plots:
         """
         # V1 = VS_Plots(dBSPL=15, dends="9I9U")
 
-        cells = [9]
+        cells = ['9I', '9U']
         if ax is None:
             P = PH.regular_grid(
                 1,
@@ -1006,13 +1043,14 @@ class VS_Plots:
             axl = P.axarr.ravel()
         else:
             axl = [ax]
-
+        print("Cells: ", cells)
         for i, cell in enumerate(cells):
             legend = False
             if i == 0:
                 legend = True
-            self.plot_VS_summary(cell, axin=axl[i], legendflag=legend, show_cell=True,
-                barwidth=180, figure8_xscale=True)
+            print("Cell: ", cell)
+            self.plot_VS_summary(cell, axin=axl[0], legendflag=legend, legend_type="Dendrites", show_cell=True,
+                barwidth=180, figure8_xscale=True, inset_type="rMTF")
 
         if ax is not None:
             return
@@ -1021,7 +1059,7 @@ class VS_Plots:
         fig.P = P
 
         fig.filename = set_figure_path(
-            fignum=8, filedescriptor="BC09_Uninnervated_V1"
+            fignum=8, filedescriptor="BC09_Uninnervated_V2"
         )
         title = "SBEM Project Supplemental Figure 8 Modeling : Dendrite removal"
         fig.title["title"] = title
@@ -1141,7 +1179,7 @@ class VS_Plots:
                     uselabel2 = None
                     uselabel = None
                     if icfg == 0 and j+1 == 2 and not cell_legend[icell]:
-                        uselabel2 = f"BC{cell:02d}"
+                        uselabel2 = f"{FD.BC_name:s}{cell:02d}"
                         cell_legend[icell] = True
                     if icfg == 0 and j+1 == 2 and not anf_legend:
                         uselabel = 'ANF'
@@ -1255,7 +1293,7 @@ class VS_Plots:
                 if respect_spike_counts:
                     ilow = np.where(run['SpikeCount'].values < 1000)[0]
                     y[ilow] = np.nan    
-                ax.errorbar(x, y, yerr=ye, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc, clip_on=False) # , label=f"BC{cell:02d}")
+                ax.errorbar(x, y, yerr=ye, marker=marker, mfc=mfc, ms=5, mec='none', mew=0, color=mfc, clip_on=False) # , label=f"{FD.BC_name:s}{cell:02d}")
                 if icell == 0:
                     label = "ANF"
                 else:
@@ -1323,7 +1361,7 @@ class VS_Plots:
                     uselabel2 = None
                     uselabel = None
                     if icfg == 0 and j+1 == 2 and not cell_legend[icell]:
-                        uselabel2 = f"BC{cell:02d}"
+                        uselabel2 = f"{FD.BC_name:s}{cell:02d}"
                         cell_legend[icell] = True
                     if icfg == 0 and j+1 == 2 and not anf_legend:
                         uselabel = 'ANF'
@@ -1347,16 +1385,18 @@ if __name__ == "__main__":
     # V1.plot_VS_summary(17)
     # exit()
 
-    # V = VS_Plots()
+    # V = VS_Plots(dBSPL=15)
     # fig, P = V.make_figure()
 
-    # V1 = VS_Plots(sels=[9], dBSPL=15, dends="9I9U")
-    # V1.Figure8_M()
-    db = 15
+    V1 = VS_Plots(sels=[9], dBSPL=15, dends="9I9U")
+    V1.Figure8_M()
 
-    V1 = VS_Plots(dBSPL=db)
+
+    # db = 15
+
+    # V1 = VS_Plots(dBSPL=db)
     # V1.Summarize(dBSPL=db)
-    V1.Figure6_Supplemental3(dBSPLs=(15, 30))
+    # V1.Figure6_Supplemental3(dBSPLs=(15, 30))
     # fm, new_ax = mpl.subplots(2,2)
     # new_ax = np.ravel(new_ax)
 

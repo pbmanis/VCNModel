@@ -897,7 +897,7 @@ class DataTablesVCN:
             if path[0] == "Figures":
                 if path[1] == "Figures":
                     self.target_figure = data
-                elif path[1] == "Create Figure":
+                elif path[1] == "Create Figure/Analyze Data":
                     self.FIGS.make_figure(self.target_figure)
 
             if path[0] == "Tools":

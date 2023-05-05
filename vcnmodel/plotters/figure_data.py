@@ -29,6 +29,7 @@ import VS_datasets_15dB
 import VS_datasets_15dB_BC09_NoUninnervated
 import VS_datasets_30dB
 
+BC_name = "GBC"  # or "BC" in the original version
 
 figure_IV = {
     17: {

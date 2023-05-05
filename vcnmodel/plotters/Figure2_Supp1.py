@@ -76,16 +76,16 @@ PH.set_axes_ticks(P.axdict["C"], yticks=[0, 5, 10, 15], yticks_str=["0", "5", "1
 P.axdict["C"].set_xlabel(f"Cell Body SA {mum2:s}")
 P.axdict["C"].set_ylabel(f"Number of Large Inputs")
 
-P.axdict["D"].scatter(CD_x_pct, soma_SA, s=9, c='k', marker='o', edgecolors = 'w', linewidths=0.5)
-fitline(P.axdict["D"], x=CD_x_pct, y=soma_SA)
-P.axdict["D"].set_xlim(20, 80)
-P.axdict["D"].set_ylim(1000, 1600)
-P.axdict["D"].set_xlabel(f"Percent of Soma Covered by Large Inputs")
-P.axdict["D"].set_ylabel(f"Cell Body SA {mum2:s}")
+P.axdict["D"].scatter(soma_SA, CD_x_pct, s=9, c='k', marker='o', edgecolors = 'w', linewidths=0.5)
+fitline(P.axdict["D"], y=CD_x_pct, x=soma_SA)
+P.axdict["D"].set_ylim(20, 80)
+P.axdict["D"].set_xlim(1000, 1600)
+P.axdict["D"].set_ylabel(f"Percent of Soma Covered by Large Inputs", labelpad=8)
+P.axdict["D"].set_xlabel(f"Cell Body SA {mum2:s}")
 
 for ax in P.axdict:
     PH.nice_plot(P.axdict[ax], direction="outward", position=-0.03, ticklength=3.0)
 
-mpl.savefig(f"/Volumes/Pegasus_002/VCN-SBEM-Data/SBEM-paper Figures/Figure2/Figure2_supp/Figure2_Supplemental1_{mode:s}.pdf")
-mpl.savefig(f"/Volumes/Pegasus_002/VCN-SBEM-Data/SBEM-paper Figures/Figure2/Figure2_supp/Figure2_Supplemental1_{mode:s}.png")
+mpl.savefig(f"/Volumes/Pegasus_002/VCN-SBEM-Data/SBEM-paper Figures/Figure2/Figure2_supp/Figure2_Supplemental1_{mode:s}_v2.pdf")
+mpl.savefig(f"/Volumes/Pegasus_002/VCN-SBEM-Data/SBEM-paper Figures/Figure2/Figure2_supp/Figure2_Supplemental1_{mode:s}_V2.png")
 mpl.show()

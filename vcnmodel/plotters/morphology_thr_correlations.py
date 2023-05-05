@@ -18,7 +18,8 @@ import numpy as np
 import scipy as sp
 import scipy.stats as SPS
 import scipy.interpolate as SCINT
-
+from vcnmodel.plotters import \
+    figure_data as FD  # table of simulation runs used for plotting figures
 import vcnmodel.group_defs as GRPDEF
 
 
@@ -252,7 +253,7 @@ class AIS():
                 mk_edge = mk_face
             
             print(coln, bc_index, color, sym, mk_face, mk_edge)
-            bc_num = f"BC{int(coln):02d}"
+            bc_num = f"{FD.BC_name:s}{int(coln):02d}"
             if celln not in [2, 5]:
                 ax.plot(df["AIS_Length"].values, df[coln].values,   # plot the lines from adjusting the "standard axon"
                 # remove symbols for revision - only plot symbols for the actual AIS length on the same data
