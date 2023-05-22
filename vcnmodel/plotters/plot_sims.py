@@ -1533,7 +1533,7 @@ class PlotSims:
         PH.nice_plot(ax, position=self.axis_offset, direction="outward")
 
         if yaxis_label:
-            ax.set_ylabel("Coinc. Rate (Hz)")
+            ax.set_ylabel("Pre-post\nCoinc. Rate (Hz)")
         # ax.set_xlabel("T (ms)")
         secax.set_xlabel("T (ms)")
         if RCD.max_coin_rate > 0.0:

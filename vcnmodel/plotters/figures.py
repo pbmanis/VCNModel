@@ -1748,7 +1748,7 @@ class Figures(object):
                 )
 
             if j == 0:
-                ax.set_ylabel("Presynaptic\nCoinc. Rate (Hz)", ha="center", fontsize=10)
+                ax.set_ylabel("Pre-Post\nCoinc. Rate (Hz)", ha="center", fontsize=10)
                 ax2.set_ylabel("Vm (mV)", ha="center", fontsize=10)
             else:
                 PH.noaxes(ax, whichaxes="y")
@@ -2880,6 +2880,8 @@ class Figures(object):
             zero_time=psth_win[0],
             max_time=psth_win[1],
             bin_width=psth_binw,
+            edge_color=None,
+            face_color="k",
             ax=ax,
             scale=1.0 / ninputs,
         )
@@ -3194,6 +3196,39 @@ class Figures(object):
         return an_st_by_input, all_an_st, an_st_grand
 
 
+    def get_cell_PSTH_data(self, dataset, cell_number, dBSPL:float):
+
+        PD = self.newPData()
+        cellpath = Path(
+            self.config["cellDataDirectory"],
+            f"VCN_c{cell_number:02d}",
+            "Simulations",
+            "AN",
+        )
+        sfi = Path(cellpath, Path(dataset[dBSPL]).name)
+        if not sfi.is_dir():
+            print("file not found: ", str(sfi))
+            return None, None, None
+
+        fn = sorted(list(sfi.glob("*")))[0]
+        X = self.ReadModel.get_data_file(fn, PD)
+        # mtime = Path(fn).stat().st_mtime
+        # timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
+        #     "%Y-%m-%d-%H:%M"
+        # )
+        if X is None:
+            print("No simulation found that matched conditions")
+            print(fn)
+            return None, None, None
+        # unpack x
+        par, stitle, ivdatafile, filemode, d = X
+        axon_name = par["axonExpt"]
+        protocol = "runANPSTH"
+        AR, SP, RM = analyze_data.analyze_data(
+            ivdatafile=ivdatafile, filemode=filemode, protocol=protocol
+        )
+        self.all_bu_st = self.get_bu_spikearray(AR, d)
+        return d, AR, axon_name
 
     def plot_one_PSTH(
         self,
@@ -3215,35 +3250,9 @@ class Figures(object):
         label_x_axis=True,
     ):
         dataset = FD.figure_psth[cell_number]
-        PD = self.newPData()
-        cellpath = Path(
-            self.config["cellDataDirectory"],
-            f"VCN_c{cell_number:02d}",
-            "Simulations",
-            "AN",
-        )
-        sfi = Path(cellpath, Path(dataset[dBSPL]).name)
-        if not sfi.is_dir():
-            print("file not found: ", str(sfi))
-            return
-
-        fn = sorted(list(sfi.glob("*")))[0]
-        X = self.ReadModel.get_data_file(fn, PD)
-        # mtime = Path(fn).stat().st_mtime
-        # timestamp_str = datetime.datetime.fromtimestamp(mtime).strftime(
-        #     "%Y-%m-%d-%H:%M"
-        # )
-        if X is None:
-            print("No simulation found that matched conditions")
-            print(fn)
-            return
-        # unpack x
-        par, stitle, ivdatafile, filemode, d = X
-        axon_name = par["axonExpt"]
-        protocol = "runANPSTH"
-        AR, SP, RM = analyze_data.analyze_data(
-            ivdatafile=ivdatafile, filemode=filemode, protocol=protocol
-        )
+        d, AR, axon_name = self.get_cell_PSTH_data(dataset, cell_number, dBSPL = dBSPL)
+        if d is None:
+            return None
         ntr = len(AR.MC.traces)  # number of trials
         waveform = None
         v0 = -160.0
@@ -3314,15 +3323,14 @@ class Figures(object):
         #
         # PSTH
 
-        all_bu_st = self.get_bu_spikearray(AR, d)
-        self.all_bu_st = all_bu_st
+
         psth_binw = 0.5e-3
         ninputs = 1
 
         if bupsth_ax is not None:
             self.plot_psth_psth(
                 ax=bupsth_ax,
-                data=all_bu_st,
+                data=self.all_bu_st,
                 ri=ri,
                 psth_binw=psth_binw,
                 psth_win=psth_win,
@@ -3379,7 +3387,7 @@ class Figures(object):
     #
         if bufsl_ax is not None:
             PF.plot_fsl_ssl(
-                all_bu_st,
+                self.all_bu_st,
                 run_info=ri,
                 max_time=25.0,
                 bin_width=0.25,

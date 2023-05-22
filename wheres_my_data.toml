@@ -17,9 +17,9 @@
 
 # Dec 2020: Move simulation result storage off to RAID or other external disk for space reasons.
 
-disk = "/Volumes/T7"  # define the disk or path to the directory where the data directory can be found
+# disk = "/Volumes/T7"  # define the disk or path to the directory where the data directory can be found
 shareddatadisk = "/Volumes/T7"  # where to store shared results related to manuscript
-# disk = "/Volumes/Pegasus_002"
+disk = "/Volumes/Pegasus_002"
 
 baseDataDirectory = "VCN-SBEM-Data" # "/Users/pbmanis/Desktop/Python/VCN-SBEM-Data"
 cellDataDirectory = "VCN-SBEM-Data/VCN_Cells" #"/Users/pbmanis/Desktop/Python/VCN-SBEM-Data/VCN_Cells"

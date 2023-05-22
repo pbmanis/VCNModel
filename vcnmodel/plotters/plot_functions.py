@@ -66,6 +66,7 @@ def plot_psth(
     scale: float = 1.0,
     bin_fill: bool = True,
     edge_color: str = "k",
+    face_color: str="k",
     alpha: float = 1.0,
     xunits: str = "time",
     stimbar: Union[dict, None] = None, # {'sound_params': None, 'waveform': None},
@@ -118,9 +119,7 @@ def plot_psth(
     # print("max time: ", max_time, "zero time: ", zero_time, bin_width)
     spike_times_flat -= zero_time
     bins = np.arange(0.0, max_time - zero_time, bin_width)
-    if bin_fill:
-        face_color = edge_color
-    else:
+    if not bin_fill:
         face_color = None  # "None"
     if xunits == "radians":
         xu = radians
