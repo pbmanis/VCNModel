@@ -14,7 +14,7 @@ active) in response to tone pips and sinusoidal amplitude-modulated tones. In so
 cell were removed (e.g., all dendrites, unninvevated dendrites, etc). In some simulations, the consequences
 of variations of the dendritic ion channel densities were explored.
 
-Used in Spirou, Kersting, Ellisman and Manis (in preparation).
+Used in Spirou, et al 2022/2023 (under review).
 
 .. toctree::
    :maxdepth: 2

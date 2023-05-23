@@ -13,8 +13,7 @@ that is passed into the routnines.
 
 Wrapper for various analysis functions, handles multiple cells.
 
-
-Command line usage (discouraged):
+Command line usage (discouraged; use DataTables instead):
 
 usage: plot_sims.py [-h] [-p {AN,an,IO,IV,iv,gifnoise}]
                     [-a {traces,PSTH,revcorr,SAC,tuning,singles}]
@@ -27,9 +26,12 @@ usage: plot_sims.py [-h] [-p {AN,an,IO,IV,iv,gifnoise}]
 Plot GBC results
 
 positional arguments:
+
   cell                  Select the cell(s) or 'A' for all(no default)
 
+  
 optional arguments:
+
   -h, --help            show this help message and exit
 
   -p {AN,an,IO,IV,iv,gifnoise}, --protocol {AN,an,IO,IV,iv,gifnoise}
@@ -73,7 +75,8 @@ Support::
     DC R01 DC004551 (Manis, 2013-2019, Early development)
     DC R01 DC019053 (Manis, 2020-2025, Later development)
 
-Copyright 2017- Paul B. Manis
+
+Copyright 2017-2023 Paul B. Manis
 Distributed under MIT/X11 license. See license.txt for more infomation. 
 
 """
@@ -82,10 +85,8 @@ import re
 import string
 import time
 from collections import OrderedDict
-import dataclasses
 from dataclasses import dataclass
 from pathlib import Path
-import pickle
 from typing import Union
 
 import matplotlib.colorbar  # type: ignore
@@ -120,11 +121,14 @@ from vcnmodel.analyzers import reverse_correlation as REVCORR
 from vcnmodel.analyzers import sac as SAC
 from vcnmodel.analyzers import vector_strength as VS
 from vcnmodel.analyzers.analyzer_data_classes import PData, RevCorrData, RevCorrPars
-from vcnmodel.plotters import \
-    figure_data as FD  # table of simulation runs used for plotting figures
+from vcnmodel.plotters import (
+    figure_data as FD,
+)  # table of simulation runs used for plotting figures
+
 TRC = trace_calls.TraceCalls
 cprint = CP.cprint
 UR = pint.UnitRegistry
+
 
 @dataclass
 class SACPars:
@@ -159,6 +163,7 @@ def norm(p: Union[list, np.ndarray], n: int) -> np.ndarray:
     Simple function to normalize the n'th point of p
     by the min and max
     """
+
     pmin = np.min(p)
     pmax = np.max(p)
     return (p[n] - pmin) / float(pmax - pmin)
@@ -187,6 +192,7 @@ def clean_spiketimes(spikeTimes, mindT=0.7):
     mindT is difference in time, same units as spikeTimes
     If 1 or 0 spikes in array, just return the array
     """
+    
     if len(spikeTimes) > 1:
         dst = np.diff(spikeTimes)
         st = np.array(spikeTimes[0])  # get first spike
@@ -213,7 +219,9 @@ class PlotSims:
         self.config = get_data_paths()
         mpl.style.use(Path(Path.cwd(), "styles", "figures.mplstyle"))
         self.allspikes = None
-        self.in_Parallel = False # flag to prevent graphics access during parallel processing.
+        self.in_Parallel = (
+            False  # flag to prevent graphics access during parallel processing.
+        )
         self.RevCorrData = RevCorrData()
         self.RevCorrPars = RevCorrPars()
 
@@ -225,6 +233,7 @@ class PlotSims:
         Returns:
             PData: dataclass
         """
+
         return PData(
             gradeA=GRPDEF.gradeACells,
             basepath=self.config["baseDataDirectory"],
@@ -363,7 +372,8 @@ class PlotSims:
     ) -> tuple:
         """Plot traces in a general way
         Yes, this should be broken up with fewer parameters,
-        probably with dataclasses for the cals, etc... 
+        probably with dataclasses for the cals, etc... but plotting
+        is just grunge, so here we go:
 
         Parameters
         ----------
@@ -424,14 +434,15 @@ class PlotSims:
         calv2 : Union[float, None], optional
             secondary cal bar, by default 10.0
         axis_index : int, optional
-            index for axes, to prevent replotting text_, by default 0
+            index for axes, to prevent replotting text, by default 0
 
         Returns
         -------
-        tuple
+        tuple :
             synno : number of synapses on this cell
             noutspikes : number of spikes from the cell
             ninspikes : number of input spikes to the cell
+
         """
 
         inx = str(fn).find("_Syn")
@@ -476,9 +487,9 @@ class PlotSims:
         elif xmax is None and protocol in ["VC"]:
             xmax = ri.vstimDelay + ri.vstimDur + ri.vstimPost
         else:
-            print('xmax: ', xmax)
-            print('protocol: ', protocol)
-            raise ValueError("Need to specificy xmax for plot") 
+            print("xmax: ", xmax)
+            print("protocol: ", protocol)
+            raise ValueError("Need to specificy xmax for plot")
         if isinstance(ax, list):
             ax1 = ax[0]
             ax2 = ax[1]
@@ -522,14 +533,14 @@ class PlotSims:
                     for t in data["Results"][icurr]["spikeTimes"]
                 ]
             else:
-                cprint('r', 'spikes from SP.spikeIndices')
+                cprint("r", "spikes from SP.spikeIndices")
                 spikeindex = SP.spikeIndices[trial]
             # print(f"Trial: {trial:3d} Nspikes: {len(spikeindex):d}")
             # plot spike peaks
             ax1.plot(
                 AR.MC.time_base[spikeindex],
                 AR.MC.traces[trial][spikeindex] + yoffset,
-                marker = spike_marker_shape, # "o",
+                marker=spike_marker_shape,  # "o",
                 color=spike_marker_color,
                 markerfacecolor=spike_marker_color,
                 markersize=spike_marker_size,
@@ -785,7 +796,7 @@ class PlotSims:
             trace_ax = P.axarr[i * 3, 0]
             cmd_ax = P.axarr[i * 3 + 1, 0]
             if i == 0:
-                calx=120.
+                calx = 120.0
             else:
                 calx = None
             self.plot_traces(
@@ -804,12 +815,14 @@ class PlotSims:
                 xmax=150.0,
                 figure=P.figure_handle,
                 clipping=True,
-                show_title=False
+                show_title=False,
             )
             trace_ax.set_ylim((-1, 15))
             trace_ax.set_clip_on(True)
             self.analyzeVC(P.axarr[i * 3 + 2, 0], sfi[i], PD, protocol=protocol[i])
-            PH.nice_plot(P.axarr[i * 3 + 2, 0], position=-0.03, direction="outward", ticklength=3)
+            PH.nice_plot(
+                P.axarr[i * 3 + 2, 0], position=-0.03, direction="outward", ticklength=3
+            )
             trace_ax.text(
                 0.5,
                 1.1,
@@ -979,17 +992,22 @@ class PlotSims:
         expparams = expmodel.make_params()
         exp_result = expmodel.fit(ifit, expparams, x=tfit)
         # print(exp_result.params)
-        deltaV = (vss[mHypStep] - vm[mHypStep])*UR.V
-        deltaI = (I[mHypStep][t0] - i0[mHypStep])*UR.A
-        deltaI2 = (exp_result.params["a0"].value + exp_result.params["a1"].value)*UR.A
-        qpts = int(20.0/sr)  # 20 msec duration for integration
+        deltaV = (vss[mHypStep] - vm[mHypStep]) * UR.V
+        deltaI = (I[mHypStep][t0] - i0[mHypStep]) * UR.A
+        deltaI2 = (exp_result.params["a0"].value + exp_result.params["a1"].value) * UR.A
+        qpts = int(20.0 / sr)  # 20 msec duration for integration
         qend = int(AR.MC.tend / sr)
-        Q = np.trapz(I[mHypStep, t0 : t0 + qpts]
-             - np.mean(I[mHypStep, t0 + qpts : qend]), # remove DC part
-             dx=sr * 1e-3)*UR.C
-        Cm_U = (Q / deltaV).to(UR.F)   # with units
-        Aq = Cm_U/(0.9*UR.uF/(UR.cm*UR.cm))
-        Aq = Aq.to(UR.um*UR.um)
+        Q = (
+            np.trapz(
+                I[mHypStep, t0 : t0 + qpts]
+                - np.mean(I[mHypStep, t0 + qpts : qend]),  # remove DC part
+                dx=sr * 1e-3,
+            )
+            * UR.C
+        )
+        Cm_U = (Q / deltaV).to(UR.F)  # with units
+        Aq = Cm_U / (0.9 * UR.uF / (UR.cm * UR.cm))
+        Aq = Aq.to(UR.um * UR.um)
         self.textappend(
             f"Q: {Q:.3f#~P}  deltaV: {deltaV:.1f#~P}, Cm: {Cm_U:.1f#~P}  Area: {Aq:.1f#~P})"
         )
@@ -1025,8 +1043,8 @@ class PlotSims:
         cm1 = (tau1 / R1w).to(UR.F)
         cmw = ((a0 * tau0 / R0w) + (a1 * tau1 / R1w)) / (a0 + a1)  # tauw/(R0w + R1w)
         cmw = cmw.to(UR.F)
-        Acm = cm/(0.9*UR.uF/(UR.cm*UR.cm))
-        Acmw = cmw/(0.9*UR.uF/(UR.cm*UR.cm))
+        Acm = cm / (0.9 * UR.uF / (UR.cm * UR.cm))
+        Acmw = cmw / (0.9 * UR.uF / (UR.cm * UR.cm))
         self.textappend("By Coeffs: ")
         self.textappend(
             f"    RCoeff0 = {R0w:.2f#~P}, tau0: {tau0:6.1f#~P},  cm0: {cm:.1f#~P}, Area: {Acm:.1f#~P}"
@@ -1035,7 +1053,7 @@ class PlotSims:
             f"    RCoeff1 = {R1w:.2f#~P}, tau1: {tau1:6.1f#~P},  cm1: {cm1:.1f#~P}"
         )
         self.textappend(
-                f"Weighted: Rw={(R0w+R1w):.2f#~P} tauw: {tauw:6.1f#~P}, Weighted cm: {cmw:.1f#~P}, Area: {Acmw:.1f#~P}"
+            f"Weighted: Rw={(R0w+R1w):.2f#~P} tauw: {tauw:6.1f#~P}, Weighted cm: {cmw:.1f#~P}, Area: {Acmw:.1f#~P}"
         )
         tfit2 = AR.MC.time_base[t0 : t0 + pts] - AR.MC.time_base[t0]
         expfit = expmodel.eval(params=exp_result.params, x=tfit2)
@@ -1059,8 +1077,13 @@ class PlotSims:
             floatAdd={"x": 0, "y": 0},
         )
         # Align the parameters on the = sign by making 2 texts right and left justified
-        textstr1 = r"$\mathrm{g_{max}}$" + f" = {boltz_result.params['gmax'].value:.1f} nS"
-        textstr2 = r"$\mathrm{V_{0.5}}$" + f" = {boltz_result.params['vhalf'].value*1e3:.1f} mV"
+        textstr1 = (
+            r"$\mathrm{g_{max}}$" + f" = {boltz_result.params['gmax'].value:.1f} nS"
+        )
+        textstr2 = (
+            r"$\mathrm{V_{0.5}}$"
+            + f" = {boltz_result.params['vhalf'].value*1e3:.1f} mV"
+        )
         textstr3 = r"$\mathrm{k}$" + f" = {1e3*boltz_result.params['k'].value:.1f}"
         textstr4 = r"$\mathrm{C_m}$" + f" = {cm:.1f#~P}"
         textstr5 = r"$\mathrm{\tau_{0}}$" + f" = {tau:6.1f#~P}"
@@ -1070,29 +1093,29 @@ class PlotSims:
         y = 0.40
         x = 0.60
         for i, txt in enumerate(texts):
-            tx1, tx2 = txt.split('=')
+            tx1, tx2 = txt.split("=")
             ax.text(
-            x,
-            y - i*0.1,
-            tx1,
-            transform=ax.transAxes,
-          #  fontfamily="monospace",
-            size=8,
-            verticalalignment="bottom",
-            horizontalalignment="right",
-            # bbox=props,
+                x,
+                y - i * 0.1,
+                tx1,
+                transform=ax.transAxes,
+                #  fontfamily="monospace",
+                size=8,
+                verticalalignment="bottom",
+                horizontalalignment="right",
+                # bbox=props,
             )
             ax.text(
-            x,
-            y - i*0.1,
-            ' = ' + tx2,
-            transform=ax.transAxes,
-           # fontfamily="monospace",
-            size=8,
-            verticalalignment="bottom",
-            horizontalalignment="left",
-            # bbox=props,
-        )
+                x,
+                y - i * 0.1,
+                " = " + tx2,
+                transform=ax.transAxes,
+                # fontfamily="monospace",
+                size=8,
+                verticalalignment="bottom",
+                horizontalalignment="left",
+                # bbox=props,
+            )
         ax.set_xlabel("V (mV)")
         ax.set_ylabel("I (nA)")
         mpl.show()
@@ -1139,7 +1162,10 @@ class PlotSims:
             self.nspikes = len(self.allspikes)
             for i, trn in enumerate(range(0, self.parent.n_trace_sel)):
                 self.plot_spikes_withinputs(
-                    int(i), n=trn, color=pg.intColor(i, hues=20), first=self.first,
+                    int(i),
+                    n=trn,
+                    color=pg.intColor(i, hues=20),
+                    first=self.first,
                     dt=self.sample_interval,
                 )
 
@@ -1163,7 +1189,6 @@ class PlotSims:
         print("movie state: ", self.parent.movie_state)
 
         if self.parent.movie_state:  # start with the movie button
-
             while self.parent.movie_state:
                 for i in range(0, nrep * self.nspikes, self.parent.n_trace_sel):
                     # self.parent.trace_selector.setValue(int(np.mod(i, self.nspikes)))
@@ -1235,18 +1260,29 @@ class PlotSims:
                         np.mod(trn, self.parent.n_trace_sel),
                         hues=self.parent.n_trace_sel,
                     ),
-                    dt = self.sample_interval,
+                    dt=self.sample_interval,
                 )
 
     def plot_spikes_withinputs(
-        self, ix: int = 0, n: int = 0, color: object = None, first=False, dt:float=1.0,
+        self,
+        ix: int = 0,
+        n: int = 0,
+        color: object = None,
+        first=False,
+        dt: float = 1.0,
     ):
         """
-            plot a spike and indicate its inputs.
-        ix : index into this run (counter): for plotting a block of spikes
-        n : spike to plot within the block
-        color: indexed color.
+        plot a spike and indicate its inputs.
+        
+        Params
+        ------
+            ix : index into this run (counter): for plotting a block of spikes
+            n : spike to plot within the block
+            color: indexed color.
+            first: bool: if first time plotting
+            dt : float - not used
         """
+
         # self.parent.trace_plots.plot(np.arange(10), np.ones(10))
         if self.nspikes > n and n >= 0:
             self.check_yscaling()
@@ -1255,7 +1291,8 @@ class PlotSims:
             if self.parent.V_disp_sel == "dV/dt":
                 if first:
                     self.lines[ix] = self.parent.trace_plots.plot(
-                        self.sample_interval * np.arange(0, len(spk.waveform))[:-1] + spk.start_win,
+                        self.sample_interval * np.arange(0, len(spk.waveform))[:-1]
+                        + spk.start_win,
                         np.diff(spk.waveform / spk.dt),
                         pen=color,
                     )
@@ -1266,7 +1303,8 @@ class PlotSims:
                     #     pen=color,
                     # )
                     self.lines[ix].setData(
-                        self.sample_interval * np.arange(0, len(spk.waveform))[:-1] + spk.start_win,
+                        self.sample_interval * np.arange(0, len(spk.waveform))[:-1]
+                        + spk.start_win,
                         np.diff(spk.waveform / spk.dt),
                         pen=color,
                     )
@@ -1276,7 +1314,10 @@ class PlotSims:
             else:
                 if first:
                     print("plotting first")
-                    tx = self.sample_interval* np.arange(0, len(spk.waveform)) + spk.start_win
+                    tx = (
+                        self.sample_interval * np.arange(0, len(spk.waveform))
+                        + spk.start_win
+                    )
                     # print(np.min(tx), np.max(tx), tx.shape)
                     #                    print(np.min(spk.waveform), np.max(spk.waveform), spk.waveform.shape)
                     self.parent.trace_plots.setEnabled(True)
@@ -1301,7 +1342,10 @@ class PlotSims:
                     u = self.parent.trace_plots.plotItem.plot(
                         np.arange(10), np.ones(10) * ix, pen="b"
                     )
-                    tx = self.sample_interval * np.arange(0, len(spk.waveform)) + spk.start_win
+                    tx = (
+                        self.sample_interval * np.arange(0, len(spk.waveform))
+                        + spk.start_win
+                    )
                     self.lines[ix].curve.setData(
                         x=tx,
                         y=spk.waveform,
@@ -1697,6 +1741,7 @@ class PlotSims:
         width: float = 4.0,
     ) -> Union[None, tuple]:
         """
+
         Compute reverse correlation from data
         This is a wrapper that sets up the call to the routine in
         reverse_correlation.py
@@ -1709,7 +1754,8 @@ class PlotSims:
             The name of the gbc ('VCN_cnn')
         fn : Path or str
             name of the source data file
-        PD :
+        PD : dataclass
+            The dataclass of the Data.
         protocol : str
             name of the acq4 protocol
         revcorrtype: str
@@ -1788,6 +1834,7 @@ class PlotSims:
         """
         3. Prepare storage arrays
         """
+
         nbins = int((max_time - min_time) / RCP.binw)
 
         RCD.CBT = np.arange(RCP.minwin, RCP.maxwin, RCP.binw)  # refcorr time base
@@ -1800,6 +1847,7 @@ class PlotSims:
         """
         4. Do the calculations.
         """
+
         syn_ASA = np.array([syninfo[1][isite][0] for isite in range(RCP.ninputs)])
         if self.parent is not None:
             revcorr_params = {
@@ -2172,15 +2220,22 @@ class PlotSims:
             "I",
         ]:
             P.axdict[axl].sharex(P.axdict["A"])
-        for axl in [
-            "J"
-        ]:
+        for axl in ["J"]:
             P.axdict[axl].sharex(P.axdict["D"])
         return P
 
     @trace_calls.winprint_continuous
-    def print_VS(self, cell_number, d, freq, dmod, dB, experiment, filename:str="",
-                 save_to_clipboard:bool=False):
+    def print_VS(
+        self,
+        cell_number,
+        d,
+        freq,
+        dmod,
+        dB,
+        experiment,
+        filename: str = "",
+        save_to_clipboard: bool = False,
+    ):
         print("Getting data")
         SC, syninfo = self.get_synaptic_info(self.parent.cellID)
         amax = 0
@@ -2191,7 +2246,7 @@ class PlotSims:
             if area > amax:
                 amax = area
             sites[isite] = int(np.around(area * SC.synperum2))
-        
+
         VS_colnames = f"Cell,Filename,Configuration,carrierfreq,frequency,dmod,dB,"
         line = f"{str(cell_number):s},{filename:s},{experiment:s},"
         line += f"{d.carrier_frequency:.1f},{freq:06.1f},{dmod:.1f},{dB:.1f},"
@@ -2212,7 +2267,7 @@ class PlotSims:
 
         VS_colnames += f"AN_VS,AN_rMTF,AN_entrainment,AN_phase,AN_phasesd,SAC_AN,SAC_Bu,SAC_AN_HW,SAC_Bu_HW,maxArea,ninputs"
         line += f"{d.an_vs:.4f},"
-        line += f"{d.an_rMTF/d.n_inputs:.2f}," # normalize across all inputs
+        line += f"{d.an_rMTF/d.n_inputs:.2f},"  # normalize across all inputs
         line += f"{d.an_entrainment:.4f},"
         line += f"{d.an_circ_phaseMean:.4f},"
         line += f"{d.an_circ_phaseSD:.4f},"
@@ -2430,6 +2485,7 @@ class PlotSims:
         Generate tables of vs measures for all cells
         across the frequencies listed
         """
+
         self.textclear()  # just at start
         PD = self.newPData()
         if self.parent.selected_index_rows is None:
@@ -2449,7 +2505,7 @@ class PlotSims:
                 self.firstline = True
             else:
                 self.firstline = False
-            self.plot_AN_response(P, sfi, PD, fn = selected.runProtocol)
+            self.plot_AN_response(P, sfi, PD, fn=selected.runProtocol)
         self.firstline = True
 
     def _ntrials(self, spike_times: Union[list, np.ndarray]):
@@ -2500,9 +2556,9 @@ class PlotSims:
         protocol: str = "",
         sac_flag: bool = True,  # set true to compute SAC as well as standard VS
         sac_engine: str = "cython",
-        filename: str="",
-        make_VS_raw:bool=False,
-        cell_ID:Union[str, int, None] = None,
+        filename: str = "",
+        make_VS_raw: bool = False,
+        cell_ID: Union[str, int, None] = None,
     ):
         if cell_ID is None:
             cell_ID = self.parent.cellID
@@ -2516,7 +2572,7 @@ class PlotSims:
         else:
             gbc = f"VCN_c{int(cell_ID):02d}"
             cellN = cell_ID
-        
+
         plotflag = False
         SC, syninfo = self.get_synaptic_info(cellN)
         fn = update_disk(fn, self.datapaths)
@@ -2525,7 +2581,7 @@ class PlotSims:
         data = model_data.data
         ntr = len(AR.MC.traces)  # number of trials
         nreps = ntr
-        n_inputs = len(data['Results'][0]['inputSpikeTimes'])
+        n_inputs = len(data["Results"][0]["inputSpikeTimes"])
         show_vtrial = 0  # which trial to show for votage
         v0 = -160.0
         trstep = 25.0 / ntr
@@ -2582,7 +2638,9 @@ class PlotSims:
 
         for i_trial in range(ntr):  # for all trials in the measure.
             if i_trial == show_vtrial:
-                v_show_trial = AR.MC.traces[i_trial] * 1e3  # save for display, and convert to mV
+                v_show_trial = (
+                    AR.MC.traces[i_trial] * 1e3
+                )  # save for display, and convert to mV
             time_base = AR.MC.time_base / 1000.0  # convert to seconds
             dt = si.dtIC / 1000.0  # convert from msec to seconds
             trd = data["Results"][i_trial]
@@ -2609,7 +2667,7 @@ class PlotSims:
                 return
             all_bu_st.extend(sptimes)
             all_bu_st_trials.append(sptimes)
-        
+
             n_inputs = len(trd["inputSpikeTimes"])
             if i_trial == 0:
                 an_st_by_input = [[] for x in range(n_inputs)]
@@ -2638,26 +2696,25 @@ class PlotSims:
         # prepare spike arrays
         x = np.array(all_bu_st)
         v = np.where((phasewin[0] <= x) & (x < phasewin[1]))[0]
-        #window_duration = phasewin[1]-phasewin[0]
+        # window_duration = phasewin[1]-phasewin[0]
         bu_spikesinwin = x[v]
 
         x = np.array(all_an_st)
         v = np.where((phasewin[0] <= x) & (x < phasewin[1]))[0]
         an_spikesinwin = x[v]
-        cprint('r', len(all_bu_st_trials))
-        
+        cprint("r", len(all_bu_st_trials))
+
         if soundtype in [
             "SAM",
             "stationaryNoise",
             "regularClicks",
             "poissonClicks",
         ]:  # also calculate vs and plot histogram
-
             print(soundtype, fmod)
 
-            # break into 10 groups of 10 trials (if 100 total) and 
+            # break into 10 groups of 10 trials (if 100 total) and
             # compute vs for each group, then get mean and sd to report
-            n_vs_groups = int(len(all_bu_st_trials)/10)
+            n_vs_groups = int(len(all_bu_st_trials) / 10)
             cprint("c", f"n vs groups:  {n_vs_groups:d}")
             cprint("c", f"len bust trials: {len(all_bu_st_trials):d}")
             vs_n = np.zeros(n_vs_groups)
@@ -2665,30 +2722,41 @@ class PlotSims:
             bu_vs_data = []
             for i in range(n_vs_groups):  # divide trials into trial groups (of 10)
                 bu_vs_data = []
-                for j in range(i*n_vs_groups, (i+1)*n_vs_groups):  # within each 
-                    v = np.where((phasewin[0] <= all_bu_st_trials[j]) & (all_bu_st_trials[j] < phasewin[1]))[0]
+                for j in range(i * n_vs_groups, (i + 1) * n_vs_groups):  # within each
+                    v = np.where(
+                        (phasewin[0] <= all_bu_st_trials[j])
+                        & (all_bu_st_trials[j] < phasewin[1])
+                    )[0]
                     bu_vs_data.extend(all_bu_st_trials[j][v])
                 vs_calc = self.VS.vector_strength(
-                            bu_vs_data, fmod, time_window=phasewin,
-                            nreps=nreps
-                        )  # vs expects spikes in msec
+                    bu_vs_data, fmod, time_window=phasewin, nreps=nreps
+                )  # vs expects spikes in msec
                 vs_n[i] = vs_calc.vs
                 vs_nspikes[i] = int(vs_calc.n_spikes)
 
                 if make_VS_raw:
                     VS_file_raw = Path(f"VS_raw_SAM_{cellN:02d}_{int(dB):02d}")
-                    if not VS_file_raw.is_file():  # if file does not exist, write header
+                    if (
+                        not VS_file_raw.is_file()
+                    ):  # if file does not exist, write header
                         with open(VS_file_raw, "w") as fh:
                             fh.write(f"celln,experiment,trial,fmod,VS,nspikes\n")
                     with open(VS_file_raw, "a") as fh:  # add the data to this file
-                        fh.write(f"{cellN:02d},{ri.Spirou:s},{i:d},{int(fmod):d},{vs_calc.vs:.5f},{vs_calc.n_spikes:d}\n")
+                        fh.write(
+                            f"{cellN:02d},{ri.Spirou:s},{i:d},{int(fmod):d},{vs_calc.vs:.5f},{vs_calc.n_spikes:d}\n"
+                        )
 
-            print('vs_nspikes: ', vs_nspikes)
+            print("vs_nspikes: ", vs_nspikes)
             print("vs by group: ", vs_n)
-            cprint("c", f"mean VS: {np.mean(vs_n):8.4f}  SD={np.std(vs_n):8.4f}, total spikes: {int(np.sum(vs_nspikes)):d}")
+            cprint(
+                "c",
+                f"mean VS: {np.mean(vs_n):8.4f}  SD={np.std(vs_n):8.4f}, total spikes: {int(np.sum(vs_nspikes)):d}",
+            )
 
             vs = self.VS.vector_strength(
-                bu_spikesinwin, fmod, time_window=phasewin,
+                bu_spikesinwin,
+                fmod,
+                time_window=phasewin,
                 nreps=nreps,
             )  # vs expects spikes in msec
             cprint("c", f"Grand mean VS: {vs.vs:8.4f}  N={vs.n_spikes:6d}")
@@ -2720,8 +2788,10 @@ class PlotSims:
                     engine=sac_engine,
                     dither=1e-3 * si.dtIC / 2.0,
                 )
-                print("fmod, 10/ri.fmod: ", ri.fmod, 10.0/ri.fmod)
-                vs.sac_bu_CI, peaks, HW, FW = S.SAC_measures(bu_sac, bu_sacbins, twin=spars.twin)
+                print("fmod, 10/ri.fmod: ", ri.fmod, 10.0 / ri.fmod)
+                vs.sac_bu_CI, peaks, HW, FW = S.SAC_measures(
+                    bu_sac, bu_sacbins, twin=spars.twin
+                )
                 if HW is not None:
                     vs.sac_bu_hw = HW[0][0] * spars.binw
                     left_ips = HW[2][0]
@@ -2755,7 +2825,8 @@ class PlotSims:
             vs_an = self.VS.vector_strength(
                 an_spikesinwin,
                 fmod,
-                time_window=phasewin, nreps=nreps,
+                time_window=phasewin,
+                nreps=nreps,
             )
             vs_an.n_inputs = n_inputs
             if sac_flag:
@@ -2822,7 +2893,6 @@ class PlotSims:
                 )
             )
             if sac_flag:
-   
                 print(
                     f"BU SAC: CI = {vs.sac_bu_CI:7.3f}, min = {np.min(bu_sac):7.3f}, hw = {1e3*vs.sac_bu_hw:7.3f} ms"
                 )
@@ -2836,23 +2906,30 @@ class PlotSims:
             vs.an_circ_phaseSD = vs_an.circ_phaseSD
             vs.an_circ_timeSD = vs_an.circ_timeSD
 
-            colnames, line = self.print_VS(cell_ID, vs, fmod, dmod, dB, ri.Spirou, filename=str(filename))
+            colnames, line = self.print_VS(
+                cell_ID, vs, fmod, dmod, dB, ri.Spirou, filename=str(filename)
+            )
 
-#########################
+        #########################
 
         if not plotflag or P is None:
             return colnames, line
-        
+
         # Otherwise, lets do some plotting:
-            # plot the raster of spikes
-        PF.plot_spike_raster(P, mode='postsynaptic', spike_times=all_bu_st_trials,
-            data_window=data_window, panel=bu_raster_panel)
-        PF.plot_stacked_spiketrain_rasters( 
+        # plot the raster of spikes
+        PF.plot_spike_raster(
+            P,
+            mode="postsynaptic",
+            spike_times=all_bu_st_trials,
+            data_window=data_window,
+            panel=bu_raster_panel,
+        )
+        PF.plot_stacked_spiketrain_rasters(
             spike_times_by_input=an_st_by_input,
             ax=P.axdict[an_raster_panel],
-            si = si,
-            syninfo = syninfo,
-            plot_win = data_window,
+            si=si,
+            syninfo=syninfo,
+            plot_win=data_window,
             max_trials=5,
         )
         # PF.plot_spike_raster(P, mode='presynaptic', n_inputs=1, spike_times=trd["inputSpikeTimes"],
@@ -2870,10 +2947,12 @@ class PlotSims:
         )
         # get the spike indices for the trial that will be shown at the top
         spikeindex = [
-            int(t / dt) for t in all_bu_st_trials[show_vtrial] if not np.isnan(t) and t >= data_window[0] and t < data_window[1]
+            int(t / dt)
+            for t in all_bu_st_trials[show_vtrial]
+            if not np.isnan(t) and t >= data_window[0] and t < data_window[1]
         ]
         P.axdict[bu_voltage_panel].plot(
-            np.array(time_base[spikeindex]-data_window[0]),
+            np.array(time_base[spikeindex] - data_window[0]),
             v_show_trial[spikeindex],
             "ro",
             markersize=1.5,
@@ -2886,20 +2965,19 @@ class PlotSims:
             np.array(waveform[i_trial][idxs[0] : idxs[1]]) + i_trial * dw,
             "-",
             linewidth=0.5,
-        ) 
+        )
 
-        if (
-            soundtype
-            in [
-                "tonepip",
-                "SAM",
-                "noise",
-                "stationaryNoise",
-                "regularClicks",
-                "poissonClicks",
-            ] ):  # use panel F for FSL/SSL distributions
+        if soundtype in [
+            "tonepip",
+            "SAM",
+            "noise",
+            "stationaryNoise",
+            "regularClicks",
+            "poissonClicks",
+        ]:  # use panel F for FSL/SSL distributions
             # the histograms of the data
             import vcnmodel.util.make_sound_waveforms as msw
+
             MSW = msw.Make_Sound_Waveform()
 
             psth_binw = 0.2e-3
@@ -2911,7 +2989,7 @@ class PlotSims:
                 max_time=data_window[1],
                 bin_width=psth_binw,
                 ax=P.axdict[bu_psth_panel],
-                stimbar = {'sound_params': None, 'waveform': [stb, waveform[0]]}
+                stimbar={"sound_params": None, "waveform": [stb, waveform[0]]},
             )
             PF.plot_isi(
                 all_bu_st_trials,
@@ -2921,9 +2999,9 @@ class PlotSims:
                 bin_width=isi_binw,
                 ax=P.axdict[bu_isi_panel],
             )
-            P.axdict[bu_isi_panel].set_xlim(0, 5./ri.fmod)
+            P.axdict[bu_isi_panel].set_xlim(0, 5.0 / ri.fmod)
             PF.plot_psth(
-                #all_an_st_grand,
+                # all_an_st_grand,
                 an_st_by_input[0],
                 run_info=ri,
                 zero_time=data_window[0],
@@ -2932,7 +3010,7 @@ class PlotSims:
                 ax=P.axdict[an_psth_panel],
             )
             PF.plot_isi(
-                #all_an_st_grand,
+                # all_an_st_grand,
                 an_st_by_input[0],
                 run_info=ri,
                 zero_time=data_window[0],
@@ -2940,12 +3018,12 @@ class PlotSims:
                 bin_width=psth_binw,
                 ax=P.axdict[an_isi_panel],
             )
-            P.axdict[an_isi_panel].set_xlim(0, 5./ri.fmod)
+            P.axdict[an_isi_panel].set_xlim(0, 5.0 / ri.fmod)
             # just print the AN rates
             print("an st by input: ", len(an_st_by_input))
             PF.print_AN_rates(
                 an_st_by_input,
-                run_info = ri,
+                run_info=ri,
             )
 
             PF.plot_fsl_ssl(
@@ -2977,9 +3055,7 @@ class PlotSims:
             tstring = f"{gbc:s} {str(sim_dir):s}\nSAM Tone: F0={F0:.3f} at {dB:3.1f} dbSPL, fMod={fmod:3.1f}  dMod={dmod:5.2f}, cell CF={F0:.3f}"
             # print('si: ', si)
             tstring += f"\nExpt: {ri.Spirou:s}  DendMode: {si.dendriteMode:s} DendExpt: {si.dendriteExpt:s}"
-            tstring += (
-                f" Depr: {si.ANSynapticDepression:d} ANInput: {si.SRType:s}"
-            )
+            tstring += f" Depr: {si.ANSynapticDepression:d} ANInput: {si.SRType:s}"
             P.figure_handle.suptitle(tstring, fontsize=8)
 
             # set bin width based on sampling rate.
@@ -3027,13 +3103,9 @@ class PlotSims:
                             "r-",
                         )
 
-                P.axdict[sac_panel].plot(
-                    bu_sacbins[:-1], bu_sac, "b-", label="BU"
-                )
+                P.axdict[sac_panel].plot(bu_sacbins[:-1], bu_sac, "b-", label="BU")
                 if soundtype in ["SAM"]:
-                    P.axdict[sac_panel].set_xlim(
-                        (-2.0 / ri.fmod, 2.0 / ri.fmod)
-                    )
+                    P.axdict[sac_panel].set_xlim((-2.0 / ri.fmod, 2.0 / ri.fmod))
                 elif soundtype.endswith("Clicks"):
                     P.axdict[sac_panel].set_xlim(
                         (-spars.displayDuration, spars.displayDuration)
