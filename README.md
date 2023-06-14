@@ -7,7 +7,8 @@ and afferent terminals were reconstructed from serial blockface electron microsc
 The simulations include accounting for the size (number of release sites) of multiple convergent endbulbs onto the bushy cells.
 Simulation modes include voltage-clamp evaluation of currents (used to set current densities in the model), current-clamp evaluation of firing patterns to current steps, responses to acoustic stimuli with different patterns of input (all inputs active; only one input active, all but the largest one or two inputs active) in response to tone pips and sinusoidal amplitude-modulated tones. In some simulations, parts of the cell were removed (e.g., all dendrites, unninvevated dendrites, etc). In some simulations, the consequences of variations of the dendritic ion channel densities were explored.
 
-Used in Spirou et al. (bioRxiv doi: https://doi.org/10.1101/2022.09.10.5070002022; in review).
+Used in Spirou et al. (eLife Elife. 2023 Jun 8;12:e83393. doi: 10.7554/eLife.83393) PMID: 37288824. 
+(bioRxiv doi: https://doi.org/10.1101/2022.09.10.507000).
 
 Installation
 ------------
