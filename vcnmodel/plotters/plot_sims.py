@@ -127,7 +127,7 @@ from vcnmodel.plotters import (
 
 TRC = trace_calls.TraceCalls
 cprint = CP.cprint
-UR = pint.UnitRegistry
+UR = pint.UnitRegistry()
 
 
 @dataclass
@@ -238,7 +238,7 @@ class PlotSims:
             gradeA=GRPDEF.gradeACells,
             basepath=self.config["baseDataDirectory"],
             renderpath=str(Path(self.config["codeDirectory"], "Renderings")),
-            revcorrpath=self.config["RevCorrDataDirectory"],
+            revcorrpath=self.config["revcorrDataDirectory"],
         )
 
     def textclear(self):
@@ -1078,7 +1078,7 @@ class PlotSims:
         )
         # Align the parameters on the = sign by making 2 texts right and left justified
         textstr1 = (
-            r"$\mathrm{g_{max}}$" + f" = {boltz_result.params['gmax'].value:.1f} nS"
+            r"$\mathrm{g_{max}}$" + f" = {1e9*boltz_result.params['gmax'].value:.1f} nS"
         )
         textstr2 = (
             r"$\mathrm{V_{0.5}}$"
