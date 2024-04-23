@@ -57,7 +57,7 @@ pyqtgraph==0.13.2
 openpyxl
 
 resampy==0.2.1
-scipy==1.10.0
+scipy==1.12.0
 scikit-learn==1.1.1
 seaborn>=0.11.0
 Shapely==1.8.2
