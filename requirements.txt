@@ -3,7 +3,7 @@
 # P. Manis
 
 # development utilities
-black==23.1.0
+black==24.3.0
 flake8
 bokeh==2.3.3
 Pint==0.14
