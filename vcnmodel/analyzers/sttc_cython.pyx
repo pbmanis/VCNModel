@@ -6,18 +6,18 @@ cimport cython
 np.import_array()
 
 #from libc.stdio cimport printf
-ctypedef np.int_t INT_t
-ctypedef np.double_t DOUBLE_t
+ctypedef np.int64_t DTYPE_INT
+ctypedef np.double_t DTYPE_DOUBLE
 
 #@cython.boundscheck(False)
 #@cython.wraparound(False)
 def sttc_cython(
-        np.ndarray[DOUBLE_t, ndim=1] time,
-        np.ndarray[DOUBLE_t, ndim=1] spike_times, # data array (input)
+        np.ndarray[DTYPE_DOUBLE, ndim=1] time,
+        np.ndarray[DTYPE_DOUBLE, ndim=1] spike_times, # data array (input)
         double rate, # sample rate single float input
         long int itile,
         double ta,
-        np.ndarray[INT_t, ndim=1] tiles, # result tiles (output, must preallocate)
+        np.ndarray[DTYPE_INT, ndim=1] tiles, # result tiles (output, must preallocate)
         ):
         cdef long int npts
         cdef long int ix0, ix1
