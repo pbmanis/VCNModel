@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+__version__ = "0.11.0"
 AUDIT_TESTS=False
 # import adjust_areas
 # import DataTablesVCN
