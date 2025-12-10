@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.abspath('../vcnmodel'))
 # -- Project information -----------------------------------------------------
 
 project = 'vcnmodel'
-copyright = '2021-2022, Paul B. Manis'
+copyright = '2021-2025, Paul B. Manis'
 author = 'Paul B. Manis'
 
 # The full version, including alpha/beta/rc tags
