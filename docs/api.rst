@@ -1,6 +1,8 @@
 API
 ===
 
-.. .. autosummary::
-..   :toctree: generated
+..  autosummary::
+    :toctree: generated
+
+    VCNModel
 

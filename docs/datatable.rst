@@ -75,22 +75,25 @@ actions are provided:
         Sets the end date for the data that will be displayed. If *None* is selected, the there is no end date, and
         the most recent simulation will be included in the table.
 
-    `ModelType`
-        Selects the *modelName* for models to be included in the Simulation Table. These are usually differing decoration
-        patterns for ion channels.
+    The following selections are implemented in the program, but have been removed from the list here as They
+    are not necessary, given the `Filtering` group:
 
-    `Mode`
-        Not sure what this does; I never use it.
+        `ModelType`
+            Selects the *modelName* for models to be included in the Simulation Table. These are usually differing decoration
+            patterns for ion channels.
 
-    `Experiment`
-        Selects the *Experiment* type that will be displayed. Experiments correspond to manipulations of either the 
-        pattern of inputs, or changes to the patterns of the inputs (e.g., using inputs that are all the same
-        strength is selected by choosing `mean`).
+        `Mode`
+            Not sure what this does anymore; I never use it.
 
-    `Analysis`
-    
-    `Dendrites`
-        Displays only simulations with a specific type of dendrite decoration.
+        `Experiment`
+            Selects the *Experiment* type that will be displayed. Experiments correspond to manipulations of either the 
+            pattern of inputs, or changes to the patterns of the inputs (e.g., using inputs that are all the same
+            strength is selected by choosing `mean`).
+
+        `Analysis`
+        
+        `Dendrites`
+            Displays only simulations with a specific type of dendrite decoration.
 
 Analysis
 ^^^^^^^^
@@ -119,6 +122,10 @@ The `Analysis` group performs specific analyses on the data that is selected in 
         spikes, a PSTH bar plot, the stimulus waveform, a phase histogram, the ANF spike trains for each input (one trial),
         the ANF PSTH, and finally, a first/second spike latency histogram.
 
+Parameters
+^^^^^^^^^^
+These relate to some exploratory analysis of the cross-correlation data. They are generally not used.
+
 Filters
 ^^^^^^^
 
@@ -129,8 +136,21 @@ line is clicked. Filters are removed by clicking the `Clear` button.
 Options
 ^^^^^^^
 
+The `Options` group controls some options in the `Traces` viewer. This is not maintained and may not work.
+
 Figures
 ^^^^^^^
+
+This group has a long drop-down list. The top part of the list selectes generation of Figure 4, 5, 6, and the lower part of Figure 8, along with
+most of the associated supplemental figures associated with these figures (the exception is Figure 6-Supplemental Figure 1, which
+is generated in Prism 9). 
+
+The `Analysis` part of this list runs some specific analyses of the SAM tone data and leaves the output files in the top directory. 
+
+The `Misc` part of this list generates various plots, some of which relate to the final paper, or are just additional representations of 
+the simulation data. 
+
+To run and generate a figure or analysis, click the `Create Figure/Analyze Data` button.
 
 Tools
 ^^^^^
@@ -144,15 +164,19 @@ These are various tools that no other home.
         basically a text output from the .pkl file that is generated from the directory that holds the simulation.
 
     `Print File Info`
-        This prints, to the "Reporting" pane, a short text that represents the python dict that points to this file (for
-        use in the figure_data program).
+        This prints, to the "Reporting" pane, a short text that represents the python dict that points to this file (this text 
+        is copied and used in the figure_data script).
 
     `Delete Selected Sim`
         Sometimes you just don't need to keep a simulation - the data was corrupted, or the run is not useful, or it is a 
         duplication. This button lets you actually remove the simulation data and folder from the disk. Use with care.
 
+Quit
+^^^^
+Close the program window, and exit back to the interpreter.
 
-7 December 2021 pbm
+
+7 December 2021, 20 May 2023. pbm
 
 
 

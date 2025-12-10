@@ -2,7 +2,7 @@ Analysis modules
 ================
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 3
 
 
 vcnmodel.DataTablesVCN module
