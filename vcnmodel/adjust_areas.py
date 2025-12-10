@@ -186,7 +186,7 @@ class AdjustAreas:
     in that section. Because NEURON then readjustes the area
     calculation the final inflation factor (a single, positive real number)
     may differ slightly for each section. The
-    differendes are most prominent for very small diameter sections, but
+    differences are most prominent for very small diameter sections, but
     also appears for larger sections. Therefore, the procedure does the
     adjustment iteratively until the total area of the named structure(s)
     is inflated by the desired factor,
