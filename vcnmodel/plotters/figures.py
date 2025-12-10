@@ -2445,6 +2445,7 @@ class Figures(object):
             return None
 
     def Figure6_Main(self, parent_figure=None):
+
         example_cell_number = 17
         lh = 0.5
         hsp = 0.7
@@ -2605,7 +2606,6 @@ class Figures(object):
         VSP.plot_VS_summary(30, axin=P.axdict["O2"], legendflag=False, inset_type=inset_type, keep_inset=False)
         VSP.plot_VS_summary(9, axin=P.axdict["O3"], legendflag=False, inset_type=inset_type, keep_inset=False)
         VSP.plot_VS_summary(17, axin=P.axdict["O4"], legendflag=False, inset_type=inset_type, keep_inset=False)
-
 
         fig = FigInfo()
         if parent_figure is not None:
@@ -3761,8 +3761,8 @@ class Figures(object):
              sac_flag=False, testmode=False,
                 dBSPL:int=0, make_VS_raw:bool=True,
              ):
-        print(f"Cell: {str(cell_number):s}  Filename: {filename:s}")
-        i_cell_number = int(cell_number[0])
+        print(f"Cell: {str(cell_number):s}  Filename: {filename:s}, cellnumber: {str(cell_number):s}")
+        i_cell_number = int(cell_number)
         cellpath = Path(
             self.config["cellDataDirectory"],
             f"VCN_c{i_cell_number:02d}",
@@ -3923,7 +3923,7 @@ class Figures(object):
                     #    VS_file_raw = f"VS_raw_SAM_{dB:02d}_{celln:02d}.txt"
                         tresults[j] = self.analyze_VS_data_single(filename, celln, fout, PD=PD,
                                                                linesout=linesout,
-                            firstline=fl, sac_flag=True, testmode=testmode, dBSPL=dB, make_VS_raw=True,
+                            firstline=fl, sac_flag=True, testmode=testmode, dBSPL=dB, make_VS_raw=False,
                             )
                         tasker.results[j] = tresults[j]
             self.parent.PLT.in_Parallel = False
@@ -3945,7 +3945,7 @@ class Figures(object):
                 filename = t[1]
                 tresults = self.analyze_VS_data_single(filename, cell_number = celln, fout=fout, PD=PD,
                                                        linesout=linesout,
-                    firstline=fl, sac_flag=True, testmode=testmode, dBSPL=dB, make_VS_raw=True,
+                    firstline=fl, sac_flag=True, testmode=testmode, dBSPL=dB, make_VS_raw=False,
                     )
                 if j > 0:
                     fl = False

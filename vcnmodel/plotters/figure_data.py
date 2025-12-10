@@ -25,9 +25,9 @@ Copyright 2017-2022 Paul B. Manis
 Distributed under MIT/X11 license. See license.txt for more infomation. 
 """
 
-import VS_datasets_15dB
-import VS_datasets_15dB_BC09_NoUninnervated
-import VS_datasets_30dB
+import vcnmodel.VS_datasets.VS_datasets_15dB as VS_datasets_15dB
+import vcnmodel.VS_datasets.VS_datasets_15dB_BC09_NoUninnervated as VS_datasets_15dB_BC09_NoUninnervated
+import vcnmodel.VS_datasets.VS_datasets_30dB as VS_datasets_30dB
 
 BC_name = "GBC"  # or "BC" in the original version
 

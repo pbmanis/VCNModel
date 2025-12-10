@@ -38,9 +38,9 @@ from matplotlib.lines import Line2D
 from pylibrary.plotting import plothelpers as PH
 from pylibrary.plotting import styler as STY
 
-import VS_data_15dB as VS_data_15dB
-import VS_data_15dB_BC09 as VS_data_15dB_BC09
-import VS_data_30dB as VS_data_30dB
+import vcnmodel.VS_datasets.VS_data_15dB as VS_data_15dB
+import vcnmodel.VS_datasets.VS_data_15dB_BC09 as VS_data_15dB_BC09
+import vcnmodel.VS_datasets.VS_data_30dB as VS_data_30dB
 from vcnmodel.util.get_data_paths import get_data_paths
 from vcnmodel.plotters import \
     figure_data as FD  # table of simulation runs used for plotting figures
@@ -1380,16 +1380,16 @@ class VS_Plots:
 
 if __name__ == "__main__":
 
-    # V1 = VS_Plots(dBSPL=15)
+    V1 = VS_Plots(dBSPL=15)
     # V1.plot_VS_Data()
-    # V1.plot_VS_summary(17)
-    # exit()
+    V1.plot_VS_summary(2)
+    exit()
 
     # V = VS_Plots(dBSPL=15)
     # fig, P = V.make_figure()
 
-    V1 = VS_Plots(sels=[9], dBSPL=15, dends="9I9U")
-    V1.Figure8_M()
+    # V1 = VS_Plots(sels=[9], dBSPL=15, dends="9I9U")
+    # V1.Figure8_M()
 
 
     # db = 15
