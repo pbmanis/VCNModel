@@ -7,7 +7,7 @@ name = "vcnmodel"
 version = "0.11.0"  # version for python3.13 and pyproject.
 description = "A modeling framework for the Ventral Cochlear Nucleus (VCN) in NEURON."
 readme = "README.md"
-requires-python = ">=3.13.7"
+requires-python = "==3.13.7"
 license = {text = "MIT"}
 authors = [{name = "Paul B. Manis", email = "hidden@hidden.hd"}]
 
@@ -83,7 +83,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-cnmodel = {path = "/Users/pbmanis/Desktop/Python/cnmodel/dist/cnmodel-0.58.21-py3-none-any.whl"}
+cnmodel = {path = "/Users/pbmanis/Desktop/Python/cnmodel", editable=true} # dist/cnmodel-0.58.22-py3-none-any.whl"}
 ephys = {path = "/Users/pbmanis/Desktop/Python/ephys", editable = true}
 # montage = {path = "/Users/pbmanis/Desktop/Python/montage", editable = false}
 # neuronvis = {path = "/Users/pbmanis/Desktop/Python/neuronvis", editable = false}
