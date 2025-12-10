@@ -24,7 +24,7 @@ from typing import Union
 import numpy as np
 import vcnmodel.model_params
 import vcnmodel.util.fixpicklemodule as FPM
-from ephys.ephysanalysis import MakeClamps
+import ephys.ephys_analysis.make_clamps as make_clamps
 from pylibrary.tools import cprint as CP
 from vcnmodel.analyzers import analyze_data
 from vcnmodel.analyzers.reverse_correlation import RevCorrData, RevCorrPars
@@ -71,7 +71,7 @@ class ReadModel:
     """
 
     def __init__(self, parent=None, my_parent=None):
-        self.MC = MakeClamps.MakeClamps()
+        self.MC = make_clamps.MakeClamps()
         self.parent = parent
         self.my_parent = None
         self.firstline = False

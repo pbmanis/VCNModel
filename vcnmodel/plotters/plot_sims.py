@@ -106,7 +106,7 @@ import vcnmodel.util.readmodel as readmodel
 from vcnmodel.util.get_data_paths import get_data_paths, update_disk
 from vcnmodel.util import trace_calls
 from vcnmodel.util import fixpicklemodule as FPM
-from ephys.ephysanalysis import RmTauAnalysis, SpikeAnalysis
+# from ephys.ephys_analysis import rm_tau_analysis, spike_analysis
 from lmfit import Model  # type: ignore
 from matplotlib import pyplot as mpl  # type: ignore
 from matplotlib import rc  # type: ignore

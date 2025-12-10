@@ -22,9 +22,9 @@ import pickle
 import matplotlib.pyplot as mpl
 import pylibrary.plotting.plothelpers as PH
 import vcnmodel.model_run as mrun
-from ephys.ephysanalysis import MakeClamps
-from ephys.ephysanalysis import RmTauAnalysis
-from ephys.ephysanalysis import SpikeAnalysis
+from ephys.ephys_analysis import MakeClamps
+from ephys.ephys_analysis import RmTauAnalysis
+from ephys.ephys_analysis import SpikeAnalysis
 
 AR = MakeClamps.MakeClamps()
 SP = SpikeAnalysis.SpikeAnalysis()

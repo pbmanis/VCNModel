@@ -150,9 +150,9 @@ all_modules = [
     vcnmodel.util.trace_calls,
     vcnmodel.util.basic_units,
     vcnmodel.util.get_data_paths,
-    ephys.ephysanalysis.SpikeAnalysis,
-    ephys.tools.Utility,
-    ephys.ephysanalysis.MakeClamps,
+    ephys.ephys_analysis.spike_analysis,
+    # ephys.tools.util,
+    ephys.ephys_analysis.make_clamps,
     PH,
 ]
 

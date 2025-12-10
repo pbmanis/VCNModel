@@ -17,12 +17,11 @@ Distributed under MIT/X11 license. See license.txt for more infomation.
 """
 from pathlib import Path
 from typing import Union
-from ephys.ephysanalysis import RmTauAnalysis, SpikeAnalysis
+from ephys.ephys_analysis import rm_tau_analysis, spike_analysis
 import vcnmodel.util.readmodel as readmodel
 
-SP = SpikeAnalysis.SpikeAnalysis()
-RM = RmTauAnalysis.RmTauAnalysis()
-
+SP = spike_analysis.SpikeAnalysis()
+RM = rm_tau_analysis.RmTauAnalysis()
 
 def analyze_data(
     ivdatafile: Union[Path, str],
