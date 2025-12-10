@@ -1,0 +1,104 @@
+[build-system]
+requires = ["setuptools>=70", "setuptools-scm", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vcnmodel"
+version = "0.11.0"  # version for python3.13 and pyproject.
+description = "A modeling framework for the Ventral Cochlear Nucleus (VCN) in NEURON."
+readme = "README.md"
+requires-python = ">=3.13.7"
+license = {text = "MIT"}
+authors = [{name = "Paul B. Manis", email = "hidden@hidden.hd"}]
+
+
+
+dependencies = [
+    "cnmodel",
+    "ephys",
+    "pylibrary",
+    "matplotlib>=3.10.0",
+    "alphashape>=1.3.1",
+    "cython>=3.0.12",
+    "dill>=0.4.0",
+    "elephant>=0.10.0",
+    "lmfit>=1.0.3",
+    "matplotlib-scalebar>=0.8.1",
+    "mplcursors>=0.5.3",
+    "neo>=0.9.0",
+    "neuron>=9.0",
+    "nose==1.3.7",
+    "numba",  # ==0.51.  # 0.43.1
+    "numpy>=2.2.6",
+    "pandas>=2.0",
+    "pyparsing>=2.4.0",
+    "quantities>=0.12.1",
+    "resampy>=0.2.1",
+    "scipy>=1.15.3",
+    "pynwb>=2.0.0",
+    "pyqt6",
+    "pyqt6-sip",
+    "pyqt6-webengine",
+    "pyqtgraph>=0.13.1",
+    "PyOpenGL>=3.1.5",
+    "PyOpenGL-accelerate>=3.1.5",
+    "openpyxl",
+    "scikit_learn>=1.6.1",
+    "seaborn>=0.13.2",
+    "Shapely>=2.0.4",
+    "six>=1.12.0",
+    "tifffile",
+    "traits>=6.1.1",
+    "traitsui>=7.0.0",
+    "xlrd>=1.0.0",
+    "imreg_dft>=2.0",
+    # # required in neuronvis
+    # "vtk>=9.0.1",
+    # "vispy>=0.8.1",
+    # "xlrd>=1.0.0",
+    # "descartes",
+    #"pylibrary @ git+https://github.com/pbmanis/pylibrary.git@main",
+    "pypdf2>=3.0.1",
+    "pyrsistent>=0.20.0",
+    "plotnine>=0.15.1",
+]
+
+[project.scripts]
+model_run='vcnmodel.model_run2:main'
+allgbcivs='vcnmodel.all_gbc_iv:main'
+show_swc='vcnmodel.util.show_swc:main'
+render='vcnmodel.util.render:main'
+plot_sims='vcnmodel.plotters.plot_sims:main'
+vcndatatable='vcnmodel.DataTablesVCN:main'
+hocswcmap = 'vcnmodel.util.hoc_swc_sectionmap:main'
+
+[dependency-groups]
+dev = [
+    "black>=24.10.0",
+    "flake8>=7.0.0",
+    "mypy==1.13.0",
+    "ruff>=0.12.2",
+    "typer>=0.4.0",
+    "isort>=5.13.2"
+]
+
+[tool.uv.sources]
+cnmodel = {path = "/Users/pbmanis/Desktop/Python/cnmodel/dist/cnmodel-0.58.21-py3-none-any.whl"}
+ephys = {path = "/Users/pbmanis/Desktop/Python/ephys", editable = true}
+# montage = {path = "/Users/pbmanis/Desktop/Python/montage", editable = false}
+# neuronvis = {path = "/Users/pbmanis/Desktop/Python/neuronvis", editable = false}
+
+# [tool.pdm]
+# distribution = false
+
+# [tool.setuptools]
+# packages = ['vcnmodel']
+
+[tool.setuptools.packages.find]
+include = ['vcnmodel*']
+exclude = ['tests*', 'docs*', 'nb*', 'R*', 'scripts*', 'styles*', 'toml*', 'build*', 'dist*' ]
+
+[tool.setuptools_scm] # This section enables setuptools_scm
+# You can add configuration here if needed, e.g.,
+# write_to = "your_package/_version.py"
+
