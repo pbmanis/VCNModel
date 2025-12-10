@@ -20,11 +20,11 @@ Distributed under MIT/X11 license. See license.txt for more infomation.
 import neo
 import numpy as np
 import matplotlib.pyplot as mpl
-import elephant.spike_train_generation as ESTG
+# import elephant.spike_train_generation as ESTG
 import quantities as pq
-from elephant import conversion as EC
-from elephant import spike_train_correlation as ESTC
-import elephant.spike_train_generation as ESTG
+# from elephant import conversion as EC
+# from elephant import spike_train_correlation as ESTC
+# import elephant.spike_train_generation as ESTG
 
 from vcnmodel.analyzers import reverse_correlation as CC  # our local version
 from vcnmodel.util.user_tester import UserTester
@@ -82,9 +82,9 @@ def compute_cc_data(spikes="coherent", package="local"):
         raise NotImplementedError(
             f"The spike train format for testing cc is not known: '{str(spikes):s}'"
         )
-    if package not in ["local", "elephant", "local_sttc", "elephant_sttc"]:
+    if package not in ["local", "local_sttc"]: # ["local", "elephant", "local_sttc", "elephant_sttc"]:
         raise NotImplementedError(
-            f"The package must be 'local' or 'elephant', but got: {str(package):s}"
+            f"The package must be 'local' but got: {str(package):s}"
         )
     np.random.seed(92311)  # force constant starting state
     # TODO: THis should use rng = numpy.random.default_rng(92311), but
@@ -142,30 +142,30 @@ def compute_cc_data(spikes="coherent", package="local"):
             st1.times, st2.times, binwidth=bin_width, corrwindow=[-width, width],
         )
         cc_times = np.linspace(-width, width, len(cc_result), endpoint=False)
-    elif package == "elephant":
-        nbins = int(width / bin_width)
-        cc_result, lags = ESTC.cross_correlation_histogram(
-            bst_i,
-            bst_j,
-            window=(-nbins, nbins),
-            border_correction=False,
-            binary=False,
-            kernel=None,
-            method="speed",
-            cross_correlation_coefficient=True,
-        )
-        cc_times = np.linspace(-width, width, len(cc_result), endpoint=False)
-    elif package == "elephant_sttc":
-        nbins = int(width / bin_width)
-        sttc_wins = np.arange(0.000, 0.020, 0.001)
-        cc_result = np.zeros_like(sttc_wins)
-        for i, sttc_win in enumerate(sttc_wins):  # run over a range of windows
-            cc_result[i] = ESTC.spike_time_tiling_coefficient(
-                st1, #neo.SpikeTrain(st1.times, t_stop=tstop*pq.s),
-                st2, #neo.SpikeTrain(st2.times, t_stop=tstop*pq.s),
-                dt=sttc_win*pq.s,
-            )
-        cc_times = sttc_wins
+    # elif package == "elephant":
+    #     nbins = int(width / bin_width)
+    #     cc_result, lags = ESTC.cross_correlation_histogram(
+    #         bst_i,
+    #         bst_j,
+    #         window=(-nbins, nbins),
+    #         border_correction=False,
+    #         binary=False,
+    #         kernel=None,
+    #         method="speed",
+    #         cross_correlation_coefficient=True,
+    #     )
+    #     cc_times = np.linspace(-width, width, len(cc_result), endpoint=False)
+    # elif package == "elephant_sttc":
+    #     nbins = int(width / bin_width)
+    #     sttc_wins = np.arange(0.000, 0.020, 0.001)
+    #     cc_result = np.zeros_like(sttc_wins)
+    #     for i, sttc_win in enumerate(sttc_wins):  # run over a range of windows
+    #         cc_result[i] = ESTC.spike_time_tiling_coefficient(
+    #             st1, #neo.SpikeTrain(st1.times, t_stop=tstop*pq.s),
+    #             st2, #neo.SpikeTrain(st2.times, t_stop=tstop*pq.s),
+    #             dt=sttc_win*pq.s,
+    #         )
+    #     cc_times = sttc_wins
     elif package == 'local_sttc':
         sttc_wins = np.arange(0.000, 0.020, 0.001)
         cc_result = np.zeros_like(sttc_wins)

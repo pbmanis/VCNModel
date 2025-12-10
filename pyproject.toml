@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=70", "setuptools-scm", "wheel"]
+requires = ["setuptools>=70", "setuptools-scm", "wheel", "numpy>=2.3.0", "Cython>=3.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -19,9 +19,9 @@ dependencies = [
     "pylibrary",
     "matplotlib>=3.10.0",
     "alphashape>=1.3.1",
-    "cython>=3.0.12",
+    "Cython>=3.0.12",
     "dill>=0.4.0",
-    "elephant>=0.10.0",
+  #  "elephant>=1.1.1", # Elephant does not support numpy > 2.0 yet. Only used in cross correlation and reverse correlation
     "lmfit>=1.0.3",
     "matplotlib-scalebar>=0.8.1",
     "mplcursors>=0.5.3",
@@ -87,6 +87,9 @@ cnmodel = {path = "/Users/pbmanis/Desktop/Python/cnmodel/dist/cnmodel-0.58.21-py
 ephys = {path = "/Users/pbmanis/Desktop/Python/ephys", editable = true}
 # montage = {path = "/Users/pbmanis/Desktop/Python/montage", editable = false}
 # neuronvis = {path = "/Users/pbmanis/Desktop/Python/neuronvis", editable = false}
+
+[tool.uv.extra-build-dependencies]
+vcnmodel = ["Cython", "numpy"]
 
 # [tool.pdm]
 # distribution = false

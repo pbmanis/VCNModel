@@ -25,8 +25,8 @@ from dataclasses import dataclass, field
 
 from typing import List, Tuple, Union
 
-import elephant.conversion as EC
-import elephant.spike_train_correlation as ESTC
+# import elephant.conversion as EC
+# import elephant.spike_train_correlation as ESTC
 import neo
 import numpy as np
 import quantities as pq
@@ -258,43 +258,44 @@ def revcorr(
                     bin_width=RCP.binw * pq.ms,
                     T=None,
                 )
-            elif revcorrtype == "RevcorrEleph":
-                nbins = len(np.arange(RCP.minwin, -RCP.minwin, RCP.binw * 2))
-                bst_i = EC.BinnedSpikeTrain(
-                    spiketrains=neo.SpikeTrain(
-                        stx * pq.ms, t_stop=max_spike_time * pq.s
-                    ),
-                    bin_size=RCP.binw * pq.ms,
-                    n_bins=None,
-                    t_start=data["runInfo"].pip_start * pq.s,
-                    t_stop=(data["runInfo"].pip_start + data["runInfo"].pip_duration)
-                    * pq.s,
-                    tolerance=None,
-                    sparse_format="csr",
-                )
-                bst_j = EC.BinnedSpikeTrain(
-                    spiketrains=neo.SpikeTrain(
-                        anx * pq.ms, t_stop=max_spike_time * pq.s
-                    ),
-                    bin_size=RCP.binw * pq.ms,
-                    n_bins=None,
-                    t_start=data["runInfo"].pip_start * pq.s,
-                    t_stop=(data["runInfo"].pip_start + data["runInfo"].pip_duration)
-                    * pq.s,
-                    tolerance=None,
-                    sparse_format="csr",
-                )
-                cc_result, lags = ESTC.reverse_correlation_histogram(
-                    bst_i,
-                    bst_j,
-                    window=(-nbins, nbins),
-                    border_correction=False,
-                    binary=False,
-                    kernel=None,
-                    method="speed",
-                    reverse_correlation_coefficient=True,
-                )
-                RCD.C[isite] += cc_result.squeeze()[:-1]
+            # Elephant does not support numpy > 2.0 yet
+            # elif revcorrtype == "RevcorrEleph":
+            #     nbins = len(np.arange(RCP.minwin, -RCP.minwin, RCP.binw * 2))
+            #     bst_i = EC.BinnedSpikeTrain(
+            #         spiketrains=neo.SpikeTrain(
+            #             stx * pq.ms, t_stop=max_spike_time * pq.s
+            #         ),
+            #         bin_size=RCP.binw * pq.ms,
+            #         n_bins=None,
+            #         t_start=data["runInfo"].pip_start * pq.s,
+            #         t_stop=(data["runInfo"].pip_start + data["runInfo"].pip_duration)
+            #         * pq.s,
+            #         tolerance=None,
+            #         sparse_format="csr",
+            #     )
+            #     bst_j = EC.BinnedSpikeTrain(
+            #         spiketrains=neo.SpikeTrain(
+            #             anx * pq.ms, t_stop=max_spike_time * pq.s
+            #         ),
+            #         bin_size=RCP.binw * pq.ms,
+            #         n_bins=None,
+            #         t_start=data["runInfo"].pip_start * pq.s,
+            #         t_stop=(data["runInfo"].pip_start + data["runInfo"].pip_duration)
+            #         * pq.s,
+            #         tolerance=None,
+            #         sparse_format="csr",
+            #     )
+            #     cc_result, lags = ESTC.reverse_correlation_histogram(
+            #         bst_i,
+            #         bst_j,
+            #         window=(-nbins, nbins),
+            #         border_correction=False,
+            #         binary=False,
+            #         kernel=None,
+            #         method="speed",
+            #         reverse_correlation_coefficient=True,
+            #     )
+            #     RCD.C[isite] += cc_result.squeeze()[:-1]
             elif revcorrtype == "RevcorrSimple":
                 """
                 The result returned from this version is not corrected
