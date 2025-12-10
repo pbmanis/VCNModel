@@ -4,17 +4,19 @@ Run a model based on a hoc cell structure, decorating the structure with ion cha
 
 Requires:
 
-    1. Python 3.7, 3.8 or 3.9 (anaconda distribution or a local environment - preferred).
-    2. Neuron7.7 - 8.0 (neuron.yale.edu)
+    1. Python 3.13.7(local environment - preferred).
+    2. Neuron 9.0 (neuron.yale.edu)
     3. pyqtgraph (Luke Campagnola, from github)
     4. neuronvis (Campagnola/Manis, from github)
-    5. cnmodel (Campagnola/Manis, from github)
-    6. ephys (Manis, from github)
+    5. cnmodel 0.58.21 rimrock_cleanup branch (Campagnola/Manis, from github)
+    6. ephys 0.8.3 (Manis, from github)
     7. pylibrary (Manis, from github)
-    8. cochlea : Rudniki and Hemmert python implementation of Zilany model. A very slightly modified version that works with Python 3, "cochlea-1", is in Manis' github repository.
-    9. thorns  # required for cochlea (the current version of cochlea does not need this)
+    8. PyZV2014 (Manis, from github)
+    Deprecated:
+        8. cochlea : Rudniki and Hemmert python implementation of Zilany model. A very slightly modified version that works with Python 3, "cochlea-1", is in Manis' github repository.
+        9. thorns  # required for cochlea (the current version of cochlea does not need this)
 
-See the requirements.txt file, or preferably build an environment using make_env.sh.
+See the pyproject.toml file, or, build the env with uv sync, and source activate the .venv.
 
 Where should we look for data? The paths to the directories are defined in **wheres_the_data.toml**
 
@@ -226,7 +228,7 @@ from math import floor, log10
 from pathlib import Path
 from typing import Tuple, Union
 
-import ephys.tools.Utility
+import ephys.tools.util
 import matplotlib
 import numpy as np
 import toml
@@ -245,7 +247,7 @@ from vcnmodel import cellInitialization as cellInit
 from vcnmodel.generate_run import GenerateRun
 from vcnmodel.util.get_data_paths import get_data_paths
 
-EPU = ephys.tools.Utility.Utility()
+EPU = ephys.tools.utilities.Utility()
 matplotlib.use("Qt5Agg")
 
 
