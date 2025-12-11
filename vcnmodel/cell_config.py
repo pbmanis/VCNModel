@@ -27,6 +27,8 @@ import toml
 import pint
 from matplotlib import pyplot as mpl
 from pylibrary.plotting import plothelpers as PH
+from ephys.tools import get_configuration
+
 
 UR = pint.UnitRegistry()
 
@@ -161,6 +163,7 @@ class CellConfig:
 
     def __init__(
         self,
+        configuration: Union[dict, None] = None,
         datafile: Union[str, Path, None] = None,
         spont_mapping: Union[str, None] = None,
         add_inputs: str="none",
@@ -190,17 +193,28 @@ class CellConfig:
         """
         # datafile_default = Path('MorphologyData', 'Dendrite Quality and Surface Areas_comparisons_pbm_15Mar2019_v2.xlsx')
         # soma_area_data = 'Mesh Surface Area'
-        with open("wheres_my_data.toml", "r") as fh:
-            self.config = toml.load(fh)
-        self.dendqualfile = Path(self.config["disk"], self.config["baseDataDirectory"],
-                                 self.config["baseMorphologyDirectory"], self.config["dendriteQualityFile"])
+        if configuration is None:
+            if Path("wheres_my_data.toml").is_file():
+                with open("wheres_my_data.toml", "r") as fh:
+                    self.config = toml.load(fh) 
+            else:
+                try:
+                    db, expt = get_configuration.get_configuration(
+                        configfile="./config/models.cfg",
+                        check_completeness=False,
+                    )   
+                    self.config = expt[db[0]]
+                except: 
+                    raise ValueError("CellConfig: Could not get configuration from config/models.cfg")
+        else:
+            self.config = configuration
+        self.dendqualfile = Path(self.config["disk"], self.config["dendriteQualityFile"])
         print(f"Using dendrite Qual File: {str(self.dendqualfile):s}")
         self.inputs = [f"Input {i+1:d}" for i in range(20)]  # input column labels, up to 20
 
         assert spont_mapping in ["HS", "LS", "MS", "mixed1", None]
 
         self.synperum2 = synperum2
-        datafile = self.dendqualfile
         if add_inputs in ["None", "none"]:
             self.add_inputs = None
         elif add_inputs in ["101730", 101713]:
@@ -213,20 +227,24 @@ class CellConfig:
         self.spont_mapping = spont_mapping  # only set if the spont map is determined
         if self.verbose:
             print("CellConfig: configuration dict: ")
-        with open(datafile, "rb") as fh:
+        if not Path(self.dendqualfile).is_file():
+            self.SDSummary = None
+            raise ValueError(f"Dendrite quality file not found: {self.dendqualfile}")
+        with open(self.dendqualfile, "rb") as fh:
             self.SDSummary = pd.read_excel(
                 fh, self.config["SomaAndDendriteData"],
                 skiprows=0
             )
-
-        with open(datafile, "rb") as fh:
-            self.ASA = pd.read_excel(
-                fh,
-                self.config["asaData"],
-                skiprows=self.config["asaHeaderSkip"],
-                engine="openpyxl",
+        if Path(self.dendqualfile).is_file():
+            with open(self.dendqualfile, "rb") as fh:
+                self.ASA = pd.read_excel(
+                    fh,
+                    self.config["asaData"],
+                    skiprows=self.config["asaHeaderSkip"],
+                    engine="openpyxl",
             )
-
+        else:
+            self.ASA = None
         self.VCN_Inputs = OrderedDict()
 
         for cellnum in cellsintable:
