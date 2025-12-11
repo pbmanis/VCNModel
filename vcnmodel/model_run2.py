@@ -286,7 +286,7 @@ class ModelRun:
     """Run a simulation.
     """
 
-    def __init__(self, params: dataclass = None, runinfo: dataclass = None, args=None):
+    def __init__(self, params: dataclass = None, runinfo: dataclass = None, configuration = None, args=None):
         """
         The two dataclass parameters are defined in model_params.py, and must be passed here
         
@@ -322,21 +322,42 @@ class ModelRun:
 
         if self.Params.verbose:
             self.print_modelsetup()
+        
+        # find out where our files live
+        if configuration is None:
+            print(" **** datapaths called: ")
+            self.configuration = get_data_paths()
+        else:
+            self.configuration = configuration
+        # assemble paths for use later
+        self.baseDirectory = Path(self.configuration["disk"], self.configuration["cellDataDirectory"])
+        self.morphDirectory = Path(self.baseDirectory,
+                                   self.configuration['baseMorphologyDirectory'])
+        self.initDirectory = Path(self.baseDirectory, self.configuration['initializationDirectory'])
+        self.simDirectory = Path(self.baseDirectory, self.configuration['simulationDirectory'])
+        self.reconstructionDirectory = Path(self.morphDirectory, self.configuration["reconstructionDirectory"])
+        for p in [
+            ['base', self.baseDirectory],
+            ['morph', self.morphDirectory],
+            ['init', self.initDirectory],
+            ['sim', self.simDirectory],
+            ['reconstruction', self.reconstructionDirectory],
+        ]:
+            if self.Params.verbose:
+                cprint("c", f"Checking existence of directory: {str(p):s}")
+            if not p[1].is_dir():
+                print(f"    making directory: {str(p[1]):s}")
+                p[1].mkdir(parents=True, exist_ok=True)
+                # raise FileNotFoundError(f"Directory not found: {str(p[0]):s}, {str(p[1]):s}")
+            else:
+                cprint('c', f"Found directory: {str(p):s}")
         self.cconfig = cell_config.CellConfig(
+            configuration = self.configuration,
             verbose=self.Params.verbose,
             spont_mapping=self.Params.SRType,
             add_inputs=self.RunInfo.SpirouSubs,  # Adding inputs (for Singles runs)
             test_input=self.RunInfo.test_input, # for a single input size (ignored if 0)
         )
-
-        # find out where our files live
-        self.datapaths = get_data_paths()
- 
-        self.baseDirectory = Path(self.datapaths["disk"], self.datapaths["cellDataDirectory"])
-        self.morphDirectory = "Morphology"
-        self.initDirectory = "Initialization"
-        self.simDirectory = "Simulations"
-
     def print_modelsetup(self):
         """
         Print out all of the parameters in the model
@@ -711,7 +732,7 @@ class ModelRun:
             self.idnum = par_map["id"]
         else:
             self.idnum = 9999
-        print(f"Cell ID: {self.Params.cell:s}")
+        print(f"Setup up for Cell ID: {self.Params.cell:s}")
 
         self.Params.cellID = Path(
             self.Params.cell
@@ -751,12 +772,10 @@ class ModelRun:
         cprint("c", f"Using {label:s} Hoc file: {self.Params.hocfile:s}")
 
         hoc_filename = Path(
-            self.baseDirectory,
-            self.Params.cellID,
-            self.morphDirectory,
+            self.reconstructionDirectory,
             self.Params.hocfile,
         )
-
+        print(hoc_filename)
         cprint("c", f"Using hoc file at path: {str(hoc_filename):s}")
         # confirm hoc file exists
         if not hoc_filename.is_file():
@@ -799,6 +818,7 @@ class ModelRun:
                 nach = name_parts[1]
             else:
                 nach = "nav11"
+            print("Loading channel data from table: ", table_name)
             CHAN = importlib.import_module(table_name)
             """
             Save the channel data and compartment data tables, as pulled from the 
@@ -2714,7 +2734,7 @@ def main():
         toml_dir="toml"
     )  # get from command line
     model = ModelRun(
-        params=params, runinfo=runinfo, args=parsedargs
+        params=params, runinfo=runinfo, configuration=None, args=parsedargs
     )  # create instance of the model
     if parsedargs.displayMode != "None":
         model.view_model()
