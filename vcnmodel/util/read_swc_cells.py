@@ -11,7 +11,8 @@ from vcnmodel.util.get_data_paths import get_data_paths
 
 config = get_data_paths()
 
-swcPath = Path(config["disk"], config['baseMorphologyDirectory'], 'ASA', 'CellBodySWCs')
+swcPath = Path(config["disk"], config["cellDataDirectory"],
+               config['baseMorphologyDirectory'], config['reconstructionDirectory'])
 
 swcFiles = swcPath.glob('*.swc')
 
@@ -20,7 +21,7 @@ def main():
     for f in swcFiles:
         SWC = swc_to_hoc.SWC(filename=f)
         print('topology for: ', f.name)
-        # SWC.write_hoc(Path(f.with_suffix('.hoc')))
+        SWC.write_hoc(Path(f.with_suffix('.hoc')))
      
 
 if __name__ == "__main__":
