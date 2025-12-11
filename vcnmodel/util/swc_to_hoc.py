@@ -332,7 +332,7 @@ class SWC(object):
                 f"// Scaling: x: {self.scales['x']:f}, y: {self.scales['y']:f}, z: {self.scales['z']:f}, r: {self.scales['r']:f}"
             )
         hoc.append("")
-        sectypes = self.sectypes.copy()
+        sectypes = self.sectypes().copy()
         print("sectypes: ", sectypes)
         for t in np.unique(self.data["type"]):
             print(t)
@@ -372,8 +372,9 @@ class SWC(object):
 
             # set up geometry for this section
             hoc.append("sections[%d] {" % sec_id)
-            if len(sec) == 1:
-                seg = sects[sec_ids[p]][-1]  # get last segement in the parent section
+            if len(sec) == 1 and p != -1:
+                print("sec ids: ", sec_ids)
+                seg = sects[sec_ids[int(p)]][-1]  # get last segement in the parent section
                 rec = self[seg]
                 if rec["r"] < 0.05:
                     print(f"MIN DIA ENCOUNTERED: {seg:d}, {rec['r']:f}")
